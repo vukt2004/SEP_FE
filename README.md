@@ -38,6 +38,7 @@
 ---
 
 ## 2. Cấu trúc thư mục (đúng theo repo)
+```text
 SEP_FE
 ├─ .husky/
 ├─ node_modules/
@@ -65,6 +66,7 @@ SEP_FE
 ├─ tsconfig.json
 ├─ tsconfig.node.json
 └─ vite.config.ts
+```
 
 ---
 
@@ -293,6 +295,7 @@ Dự án nên triển khai theo 3 lớp:
 git clone <YOUR_REPO_URL>
 cd SEP_FE
 npm install
+```
 
 ## 6. Quy ước code
 - Component tái sử dụng: src/components/
