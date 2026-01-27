@@ -1,5 +1,32 @@
 # SEP_FE — React + TypeScript + Vite (Real-time với SignalR)
 
+## Mục lục
+- [1) Tổng quan](#1-tổng-quan)
+- [2) Cấu trúc thư mục](#2-cấu-trúc-thư-mục-đúng-theo-repo)
+- [3) Giải thích chức năng, mục đích, cách triển khai từng mục](#3-giải-thích-chức-năng-mục-đích-cách-triển-khai-từng-mục)
+  - [3.1 `.husky/`](#31-husky)
+  - [3.2 `src/`](#32-src)
+    - [a) `src/app/`](#a-srcapp)
+    - [b) `src/components/`](#b-srccomponents)
+    - [c) `src/lib/`](#c-srclib)
+    - [d) `src/pages/`](#d-srcpages)
+      - [`src/pages/Home/index.tsx`](#srcpageshomeindextsx)
+    - [e) `src/styles/global.css`](#e-srcstylesglobalcss)
+    - [f) `src/main.tsx`](#f-srcmaintsx)
+  - [3.3 `.env`](#33-env)
+  - [3.4 ESLint / Prettier configs](#34-eslint--prettier-configs)
+  - [3.5 `index.html`](#35-indexhtml)
+  - [3.6 `package.json` / `package-lock.json`](#36-packagejson--package-lockjson)
+  - [3.7 `tsconfig*.json`](#37-tsconfigjson-tsconfigappjson-tsconfignodejson)
+  - [3.8 `vite.config.ts`](#38-viteconfigts)
+- [4) Real-time với SignalR — cách dùng trong dự án](#4-real-time-với-signalr--cách-dùng-trong-dự-án-khuyến-nghị)
+- [5) Chạy dự án khi clone từ GitHub](#5-chạy-dự-án-khi-clone-từ-github)
+  - [5.1 Yêu cầu](#51-yêu-cầu)
+  - [5.2 Cài đặt & chạy local](#52-cài-đặt--chạy-local)
+- [6) Quy ước code](#6-quy-ước-code-khuyến-nghị)
+
+---
+
 ## 1. Tổng quan
 **SEP_FE** là frontend được dựng bằng **React + TypeScript + Vite**, tối ưu cho bài toán **Real-time event** qua **SignalR**.
 
