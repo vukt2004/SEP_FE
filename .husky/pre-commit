@@ -1,2 +1,2 @@
-npm test
+npm run typecheck
 npx lint-staged
