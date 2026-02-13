@@ -1,4 +1,4 @@
-import type { ObjectBehavior } from "./objectTypes";
+import type { ObjectBehavior } from "../object/objectTypes";
 
 export const objectRegistry: Record<string, ObjectBehavior> = {
   goal: {

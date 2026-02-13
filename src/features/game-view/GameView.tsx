@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import { createBorderedMap } from "../../modules/map-system/mapFactory";
-import { GameEngine } from "../../modules/engine/GameEngine";
+import { GameEngine } from "../../modules/engine/core/GameEngine";
 import { EngineCommand } from "../../modules/executor/commands";
 import type { BlockProgram } from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
-import type { EngineEvent } from "../../modules/engine/engineEvents";
+import type { EngineEvent } from "../../modules/engine/core/engineEvents";
+// import { setupCollisionExample } from "../../modules/engine/COLLISION_USAGE_EXAMPLE";
 
 export default function GameView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,6 +25,9 @@ export default function GameView() {
 
     const engine = new GameEngine(map, ctx);
     engineRef.current = engine;
+
+    // Integrate collision example
+    // setupCollisionExample(engine, map);
 
     // Async initialization
     const initAndStart = async () => {

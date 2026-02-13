@@ -4,4 +4,9 @@ export type EngineEvent =
       type: "objectStateChanged";
       objectId: string;
       newState?: string;
+    }
+  | {
+      type: "collision:enter";
+      entityAId: string;
+      entityBId: string;
     };

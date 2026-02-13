@@ -1,12 +1,14 @@
-import type { TileMap } from "../map-system/types";
+import type { TileMap } from "../../map-system/types";
 import type { Player, Direction } from "./types";
-import { Renderer } from "./Renderer";
-import { EngineCommand } from "../executor/commands";
-import { objectRegistry } from "./objectRegistry";
+import { Renderer } from "../rendering/Renderer";
+import { EngineCommand } from "../../executor/commands";
+import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
-import { AnimationSystem } from "./AnimationSystem";
-import { animationRegistry } from "./animationRegistry";
-import { loadAnimations } from "./animationLoader";
+import { AnimationSystem } from "../systems/animation/AnimationSystem";
+import { animationRegistry } from "../systems/animation/animationRegistry";
+import { loadAnimations } from "../systems/animation/animationLoader";
+import { CollisionSystem } from "../systems/collision/CollisionSystem";
+import { BoxCollider } from "../physics/BoxCollider";
 
 const TURN_LEFT: Record<Direction, Direction> = {
   up: "left",
@@ -40,14 +42,25 @@ export class GameEngine {
     [key: string]: ((event: EngineEvent) => void)[];
   } = {};
   private animationSystem: AnimationSystem;
+  private collisionSystem: CollisionSystem;
   private lastTimestamp: number = 0;
 
   constructor(map: TileMap, ctx: CanvasRenderingContext2D) {
     this.map = map;
     this.ctx = ctx;
     this.animationSystem = new AnimationSystem();
+    this.collisionSystem = new CollisionSystem();
+    this.collisionSystem.setEventEmitter((event) => this.emit(event));
     this.renderer = new Renderer(ctx, this.animationSystem);
-    this.player = { x: 1, y: 1, direction: "right" };
+    this.player = {
+      id: "player",
+      x: 1,
+      y: 1,
+      facing: "right",
+      direction: "right",
+      isMoving: false,
+      animationState: "idle",
+    };
   }
 
   async initialize(): Promise<void> {
@@ -66,19 +79,46 @@ export class GameEngine {
     }
   }
 
+  getCollisionSystem(): CollisionSystem {
+    return this.collisionSystem;
+  }
+
+  getPlayer(): Player {
+    return this.player;
+  }
+
+  getMap(): TileMap {
+    return this.map;
+  }
+
   private loop = (): void => {
     const now = performance.now();
     const deltaTime = now - this.lastTimestamp;
     this.lastTimestamp = now;
 
-    // Update animations
+    // Update player animation state
+    this.player.animationState = this.resolvePlayerAnimationState(this.player);
+
+    // Update animations for objects
     for (const obj of this.map.objects) {
       const stateKey = obj.state ?? "default";
       const animMap = animationRegistry[obj.type];
       const anim = animMap?.[stateKey];
       if (anim) {
-        this.animationSystem.update(obj.id, anim, deltaTime);
+        this.animationSystem.update(obj.id, stateKey, anim, deltaTime);
       }
+    }
+
+    // Update animation for player
+    const playerAnimMap = animationRegistry["player"];
+    const playerAnim = playerAnimMap?.[this.player.animationState];
+    if (playerAnim) {
+      this.animationSystem.update(
+        this.player.id,
+        this.player.animationState,
+        playerAnim,
+        deltaTime,
+      );
     }
 
     const canvasWidth = this.map.width * this.map.tileSize;
@@ -92,7 +132,17 @@ export class GameEngine {
     this.renderer.render(this.map, this.player);
   }
 
+  private resolvePlayerAnimationState(player: Player): string {
+    if (player.isMoving) {
+      return "run";
+    }
+    return "idle";
+  }
+
   executeCommand(command: EngineCommand): void {
+    // Reset isMoving before command
+    this.player.isMoving = false;
+
     switch (command) {
       case EngineCommand.MOVE_FORWARD:
         this.moveForward();
@@ -107,10 +157,13 @@ export class GameEngine {
         this.interact();
         break;
     }
+
+    // Update collisions after movement
+    this.collisionSystem.update();
   }
 
   isObstacleAhead(): boolean {
-    const { dx, dy } = DIRECTION_DELTA[this.player.direction];
+    const { dx, dy } = DIRECTION_DELTA[this.player.facing];
     const nextX = this.player.x + dx;
     const nextY = this.player.y + dy;
 
@@ -157,7 +210,7 @@ export class GameEngine {
   }
 
   private moveForward(): void {
-    const { dx, dy } = DIRECTION_DELTA[this.player.direction];
+    const { dx, dy } = DIRECTION_DELTA[this.player.facing];
     const nextX = this.player.x + dx;
     const nextY = this.player.y + dy;
 
@@ -178,19 +231,37 @@ export class GameEngine {
 
     this.player.x = nextX;
     this.player.y = nextY;
+    this.player.isMoving = true;
+
+    // Update sprite direction based on horizontal facing
+    if (this.player.facing === "left" || this.player.facing === "right") {
+      this.player.direction = this.player.facing;
+    }
+
+    // Update player collider position if registered
+    this.updatePlayerCollider();
+
     this.checkWinCondition();
   }
 
   private turnLeft(): void {
-    this.player.direction = TURN_LEFT[this.player.direction];
+    this.player.facing = TURN_LEFT[this.player.facing];
+    // Update sprite direction if turning to horizontal
+    if (this.player.facing === "left" || this.player.facing === "right") {
+      this.player.direction = this.player.facing;
+    }
   }
 
   private turnRight(): void {
-    this.player.direction = TURN_RIGHT[this.player.direction];
+    this.player.facing = TURN_RIGHT[this.player.facing];
+    // Update sprite direction if turning to horizontal
+    if (this.player.facing === "left" || this.player.facing === "right") {
+      this.player.direction = this.player.facing;
+    }
   }
 
   interact(): void {
-    const { dx, dy } = DIRECTION_DELTA[this.player.direction];
+    const { dx, dy } = DIRECTION_DELTA[this.player.facing];
     const targetX = this.player.x + dx;
     const targetY = this.player.y + dy;
     const targetPixelX = targetX * this.map.tileSize;
@@ -223,6 +294,15 @@ export class GameEngine {
           this.emit({ type: "win" });
         }
       }
+    }
+  }
+
+  private updatePlayerCollider(): void {
+    const collider = this.collisionSystem.getCollider(this.player.id);
+    if (collider instanceof BoxCollider) {
+      const pixelX = this.player.x * this.map.tileSize;
+      const pixelY = this.player.y * this.map.tileSize;
+      collider.updatePosition(pixelX, pixelY);
     }
   }
 
