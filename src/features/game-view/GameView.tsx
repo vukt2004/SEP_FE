@@ -5,6 +5,7 @@ import { EngineCommand } from "../../modules/executor/commands";
 import type { BlockProgram } from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
+import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 // import { setupCollisionExample } from "../../modules/engine/COLLISION_USAGE_EXAMPLE";
 
 export default function GameView() {
@@ -23,7 +24,9 @@ export default function GameView() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const engine = new GameEngine(map, ctx);
+    // Create TopDown game config (no gravity)
+    const config = createGameConfig(LevelType.TopDown);
+    const engine = new GameEngine(map, ctx, config);
     engineRef.current = engine;
 
     // Integrate collision example

@@ -89,8 +89,9 @@ export class Renderer {
     const animMap = animationRegistry["player"];
     const anim = animMap?.[player.animationState];
 
-    const pixelX = player.x * tileSize;
-    const pixelY = player.y * tileSize;
+    // Use interpolated pixel positions for smooth animation
+    const pixelX = player.pixelX;
+    const pixelY = player.pixelY;
 
     if (anim) {
       // Sprite-based rendering
