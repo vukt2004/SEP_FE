@@ -1,11 +1,13 @@
-import type { TileMap } from "../../map-system/types";
+import type { LevelDefinition, TileType } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
 
-const TILE_COLORS: Record<number, string> = {
-  0: "#eeeeee",
-  1: "#444444",
+const TILE_COLORS: Record<TileType, string> = {
+  empty: "#eeeeee",
+  wall: "#444444",
+  start: "#55ccff",
+  goal: "#22cc55",
 };
 
 const PLAYER_COLOR = "#2255cc";
@@ -28,31 +30,35 @@ export class Renderer {
     this.debugMode = debugMode;
   }
 
-  render(map: TileMap, player: Player): void {
-    this.drawTiles(map);
-    this.drawObjects(map);
-    this.drawPlayer(player, map.tileSize);
+  render(level: LevelDefinition, tileSize: number, player: Player): void {
+    this.drawTiles(level, tileSize);
+    this.drawObjects(level, tileSize);
+    this.drawPlayer(player, tileSize);
   }
 
-  private drawTiles(map: TileMap): void {
-    const { tiles, tileSize } = map;
+  private drawTiles(level: LevelDefinition, tileSize: number): void {
+    const { tiles } = level;
 
     for (let row = 0; row < tiles.length; row++) {
       for (let col = 0; col < tiles[row].length; col++) {
-        const tileValue = tiles[row][col];
-        this.ctx.fillStyle = TILE_COLORS[tileValue] ?? TILE_COLORS[0];
+        const tileType = tiles[row][col];
+        this.ctx.fillStyle = TILE_COLORS[tileType] ?? TILE_COLORS["empty"];
         this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
       }
     }
   }
 
-  private drawObjects(map: TileMap): void {
-    const { objects, tileSize } = map;
+  private drawObjects(level: LevelDefinition, tileSize: number): void {
+    const { objects } = level;
 
-    for (const obj of objects) {
-      const stateKey = obj.state ?? "default";
+    for (const obj of objects || []) {
+      const stateKey = obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
       const anim = animMap?.[stateKey];
+
+      // Convert grid position to pixel position
+      const pixelX = obj.position.col * tileSize;
+      const pixelY = obj.position.row * tileSize;
 
       if (anim) {
         // Sprite-based rendering
@@ -66,8 +72,8 @@ export class Renderer {
           sy,
           anim.frameWidth,
           anim.frameHeight,
-          obj.x,
-          obj.y,
+          pixelX,
+          pixelY,
           tileSize,
           tileSize,
         );
@@ -76,11 +82,11 @@ export class Renderer {
         if (obj.type === "goal") {
           this.ctx.fillStyle = GOAL_COLOR;
         } else if (obj.type === "door") {
-          this.ctx.fillStyle = obj.state === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+          this.ctx.fillStyle = obj.initialState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
         } else {
           this.ctx.fillStyle = "#ff00ff";
         }
-        this.ctx.fillRect(obj.x, obj.y, tileSize, tileSize);
+        this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
       }
     }
   }

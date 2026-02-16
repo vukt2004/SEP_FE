@@ -1,5 +1,6 @@
 export type EngineEvent =
   | { type: "win" }
+  | { type: "engine:failed" }
   | {
       type: "objectStateChanged";
       objectId: string;

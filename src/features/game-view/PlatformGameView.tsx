@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
 import { EngineCommand } from "../../modules/executor/commands";
-import type { TileMap } from "../../modules/map-system/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
+import { loadLevelFromMockData } from "../../utils/levelLoader";
 
 /**
  * PlatformGameView - Test view for platformer levels with gravity
@@ -18,94 +18,99 @@ import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfi
 export default function PlatformGameView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("[useEffect] PlatformGameView useEffect triggered");
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    console.log("[useEffect] Canvas ref:", canvas);
 
-    // Create a platformer level with platforms
-    const map: TileMap = {
-      width: 20,
-      height: 15,
-      tileSize: 16,
-      tiles: [
-        // Row 0 - Top border
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        // Row 1-3 - Empty
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        // Row 4 - First platform
-        [1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        // Row 5-6 - Empty
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        // Row 7 - Second platform
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1],
-        // Row 8-9 - Empty
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        // Row 10 - Third platform
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
-        // Row 11-12 - Empty
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-        // Row 13 - Ground floor
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        // Row 14 - Bottom border
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-      ],
-      objects: [],
-    };
+    if (!canvas) {
+      console.error("[useEffect] Canvas not found! Aborting initialization.");
+      return;
+    }
 
-    canvas.width = map.width * map.tileSize;
-    canvas.height = map.height * map.tileSize;
+    let cleanup: (() => void) | null = null;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const initGame = async () => {
+      try {
+        setIsLoading(true);
 
-    // Create Platform game config (with gravity)
-    const config = createGameConfig(LevelType.Platform);
-    const engine = new GameEngine(map, ctx, config);
-    engineRef.current = engine;
+        // Load platform level from mock data
+        const levelDefinition = await loadLevelFromMockData("level-platform-01");
 
-    // Initialize and start
-    const initAndStart = async () => {
-      await engine.initialize();
-      engine.start();
-    };
+        // Set canvas size based on level dimensions
+        const tileSize = 16;
+        canvas.width = levelDefinition.width * tileSize;
+        canvas.height = levelDefinition.height * tileSize;
 
-    initAndStart();
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
 
-    // Keyboard controls
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowLeft":
-          engine.executeCommand(EngineCommand.TURN_LEFT);
-          engine.executeCommand(EngineCommand.MOVE_FORWARD);
-          break;
-        case "ArrowRight":
-          engine.executeCommand(EngineCommand.TURN_RIGHT);
-          engine.executeCommand(EngineCommand.MOVE_FORWARD);
-          break;
-        case "ArrowUp":
-          // Face up (for future jump or climb mechanics)
-          engine.executeCommand(EngineCommand.TURN_LEFT);
-          engine.executeCommand(EngineCommand.TURN_LEFT);
-          break;
-        case "ArrowDown":
-          // Face down
-          engine.executeCommand(EngineCommand.TURN_RIGHT);
-          engine.executeCommand(EngineCommand.TURN_RIGHT);
-          break;
+        // Create Platform game config (with gravity)
+        const config = createGameConfig(LevelType.Platform);
+        const engine = new GameEngine(levelDefinition, tileSize, ctx, config);
+        engineRef.current = engine;
+
+        // Initialize and start
+        await engine.initialize();
+        engine.start();
+
+        // Event listener for win condition
+        const handleWin = () => {
+          alert(`Platform Complete! Steps: ${engine.getStepCount()}`);
+        };
+        engine.on("win", handleWin);
+
+        // Keyboard controls
+        const handleKeyDown = (e: KeyboardEvent) => {
+          switch (e.key) {
+            case "ArrowLeft":
+              engine.executeCommand(EngineCommand.TURN_LEFT);
+              engine.executeCommand(EngineCommand.MOVE_FORWARD);
+              break;
+            case "ArrowRight":
+              engine.executeCommand(EngineCommand.TURN_RIGHT);
+              engine.executeCommand(EngineCommand.MOVE_FORWARD);
+              break;
+            case "ArrowUp":
+              // Face up (for future jump or climb mechanics)
+              engine.executeCommand(EngineCommand.TURN_LEFT);
+              engine.executeCommand(EngineCommand.TURN_LEFT);
+              break;
+            case "ArrowDown":
+              // Face down
+              engine.executeCommand(EngineCommand.TURN_RIGHT);
+              engine.executeCommand(EngineCommand.TURN_RIGHT);
+              break;
+          }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        setIsLoading(false);
+
+        // Store cleanup function
+        cleanup = () => {
+          window.removeEventListener("keydown", handleKeyDown);
+          engine.off("win", handleWin);
+          engine.stop();
+        };
+      } catch (err) {
+        console.error("Failed to initialize platform game:", err);
+        setError(err instanceof Error ? err.message : "Failed to load level");
+        setIsLoading(false);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    initGame();
 
+    // Return cleanup function for useEffect
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      engine.stop();
+      if (cleanup) {
+        cleanup();
+      }
     };
   }, []);
 
@@ -115,9 +120,36 @@ export default function PlatformGameView() {
       <p>
         <strong>Controls:</strong> Arrow keys to move left/right. Player will fall with gravity.
       </p>
+
+      {isLoading && (
+        <div style={{ padding: "20px", textAlign: "center" }}>
+          <p>Loading platform level...</p>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ padding: "20px", color: "red" }}>
+          <h3>Error Loading Platform Game</h3>
+          <p>{error}</p>
+          <p style={{ fontSize: "12px", marginTop: "10px" }}>
+            Check browser console (F12) for more details.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ marginTop: "10px", padding: "8px 16px" }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <canvas
         ref={canvasRef}
-        style={{ border: "2px solid #333", display: "block", marginTop: "10px" }}
+        style={{
+          border: "2px solid #333",
+          display: isLoading || error ? "none" : "block",
+          marginTop: "10px",
+        }}
       />
     </div>
   );

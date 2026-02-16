@@ -1,6 +1,6 @@
 import type { IPlayerController } from "./IPlayerController";
 import type { Player, Direction } from "../core/types";
-import type { TileMap } from "../../map-system/types";
+import type { LevelDefinition } from "../../map-system/types";
 import { objectRegistry } from "../object/objectRegistry";
 
 const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
@@ -16,21 +16,21 @@ const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
  * Player can move left/right, but will fall if no ground below
  */
 export class PlatformController implements IPlayerController {
-  moveForward(player: Player, map: TileMap): boolean {
+  moveForward(player: Player, level: LevelDefinition, tileSize: number): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
     // Check if blocked by solid tile
-    if (this.isSolidTile(nextX, nextY, map)) return false;
+    if (this.isSolidTile(nextX, nextY, level)) return false;
 
     player.x = nextX;
     player.y = nextY;
     player.isMoving = true;
 
     // Update target pixel position for smooth interpolation
-    player.targetPixelX = nextX * map.tileSize;
-    player.targetPixelY = nextY * map.tileSize;
+    player.targetPixelX = nextX * tileSize;
+    player.targetPixelY = nextY * tileSize;
 
     // Update sprite direction based on horizontal facing
     if (player.facing === "left" || player.facing === "right") {
@@ -40,33 +40,33 @@ export class PlatformController implements IPlayerController {
     return true;
   }
 
-  applyPhysics(player: Player, map: TileMap): void {
+  applyPhysics(player: Player, level: LevelDefinition, tileSize: number): void {
     // Apply rule-based gravity
-    this.applyGravity(player, map);
+    this.applyGravity(player, level, tileSize);
   }
 
-  isObstacleAhead(player: Player, map: TileMap): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  isObstacleAhead(player: Player, level: LevelDefinition, _tileSize: number): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
-    return this.isSolidTile(nextX, nextY, map);
+    return this.isSolidTile(nextX, nextY, level);
   }
 
-  isSolidTile(x: number, y: number, map: TileMap): boolean {
+  isSolidTile(x: number, y: number, level: LevelDefinition): boolean {
     // Out of bounds is considered solid (prevents falling off map)
-    if (!this.isInBounds(x, y, map)) return true;
+    if (!this.isInBounds(x, y, level)) return true;
 
     // Wall tiles are solid
-    if (map.tiles[y][x] === 1) return true;
+    const tileType = level.tiles[y][x];
+    if (tileType === "wall") return true;
 
     // Check for collidable objects at this position
-    const pixelX = x * map.tileSize;
-    const pixelY = y * map.tileSize;
-    for (const obj of map.objects) {
-      if (obj.x === pixelX && obj.y === pixelY) {
+    for (const obj of level.objects || []) {
+      if (obj.position.col === x && obj.position.row === y) {
         const behavior = objectRegistry[obj.type];
-        if (behavior?.isCollidable?.(obj.state)) {
+        if (behavior?.isCollidable?.(obj.initialState)) {
           return true;
         }
       }
@@ -78,21 +78,21 @@ export class PlatformController implements IPlayerController {
   /**
    * Apply rule-based gravity: drop player tile-by-tile until reaching solid ground
    */
-  private applyGravity(player: Player, map: TileMap): void {
+  private applyGravity(player: Player, level: LevelDefinition, tileSize: number): void {
     // Fall one tile at a time until hitting solid ground
     while (
-      this.isInBounds(player.x, player.y + 1, map) &&
-      !this.isSolidTile(player.x, player.y + 1, map)
+      this.isInBounds(player.x, player.y + 1, level) &&
+      !this.isSolidTile(player.x, player.y + 1, level)
     ) {
       player.y++;
     }
 
     // Update target pixel position for smooth fall animation
-    player.targetPixelX = player.x * map.tileSize;
-    player.targetPixelY = player.y * map.tileSize;
+    player.targetPixelX = player.x * tileSize;
+    player.targetPixelY = player.y * tileSize;
   }
 
-  private isInBounds(x: number, y: number, map: TileMap): boolean {
-    return x >= 0 && x < map.width && y >= 0 && y < map.height;
+  private isInBounds(x: number, y: number, level: LevelDefinition): boolean {
+    return x >= 0 && x < level.width && y >= 0 && y < level.height;
   }
 }

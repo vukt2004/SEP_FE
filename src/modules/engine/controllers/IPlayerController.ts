@@ -1,5 +1,5 @@
 import type { Player } from "../core/types";
-import type { TileMap } from "../../map-system/types";
+import type { LevelDefinition } from "../../map-system/types";
 
 /**
  * Interface for player movement controllers
@@ -10,21 +10,21 @@ export interface IPlayerController {
    * Execute movement forward based on player's facing direction
    * @returns true if movement was successful, false if blocked
    */
-  moveForward(player: Player, map: TileMap): boolean;
+  moveForward(player: Player, level: LevelDefinition, tileSize: number): boolean;
 
   /**
    * Apply physics/gravity if needed for this controller type
    * Called after each movement command
    */
-  applyPhysics(player: Player, map: TileMap): void;
+  applyPhysics(player: Player, level: LevelDefinition, tileSize: number): void;
 
   /**
    * Check if there's an obstacle ahead in the facing direction
    */
-  isObstacleAhead(player: Player, map: TileMap): boolean;
+  isObstacleAhead(player: Player, level: LevelDefinition, tileSize: number): boolean;
 
   /**
    * Check if a tile position is solid (wall or collidable object)
    */
-  isSolidTile(x: number, y: number, map: TileMap): boolean;
+  isSolidTile(x: number, y: number, level: LevelDefinition): boolean;
 }

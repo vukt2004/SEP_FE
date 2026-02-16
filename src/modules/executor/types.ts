@@ -12,6 +12,12 @@ export type Block =
       id: string;
       type: "ifObstacleAhead";
       children: Block[];
+      elseChildren?: Block[];
+    }
+  | {
+      id: string;
+      type: "whileObstacleAhead";
+      children: Block[];
     };
 
 export type BlockProgram = Block[];
