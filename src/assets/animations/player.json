@@ -1,0 +1,21 @@
+{
+  "objectType": "player",
+  "states": {
+    "idle": {
+      "sprite": "/assets/Pixel Adventure 1/Main Characters/Mask Dude/Idle (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 11,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "run": {
+      "sprite": "/assets/Pixel Adventure 1/Main Characters/Mask Dude/Run (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 12,
+      "frameDuration": 100,
+      "loop": true
+    }
+  }
+}
