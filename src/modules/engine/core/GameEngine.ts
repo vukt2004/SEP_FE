@@ -102,6 +102,7 @@ export class GameEngine {
 
   async initialize(): Promise<void> {
     await loadAnimations();
+    await this.renderer.preloadTilesets(this.level);
   }
 
   /**

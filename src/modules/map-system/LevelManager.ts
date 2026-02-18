@@ -1,10 +1,4 @@
-import type {
-  LevelDefinition,
-  LevelState,
-  GridPos,
-  TileType,
-  VisualizationMetadata,
-} from "./types";
+import type { LevelDefinition, LevelState, GridPos, VisualizationMetadata } from "./types";
 import { gridPosToKey, gridPosEquals, isInBounds } from "./types";
 
 /**
@@ -86,21 +80,27 @@ export class LevelManager {
   }
 
   /**
-   * Get tile type at a specific position
+   * Get collision status at a specific position
+   * @returns true if blocked, false if walkable, null if out of bounds
    */
-  getTileAt(pos: GridPos): TileType | null {
+  getCollisionAt(pos: GridPos): boolean | null {
     if (!isInBounds(pos, this.definition.width, this.definition.height)) {
       return null;
     }
-    return this.definition.tiles[pos.row][pos.col];
+    return this.definition.layers.collision[pos.row][pos.col];
   }
 
   /**
-   * Check if a position is walkable (not a wall)
+   * Check if a position is walkable (not blocked by collision layer)
    */
   isWalkable(pos: GridPos): boolean {
-    const tile = this.getTileAt(pos);
-    return tile !== null && tile !== "wall";
+    // Out of bounds is not walkable
+    if (!isInBounds(pos, this.definition.width, this.definition.height)) {
+      return false;
+    }
+
+    // Check collision layer: false = walkable, true = blocked
+    return !this.definition.layers.collision[pos.row][pos.col];
   }
 
   /**

@@ -58,9 +58,8 @@ export class PlatformController implements IPlayerController {
     // Out of bounds is considered solid (prevents falling off map)
     if (!this.isInBounds(x, y, level)) return true;
 
-    // Wall tiles are solid
-    const tileType = level.tiles[y][x];
-    if (tileType === "wall") return true;
+    // Check collision layer
+    if (level.layers.collision[y][x]) return true;
 
     // Check for collidable objects at this position
     for (const obj of level.objects || []) {

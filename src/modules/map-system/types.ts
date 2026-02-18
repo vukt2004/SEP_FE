@@ -34,6 +34,15 @@ export interface GridObjectDefinition {
 }
 
 /**
+ * Layer-based level structure
+ * Separates visual representation from collision logic
+ */
+export interface LevelLayers {
+  background: number[][]; // Numeric tile IDs [row][col]
+  collision: boolean[][]; // Collision map: true = blocked, false = walkable [row][col]
+}
+
+/**
  * Immutable level definition
  * Defines the structure and initial configuration of a level
  * Does NOT contain runtime state or rendering information
@@ -43,7 +52,7 @@ export interface LevelDefinition {
   name: string;
   width: number; // Grid width in tiles
   height: number; // Grid height in tiles
-  tiles: TileType[][]; // 2D array of tile types [row][col]
+  layers: LevelLayers; // Layer-based map data
   startPosition: GridPos; // Player spawn point
   goalPosition: GridPos; // Win condition position
   objects?: GridObjectDefinition[]; // Optional interactive objects

@@ -1,8 +1,18 @@
-import type { LevelDefinition, TileType, GridPos } from "./types";
+import type { LevelDefinition, GridPos } from "./types";
 
 // ============================================================================
 // GRID-BASED LEVEL FACTORY
 // ============================================================================
+
+/**
+ * Tile ID constants for numeric tile system
+ */
+const TILE_ID = {
+  EMPTY: 0,
+  WALL: 1,
+  GRASS: 2,
+  TERRAIN_BLOCK: 3,
+} as const;
 
 /**
  * Create a basic bordered level for algorithm learning
@@ -24,15 +34,26 @@ export function createBorderedLevel(
     throw new Error("Level dimensions must be at least 3x3");
   }
 
-  // Create tile grid with borders as walls
-  const tiles: TileType[][] = [];
+  // Create background and collision layers
+  const background: number[][] = [];
+  const collision: boolean[][] = [];
+
   for (let row = 0; row < height; row++) {
-    const rowData: TileType[] = [];
+    const bgRow: number[] = [];
+    const collisionRow: boolean[] = [];
+
     for (let col = 0; col < width; col++) {
       const isBorder = row === 0 || row === height - 1 || col === 0 || col === width - 1;
-      rowData.push(isBorder ? "wall" : "empty");
+
+      // Background tiles (numeric IDs)
+      bgRow.push(isBorder ? TILE_ID.WALL : TILE_ID.EMPTY);
+
+      // Collision map
+      collisionRow.push(isBorder);
     }
-    tiles.push(rowData);
+
+    background.push(bgRow);
+    collision.push(collisionRow);
   }
 
   // Define start position (top-left inside border)
@@ -41,16 +62,15 @@ export function createBorderedLevel(
   // Define goal position (bottom-right inside border)
   const goalPosition: GridPos = { row: height - 2, col: width - 2 };
 
-  // Mark start and goal tiles
-  tiles[startPosition.row][startPosition.col] = "start";
-  tiles[goalPosition.row][goalPosition.col] = "goal";
-
   return {
     id,
     name,
     width,
     height,
-    tiles,
+    layers: {
+      background,
+      collision,
+    },
     startPosition,
     goalPosition,
     metadata: {
@@ -75,23 +95,27 @@ export function createEmptyLevel(
     throw new Error("Level dimensions must be at least 2x2");
   }
 
-  // Create empty tile grid
-  const tiles: TileType[][] = Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => "empty" as TileType),
+  // Create empty background and collision layers (numeric IDs)
+  const background: number[][] = Array.from({ length: height }, () =>
+    Array.from({ length: width }, () => TILE_ID.EMPTY),
+  );
+
+  const collision: boolean[][] = Array.from({ length: height }, () =>
+    Array.from({ length: width }, () => false),
   );
 
   const startPosition: GridPos = { row: 0, col: 0 };
   const goalPosition: GridPos = { row: height - 1, col: width - 1 };
-
-  tiles[startPosition.row][startPosition.col] = "start";
-  tiles[goalPosition.row][goalPosition.col] = "goal";
 
   return {
     id,
     name,
     width,
     height,
-    tiles,
+    layers: {
+      background,
+      collision,
+    },
     startPosition,
     goalPosition,
     metadata: {
@@ -115,15 +139,22 @@ export function createMazeLevel(
     throw new Error("Maze level dimensions must be at least 5x5");
   }
 
-  // Create bordered level as base
-  const tiles: TileType[][] = [];
+  // Create layers starting with borders (numeric IDs)
+  const background: number[][] = [];
+  const collision: boolean[][] = [];
+
   for (let row = 0; row < height; row++) {
-    const rowData: TileType[] = [];
+    const bgRow: number[] = [];
+    const collisionRow: boolean[] = [];
+
     for (let col = 0; col < width; col++) {
       const isBorder = row === 0 || row === height - 1 || col === 0 || col === width - 1;
-      rowData.push(isBorder ? "wall" : "empty");
+      bgRow.push(isBorder ? TILE_ID.WALL : TILE_ID.EMPTY);
+      collisionRow.push(isBorder);
     }
-    tiles.push(rowData);
+
+    background.push(bgRow);
+    collision.push(collisionRow);
   }
 
   // Add deterministic wall pattern
@@ -132,7 +163,8 @@ export function createMazeLevel(
     for (let row = 1; row < height - 1; row++) {
       // Leave gaps every 2 rows
       if (row % 2 !== 0) {
-        tiles[row][col] = "wall";
+        background[row][col] = TILE_ID.WALL;
+        collision[row][col] = true;
       }
     }
   }
@@ -140,15 +172,15 @@ export function createMazeLevel(
   const startPosition: GridPos = { row: 1, col: 1 };
   const goalPosition: GridPos = { row: height - 2, col: width - 2 };
 
-  tiles[startPosition.row][startPosition.col] = "start";
-  tiles[goalPosition.row][goalPosition.col] = "goal";
-
   return {
     id,
     name,
     width,
     height,
-    tiles,
+    layers: {
+      background,
+      collision,
+    },
     startPosition,
     goalPosition,
     metadata: {
@@ -160,28 +192,40 @@ export function createMazeLevel(
 }
 
 /**
- * Create a level from custom tile data
+ * Create a level from custom layer data
  * For loading levels from API or custom definitions
  */
 export function createCustomLevel(
   id: string,
   name: string,
-  tiles: TileType[][],
+  background: number[][],
+  collision: boolean[][],
   startPosition: GridPos,
   goalPosition: GridPos,
   metadata?: LevelDefinition["metadata"],
 ): LevelDefinition {
-  const height = tiles.length;
-  const width = tiles[0]?.length ?? 0;
+  const height = background.length;
+  const width = background[0]?.length ?? 0;
 
   if (height === 0 || width === 0) {
     throw new Error("Level must have at least 1x1 tiles");
   }
 
-  // Validate consistent row lengths
-  for (const row of tiles) {
+  // Validate consistent row lengths for background
+  for (const row of background) {
     if (row.length !== width) {
-      throw new Error("All rows must have the same width");
+      throw new Error("All background rows must have the same width");
+    }
+  }
+
+  // Validate consistent row lengths for collision
+  if (collision.length !== height) {
+    throw new Error("Collision layer must match background height");
+  }
+
+  for (const row of collision) {
+    if (row.length !== width) {
+      throw new Error("All collision rows must have the same width");
     }
   }
 
@@ -209,7 +253,10 @@ export function createCustomLevel(
     name,
     width,
     height,
-    tiles,
+    layers: {
+      background,
+      collision,
+    },
     startPosition,
     goalPosition,
     metadata,

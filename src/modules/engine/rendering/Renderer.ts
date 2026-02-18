@@ -1,15 +1,19 @@
-import type { LevelDefinition, TileType } from "../../map-system/types";
+import type { LevelDefinition } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
+import { tileRegistry, TilesetCache } from "./tileRegistry";
 
-const TILE_COLORS: Record<TileType, string> = {
-  empty: "#eeeeee",
-  wall: "#444444",
-  start: "#55ccff",
-  goal: "#22cc55",
+const TILE_COLORS: Record<number, string> = {
+  0: "#eeeeee", // Empty
+  1: "#444444", // Wall
+  2: "#55cc55", // Grass
+  3: "#8b6f47", // Terrain block
 };
 
+const DEFAULT_TILE_COLOR = "#eeeeee";
+const START_MARKER_COLOR = "#55ccff";
+const GOAL_MARKER_COLOR = "#22cc55";
 const PLAYER_COLOR = "#2255cc";
 const GOAL_COLOR = "#22cc55";
 const DOOR_OPEN_COLOR = "#d4a574";
@@ -19,6 +23,7 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private animationSystem: AnimationSystem;
   private debugMode: boolean = true;
+  private tilesetCache: TilesetCache;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -28,24 +33,115 @@ export class Renderer {
     this.ctx = ctx;
     this.animationSystem = animationSystem;
     this.debugMode = debugMode;
+    this.tilesetCache = new TilesetCache();
+  }
+
+  /**
+   * Preload all tilesets used in the level
+   * Should be called before starting rendering
+   */
+  async preloadTilesets(level: LevelDefinition): Promise<void> {
+    const tileIds = new Set<number>();
+
+    // Collect all unique tile IDs from the level
+    for (const row of level.layers.background) {
+      for (const tileId of row) {
+        tileIds.add(tileId);
+      }
+    }
+
+    // Load all tilesets for the collected tile IDs
+    const loadPromises: Promise<void>[] = [];
+    for (const tileId of tileIds) {
+      const tileDef = tileRegistry[tileId];
+      if (tileDef) {
+        loadPromises.push(
+          this.tilesetCache
+            .loadTileset(tileDef.imagePath)
+            .catch((error) => {
+              console.warn(`Failed to load tileset for tile ID ${tileId}:`, error);
+            })
+            .then(() => {}),
+        );
+      }
+    }
+
+    await Promise.all(loadPromises);
   }
 
   render(level: LevelDefinition, tileSize: number, player: Player): void {
     this.drawTiles(level, tileSize);
+    this.drawStartGoalMarkers(level, tileSize);
     this.drawObjects(level, tileSize);
     this.drawPlayer(player, tileSize);
   }
 
   private drawTiles(level: LevelDefinition, tileSize: number): void {
-    const { tiles } = level;
+    const { background } = level.layers;
 
-    for (let row = 0; row < tiles.length; row++) {
-      for (let col = 0; col < tiles[row].length; col++) {
-        const tileType = tiles[row][col];
-        this.ctx.fillStyle = TILE_COLORS[tileType] ?? TILE_COLORS["empty"];
-        this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+    for (let row = 0; row < background.length; row++) {
+      for (let col = 0; col < background[row].length; col++) {
+        const tileId = background[row][col];
+        const tileDef = tileRegistry[tileId];
+
+        // Calculate pixel position
+        const pixelX = col * tileSize;
+        const pixelY = row * tileSize;
+
+        if (tileDef) {
+          // Try to get the tileset image from cache
+          const tileset = this.tilesetCache.getTileset(tileDef.imagePath);
+
+          if (tileset) {
+            // Sprite-based rendering
+            const sx = tileDef.tileX * tileDef.tileSize;
+            const sy = tileDef.tileY * tileDef.tileSize;
+
+            this.ctx.drawImage(
+              tileset,
+              sx,
+              sy,
+              tileDef.tileSize,
+              tileDef.tileSize,
+              pixelX,
+              pixelY,
+              tileSize,
+              tileSize,
+            );
+          } else {
+            // Fallback to solid color if tileset not loaded
+            this.ctx.fillStyle = TILE_COLORS[tileId] ?? DEFAULT_TILE_COLOR;
+            this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
+          }
+        } else {
+          // Fallback to solid color if tile definition not found
+          this.ctx.fillStyle = TILE_COLORS[tileId] ?? DEFAULT_TILE_COLOR;
+          this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
+        }
       }
     }
+  }
+
+  /**
+   * Draw start and goal position markers
+   * These are rendered on top of the background layer
+   */
+  private drawStartGoalMarkers(level: LevelDefinition, tileSize: number): void {
+    // Draw start position marker
+    const startX = level.startPosition.col * tileSize;
+    const startY = level.startPosition.row * tileSize;
+    this.ctx.fillStyle = START_MARKER_COLOR;
+    this.ctx.globalAlpha = 0.3; // Semi-transparent
+    this.ctx.fillRect(startX, startY, tileSize, tileSize);
+    this.ctx.globalAlpha = 1.0; // Reset alpha
+
+    // Draw goal position marker
+    const goalX = level.goalPosition.col * tileSize;
+    const goalY = level.goalPosition.row * tileSize;
+    this.ctx.fillStyle = GOAL_MARKER_COLOR;
+    this.ctx.globalAlpha = 0.3; // Semi-transparent
+    this.ctx.fillRect(goalX, goalY, tileSize, tileSize);
+    this.ctx.globalAlpha = 1.0; // Reset alpha
   }
 
   private drawObjects(level: LevelDefinition, tileSize: number): void {

@@ -4,6 +4,14 @@ This folder contains JSON files representing level definitions for the education
 
 **Location:** `public/mock-data/` - Files here are served by Vite at `/mock-data/` URL path.
 
+## 🎨 Sprite-Based Rendering
+
+The game now uses **sprite-based tiles** from `/public/assets` for visual richness!
+
+- **Background layer**: Visual tiles rendered from sprite sheets
+- **Collision layer**: Separate boolean grid for movement logic
+- **Tile Registry**: Maps tile IDs to sprite positions (see `TILE_SYSTEM.md`)
+
 ## Structure
 
 ### levels-index.json
@@ -34,11 +42,18 @@ Individual level definition files following the `LevelDefinition` type:
   "name": "Level Display Name",
   "width": 15,
   "height": 12,
-  "tiles": [
-    ["wall", "wall", ...],
-    ["wall", "start", "empty", ...],
-    ...
-  ],
+  "layers": {
+    "background": [
+      ["wall", "wall", "wall", ...],
+      ["wall", "start", "empty", ...],
+      ...
+    ],
+    "collision": [
+      [true, true, true, ...],
+      [true, false, false, ...],
+      ...
+    ]
+  },
   "startPosition": { "row": 1, "col": 1 },
   "goalPosition": { "row": 10, "col": 13 },
   "objects": [
@@ -59,12 +74,35 @@ Individual level definition files following the `LevelDefinition` type:
 }
 ```
 
-## Tile Types
+## Layer System
 
-- `"empty"` - Walkable tile
-- `"wall"` - Blocked tile
-- `"start"` - Starting position (also walkable)
-- `"goal"` - Goal position (also walkable)
+### Background Layer
+
+String array defining **visual appearance**. Each tile ID maps to a sprite in the tile registry.
+
+**Available Tile IDs:**
+
+- `"empty"` - Blue background sky
+- `"wall"` - Stone block from terrain tileset
+- `"start"` - Blue tile (start marker)
+- `"goal"` - Green tile (goal marker)
+- `"grass"` - Green grass tile
+- `"terrain-block"` - Brown ground block
+
+See `TILE_SYSTEM.md` for adding custom tiles.
+
+### Collision Layer
+
+Boolean array defining **movement logic**:
+
+- `true` = Blocked (cannot walk through)
+- `false` = Walkable (can move here)
+
+**Important:** Background and collision layers are **independent**:
+
+- Visual tile doesn't determine collision
+- You can have decorative walls that are walkable
+- Or invisible barriers (empty tile but collision = true)
 
 ## Usage
 
