@@ -1,0 +1,25 @@
+{
+  "levels": [
+    {
+      "id": "tutorial-bordered-01",
+      "file": "level-tutorial-01.json",
+      "name": "Tutorial: Basic Movement",
+      "type": "topdown",
+      "difficulty": "easy"
+    },
+    {
+      "id": "maze-01",
+      "file": "level-maze-01.json",
+      "name": "Simple Maze Challenge",
+      "type": "topdown",
+      "difficulty": "medium"
+    },
+    {
+      "id": "platform-01",
+      "file": "level-platform-01.json",
+      "name": "Platform Challenge",
+      "type": "platform",
+      "difficulty": "medium"
+    }
+  ]
+}
