@@ -27,9 +27,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export async function loadAnimations(): Promise<void> {
-  const modules = import.meta.glob<{ default: AnimationConfig }>("/src/assets/animations/*.json", {
-    eager: true,
-  });
+  const modules = import.meta.glob<{ default: AnimationConfig }>(
+    "/src/shared/assets/animations/*.json",
+    {
+      eager: true,
+    },
+  );
 
   const loadPromises: Promise<void>[] = [];
 

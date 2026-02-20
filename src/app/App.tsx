@@ -1,4 +1,4 @@
-import GameView from "../shared/features/game-view/GameView";
+import GameView from "../pages/Game-View/GameView";
 
 function App() {
   return (
