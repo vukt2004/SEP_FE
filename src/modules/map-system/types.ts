@@ -55,6 +55,7 @@ export interface LevelDefinition {
   layers: LevelLayers; // Layer-based map data
   startPosition: GridPos; // Player spawn point
   goalPosition: GridPos; // Win condition position
+  tileset?: string; // Optional tileset name (defaults to "default")
   objects?: GridObjectDefinition[]; // Optional interactive objects
   metadata?: {
     difficulty?: "easy" | "medium" | "hard";

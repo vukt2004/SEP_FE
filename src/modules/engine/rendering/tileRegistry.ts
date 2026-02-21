@@ -14,50 +14,6 @@ export interface TileDefinition {
 }
 
 /**
- * Registry of tile definitions mapped by numeric tile ID
- * Used to render background tiles from sprite sheets
- *
- * Tile ID Mapping:
- * 0 = Empty/Sky
- * 1 = Wall/Stone
- * 2 = Grass
- * 3 = Terrain Block
- */
-export const tileRegistry: Record<number, TileDefinition> = {
-  // 0: Empty/floor tiles - using blue background pattern
-  0: {
-    imagePath: "/assets/Pixel Adventure 1/Background/Blue.png",
-    tileX: 0,
-    tileY: 0,
-    tileSize: 64,
-  },
-
-  // 1: Wall/terrain tiles - using brown terrain tileset
-  1: {
-    imagePath: "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
-    tileX: 1, // Second tile in the tileset (stone block)
-    tileY: 0,
-    tileSize: 16,
-  },
-
-  // 2: Grass tile - using green background
-  2: {
-    imagePath: "/assets/Pixel Adventure 1/Background/Green.png",
-    tileX: 0,
-    tileY: 0,
-    tileSize: 64,
-  },
-
-  // 3: Platform/terrain block - brown ground block
-  3: {
-    imagePath: "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
-    tileX: 0,
-    tileY: 0,
-    tileSize: 16,
-  },
-};
-
-/**
  * Cache for loaded tileset images
  * Prevents reloading the same image multiple times
  */

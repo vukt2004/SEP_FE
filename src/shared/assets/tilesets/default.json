@@ -1,0 +1,30 @@
+{
+  "name": "default",
+  "description": "Default Pixel Adventure tileset",
+  "tiles": {
+    "0": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Blue.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "1": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "2": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Green.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "3": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    }
+  }
+}
