@@ -5,7 +5,7 @@ import type { RouteObject } from "react-router-dom";
 // Guard (student token)
 import { RequireStudentAuth } from "@/portals/student/guards/RequireStudentAuth";
 
-// Layout (student shell)
+// // Layout (student shell)
 const StudentLayout = React.lazy(() => import("@/portals/student/layout/StudentLayout"));
 
 // Pages (student authenticated)
@@ -16,7 +16,7 @@ export const studentRoutes: RouteObject = {
   path: "app",
   element: (
     <RequireStudentAuth>
-      <StudentLayout />
+      <StudentLayout children={undefined} />
     </RequireStudentAuth>
   ),
   children: [
