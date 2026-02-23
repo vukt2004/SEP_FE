@@ -3,6 +3,7 @@
   "name": "Platform Challenge",
   "width": 20,
   "height": 15,
+  "tileset": "default",
   "layers": {
     "background": [
       [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
