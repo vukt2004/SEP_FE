@@ -1,4 +1,4 @@
-import type { TileDefinition } from "./tileRegistry";
+import type { TileDefinition } from "./TileDefinition";
 
 /**
  * Tileset configuration format loaded from JSON
