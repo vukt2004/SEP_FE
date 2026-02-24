@@ -5,7 +5,7 @@ import { tokenStorage } from "@/lib/storage/tokenStorage";
 interface StudentAuthState {
   token: string | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrate: () => void;
 }
@@ -21,9 +21,9 @@ export const useStudentAuthStore = create<StudentAuthState>((set) => ({
     }
   },
 
-  login: async (username, password) => {
+  login: async (email, password) => {
     const res = await studentAxios.post("/api/student/auth/login", {
-      username,
+      email,
       password,
     });
 

@@ -1,0 +1,175 @@
+/* src/portals/student/components/login/LoginScene.module.css */
+
+@keyframes rotateSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatSoft {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes driftDown {
+  from {
+    transform: translateY(-8%);
+  }
+  to {
+    transform: translateY(8%);
+  }
+}
+
+@keyframes shakeX {
+  0% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pixelBurst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.sceneRoot {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.layerA {
+  animation: driftDown 14s linear infinite alternate;
+  opacity: 0.7;
+}
+
+.layerB {
+  animation: driftDown 22s linear infinite alternate;
+  opacity: 0.55;
+}
+
+.star {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.75);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.25));
+}
+
+.orbitRing {
+  position: absolute;
+  inset: -18px;
+  border-radius: 9999px;
+  animation: rotateSlow 18s linear infinite;
+}
+
+.orbitBlock {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65); /* slate-900-ish */
+  border: 1px solid rgba(148, 163, 184, 0.35); /* slate-400-ish */
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.35);
+  display: grid;
+  place-items: center;
+  animation: floatSoft 4.6s ease-in-out infinite;
+}
+
+.orbitBlockInner {
+  width: 18px;
+  height: 18px;
+  border-radius: 7px;
+  border: 1px solid rgba(129, 140, 248, 0.55); /* indigo */
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.shake {
+  animation: shakeX 450ms ease-out 1;
+}
+
+.loadingBarWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  overflow: hidden;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.loadingBar {
+  height: 100%;
+  width: 40%;
+  background: rgba(99, 102, 241, 0.7);
+  animation: rotateSlow 1.2s linear infinite;
+  transform-origin: center;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pixel {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(99, 102, 241, 0.75);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
+  animation: pixelBurst 650ms ease-out 1 forwards;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .layerA,
+  .layerB,
+  .orbitRing,
+  .orbitBlock,
+  .shake,
+  .pixel {
+    animation: none !important;
+  }
+}

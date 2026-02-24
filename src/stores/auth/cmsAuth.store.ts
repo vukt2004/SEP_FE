@@ -8,7 +8,7 @@ interface CmsAuthState {
   token: string | null;
   role: CmsRole | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hydrate: () => void;
 }
@@ -25,9 +25,9 @@ export const useCmsAuthStore = create<CmsAuthState>((set) => ({
     }
   },
 
-  login: async (username, password) => {
+  login: async (email, password) => {
     const res = await cmsAxios.post("/api/cms/auth/login", {
-      username,
+      email,
       password,
     });
 
