@@ -30,6 +30,8 @@ export function createEmptyMap(
     },
     layers: {
       background: createEmptyLayer(width, height, 0),
+      ground: createEmptyLayer(width, height, 0),
+      foreground: createEmptyLayer(width, height, 0),
       collision: createEmptyLayer(width, height, 0),
     },
     objects: {

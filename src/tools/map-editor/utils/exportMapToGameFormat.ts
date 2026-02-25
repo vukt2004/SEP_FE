@@ -41,6 +41,10 @@ export interface GameLevelFormat {
 /**
  * Convert editor MapData to game level format
  *
+ * Merges multiple visual layers (background, ground, foreground) into a single
+ * background layer for the game engine. Non-zero tiles from higher layers
+ * override lower layers.
+ *
  * @param mapData - Map data from the editor
  * @param levelName - Optional name for the level
  * @returns Game level format
@@ -49,6 +53,27 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
   const timestamp = Date.now();
   const id = `level-${mapData.config.type}-${timestamp}`;
   const name = levelName || `${mapData.config.type} Level`;
+
+  // Merge visual layers: background -> ground -> foreground
+  // Later layers override earlier ones (non-zero values take priority)
+  const mergedBackground: number[][] = [];
+  for (let y = 0; y < mapData.config.height; y++) {
+    mergedBackground[y] = [];
+    for (let x = 0; x < mapData.config.width; x++) {
+      // Start with background, then override with ground and foreground if they have tiles
+      let tile = mapData.layers.background[y][x];
+
+      if (mapData.layers.ground && mapData.layers.ground[y][x] !== 0) {
+        tile = mapData.layers.ground[y][x];
+      }
+
+      if (mapData.layers.foreground && mapData.layers.foreground[y][x] !== 0) {
+        tile = mapData.layers.foreground[y][x];
+      }
+
+      mergedBackground[y][x] = tile;
+    }
+  }
 
   // Convert collision layer from numbers to booleans
   // Non-zero values = true (collidable), 0 = false (passable)
@@ -112,7 +137,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     height: mapData.config.height,
     tileset: "default",
     layers: {
-      background: mapData.layers.background,
+      background: mergedBackground,
       collision: collisionLayer,
     },
     startPosition,

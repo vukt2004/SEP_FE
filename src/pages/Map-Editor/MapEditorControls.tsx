@@ -9,12 +9,12 @@ import {
 
 interface MapEditorControlsProps {
   mapData: MapData;
-  activeLayer: "background" | "collision";
+  activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
   canUndo: boolean;
   canRedo: boolean;
-  onLayerChange: (layer: "background" | "collision") => void;
+  onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onToolSelect: (
     tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
@@ -196,7 +196,7 @@ export function MapEditorControls({
     }
 
     loadObjects();
-  }, []);
+  }, [objectLoader, objectCache]);
 
   const handleResizeConfirm = () => {
     onResize(resizeWidth, resizeHeight);
@@ -255,6 +255,24 @@ export function MapEditorControls({
           <button
             style={{
               ...styles.button,
+              ...(activeLayer === "ground" ? styles.buttonActive : {}),
+            }}
+            onClick={() => onLayerChange("ground")}
+          >
+            Ground
+          </button>
+          <button
+            style={{
+              ...styles.button,
+              ...(activeLayer === "foreground" ? styles.buttonActive : {}),
+            }}
+            onClick={() => onLayerChange("foreground")}
+          >
+            Foreground
+          </button>
+          <button
+            style={{
+              ...styles.button,
               ...(activeLayer === "collision" ? styles.buttonActive : {}),
             }}
             onClick={() => onLayerChange("collision")}
@@ -267,10 +285,17 @@ export function MapEditorControls({
             ⚠️ Collision layer: Paint = solid (blocks movement), Erase = empty (passable)
           </p>
         )}
+        {activeLayer === "foreground" && (
+          <p style={styles.helpText}>
+            ℹ️ Foreground layer: Rendered above objects (for trees, bridges, etc.)
+          </p>
+        )}
       </div>
 
-      {/* Tool Selection - Only show on background layer */}
-      {activeLayer === "background" && (
+      {/* Tool Selection - Show on visual layers only */}
+      {(activeLayer === "background" ||
+        activeLayer === "ground" ||
+        activeLayer === "foreground") && (
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Tile Tools</h3>
           <p style={styles.helpText}>Select a tile below, then choose a tool</p>
@@ -335,6 +360,16 @@ export function MapEditorControls({
             >
               ⬜ Erase
             </button>
+            <button
+              style={{
+                ...styles.button,
+                ...(selectedTool === "fill" ? styles.buttonActive : {}),
+              }}
+              onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
+              title="Fill collision area (click again to deselect)"
+            >
+              🪣 Fill
+            </button>
           </div>
         </div>
       )}
@@ -381,8 +416,10 @@ export function MapEditorControls({
         </div>
       )}
 
-      {/* Tile Selection - Only show on background layer */}
-      {activeLayer === "background" && (
+      {/* Tile Selection - Show on visual layers only */}
+      {(activeLayer === "background" ||
+        activeLayer === "ground" ||
+        activeLayer === "foreground") && (
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Select Tile</h3>
           <TilePalette selectedTile={selectedTile} onTileSelect={onTileSelect} />
@@ -560,17 +597,21 @@ const styles: Record<string, React.CSSProperties> = {
   },
   buttonGroup: {
     display: "flex",
-    gap: "10px",
+    gap: "8px",
+    flexWrap: "wrap",
   },
   button: {
-    padding: "10px 20px",
-    fontSize: "14px",
+    padding: "8px 12px",
+    fontSize: "13px",
     fontWeight: "500",
     border: "2px solid #ddd",
     borderRadius: "6px",
     backgroundColor: "white",
     cursor: "pointer",
     transition: "all 0.2s",
+    flex: "1 1 auto",
+    minWidth: "0",
+    whiteSpace: "nowrap",
   },
   buttonActive: {
     backgroundColor: "#0066ff",
@@ -600,8 +641,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   objectToolGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 80px)",
-    gap: "10px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+    gap: "8px",
   },
   objectButton: {
     padding: "8px",

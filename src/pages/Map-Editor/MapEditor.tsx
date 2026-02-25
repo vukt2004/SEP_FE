@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
 import { EditorCanvas } from "../../tools/map-editor/components/EditorCanvas";
+import { LayerPanel } from "../../tools/map-editor/components/LayerPanel";
 import { createEmptyMap } from "../../tools/map-editor/utils/createEmptyMap";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
 import { MapEditorControls } from "./MapEditorControls";
@@ -9,7 +10,7 @@ import type { MapData } from "../../shared/types/MapSchema";
 interface EditorState {
   store: EditorStore | null;
   mapData: MapData | null;
-  activeLayer: "background" | "collision";
+  activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
   canUndo: boolean;
@@ -57,7 +58,7 @@ export default function MapEditor() {
     };
   }, [store]);
 
-  const handleLayerChange = (layer: "background" | "collision") => {
+  const handleLayerChange = (layer: "background" | "ground" | "foreground" | "collision") => {
     store?.setActiveLayer(layer);
   };
 
@@ -137,26 +138,34 @@ export default function MapEditor() {
 
       {mapData && store && (
         <>
-          <MapEditorControls
-            mapData={mapData}
-            activeLayer={activeLayer}
-            selectedTile={selectedTile}
-            selectedTool={selectedTool}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onLayerChange={handleLayerChange}
-            onTileSelect={handleTileSelect}
-            onToolSelect={handleToolSelect}
-            onResize={handleResize}
-            onReset={handleReset}
-            onExport={handleExport}
-            onImport={handleImport}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-          />
+          <div style={styles.mainContent}>
+            <div style={styles.sidebar}>
+              <LayerPanel store={store} />
 
-          <div style={styles.canvasContainer}>
-            <EditorCanvas store={store} />
+              <div style={{ marginTop: "20px" }}>
+                <MapEditorControls
+                  mapData={mapData}
+                  activeLayer={activeLayer}
+                  selectedTile={selectedTile}
+                  selectedTool={selectedTool}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onLayerChange={handleLayerChange}
+                  onTileSelect={handleTileSelect}
+                  onToolSelect={handleToolSelect}
+                  onResize={handleResize}
+                  onReset={handleReset}
+                  onExport={handleExport}
+                  onImport={handleImport}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                />
+              </div>
+            </div>
+
+            <div style={styles.canvasContainer}>
+              <EditorCanvas store={store} />
+            </div>
           </div>
         </>
       )}
@@ -188,8 +197,23 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#666",
     margin: 0,
   },
+  mainContent: {
+    display: "flex",
+    gap: "20px",
+    width: "100%",
+    maxWidth: "1600px",
+  },
+  sidebar: {
+    display: "flex",
+    flexDirection: "column",
+    width: "320px",
+    flexShrink: 0,
+    maxHeight: "calc(100vh - 140px)",
+    overflowY: "auto",
+    overflowX: "hidden",
+  },
   canvasContainer: {
-    marginTop: "20px",
+    flex: 1,
     padding: "20px",
     backgroundColor: "white",
     borderRadius: "8px",

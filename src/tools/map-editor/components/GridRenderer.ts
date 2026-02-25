@@ -1,4 +1,5 @@
 import type { MapData } from "../../../shared/types/MapSchema";
+import type { EditorStore } from "../store/editorStore";
 import { TilesetLoader, TilesetCache, type TileDefinition } from "../../../shared/assets/tilesets";
 import {
   ObjectSpriteLoader,
@@ -18,6 +19,7 @@ export class TileRenderer {
 
   private objectSpriteLoader: ObjectSpriteLoader;
   private objectSpriteCache: ObjectSpriteCache;
+  private currentStore: EditorStore | null = null;
   private objectDefinitions: Record<string, ObjectDefinition> | null = null;
   private objectSpritesLoaded: boolean = false;
 
@@ -82,48 +84,133 @@ export class TileRenderer {
 
   /**
    * Render the grid on a canvas
+   * Renders all layers in correct order, respecting visibility
    */
   render(
     ctx: CanvasRenderingContext2D,
     mapData: MapData,
-    activeLayer: "background" | "collision",
+    activeLayer: "background" | "ground" | "foreground" | "collision",
+    store: EditorStore,
   ): void {
     const { width, height, tileSize } = mapData.config;
-    const layer = mapData.layers[activeLayer];
 
     // Clear canvas
     ctx.clearRect(0, 0, width * tileSize, height * tileSize);
 
-    // Special rendering for collision layer
-    if (activeLayer === "collision") {
-      this.renderCollisionLayer(ctx, mapData);
-    } else {
-      // Draw background tiles normally
+    // Store reference for highlight method
+    this.currentStore = store;
+
+    // Define render order for layers
+    const renderOrder: Array<"background" | "ground" | "foreground" | "collision"> = [
+      "background",
+      "ground",
+      "foreground",
+      "collision",
+    ];
+
+    // Render layers in order, checking visibility
+    for (const layer of renderOrder) {
+      // Always render the active layer, regardless of visibility setting
+      const shouldRender = layer === activeLayer || store.isLayerVisible(layer);
+
+      if (!shouldRender) {
+        continue; // Skip invisible non-active layers
+      }
+
+      if (layer === "collision") {
+        // Special rendering for collision layer
+        this.renderCollisionLayer(ctx, mapData);
+      } else {
+        // Render tile layer
+        this.renderLayer(ctx, mapData, layer, tileSize);
+
+        // Render objects after ground layer (objects sit on ground, before foreground)
+        if (layer === "ground") {
+          this.renderObjects(ctx, mapData);
+        }
+      }
+    }
+
+    // Highlight active layer with a subtle overlay on non-active tiles
+    if (activeLayer !== "collision" && this.currentStore) {
+      this.highlightActiveLayer(ctx, mapData, activeLayer, this.currentStore);
+    }
+
+    // Draw grid lines (always visible)
+    this.renderGridLines(ctx, width, height, tileSize);
+  }
+
+  /**
+   * Render a specific layer
+   */
+  private renderLayer(
+    ctx: CanvasRenderingContext2D,
+    mapData: MapData,
+    layerName: "background" | "ground" | "foreground",
+    tileSize: number,
+  ): void {
+    const { width, height } = mapData.config;
+    const layer = mapData.layers[layerName];
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const tileId = layer[y][x];
+
+        // Skip empty tiles
+        if (tileId === 0) {
+          continue;
+        }
+
+        // If tileset is ready and tile definition exists, render sprite
+        if (this.isReady && this.currentTileset && this.currentTileset[tileId]) {
+          this.renderTileSprite(ctx, x, y, tileId, tileSize);
+        } else {
+          // Fallback to colored rectangles
+          this.renderTileFallback(ctx, x, y, tileId, tileSize);
+        }
+      }
+    }
+  }
+
+  /**
+   * Highlight the active layer by dimming other layers
+   */
+  private highlightActiveLayer(
+    ctx: CanvasRenderingContext2D,
+    mapData: MapData,
+    activeLayer: "background" | "ground" | "foreground",
+    store: EditorStore,
+  ): void {
+    const { width, height } = mapData.config;
+    const tileSize = mapData.config.tileSize;
+
+    // Apply a subtle dim overlay to non-active layers
+    const layers: ("background" | "ground" | "foreground")[] = [
+      "background",
+      "ground",
+      "foreground",
+    ];
+
+    for (const layerName of layers) {
+      if (layerName === activeLayer) continue;
+
+      // Skip invisible layers - don't dim them
+      if (!store.isLayerVisible(layerName)) continue;
+
+      const layer = mapData.layers[layerName];
+
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const tileId = layer[y][x];
 
-          // Skip empty tiles
-          if (tileId === 0) {
-            continue;
-          }
-
-          // If tileset is ready and tile definition exists, render sprite
-          if (this.isReady && this.currentTileset && this.currentTileset[tileId]) {
-            this.renderTileSprite(ctx, x, y, tileId, tileSize);
-          } else {
-            // Fallback to colored rectangles
-            this.renderTileFallback(ctx, x, y, tileId, tileSize);
+          // Only dim tiles that exist
+          if (tileId !== 0) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
           }
         }
       }
-
-      // Draw objects on background layer
-      this.renderObjects(ctx, mapData);
     }
-
-    // Draw grid lines
-    this.renderGridLines(ctx, width, height, tileSize);
   }
 
   /**

@@ -66,7 +66,7 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
     canvas.height = mapData.config.height * mapData.config.tileSize;
 
     // Render the grid using TileRenderer
-    rendererRef.current.render(ctx, mapData, activeLayer);
+    rendererRef.current.render(ctx, mapData, activeLayer, store);
   });
 
   /**
