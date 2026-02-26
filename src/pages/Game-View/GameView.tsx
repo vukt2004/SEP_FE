@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import * as Blockly from "blockly";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
-import { EngineCommand } from "../../modules/executor/commands";
 import type { BlockProgram } from "../../modules/executor/types";
-import { StepExecutor } from "../../modules/executor/StepExecutor";
+import { StepExecutor, type ConditionType } from "../../modules/executor/StepExecutor";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromMockData } from "../../utils/levelLoader";
+import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
+import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 
 export default function GameView() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const executorRef = useRef<StepExecutor | null>(null);
+  const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExecutorRunning, setIsExecutorRunning] = useState(false);
+
+  // Get level file from location state or use default
+  const levelFile = (location.state as { levelFile?: string })?.levelFile || "level-tutorial-01";
 
   useEffect(() => {
     console.log("[useEffect] GameView useEffect triggered");
@@ -32,12 +42,13 @@ export default function GameView() {
         setIsLoading(true);
 
         // Load level from mock data
-        console.log("Loading level: level-tutorial-01");
-        const levelDefinition = await loadLevelFromMockData("level-tutorial-01");
+        console.log("Loading level:", levelFile);
+        const levelDefinition = await loadLevelFromMockData(levelFile);
         console.log("Level loaded successfully:", levelDefinition.name);
 
         // Set canvas size based on level dimensions
-        const tileSize = 16;
+        // Using larger tileSize (48) for better visibility
+        const tileSize = 48;
         canvas.width = levelDefinition.width * tileSize;
         canvas.height = levelDefinition.height * tileSize;
 
@@ -56,29 +67,12 @@ export default function GameView() {
         await engine.initialize();
         engine.start();
 
-        // Create sample program with repeat and ifObstacleAhead
-        const program: BlockProgram = [
-          {
-            id: "1",
-            type: "repeat",
-            times: 100,
-            children: [
-              {
-                id: "2",
-                type: "ifObstacleAhead",
-                children: [{ id: "2-1", type: "turnLeft" }],
-              },
-              { id: "3", type: "move" },
-            ],
-          },
-        ];
-
-        const executor = new StepExecutor(program, () => engine.isObstacleAhead());
-        executorRef.current = executor;
-
         // Event listeners
         const handleWin = () => {
-          executor.stop();
+          if (executorRef.current) {
+            executorRef.current.stop();
+          }
+          setIsExecutorRunning(false);
           alert(`Level Complete! Steps: ${engine.getStepCount()}`);
         };
 
@@ -92,37 +86,23 @@ export default function GameView() {
         engine.on("objectStateChanged", handleObjectStateChanged);
 
         const handleKeyDown = (e: KeyboardEvent) => {
+          const executor = executorRef.current;
+
           switch (e.key) {
-            case "ArrowUp":
-              engine.executeCommand(EngineCommand.MOVE_FORWARD);
-              break;
-            case "ArrowLeft":
-              engine.executeCommand(EngineCommand.TURN_LEFT);
-              break;
-            case "ArrowRight":
-              engine.executeCommand(EngineCommand.TURN_RIGHT);
-              break;
             case " ": // Space key for step-by-step execution
-              if (executor.hasNext()) {
-                const cmd = executor.next();
-                if (cmd) {
-                  engine.executeCommand(cmd);
+              if (executor && executor.hasNext()) {
+                const result = executor.next();
+                if (result) {
+                  engine.executeCommand(result.command);
                 }
               }
               break;
-            case "r":
-            case "R": // R key to start auto-run
-              executor.run((cmd) => {
-                engine.executeCommand(cmd);
-              }, 500);
-              break;
             case "s":
             case "S": // S key to stop auto-run
-              executor.stop();
-              break;
-            case "e":
-            case "E": // E key to interact
-              engine.executeCommand(EngineCommand.INTERACT);
+              if (executor) {
+                executor.stop();
+                setIsExecutorRunning(false);
+              }
               break;
           }
         };
@@ -136,7 +116,9 @@ export default function GameView() {
           window.removeEventListener("keydown", handleKeyDown);
           engine.off("win", handleWin);
           engine.off("objectStateChanged", handleObjectStateChanged);
-          executor.stop();
+          if (executorRef.current) {
+            executorRef.current.stop();
+          }
           engine.stop();
         };
 
@@ -158,14 +140,177 @@ export default function GameView() {
         cleanup();
       }
     };
-  }, []);
+  }, [levelFile]);
+
+  // Handle workspace ready
+  const handleWorkspaceReady = (workspace: Blockly.WorkspaceSvg) => {
+    workspaceRef.current = workspace;
+  };
+
+  // Generate program from Blockly and run it
+  const handleRunProgram = () => {
+    if (!workspaceRef.current || !engineRef.current) {
+      alert("Game not ready yet!");
+      return;
+    }
+
+    try {
+      // Generate AST from Blockly workspace (blocks remain in editor)
+      // Note: This only reads the workspace, it does not modify or remove blocks
+      const blocksBeforeGeneration = workspaceRef.current.getAllBlocks().length;
+      console.log("Blocks in workspace before generation:", blocksBeforeGeneration);
+
+      const program: BlockProgram = generateAST(workspaceRef.current);
+
+      const blocksAfterGeneration = workspaceRef.current.getAllBlocks().length;
+      console.log("Blocks in workspace after generation:", blocksAfterGeneration);
+
+      if (program.length === 0) {
+        alert("No blocks in workspace! Add some blocks first.");
+        return;
+      }
+
+      console.log("Generated program:", program);
+
+      // Create condition checker that delegates to engine
+      const conditionChecker = (condition: ConditionType): boolean => {
+        const engine = engineRef.current;
+        if (!engine) return false;
+
+        switch (condition) {
+          case "pathAhead":
+            return !engine.isObstacleAhead();
+          case "wallAhead":
+            return engine.isObstacleAhead();
+          case "obstacleAhead":
+            return engine.isObstacleAhead();
+          default:
+            return false;
+        }
+      };
+
+      // Stop existing executor if running
+      if (executorRef.current) {
+        executorRef.current.stop();
+      }
+
+      // Create new executor with the generated program
+      const executor = new StepExecutor(program, conditionChecker);
+      executorRef.current = executor;
+
+      // Run the executor
+      setIsExecutorRunning(true);
+      executor.run((result) => {
+        const engine = engineRef.current;
+        if (engine) {
+          engine.executeCommand(result.command);
+          // TODO: Highlight block with result.blockId
+        }
+      }, 500);
+    } catch (err) {
+      console.error("Failed to run program:", err);
+      alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Stop program execution
+  const handleStopProgram = () => {
+    if (executorRef.current) {
+      executorRef.current.stop();
+      setIsExecutorRunning(false);
+    }
+  };
+
+  // Reset game and executor
+  const handleReset = () => {
+    // Stop and reset executor
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current.reset();
+    }
+
+    // Reset game engine to initial state
+    if (engineRef.current) {
+      try {
+        engineRef.current.reset();
+        // Restart the engine
+        engineRef.current.start();
+      } catch (err) {
+        console.error("Error resetting engine:", err);
+        // Fallback: reload page
+        window.location.reload();
+      }
+    }
+
+    setIsExecutorRunning(false);
+  };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Game View - Tutorial Level</h2>
-      <p>
-        <strong>Controls:</strong> Arrow keys to move, Space for step execution, R to run, S to
-        stop, E to interact
+    <div style={{ padding: "20px", height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
+        <button
+          onClick={() => navigate("/game-menu")}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#4a5568",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          ← Back to Menu
+        </button>
+
+        <button
+          onClick={handleRunProgram}
+          disabled={isLoading || !!error || isExecutorRunning}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: isExecutorRunning ? "#9ca3af" : "#10b981",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isExecutorRunning ? "not-allowed" : "pointer",
+          }}
+        >
+          ▶ Run Program
+        </button>
+
+        <button
+          onClick={handleStopProgram}
+          disabled={!isExecutorRunning}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: isExecutorRunning ? "#ef4444" : "#9ca3af",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isExecutorRunning ? "pointer" : "not-allowed",
+          }}
+        >
+          ⏹ Stop
+        </button>
+
+        <button
+          onClick={handleReset}
+          disabled={isLoading || !!error}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#f59e0b",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          🔄 Reset
+        </button>
+      </div>
+
+      <h2 style={{ margin: "0 0 10px 0" }}>Game View - Block Programming</h2>
+      <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#666" }}>
+        <strong>Controls:</strong> Space for step execution, S to stop
       </p>
 
       {isLoading && (
@@ -190,14 +335,52 @@ export default function GameView() {
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
+      <div
         style={{
-          border: "2px solid #333",
-          display: isLoading || error ? "none" : "block",
-          marginTop: "10px",
+          display: isLoading || error ? "none" : "flex",
+          gap: "20px",
+          flex: 1,
+          minHeight: 0,
+          position: "relative",
         }}
-      />
+      >
+        {/* Game Canvas */}
+        <div style={{ flex: "0 0 auto" }}>
+          <h3 style={{ margin: "0 0 10px 0" }}>Game</h3>
+          <canvas
+            ref={canvasRef}
+            style={{
+              border: "2px solid #333",
+              display: "block",
+            }}
+          />
+        </div>
+
+        {/* Blockly Editor */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <h3 style={{ margin: "0 0 10px 0", flex: "0 0 auto" }}>Block Editor</h3>
+          <div
+            style={{
+              flex: 1,
+              border: "2px solid #333",
+              minHeight: 0,
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <BlocklyWorkspace onWorkspaceReady={handleWorkspaceReady} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

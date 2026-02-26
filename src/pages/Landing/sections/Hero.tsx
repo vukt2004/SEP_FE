@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 function Pill({ text, tone }: { text: string; tone: "info" | "primary" | "accent" }) {
   const map = {
     info: "var(--info)",
@@ -14,6 +16,8 @@ function Pill({ text, tone }: { text: string; tone: "info" | "primary" | "accent
 }
 
 export function Hero() {
+  const navigate = useNavigate();
+
   return (
     <section className="section">
       <div className="container">
@@ -49,7 +53,7 @@ export function Hero() {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-              <button className="btn btnPrimary">
+              <button className="btn btnPrimary" onClick={() => navigate("/game-menu")}>
                 Bắt đầu ngay <span aria-hidden>→</span>
               </button>
 

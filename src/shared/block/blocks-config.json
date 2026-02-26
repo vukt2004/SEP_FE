@@ -1,0 +1,110 @@
+{
+  "blocks": [
+    {
+      "type": "move_up",
+      "category": "movement",
+      "label": "Move Up",
+      "tooltip": "Move up one step",
+      "color": "#4CAF50",
+      "command": "MOVE_UP",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "move_down",
+      "category": "movement",
+      "label": "Move Down",
+      "tooltip": "Move down one step",
+      "color": "#4CAF50",
+      "command": "MOVE_DOWN",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "move_left",
+      "category": "movement",
+      "label": "Move Left",
+      "tooltip": "Move left one step",
+      "color": "#4CAF50",
+      "command": "MOVE_LEFT",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "move_right",
+      "category": "movement",
+      "label": "Move Right",
+      "tooltip": "Move right one step",
+      "color": "#4CAF50",
+      "command": "MOVE_RIGHT",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "repeat",
+      "category": "control",
+      "label": "Repeat",
+      "tooltip": "Repeat the enclosed blocks a specified number of times",
+      "color": "#FF9800",
+      "command": "REPEAT",
+      "inputs": [
+        {
+          "kind": "field_number",
+          "name": "TIMES",
+          "label": "times",
+          "value": 3,
+          "min": 1,
+          "max": 100
+        }
+      ],
+      "statementInput": {
+        "name": "DO",
+        "label": "do"
+      },
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "if_path_ahead",
+      "category": "control",
+      "label": "If path ahead",
+      "tooltip": "Execute the enclosed blocks if there is a path ahead",
+      "color": "#FF9800",
+      "command": "IF_PATH_AHEAD",
+      "statementInput": {
+        "name": "DO",
+        "label": "do"
+      },
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "if_wall_ahead",
+      "category": "control",
+      "label": "If wall ahead",
+      "tooltip": "Execute the enclosed blocks if there is a wall ahead",
+      "color": "#FF9800",
+      "command": "IF_WALL_AHEAD",
+      "statementInput": {
+        "name": "DO",
+        "label": "do"
+      },
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "while_obstacle_ahead",
+      "category": "control",
+      "label": "While obstacle ahead",
+      "tooltip": "Repeat the enclosed blocks while there is an obstacle ahead",
+      "color": "#FF9800",
+      "command": "WHILE_OBSTACLE_AHEAD",
+      "statementInput": {
+        "name": "DO",
+        "label": "do"
+      },
+      "previousStatement": true,
+      "nextStatement": true
+    }
+  ]
+}

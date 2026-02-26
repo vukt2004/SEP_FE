@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
-import { EngineCommand } from "../../modules/executor/commands";
+import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromMockData } from "../../utils/levelLoader";
 
@@ -16,10 +17,15 @@ import { loadLevelFromMockData } from "../../utils/levelLoader";
  * - Player falls tile-by-tile until reaching solid ground
  */
 export default function PlatformGameView() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get level file from location state or use default
+  const levelFile = (location.state as { levelFile?: string })?.levelFile || "level-platform-01";
 
   useEffect(() => {
     console.log("[useEffect] PlatformGameView useEffect triggered");
@@ -38,10 +44,10 @@ export default function PlatformGameView() {
         setIsLoading(true);
 
         // Load platform level from mock data
-        const levelDefinition = await loadLevelFromMockData("level-platform-01");
+        const levelDefinition = await loadLevelFromMockData(levelFile);
 
         // Set canvas size based on level dimensions
-        const tileSize = 16;
+        const tileSize = 48;
         canvas.width = levelDefinition.width * tileSize;
         canvas.height = levelDefinition.height * tileSize;
 
@@ -65,25 +71,25 @@ export default function PlatformGameView() {
 
         // Keyboard controls
         const handleKeyDown = (e: KeyboardEvent) => {
+          let direction: Direction | null = null;
+
           switch (e.key) {
             case "ArrowLeft":
-              engine.executeCommand(EngineCommand.TURN_LEFT);
-              engine.executeCommand(EngineCommand.MOVE_FORWARD);
+              direction = "left";
               break;
             case "ArrowRight":
-              engine.executeCommand(EngineCommand.TURN_RIGHT);
-              engine.executeCommand(EngineCommand.MOVE_FORWARD);
+              direction = "right";
               break;
             case "ArrowUp":
-              // Face up (for future jump or climb mechanics)
-              engine.executeCommand(EngineCommand.TURN_LEFT);
-              engine.executeCommand(EngineCommand.TURN_LEFT);
+              direction = "up";
               break;
             case "ArrowDown":
-              // Face down
-              engine.executeCommand(EngineCommand.TURN_RIGHT);
-              engine.executeCommand(EngineCommand.TURN_RIGHT);
+              direction = "down";
               break;
+          }
+
+          if (direction) {
+            engine.executeCommand({ type: "move", direction });
           }
         };
 
@@ -112,10 +118,25 @@ export default function PlatformGameView() {
         cleanup();
       }
     };
-  }, []);
+  }, [levelFile]);
 
   return (
     <div style={{ padding: "20px" }}>
+      <div style={{ marginBottom: "20px" }}>
+        <button
+          onClick={() => navigate("/game-menu")}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#4a5568",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          ← Back to Menu
+        </button>
+      </div>
       <h2>Platform Game View (with Gravity)</h2>
       <p>
         <strong>Controls:</strong> Arrow keys to move left/right. Player will fall with gravity.

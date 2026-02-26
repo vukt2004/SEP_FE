@@ -20,6 +20,13 @@
       "name": "Platform Challenge",
       "type": "platform",
       "difficulty": "medium"
+    },
+    {
+      "id": "level-topdown-1771989668367",
+      "file": "level-topdown-1771989668367.json",
+      "name": "Test Maze Challenge",
+      "type": "topdown",
+      "difficulty": "medium"
     }
   ]
 }

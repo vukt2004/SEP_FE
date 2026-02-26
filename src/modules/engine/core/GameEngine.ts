@@ -2,7 +2,7 @@ import type { LevelDefinition } from "../../map-system/types";
 import { isWinConditionMet } from "../../map-system/types";
 import type { Player, Direction } from "./types";
 import { Renderer } from "../rendering/Renderer";
-import { EngineCommand } from "../../executor/commands";
+import type { EngineCommand } from "../../executor/commands";
 import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
@@ -154,6 +154,43 @@ export class GameEngine {
   }
 
   /**
+   * Reset the game to initial state
+   * Resets player position, step count, and game state
+   */
+  reset(): void {
+    // Stop the engine first
+    this.stop();
+
+    // Reset player to starting position
+    const startX = this.level.startPosition.col;
+    const startY = this.level.startPosition.row;
+    const startPixelX = startX * this.tileSize;
+    const startPixelY = startY * this.tileSize;
+
+    this.runtime.player.x = startX;
+    this.runtime.player.y = startY;
+    this.runtime.player.pixelX = startPixelX;
+    this.runtime.player.pixelY = startPixelY;
+    this.runtime.player.targetPixelX = startPixelX;
+    this.runtime.player.targetPixelY = startPixelY;
+    this.runtime.player.facing = "right";
+    this.runtime.player.direction = "right";
+    this.runtime.player.isMoving = false;
+    this.runtime.player.animationState = "idle";
+
+    // Reset game state
+    this.runtime.stepCount = 0;
+    this.runtime.hasPlayerWon = false;
+    this.runtime.state = EngineState.Idle;
+
+    // Update player collider
+    this.updatePlayerCollider();
+
+    // Re-render the scene
+    this.renderer.render(this.level, this.tileSize, this.runtime.player);
+  }
+
+  /**
    * Mark the engine as failed
    * State transition: Running → Failed
    * Only works if engine is currently running
@@ -285,27 +322,38 @@ export class GameEngine {
     // Reset isMoving before command
     this.runtime.player.isMoving = false;
 
-    switch (command) {
-      case EngineCommand.MOVE_FORWARD:
-        this.moveForward();
+    switch (command.type) {
+      case "move":
+        // Handle absolute directional movement
+        this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
         this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
         // Update player collider after physics
         this.updatePlayerCollider();
         break;
-      case EngineCommand.TURN_LEFT:
-        this.turnLeft();
-        break;
-      case EngineCommand.TURN_RIGHT:
-        this.turnRight();
-        break;
-      case EngineCommand.INTERACT:
+      case "interact":
         this.interact();
         break;
     }
 
     // Update collisions after movement and physics
     this.collisionSystem.update();
+  }
+
+  /**
+   * Move player in specified absolute direction
+   */
+  private moveInDirection(direction: Direction): void {
+    // Update player facing direction for movement
+    this.runtime.player.facing = direction;
+
+    // Update sprite direction for rendering (left/right flip)
+    if (direction === "left" || direction === "right") {
+      this.runtime.player.direction = direction;
+    }
+
+    // Execute movement in that direction
+    this.moveForward();
   }
 
   isObstacleAhead(): boolean {
