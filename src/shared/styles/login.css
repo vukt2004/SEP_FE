@@ -1,7 +1,8 @@
 .login-page {
   position: relative;
   min-height: 100vh;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 750px;
   font-family: Inter, system-ui, sans-serif;
   background: #070b14; /* slate/space */
   color: #e5e7eb;
@@ -18,29 +19,22 @@
   border-right: 1px solid rgba(148, 163, 184, 0.18);
 }
 
-.login-brand-content {
-  max-width: 420px;
-  color: rgba(226, 232, 240, 0.9);
+.login-duck {
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
 }
 
-.login-brand h1 {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 16px;
+.login-duck-content {
+  width: 100%;
 }
-
-.login-brand p {
-  color: rgba(226, 232, 240, 0.72);
-  line-height: 1.6;
-}
-
 /* RIGHT FORM SIDE */
 .login-form-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 48px 24px;
 
   color: rgba(226, 232, 240, 0.85);
 

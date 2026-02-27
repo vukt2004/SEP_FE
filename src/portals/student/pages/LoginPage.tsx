@@ -10,7 +10,7 @@ import OrbitBlocks from "../components/login/OrbitBlocks";
 import PixelConfetti from "../components/login/PixelConfetti";
 import styles from "../components/login/LoginScene.module.css";
 import LoginLoadingOverlay from "../components/login/LoginLoadingOverlay";
-import MiniGridGame from "../components/login/MiniGridGame";
+import DuckSpeechBubble from "../components/login/DuckSpeechBubble";
 
 // ===== Message System (A) =====
 import type { FieldKey, MessageCode } from "../login/messages";
@@ -215,23 +215,49 @@ export default function LoginPage() {
           <Starfield />
         </div>
 
-        {/* BRAND PANEL */}
-        <div className="login-brand" style={{ position: "relative", overflow: "hidden" }}>
-          {/* starfield đã là background global; thêm lớp overlay nhẹ để chữ nổi */}
-          <div style={{ position: "absolute", inset: 0, background: "rgba(2,6,23,0.35)" }} />
+        {/* LEFT: DUCK PANEL */}
+        <div className="login-duck" style={{ position: "relative", overflow: "visible" }}>
+          {/* overlay nhẹ để chữ/nhân vật nổi */}
+          <div style={{ position: "absolute", inset: 0, background: "rgba(2,6,23,0.25)" }} />
 
-          {/* ====== SET 1: Orbiting Blocks quanh brand ====== */}
+          {/* orbiting blocks (decor) */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden="true">
             <OrbitBlocks />
           </div>
 
-          <div className="login-brand-content" style={{ position: "relative" }}>
-            <h1 style={{ color: "#2563EB" }}>QuackOrbit</h1>
-            <p>Learn logic through fun 2D gameplay. Build skills while exploring levels.</p>
-          </div>
+          <div className="login-duck-content" style={{ position: "relative" }}>
+            <h1 style={{ color: "#2563EB", marginBottom: 8 }}>QuackOrbit</h1>
+            <p style={{ maxWidth: 420 }}>
+              Learn logic through fun 2D gameplay. Build skills while exploring levels.
+            </p>
 
-          <div style={{ marginTop: 16, maxWidth: 360 }}>
-            <MiniGridGame />
+            {/* Anchor bubble + duck */}
+            <div style={{ marginTop: 18, position: "relative", minHeight: 340 }}>
+              <DuckSpeechBubble
+                key={`${bubble.code}:${String(bubble.type)}`}
+                message={bubble}
+                placement="top-center"
+              />
+
+              {/* Duck placeholder: thay bằng component vịt thật */}
+              <div
+                aria-hidden="true"
+                style={{
+                  marginTop: 24,
+                  width: 280,
+                  height: 280,
+                  borderRadius: 24,
+                  border: "2px dashed rgba(148,163,184,0.5)",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "rgba(226,232,240,0.85)",
+                }}
+              >
+                Duck goes here
+              </div>
+
+              {/* TODO: <DuckAstronaut mode={...} /> */}
+            </div>
           </div>
         </div>
 

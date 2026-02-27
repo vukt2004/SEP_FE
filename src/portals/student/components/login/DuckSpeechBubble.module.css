@@ -1,0 +1,112 @@
+.bubble {
+  position: absolute;
+  z-index: 10;
+
+  max-width: 280px;
+  padding: 10px 12px;
+
+  border-radius: 14px;
+  border: 2px solid rgba(15, 23, 42, 0.9);
+  background: rgba(255, 255, 255, 0.94);
+
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.25);
+  backdrop-filter: blur(6px);
+
+  transform-origin: bottom center;
+
+  animation: popIn 180ms ease-out;
+}
+
+.text {
+  font-size: 13px;
+  line-height: 1.25;
+  color: rgba(15, 23, 42, 0.92);
+  letter-spacing: 0.1px;
+}
+
+/* Placement relative to anchor container */
+.topCenter {
+  left: 50%;
+  top: -12px;
+  transform: translate(-50%, -100%);
+}
+
+.topLeft {
+  left: 6px;
+  top: -12px;
+  transform: translate(0%, -100%);
+}
+
+.topRight {
+  right: 6px;
+  top: -12px;
+  transform: translate(0%, -100%);
+}
+
+/* Tail pointer */
+.tail {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(45deg);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 2px;
+}
+
+.tailBorder {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%) rotate(45deg);
+  border: 2px solid rgba(15, 23, 42, 0.9);
+  border-radius: 3px;
+  background: transparent;
+  z-index: -1; /* border behind */
+}
+
+/* Variants - no gradient, only solid + subtle tint */
+.idle {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.hint {
+  background: rgba(240, 253, 250, 0.92); /* teal-ish tint */
+  border-color: rgba(13, 148, 136, 0.85);
+}
+
+.loading {
+  background: rgba(238, 242, 255, 0.92); /* indigo-ish tint */
+  border-color: rgba(79, 70, 229, 0.85);
+}
+
+.success {
+  background: rgba(240, 253, 244, 0.92); /* green tint */
+  border-color: rgba(22, 163, 74, 0.85);
+}
+
+.error {
+  background: rgba(254, 242, 242, 0.92); /* red tint */
+  border-color: rgba(220, 38, 38, 0.85);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bubble {
+    animation: none;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
