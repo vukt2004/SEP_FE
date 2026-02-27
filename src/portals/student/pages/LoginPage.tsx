@@ -1,6 +1,6 @@
 import "@/shared/styles/login.css";
 import "@/shared/styles/tokens.css";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStudentAuthStore } from "@/stores/auth/studentAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
@@ -12,12 +12,60 @@ import styles from "../components/login/LoginScene.module.css";
 import LoginLoadingOverlay from "../components/login/LoginLoadingOverlay";
 import MiniGridGame from "../components/login/MiniGridGame";
 
+// ===== Message System (A) =====
+import type { FieldKey, MessageCode } from "../login/messages";
+import { buildMessage } from "../login/messages";
+import { validateForm, firstErrorField } from "../login/validation";
+import { mapAuthErrorToMessage, mapAuthStatusToMessage } from "../login/authError";
+import { selectTopBubbleMessage } from "../login/messageSelector";
+
+type LoginValues = { email: string; password: string };
+type FieldErrors = Partial<Record<FieldKey, MessageCode>>;
+
+type AuthFormErrorCode = Extract<
+  MessageCode,
+  "AUTH_INVALID" | "AUTH_LOCKED" | "AUTH_TOO_MANY_ATTEMPTS"
+>;
+type AuthSystemErrorCode = Extract<MessageCode, "AUTH_SERVER_ERROR" | "AUTH_NETWORK_ERROR">;
+
+type ApiErrorLike = { status: number };
+type AxiosLikeError = { response: { status: number } };
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null;
+}
+
+function isApiErrorLike(x: unknown): x is ApiErrorLike {
+  return isRecord(x) && typeof x.status === "number";
+}
+
+function isAxiosLikeError(x: unknown): x is AxiosLikeError {
+  return (
+    isRecord(x) &&
+    isRecord(x.response) &&
+    typeof (x.response as Record<string, unknown>).status === "number"
+  );
+}
+
+function getHttpStatus(err: unknown): number | null {
+  if (isApiErrorLike(err)) return err.status;
+  if (isAxiosLikeError(err)) return err.response.status;
+  return null;
+}
+
+function isAuthFormError(code: MessageCode): code is AuthFormErrorCode {
+  return code === "AUTH_INVALID" || code === "AUTH_LOCKED" || code === "AUTH_TOO_MANY_ATTEMPTS";
+}
+
+function isAuthSystemError(code: MessageCode): code is AuthSystemErrorCode {
+  return code === "AUTH_SERVER_ERROR" || code === "AUTH_NETWORK_ERROR";
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useStudentAuthStore((s) => s.login);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
 
   // micro-interactions
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +74,18 @@ export default function LoginPage() {
   const [showLoading, setShowLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // message system state
+  const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formErrorCode, setFormErrorCode] = useState<AuthFormErrorCode | null>(null);
+  const [systemErrorCode, setSystemErrorCode] = useState<AuthSystemErrorCode | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passRef = useRef<HTMLInputElement>(null);
+
+  const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
   useEffect(() => {
     if (!confetti) return;
@@ -34,15 +93,81 @@ export default function LoginPage() {
     return () => window.clearTimeout(t);
   }, [confetti]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const bubble = useMemo(
+    () =>
+      selectTopBubbleMessage({
+        isSubmitting,
+        isSuccess,
+        focusedField,
+        capsLockOn,
+        fieldErrors,
+        formErrorCode,
+        systemErrorCode,
+      }),
+    [
+      isSubmitting,
+      isSuccess,
+      focusedField,
+      capsLockOn,
+      fieldErrors,
+      formErrorCode,
+      systemErrorCode,
+    ],
+  );
+
+  function triggerShake() {
+    setShake(true);
+    window.setTimeout(() => setShake(false), 520);
+  }
+
+  function clearNonFieldErrors() {
+    setFormErrorCode(null);
+    setSystemErrorCode(null);
+  }
+
+  function setField<K extends keyof LoginValues>(key: K, value: LoginValues[K]) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+
+    // clear field error as user edits that field
+    setFieldErrors((prev) => {
+      const fk = key as FieldKey;
+      if (!prev[fk]) return prev;
+      const next: FieldErrors = { ...prev };
+      delete next[fk];
+      return next;
+    });
+
+    // optional: clear form/system errors on any edit
+    clearNonFieldErrors();
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
 
+    setIsSuccess(false);
+
+    // ===== Client validation (A) =====
+    const { fieldErrors: fe } = validateForm(values);
+    setFieldErrors(fe);
+
+    const first = firstErrorField(fe);
+    if (first) {
+      triggerShake();
+      if (first === "email") emailRef.current?.focus();
+      if (first === "password") passRef.current?.focus();
+      return;
+    }
+
     setIsSubmitting(true);
+    clearNonFieldErrors();
+
     try {
-      await login(email, password);
+      // ===== Real API: store login(email, password) =====
+      await login(values.email, values.password);
 
       // success micro + game-like loading
+      setIsSuccess(true);
       setConfetti(true);
       setShowLoading(true);
       setLoadingStep(0);
@@ -56,9 +181,21 @@ export default function LoginPage() {
       await sleep(180);
 
       navigate(ROUTES.STUDENT_HOME);
-    } catch {
-      setShake(true);
-      window.setTimeout(() => setShake(false), 520);
+    } catch (err: unknown) {
+      triggerShake();
+
+      const status = getHttpStatus(err);
+      const code: MessageCode =
+        typeof status === "number" ? mapAuthStatusToMessage(status) : mapAuthErrorToMessage(err);
+
+      if (isAuthFormError(code)) {
+        setFormErrorCode(code);
+      } else if (isAuthSystemError(code)) {
+        setSystemErrorCode(code);
+      } else {
+        // fallback safety
+        setSystemErrorCode("AUTH_SERVER_ERROR");
+      }
     } finally {
       setIsSubmitting(false);
       // nếu navigate nhanh, overlay tự mất theo route; nếu không navigate, đảm bảo tắt:
@@ -123,25 +260,62 @@ export default function LoginPage() {
             {/* ====== SET 3: Pixel confetti khi success ====== */}
             <PixelConfetti show={confetti} />
 
+            {/* Bubble message (tạm render trong card; mục B sẽ đưa lên đầu vịt) */}
+            <div aria-live="polite" style={{ marginBottom: 10, fontSize: 13, opacity: 0.95 }}>
+              {bubble.text}
+            </div>
+
             <h2>Student Login</h2>
 
             <form onSubmit={handleSubmit}>
               <input
+                ref={emailRef}
                 className="login-input"
                 placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={values.email}
+                onChange={(e) => setField("email", e.target.value)}
+                onFocus={() => setFocusedField("email")}
+                onBlur={() => setFocusedField(null)}
                 autoComplete="email"
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
               />
+              {fieldErrors.email ? (
+                <div
+                  id="login-email-error"
+                  role="alert"
+                  style={{ marginTop: 6, fontSize: 12, color: "crimson" }}
+                >
+                  {buildMessage(fieldErrors.email).text}
+                </div>
+              ) : null}
 
               <input
+                ref={passRef}
                 className="login-input"
                 type="password"
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={values.password}
+                onChange={(e) => setField("password", e.target.value)}
+                onFocus={() => setFocusedField("password")}
+                onBlur={() => {
+                  setFocusedField(null);
+                  setCapsLockOn(false);
+                }}
+                onKeyUp={(e) => setCapsLockOn(e.getModifierState?.("CapsLock") ?? false)}
                 autoComplete="current-password"
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
               />
+              {fieldErrors.password ? (
+                <div
+                  id="login-password-error"
+                  role="alert"
+                  style={{ marginTop: 6, fontSize: 12, color: "crimson" }}
+                >
+                  {buildMessage(fieldErrors.password).text}
+                </div>
+              ) : null}
 
               <button
                 type="submit"
@@ -157,6 +331,7 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
       {/* ====== SET 4: Mini grid game “loading” khi submit ====== */}
       <LoginLoadingOverlay show={showLoading} step={loadingStep} />
     </>
