@@ -2,11 +2,11 @@
   "objectType": "goal",
   "states": {
     "default": {
-      "sprite": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameCount": 17,
-      "frameDuration": 200,
+      "sprite": "/assets/Pixel Adventure 1/Items/Checkpoints/End/End (Pressed) (64x64).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "frameDuration": 150,
       "loop": true
     }
   }

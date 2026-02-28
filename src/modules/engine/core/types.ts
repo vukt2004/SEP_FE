@@ -12,4 +12,7 @@ export interface Player {
   direction: "left" | "right"; // sprite direction (for flipping)
   isMoving: boolean;
   animationState: string;
+  isJumping: boolean;
+  jumpPower: number; // tiles to jump up
+  isGrounded: boolean;
 }

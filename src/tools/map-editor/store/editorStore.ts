@@ -3,6 +3,11 @@ import { createEmptyLayer } from "../utils/createEmptyLayer";
 import { createEmptyMap } from "../utils/createEmptyMap";
 
 /**
+ * Layer type definition
+ */
+type LayerType = "background" | "ground" | "foreground" | "collision";
+
+/**
  * Editor Store
  *
  * Manages the state of the map editor without external libraries.
@@ -11,9 +16,10 @@ import { createEmptyMap } from "../utils/createEmptyMap";
  */
 export class EditorStore {
   private mapData: MapData;
-  private activeLayer: "background" | "collision";
+  private activeLayer: LayerType;
   private selectedTile: number | null;
   private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
+  private layerVisibility: Record<LayerType, boolean>;
   private listeners: Set<() => void>;
   private undoStack: MapData[];
   private redoStack: MapData[];
@@ -29,6 +35,12 @@ export class EditorStore {
     this.activeLayer = "background";
     this.selectedTile = null;
     this.selectedTool = null;
+    this.layerVisibility = {
+      background: true,
+      ground: true,
+      foreground: true,
+      collision: false,
+    };
     this.listeners = new Set();
     this.undoStack = [];
     this.redoStack = [];
@@ -45,7 +57,7 @@ export class EditorStore {
   /**
    * Get the current active layer
    */
-  getActiveLayer(): "background" | "collision" {
+  getActiveLayer(): LayerType {
     return this.activeLayer;
   }
 
@@ -138,21 +150,25 @@ export class EditorStore {
 
   /**
    * Set the active layer for editing
-   * When switching to collision layer, auto-select paint tool
+   * Automatically makes the layer visible
    *
    * @param layer - The layer to make active
    */
-  setActiveLayer(layer: "background" | "collision"): void {
+  setActiveLayer(layer: LayerType): void {
     this.activeLayer = layer;
+    // Automatically make the active layer visible
+    this.layerVisibility[layer] = true;
 
-    // If switching to collision layer, clear tile selection and object tools
+    // If switching to collision layer, clear selections and auto-select paint
     if (layer === "collision") {
-      // Clear any object tools - collision layer only supports binary paint/erase
-      const objectTools = ["player", "goal", "coin", "enemy", "fill"];
-      if (!this.selectedTool || objectTools.includes(this.selectedTool)) {
-        this.selectedTool = "paint"; // Default to paint for collision
+      this.selectedTile = null; // Clear tile selection
+      if (this.isObjectTool(this.selectedTool)) {
+        this.selectedTool = null; // Clear object tool selection
       }
-      this.selectedTile = null; // Collision doesn't use tile IDs
+      // Auto-select paint tool for collision drawing
+      if (this.selectedTool === null) {
+        this.selectedTool = "paint";
+      }
     }
 
     this.notify();
@@ -160,66 +176,95 @@ export class EditorStore {
 
   /**
    * Set the selected tile ID
-   * Pass null to deselect. Clicking the same tile deselects it.
    *
-   * @param tileId - The tile ID to select, or null to deselect
+   * @param tileId - The tile ID to select (or null to deselect)
    */
   setSelectedTile(tileId: number | null): void {
-    // Toggle if same tile is clicked
-    if (this.selectedTile === tileId) {
-      this.selectedTile = null;
-      this.selectedTool = null;
-    } else {
-      this.selectedTile = tileId;
-      // Auto-select paint tool when selecting a tile
-      if (tileId !== null && tileId !== 0) {
+    this.selectedTile = tileId;
+
+    // If selecting a tile, deselect object tools and auto-select paint (mutual exclusion)
+    if (tileId !== null) {
+      if (this.isObjectTool(this.selectedTool)) {
         this.selectedTool = "paint";
-      } else if (tileId === 0) {
-        this.selectedTool = "erase";
+      } else if (this.selectedTool === null) {
+        // Auto-select paint tool when selecting a tile
+        this.selectedTool = "paint";
       }
     }
+
     this.notify();
   }
 
   /**
    * Set the selected tool
-   * Pass null to deselect. Clicking the same tool deselects it.
-   * Object tools (player, goal, coin, enemy) clear tile selection.
-   * Tile tools (paint, erase, fill) require a tile to be selected.
    *
-   * @param tool - The tool to select, or null to deselect
+   * @param tool - The tool to select (or null to deselect)
    */
   setSelectedTool(
     tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
   ): void {
-    // Toggle if same tool is clicked
-    if (this.selectedTool === tool) {
-      this.selectedTool = null;
-      this.selectedTile = null;
-    } else {
-      const objectTools = ["player", "goal", "coin", "enemy"];
-      const tileTools = ["paint", "erase", "fill"];
+    this.selectedTool = tool;
 
-      if (tool && objectTools.includes(tool)) {
-        // Object tool selected - clear tile selection
-        this.selectedTool = tool;
-        this.selectedTile = null;
-      } else if (tool && tileTools.includes(tool)) {
-        // Tile tool selected
-        this.selectedTool = tool;
-        // If no tile selected, default to tile 0 for erase, or prompt user to select
-        if (this.selectedTile === null) {
-          if (tool === "erase") {
-            this.selectedTile = 0;
-          }
-          // For paint and fill, user needs to select a tile first
-        }
-      } else {
-        this.selectedTool = null;
-        this.selectedTile = null;
-      }
+    // If selecting an object tool, deselect tile (mutual exclusion)
+    if (this.isObjectTool(tool)) {
+      this.selectedTile = null;
     }
+
     this.notify();
+  }
+
+  /**
+   * Set the visibility of a specific layer
+   * This does NOT affect undo/redo or MapData
+   *
+   * @param layer - The layer to set visibility for
+   * @param visible - Whether the layer should be visible
+   */
+  setLayerVisibility(layer: LayerType, visible: boolean): void {
+    this.layerVisibility[layer] = visible;
+    this.notify();
+  }
+
+  /**
+   * Toggle the visibility of a specific layer
+   * This does NOT affect undo/redo or MapData
+   *
+   * @param layer - The layer to toggle
+   */
+  toggleLayerVisibility(layer: LayerType): void {
+    this.layerVisibility[layer] = !this.layerVisibility[layer];
+    this.notify();
+  }
+
+  /**
+   * Check if a specific layer is visible
+   *
+   * @param layer - The layer to check
+   * @returns True if the layer is visible
+   */
+  isLayerVisible(layer: LayerType): boolean {
+    return this.layerVisibility[layer];
+  }
+
+  /**
+   * Get the visibility state of all layers
+   *
+   * @returns A copy of the layer visibility record
+   */
+  getLayerVisibility(): Record<LayerType, boolean> {
+    return { ...this.layerVisibility };
+  }
+
+  /**
+   * Check if a tool is an object placement tool
+   *
+   * @param tool - The tool to check
+   * @returns True if the tool is an object tool
+   */
+  private isObjectTool(
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+  ): boolean {
+    return tool === "player" || tool === "goal" || tool === "coin" || tool === "enemy";
   }
 
   /**
@@ -229,36 +274,28 @@ export class EditorStore {
    * @param y - Tile y coordinate
    */
   applyTool(x: number, y: number): void {
-    if (!this.selectedTool) {
-      // No tool selected, do nothing
-      return;
-    }
-
-    // Collision layer only supports paint (1) and erase (0)
-    if (this.activeLayer === "collision") {
-      if (this.selectedTool === "paint") {
-        this.updateTile(x, y, 1); // Collision = solid
-      } else if (this.selectedTool === "erase") {
-        this.updateTile(x, y, 0); // No collision = empty
-      }
-      // Ignore other tools on collision layer
-      return;
-    }
-
-    // Background layer - normal behavior
-    if (this.selectedTool === "paint") {
-      if (this.selectedTile === null) {
-        // No tile selected for painting
-        return;
-      }
+    // If a tile is selected but no tool, auto-paint
+    if (this.selectedTool === null && this.selectedTile !== null) {
       this.updateTile(x, y, this.selectedTile);
+      return;
+    }
+
+    // Do nothing if no tool is selected and no tile
+    if (this.selectedTool === null) {
+      return;
+    }
+
+    if (this.selectedTool === "paint") {
+      // Paint with selected tile, or with 1 for collision layer
+      if (this.selectedTile !== null) {
+        this.updateTile(x, y, this.selectedTile);
+      } else if (this.activeLayer === "collision") {
+        // Allow painting collision even without tile selected
+        this.updateTile(x, y, 1);
+      }
     } else if (this.selectedTool === "erase") {
       this.updateTile(x, y, 0);
     } else if (this.selectedTool === "fill") {
-      if (this.selectedTile === null) {
-        // No tile selected for filling
-        return;
-      }
       this.floodFill(x, y);
     } else {
       // Object placement tools
@@ -281,15 +318,19 @@ export class EditorStore {
       return;
     }
 
-    // Ensure a tile is selected
-    if (this.selectedTile === null) {
+    // Determine replacement value: use selected tile, or 1 for collision layer
+    let replacementValue: number;
+    if (this.selectedTile !== null) {
+      replacementValue = this.selectedTile;
+    } else if (this.activeLayer === "collision") {
+      replacementValue = 1;
+    } else {
       console.warn("Cannot fill: no tile selected");
       return;
     }
 
     const layer = this.mapData.layers[this.activeLayer];
     const targetValue = layer[startY][startX];
-    const replacementValue = this.selectedTile;
 
     // If target and replacement are the same, do nothing
     if (targetValue === replacementValue) {
@@ -409,7 +450,6 @@ export class EditorStore {
 
   /**
    * Update a tile in the active layer
-   * For collision layer, value is clamped to 0 or 1
    *
    * @param x - Tile x coordinate
    * @param y - Tile y coordinate
@@ -426,21 +466,15 @@ export class EditorStore {
 
     this.saveHistory();
 
-    // For collision layer, ensure binary values (0 or 1)
-    let finalValue = value;
-    if (this.activeLayer === "collision") {
-      finalValue = value > 0 ? 1 : 0;
-    }
-
     // Update the tile in the active layer
-    this.mapData.layers[this.activeLayer][y][x] = finalValue;
+    this.mapData.layers[this.activeLayer][y][x] = value;
 
     this.notify();
   }
 
   /**
    * Resize the map
-   * Regenerates both layers with new dimensions
+   * Regenerates all layers with new dimensions
    *
    * @param width - New width in tiles
    * @param height - New height in tiles
@@ -452,8 +486,10 @@ export class EditorStore {
     this.mapData.config.width = width;
     this.mapData.config.height = height;
 
-    // Regenerate layers
+    // Regenerate all 4 layers
     this.mapData.layers.background = createEmptyLayer(width, height, 0);
+    this.mapData.layers.ground = createEmptyLayer(width, height, 0);
+    this.mapData.layers.foreground = createEmptyLayer(width, height, 0);
     this.mapData.layers.collision = createEmptyLayer(width, height, 0);
 
     // Clear objects that might be out of bounds
@@ -486,13 +522,32 @@ export class EditorStore {
 
   /**
    * Load a new map into the editor
+   * Supports backward compatibility with 2-layer maps
    *
    * @param mapData - The map data to load
    */
   loadMap(mapData: MapData): void {
     this.saveHistory();
 
-    this.mapData = structuredClone(mapData);
+    const loadedMap = structuredClone(mapData);
+
+    // Backward compatibility: Add missing layers if needed
+    if (!loadedMap.layers.ground) {
+      loadedMap.layers.ground = createEmptyLayer(
+        loadedMap.config.width,
+        loadedMap.config.height,
+        0,
+      );
+    }
+    if (!loadedMap.layers.foreground) {
+      loadedMap.layers.foreground = createEmptyLayer(
+        loadedMap.config.width,
+        loadedMap.config.height,
+        0,
+      );
+    }
+
+    this.mapData = loadedMap;
     this.activeLayer = "background";
     this.selectedTile = 0;
     this.selectedTool = "paint";

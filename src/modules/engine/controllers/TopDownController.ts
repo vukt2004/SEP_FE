@@ -74,6 +74,12 @@ export class TopDownController implements IPlayerController {
     return false;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  jump(_player: Player, _level: LevelDefinition, _tileSize: number): void {
+    // Top-down games don't support jumping
+    // This method intentionally does nothing
+  }
+
   private isInBounds(x: number, y: number, level: LevelDefinition): boolean {
     return x >= 0 && x < level.width && y >= 0 && y < level.height;
   }

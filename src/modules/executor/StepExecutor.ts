@@ -1,26 +1,30 @@
-import type { BlockProgram, Block } from "./types";
-import { EngineCommand } from "./commands";
+import type { BlockProgram, ASTNode, ConditionType } from "./types";
+import type { ExecutionResult } from "./commands";
 
 /**
  * Stack frame for execution state tracking
- * - blocks: The array of blocks to execute
- * - index: Current position in the blocks array
+ * - nodes: The array of AST nodes to execute
+ * - index: Current position in the nodes array
  * - repeatLeft: For repeat blocks, tracks remaining iterations
- * - isWhile: Marks this frame as a while loop that needs condition re-checking
+ * - whileCondition: For while loops, specifies which condition to check
+ * - isDoWhile: For do-while loops, indicates this is a do-while frame
+ * - doWhileFirstRun: For do-while loops, tracks if this is the first execution
  */
 interface StackFrame {
-  blocks: Block[];
+  nodes: ASTNode[];
   index: number;
   repeatLeft?: number;
-  isWhile?: boolean;
+  whileCondition?: ConditionType;
+  isDoWhile?: boolean;
+  doWhileFirstRun?: boolean;
 }
 
 /**
  * StepExecutor interprets and executes a block-based program using a stack-based execution model.
  *
  * Execution model:
- * - Maintains a stack of frames, each representing a sequence of blocks to execute
- * - Executes the top frame's current block, then advances
+ * - Maintains a stack of frames, each representing a sequence of AST nodes to execute
+ * - Executes the top frame's current node, then advances
  * - Control flow blocks (repeat, if, while) push new frames onto the stack
  * - When a frame completes, it's popped from the stack
  *
@@ -29,23 +33,25 @@ interface StackFrame {
  * - Automatic execution via run()
  * - Pause/resume support
  * - Repeat loops with proper iteration counting
- * - If-else branching
+ * - Conditional if branching (pathAhead, wallAhead)
  * - While loops with runtime condition checking
+ * - Returns ExecutionResult with command and blockId for UI highlighting
+ * - Absolute movement in 2D grid (up, down, left, right)
  */
 export class StepExecutor {
   private stack: StackFrame[];
   private originalProgram: BlockProgram;
-  private intervalId: number | null;
+  private timeoutId: number | null;
   private isRunning: boolean;
   private isPaused: boolean;
-  private conditionChecker: () => boolean;
-  private callback: ((cmd: EngineCommand) => void) | null;
+  private conditionChecker: (condition: ConditionType) => boolean;
+  private callback: ((result: ExecutionResult) => void) | null;
   private intervalMs: number;
 
-  constructor(program: BlockProgram, conditionChecker: () => boolean) {
+  constructor(program: BlockProgram, conditionChecker: (condition: ConditionType) => boolean) {
     this.originalProgram = program;
-    this.stack = [{ blocks: program, index: 0 }];
-    this.intervalId = null;
+    this.stack = [{ nodes: program, index: 0 }];
+    this.timeoutId = null;
     this.isRunning = false;
     this.isPaused = false;
     this.conditionChecker = conditionChecker;
@@ -58,7 +64,7 @@ export class StepExecutor {
    */
   reset(): void {
     this.stop();
-    this.stack = [{ blocks: this.originalProgram, index: 0 }];
+    this.stack = [{ nodes: this.originalProgram, index: 0 }];
   }
 
   /**
@@ -69,26 +75,28 @@ export class StepExecutor {
   }
 
   /**
-   * Execute one step and return the next command
+   * Execute one step and return the next command with its block ID
    *
    * Execution flow:
    * 1. Get the top stack frame
-   * 2. If frame is exhausted (index >= blocks.length):
+   * 2. If frame is exhausted (index >= nodes.length):
    *    - Handle repeat: decrement repeatLeft, reset index
    *    - Handle while: re-check condition, reset or pop
    *    - Otherwise: pop frame
-   * 3. Get current block and advance index
-   * 4. Handle block type:
-   *    - Simple commands: return immediately
+   * 3. Get current node and advance index
+   * 4. Handle node type:
+   *    - Move commands: return ExecutionResult with move command and direction
    *    - Control flow: push new frames and continue
    * 5. Loop until a command is found or stack is empty
+   *
+   * @returns ExecutionResult with command and blockId, or null if execution is complete
    */
-  next(): EngineCommand | null {
+  next(): ExecutionResult | null {
     while (this.stack.length > 0) {
       const frame = this.stack[this.stack.length - 1];
 
       // Check if current frame is exhausted
-      if (frame.index >= frame.blocks.length) {
+      if (frame.index >= frame.nodes.length) {
         // Handle repeat loop continuation
         if (frame.repeatLeft !== undefined && frame.repeatLeft > 1) {
           frame.repeatLeft--;
@@ -97,13 +105,35 @@ export class StepExecutor {
         }
 
         // Handle while loop continuation
-        if (frame.isWhile) {
-          // Re-evaluate condition
-          if (this.conditionChecker()) {
+        if (frame.whileCondition && !frame.isDoWhile) {
+          // Re-evaluate condition for regular while loop
+          if (this.conditionChecker(frame.whileCondition)) {
             frame.index = 0; // Reset to beginning of loop
             continue;
           }
           // Condition false, exit while loop
+          this.stack.pop();
+          continue;
+        }
+
+        // Handle do-while loop continuation
+        if (frame.isDoWhile && frame.whileCondition) {
+          // For do-while, always execute at least once
+          if (frame.doWhileFirstRun) {
+            // First run complete, now check condition
+            frame.doWhileFirstRun = false;
+            if (this.conditionChecker(frame.whileCondition)) {
+              frame.index = 0; // Reset to beginning of loop
+              continue;
+            }
+          } else {
+            // Check condition for subsequent runs
+            if (this.conditionChecker(frame.whileCondition)) {
+              frame.index = 0; // Reset to beginning of loop
+              continue;
+            }
+          }
+          // Condition false, exit do-while loop
           this.stack.pop();
           continue;
         }
@@ -113,65 +143,109 @@ export class StepExecutor {
         continue;
       }
 
-      // Get current block and advance index
-      const block = frame.blocks[frame.index];
+      // Get current node and advance index
+      const node = frame.nodes[frame.index];
       frame.index++;
 
-      // Handle block based on type
-      switch (block.type) {
+      // Handle node based on type
+      switch (node.type) {
         case "move":
-          return EngineCommand.MOVE_FORWARD;
+          return {
+            command: {
+              type: "move",
+              direction: node.direction,
+            },
+            blockId: node.blockId,
+          };
 
-        case "turnLeft":
-          return EngineCommand.TURN_LEFT;
+        case "moveForward":
+          return {
+            command: {
+              type: "moveForward",
+            },
+            blockId: node.blockId,
+          };
 
-        case "turnRight":
-          return EngineCommand.TURN_RIGHT;
+        case "turn":
+          return {
+            command: {
+              type: "turn",
+              rotation: node.rotation,
+            },
+            blockId: node.blockId,
+          };
 
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
-          if (block.times > 0) {
+          // Defensive handling: ensure times is a valid positive number
+          const times = Math.max(0, node.times ?? 0);
+          if (times > 0) {
             this.stack.push({
-              blocks: block.children,
+              nodes: node.body,
               index: 0,
-              repeatLeft: block.times,
+              repeatLeft: times,
             });
           }
           // Continue to process the pushed frame
           continue;
         }
 
-        case "ifObstacleAhead": {
-          // Evaluate condition at runtime
-          if (this.conditionChecker()) {
-            // Condition true: execute children
-            if (block.children.length > 0) {
-              this.stack.push({ blocks: block.children, index: 0 });
+        case "customIf": {
+          // Evaluate dynamic condition
+          const conditionResult = this.evaluateCondition(node.condition);
+          if (conditionResult) {
+            // Condition true: execute body
+            if (node.body.length > 0) {
+              this.stack.push({ nodes: node.body, index: 0 });
             }
-          } else if (block.elseChildren && block.elseChildren.length > 0) {
-            // Condition false: execute elseChildren if present
-            this.stack.push({ blocks: block.elseChildren, index: 0 });
+          } else {
+            // Condition false: execute else branch
+            if (node.elseBranch.length > 0) {
+              this.stack.push({ nodes: node.elseBranch, index: 0 });
+            }
           }
           // Continue to next iteration
           continue;
         }
 
-        case "whileObstacleAhead": {
-          // Evaluate condition at runtime
-          if (this.conditionChecker()) {
+        case "customWhile": {
+          // Evaluate dynamic condition
+          const conditionResult = this.evaluateCondition(node.condition);
+          if (conditionResult) {
             // Condition true: push while frame
-            if (block.children.length > 0) {
+            if (node.body.length > 0) {
               this.stack.push({
-                blocks: block.children,
+                nodes: node.body,
                 index: 0,
-                isWhile: true,
+                whileCondition: this.extractConditionType(node.condition),
               });
             }
           }
           // If condition false, skip the while block entirely
           continue;
         }
+
+        case "customDoWhile": {
+          // Do-while always executes body at least once
+          if (node.body.length > 0) {
+            this.stack.push({
+              nodes: node.body,
+              index: 0,
+              whileCondition: this.extractConditionType(node.condition),
+              isDoWhile: true,
+              doWhileFirstRun: true,
+            });
+          }
+          // Continue to process the pushed frame
+          continue;
+        }
+
+        case "condition":
+          // Condition blocks shouldn't be executed directly in the main flow
+          // They should only be evaluated as part of if/while blocks
+          console.warn("Condition block executed directly - this should not happen");
+          continue;
       }
     }
 
@@ -180,11 +254,73 @@ export class StepExecutor {
   }
 
   /**
+   * Evaluate a condition node and return boolean result
+   * @param conditionNode The condition AST node to evaluate
+   * @returns true if condition is met, false otherwise
+   */
+  private evaluateCondition(conditionNode: ASTNode | null): boolean {
+    if (!conditionNode) {
+      return false;
+    }
+
+    if (conditionNode.type === "condition") {
+      return this.conditionChecker(conditionNode.conditionType);
+    }
+
+    // Unknown condition type
+    console.warn("Unknown condition type:", conditionNode.type);
+    return false;
+  }
+
+  /**
+   * Extract the condition type from a condition node
+   * Used to store condition type in while loop frames
+   * @param conditionNode The condition AST node
+   * @returns The condition type, or undefined if not extractable
+   */
+  private extractConditionType(conditionNode: ASTNode | null): ConditionType | undefined {
+    if (!conditionNode || conditionNode.type !== "condition") {
+      return undefined;
+    }
+    return conditionNode.conditionType;
+  }
+
+  /**
+   * Internal execution tick using recursive setTimeout
+   * Safer than setInterval as it prevents overlapping execution
+   */
+  private tick(): void {
+    // Check if execution should continue
+    if (!this.isRunning) {
+      return;
+    }
+
+    // Skip execution if paused, but schedule next tick
+    if (this.isPaused) {
+      this.timeoutId = window.setTimeout(() => this.tick(), this.intervalMs);
+      return;
+    }
+
+    // Execute next command
+    const result = this.next();
+
+    if (result && this.callback) {
+      // Command executed successfully, invoke callback
+      this.callback(result);
+      // Schedule next tick
+      this.timeoutId = window.setTimeout(() => this.tick(), this.intervalMs);
+    } else {
+      // Execution complete (result is null), stop immediately
+      this.stop();
+    }
+  }
+
+  /**
    * Start automatic execution with a callback for each command
-   * @param callback Function to call with each command
+   * @param callback Function to call with each ExecutionResult (command + blockId)
    * @param intervalMs Delay between commands in milliseconds
    */
-  run(callback: (cmd: EngineCommand) => void, intervalMs: number = 500): void {
+  run(callback: (result: ExecutionResult) => void, intervalMs: number = 500): void {
     if (this.isRunning && !this.isPaused) {
       return; // Already running and not paused
     }
@@ -201,19 +337,8 @@ export class StepExecutor {
     this.callback = callback;
     this.intervalMs = intervalMs;
 
-    this.intervalId = window.setInterval(() => {
-      if (!this.isPaused) {
-        if (this.hasNext()) {
-          const cmd = this.next();
-          if (cmd && this.callback) {
-            this.callback(cmd);
-          }
-        } else {
-          // Execution complete
-          this.stop();
-        }
-      }
-    }, this.intervalMs);
+    // Start execution with first tick
+    this.tick();
   }
 
   /**
@@ -237,12 +362,12 @@ export class StepExecutor {
 
   /**
    * Stop execution completely
-   * Clears the interval and resets running state
+   * Clears the timeout and resets running state
    */
   stop(): void {
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.timeoutId !== null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
     this.isRunning = false;
     this.isPaused = false;

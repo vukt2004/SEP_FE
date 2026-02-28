@@ -75,6 +75,36 @@ export class PlatformController implements IPlayerController {
   }
 
   /**
+   * Execute a jump if player is grounded
+   */
+  jump(player: Player, level: LevelDefinition, tileSize: number): void {
+    // Check if player is grounded (can only jump if on solid ground)
+    const isGrounded =
+      this.isInBounds(player.x, player.y + 1, level) &&
+      this.isSolidTile(player.x, player.y + 1, level);
+
+    if (!isGrounded) return; // Can't jump if not grounded
+
+    // Move player up by jumpPower tiles
+    const jumpHeight = player.jumpPower;
+    for (let i = 0; i < jumpHeight; i++) {
+      if (
+        this.isInBounds(player.x, player.y - 1, level) &&
+        !this.isSolidTile(player.x, player.y - 1, level)
+      ) {
+        player.y--;
+      } else {
+        break; // Stop if hit ceiling
+      }
+    }
+
+    // Update target pixel position
+    player.targetPixelX = player.x * tileSize;
+    player.targetPixelY = player.y * tileSize;
+    player.isJumping = true;
+  }
+
+  /**
    * Apply rule-based gravity: drop player tile-by-tile until reaching solid ground
    */
   private applyGravity(player: Player, level: LevelDefinition, tileSize: number): void {
@@ -89,6 +119,12 @@ export class PlatformController implements IPlayerController {
     // Update target pixel position for smooth fall animation
     player.targetPixelX = player.x * tileSize;
     player.targetPixelY = player.y * tileSize;
+
+    // Check if player is grounded
+    player.isGrounded =
+      this.isInBounds(player.x, player.y + 1, level) &&
+      this.isSolidTile(player.x, player.y + 1, level);
+    player.isJumping = false;
   }
 
   private isInBounds(x: number, y: number, level: LevelDefinition): boolean {

@@ -24,8 +24,12 @@ export interface MapConfig {
  * Each layer is a 2D array where numbers represent tile IDs
  */
 export interface Layers {
-  /** Visual background tiles */
+  /** Visual background tiles (rendered first) */
   background: number[][];
+  /** Ground tiles (rendered second) */
+  ground: number[][];
+  /** Foreground tiles (rendered after objects) */
+  foreground: number[][];
   /** Collision/physics tiles */
   collision: number[][];
 }
