@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UiMessage } from "../../login/messages";
 import styles from "./DuckSpeechBubble.module.css";
 
@@ -64,8 +64,7 @@ export default function DuckSpeechBubble({
   return (
     <div
       className={[styles.bubble, variantClass, placementClass, className].filter(Boolean).join(" ")}
-      role={message.type === "error" ? "alert" : "status"}
-      aria-live={message.type === "error" ? "assertive" : "polite"}
+      aria-hidden="true"
     >
       <div className={styles.text}>{message.text}</div>
       <div className={styles.tail} aria-hidden="true" />

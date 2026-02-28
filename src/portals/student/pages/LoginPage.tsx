@@ -11,6 +11,8 @@ import PixelConfetti from "../components/login/PixelConfetti";
 import styles from "../components/login/LoginScene.module.css";
 import LoginLoadingOverlay from "../components/login/LoginLoadingOverlay";
 import DuckSpeechBubble from "../components/login/DuckSpeechBubble";
+import { selectDuckMode } from "../login/duckMode";
+import DuckAstronaut from "../components/login/DuckAstronaut";
 
 // ===== Message System (A) =====
 import type { FieldKey, MessageCode } from "../login/messages";
@@ -18,6 +20,7 @@ import { buildMessage } from "../login/messages";
 import { validateForm, firstErrorField } from "../login/validation";
 import { mapAuthErrorToMessage, mapAuthStatusToMessage } from "../login/authError";
 import { selectTopBubbleMessage } from "../login/messageSelector";
+import LoginAriaAnnouncer from "../components/login/LoginAriaAnnouncer";
 
 type LoginValues = { email: string; password: string };
 type FieldErrors = Partial<Record<FieldKey, MessageCode>>;
@@ -115,6 +118,19 @@ export default function LoginPage() {
     ],
   );
 
+  const duckMode = useMemo(
+    () =>
+      selectDuckMode({
+        isSubmitting,
+        isSuccess,
+        focusedField,
+        fieldErrors,
+        formErrorCode,
+        systemErrorCode,
+      }),
+    [isSubmitting, isSuccess, focusedField, fieldErrors, formErrorCode, systemErrorCode],
+  );
+
   function triggerShake() {
     setShake(true);
     window.setTimeout(() => setShake(false), 520);
@@ -190,6 +206,7 @@ export default function LoginPage() {
 
       if (isAuthFormError(code)) {
         setFormErrorCode(code);
+        if (code === "AUTH_INVALID") passRef.current?.focus();
       } else if (isAuthSystemError(code)) {
         setSystemErrorCode(code);
       } else {
@@ -210,6 +227,7 @@ export default function LoginPage() {
   return (
     <>
       <div className="login-page" style={pageStyle}>
+        <LoginAriaAnnouncer message={bubble} />
         {/* ====== SET 2: Parallax Starfield (nền tổng) ====== */}
         <div className={styles.sceneRoot} aria-hidden="true">
           <Starfield />
@@ -240,21 +258,7 @@ export default function LoginPage() {
               />
 
               {/* Duck placeholder: thay bằng component vịt thật */}
-              <div
-                aria-hidden="true"
-                style={{
-                  marginTop: 24,
-                  width: 280,
-                  height: 280,
-                  borderRadius: 24,
-                  border: "2px dashed rgba(148,163,184,0.5)",
-                  display: "grid",
-                  placeItems: "center",
-                  color: "rgba(226,232,240,0.85)",
-                }}
-              >
-                Duck goes here
-              </div>
+              <DuckAstronaut mode={duckMode} />
 
               {/* TODO: <DuckAstronaut mode={...} /> */}
             </div>
@@ -285,11 +289,6 @@ export default function LoginPage() {
 
             {/* ====== SET 3: Pixel confetti khi success ====== */}
             <PixelConfetti show={confetti} />
-
-            {/* Bubble message (tạm render trong card; mục B sẽ đưa lên đầu vịt) */}
-            <div aria-live="polite" style={{ marginBottom: 10, fontSize: 13, opacity: 0.95 }}>
-              {bubble.text}
-            </div>
 
             <h2>Student Login</h2>
 
