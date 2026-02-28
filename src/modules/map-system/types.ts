@@ -36,9 +36,12 @@ export interface GridObjectDefinition {
 /**
  * Layer-based level structure
  * Separates visual representation from collision logic
+ * Layers are rendered in order: background → ground → objects → player → foreground
  */
 export interface LevelLayers {
-  background: number[][]; // Numeric tile IDs [row][col]
+  background: number[][]; // Numeric tile IDs [row][col] - rendered first
+  ground?: number[][]; // Optional ground decoration layer - rendered after background
+  foreground?: number[][]; // Optional foreground layer - rendered AFTER player (creates depth)
   collision: boolean[][]; // Collision map: true = blocked, false = walkable [row][col]
 }
 

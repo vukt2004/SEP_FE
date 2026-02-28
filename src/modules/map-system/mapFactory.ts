@@ -203,6 +203,8 @@ export function createCustomLevel(
   startPosition: GridPos,
   goalPosition: GridPos,
   metadata?: LevelDefinition["metadata"],
+  ground?: number[][],
+  foreground?: number[][],
 ): LevelDefinition {
   const height = background.length;
   const width = background[0]?.length ?? 0;
@@ -215,6 +217,30 @@ export function createCustomLevel(
   for (const row of background) {
     if (row.length !== width) {
       throw new Error("All background rows must have the same width");
+    }
+  }
+
+  // Validate ground layer if provided
+  if (ground) {
+    if (ground.length !== height) {
+      throw new Error("Ground layer must match background height");
+    }
+    for (const row of ground) {
+      if (row.length !== width) {
+        throw new Error("All ground rows must have the same width");
+      }
+    }
+  }
+
+  // Validate foreground layer if provided
+  if (foreground) {
+    if (foreground.length !== height) {
+      throw new Error("Foreground layer must match background height");
+    }
+    for (const row of foreground) {
+      if (row.length !== width) {
+        throw new Error("All foreground rows must have the same width");
+      }
     }
   }
 
@@ -256,6 +282,8 @@ export function createCustomLevel(
     layers: {
       background,
       collision,
+      ...(ground && { ground }),
+      ...(foreground && { foreground }),
     },
     startPosition,
     goalPosition,

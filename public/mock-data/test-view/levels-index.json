@@ -27,6 +27,13 @@
       "name": "Test Maze Challenge",
       "type": "topdown",
       "difficulty": "medium"
+    },
+    {
+      "id": "level-topdown-foreground-example",
+      "file": "level-topdown-foreground-example.json",
+      "name": "Garden Path - Foreground Demo",
+      "type": "topdown",
+      "difficulty": "easy"
     }
   ]
 }

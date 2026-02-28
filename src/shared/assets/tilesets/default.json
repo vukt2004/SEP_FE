@@ -25,6 +25,42 @@
       "tileX": 0,
       "tileY": 0,
       "tileSize": 16
+    },
+    "4": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "5": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "6": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "7": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "8": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "9": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
     }
   }
 }

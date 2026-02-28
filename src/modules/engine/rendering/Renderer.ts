@@ -52,10 +52,19 @@ export class Renderer {
 
     const tileIds = new Set<number>();
 
-    // Collect all unique tile IDs from the level
-    for (const row of level.layers.background) {
-      for (const tileId of row) {
-        tileIds.add(tileId);
+    // Collect all unique tile IDs from all layers
+    const layers = [level.layers.background, level.layers.ground, level.layers.foreground].filter(
+      Boolean,
+    ) as number[][][];
+
+    for (const layer of layers) {
+      for (const row of layer) {
+        for (const tileId of row) {
+          if (tileId !== 0) {
+            // Skip empty tiles
+            tileIds.add(tileId);
+          }
+        }
       }
     }
 
@@ -79,23 +88,44 @@ export class Renderer {
   }
 
   render(level: LevelDefinition, tileSize: number, player: Player): void {
-    this.drawTiles(level, tileSize);
+    // Layer rendering order for proper depth:
+    // 1. Background layer (base tiles)
+    this.drawLayer(level.layers.background, tileSize);
+    // 2. Ground layer (decorations under player)
+    if (level.layers.ground) {
+      this.drawLayer(level.layers.ground, tileSize);
+    }
+    // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
+    // 4. Objects (coins, etc.)
     this.drawObjects(level, tileSize);
+    // 5. Player character
     this.drawPlayer(player, tileSize);
+    // 6. Foreground layer (renders ABOVE player for depth effect)
+    if (level.layers.foreground) {
+      this.drawLayer(level.layers.foreground, tileSize);
+    }
   }
 
-  private drawTiles(level: LevelDefinition, tileSize: number): void {
-    const { background } = level.layers;
-
+  /**
+   * Draw a tile layer (background, ground, or foreground)
+   * Tile ID 0 is treated as transparent/empty
+   */
+  private drawLayer(layer: number[][], tileSize: number): void {
     if (!this.currentTileset) {
-      console.warn("No tileset loaded, skipping tile rendering");
+      console.warn("No tileset loaded, skipping layer rendering");
       return;
     }
 
-    for (let row = 0; row < background.length; row++) {
-      for (let col = 0; col < background[row].length; col++) {
-        const tileId = background[row][col];
+    for (let row = 0; row < layer.length; row++) {
+      for (let col = 0; col < layer[row].length; col++) {
+        const tileId = layer[row][col];
+
+        // Skip empty/transparent tiles (tile ID 0)
+        if (tileId === 0) {
+          continue;
+        }
+
         const tileDef = this.currentTileset[tileId];
 
         // Calculate pixel position
