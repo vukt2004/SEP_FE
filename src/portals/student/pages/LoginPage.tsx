@@ -1,7 +1,7 @@
 import "@/shared/styles/login.css";
 import "@/shared/styles/tokens.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useStudentAuthStore } from "@/stores/auth/studentAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
 
@@ -66,9 +66,14 @@ function isAuthSystemError(code: MessageCode): code is AuthSystemErrorCode {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const login = useStudentAuthStore((s) => s.login);
 
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
+
+  // Phase 4.1: info banner (e.g., verify ok but no token -> ask to login)
+  const infoMessage = (location.state as { info?: string } | null)?.info ?? null;
 
   // micro-interactions
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -257,10 +262,7 @@ export default function LoginPage() {
                 placement="top-center"
               />
 
-              {/* Duck placeholder: thay bằng component vịt thật */}
               <DuckAstronaut mode={duckMode} />
-
-              {/* TODO: <DuckAstronaut mode={...} /> */}
             </div>
           </div>
         </div>
@@ -287,10 +289,27 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ====== SET 3: Pixel confetti khi success ====== */}
             <PixelConfetti show={confetti} />
 
             <h2>Student Login</h2>
+
+            {/* Phase 4.1: info banner */}
+            {infoMessage ? (
+              <div
+                role="status"
+                style={{
+                  margin: "8px 0",
+                  fontSize: 12,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: "rgba(37,99,235,0.10)",
+                  border: "1px solid rgba(37,99,235,0.25)",
+                  color: "#ff7402",
+                }}
+              >
+                {infoMessage}
+              </div>
+            ) : null}
 
             <form onSubmit={handleSubmit}>
               <input
@@ -304,6 +323,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
+                disabled={isSubmitting}
               />
               {fieldErrors.email ? (
                 <div
@@ -331,6 +351,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
+                disabled={isSubmitting}
               />
               {fieldErrors.password ? (
                 <div
@@ -357,7 +378,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ====== SET 4: Mini grid game “loading” khi submit ====== */}
       <LoginLoadingOverlay show={showLoading} step={loadingStep} />
     </>
   );

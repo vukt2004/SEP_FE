@@ -13,6 +13,8 @@ const StudentLoginPage = React.lazy(() => import("@/portals/student/pages/LoginP
 const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
 const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
+const StudentRegisterPage = React.lazy(() => import("@/portals/student/pages/RegisterPage"));
+const StudentVerifyOtpPage = React.lazy(() => import("@/portals/student/pages/VerifyOtpPage"));
 
 /**
  * Root route structure (normalized):
@@ -66,6 +68,22 @@ const routes: RouteObject[] = [
     element: (
       <React.Suspense fallback={<AppLoader />}>
         <CmsLoginPage />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: ROUTES.STUDENT_REGISTER ?? "/register",
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <StudentRegisterPage />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: ROUTES.STUDENT_VERIFY_OTP ?? "/verify-otp",
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <StudentVerifyOtpPage />
       </React.Suspense>
     ),
   },
