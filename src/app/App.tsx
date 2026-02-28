@@ -1,11 +1,6 @@
-import GameView from "../pages/Game-View/GameView";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./router";
 
-function App() {
-  return (
-    <>
-      <GameView />
-    </>
-  );
+export default function App() {
+  return <RouterProvider router={router} />;
 }
-
-export default App;

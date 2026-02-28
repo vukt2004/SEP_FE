@@ -1,0 +1,116 @@
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 750px;
+  font-family: Inter, system-ui, sans-serif;
+  background: #070b14; /* slate/space */
+  color: #e5e7eb;
+}
+
+/* LEFT BRANDING SIDE */
+.login-brand {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(15, 23, 42, 0.55); /* slate-900-ish */
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.login-duck {
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+}
+
+.login-duck-content {
+  width: 100%;
+}
+/* RIGHT FORM SIDE */
+.login-form-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+
+  color: rgba(226, 232, 240, 0.85);
+
+  background: rgba(2, 6, 23, 0.35);
+  border-left: 1px solid rgba(148, 163, 184, 0.18); /* thay border 1px full */
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.35);
+  color: #e5e7eb;
+}
+
+.login-card h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: rgba(2, 6, 23, 0.25);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-input::placeholder {
+  color: rgba(226, 232, 240, 0.5);
+}
+
+.login-button:hover {
+  opacity: 0.9;
+}
+
+.login-footer {
+  margin-top: 18px;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.6);
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .login-brand {
+    display: none;
+  }
+}

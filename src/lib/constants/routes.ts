@@ -8,6 +8,8 @@ export const ROUTES = {
   STUDENT_LOGIN: "/login",
   STUDENT_APP: "/app",
   STUDENT_HOME: "/app/home",
+  STUDENT_VERIFY_OTP: "/verify-otp",
+  STUDENT_REGISTER: "/register",
 
   // CMS
   CMS_LOGIN: "/cms/login",

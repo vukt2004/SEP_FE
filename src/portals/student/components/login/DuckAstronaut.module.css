@@ -1,0 +1,512 @@
+.root {
+  width: 320px;
+  height: 340px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  user-select: none;
+}
+
+.float {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: grid;
+  place-items: center;
+  animation: floatIdle 3.2s ease-in-out infinite;
+}
+
+.duck {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  transform: translateY(-10px);
+}
+
+/* -------- 1. Mũ bảo hiểm (Mặt sau) -------- */
+.helmetBack {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 100%, #1e293b, #020617);
+  border: 4px solid #334155;
+  box-shadow: inset 0 0 30px #000;
+  overflow: hidden;
+}
+
+.stars {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(#fff 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.15;
+}
+
+/* -------- 2. Đầu vịt -------- */
+.head {
+  position: absolute;
+  top: 25px;
+  left: 45px;
+  width: 130px;
+  height: 115px;
+  background: radial-gradient(circle at 40% 40%, #fbbf24, #d97706);
+  border-radius: 50%;
+  box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+/* Lông trên đầu */
+.tuft {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: #fbbf24;
+  border-radius: 0 100% 0 100%;
+  transform: rotate(-10deg);
+}
+
+/* -------- Mắt -------- */
+.eyes {
+  position: absolute;
+  top: 38px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.eye {
+  width: 32px;
+  height: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #78350f;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.pupil {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0f172a;
+  transform: translate(var(--look-x, 0px), var(--look-y, 0px));
+  transition: transform 140ms ease-out;
+  position: relative;
+}
+
+/* Đốm sáng trong mắt */
+.pupil::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+/* Má hồng */
+.blush {
+  position: absolute;
+  top: 72px;
+  left: 10px;
+  width: 110px;
+  height: 15px;
+  background-image:
+    radial-gradient(circle, #fca5a5 40%, transparent 40%),
+    radial-gradient(circle, #fca5a5 40%, transparent 40%);
+  background-size: 30px 30px;
+  background-position:
+    0 0,
+    80px 0;
+  background-repeat: no-repeat;
+  opacity: 0.6;
+}
+
+/* -------- Mỏ -------- */
+.beak {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 24px;
+  z-index: 3;
+}
+
+.beakTop {
+  position: absolute;
+  inset: 0;
+  background: #f97316;
+  border-radius: 12px 12px 20px 20px;
+  border: 2px solid #9a3412;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+}
+
+.beakBottom {
+  position: absolute;
+  top: -6px;
+  left: 10%;
+  width: 80%;
+  height: 10px;
+  background: #fdba74;
+  border-radius: 10px 10px 0 0;
+}
+
+/* -------- 3. Cơ thể bộ đồ -------- */
+.suit {
+  position: absolute;
+  top: 135px;
+  left: 35px;
+  width: 150px;
+  height: 85px;
+  background: radial-gradient(circle at 50% 20%, #f8fafc, #cbd5e1);
+  border: 3px solid #334155;
+  border-radius: 60px 60px 30px 30px;
+  z-index: 1;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.suitHighlight {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  width: 60px;
+  height: 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.badge {
+  position: absolute;
+  top: 35px;
+  left: 25px;
+  width: 18px;
+  height: 18px;
+  background: #10b981;
+  border-radius: 6px;
+  border: 2px solid #334155;
+}
+
+.panel {
+  position: absolute;
+  top: 35px;
+  right: 20px;
+  width: 44px;
+  height: 18px;
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  border: 2px solid #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.panelDot {
+  width: 5px;
+  height: 5px;
+  background: #38bdf8;
+  border-radius: 50%;
+}
+
+/* Cổ áo (Tạo chiều sâu) */
+.collar {
+  position: absolute;
+  top: 125px;
+  left: 25px;
+  width: 170px;
+  height: 35px;
+  background: #94a3b8;
+  border-radius: 50%;
+  border: 3px solid #475569;
+  z-index: 3;
+}
+
+/* -------- 4. Lớp kính trước -------- */
+.helmetGlass {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0) 25%,
+    rgba(255, 255, 255, 0) 75%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.3);
+  z-index: 4;
+  pointer-events: none;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.glare {
+  position: absolute;
+  top: 25px;
+  right: 25px;
+  width: 40px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  transform: rotate(-45deg);
+  filter: blur(1px);
+}
+
+/* -------- 5. Tay (Arms) -------- */
+.armLeft,
+.armRight {
+  position: absolute;
+  top: 125px;
+  width: 45px;
+  height: 65px;
+  background: #f8fafc;
+  border: 3px solid #64748b;
+  border-radius: 30px;
+  z-index: 5; /* Cao nhất để che mặt */
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.armLeft {
+  left: 20px;
+  transform: rotate(10deg);
+}
+
+.armRight {
+  right: 20px;
+  transform: rotate(-10deg);
+}
+
+.glove {
+  position: absolute;
+  bottom: -4px;
+  left: 5px;
+  width: 28px;
+  height: 18px;
+  background: #fcd34d;
+  border-radius: 10px;
+  border: 2px solid #b45309;
+}
+
+/* -------- Bóng -------- */
+.shadow {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  width: 140px;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  filter: blur(4px);
+  animation: shadowPulse 3.2s ease-in-out infinite;
+}
+
+/* -------- FX layers -------- */
+.sparkle {
+  position: absolute;
+  left: 20px;
+  top: 15px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  opacity: 0;
+  z-index: 6;
+}
+
+.sweat {
+  position: absolute;
+  right: 35px;
+  top: 60px;
+  width: 12px;
+  height: 18px;
+  border-radius: 50%;
+  background: transparent;
+  transform: rotate(18deg);
+  opacity: 0;
+  z-index: 6;
+}
+
+.thinkingDots {
+  position: absolute;
+  left: 50%;
+  top: -15px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+}
+
+.thinkingDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  animation: dotBounce 900ms ease-in-out infinite;
+}
+
+.thinkingDots span:nth-child(2) {
+  animation-delay: 120ms;
+}
+.thinkingDots span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+/* ---------- Modes (Logic Cũ - Giao Diện Mới) ---------- */
+.modeIdle .float {
+  animation: floatIdle 3.2s ease-in-out infinite;
+}
+
+.modeLook .float {
+  animation: floatIdle 3.2s ease-in-out infinite;
+}
+
+/* SHY MODE (Đỉnh cao nâng cấp: Tay đưa lên che mắt) */
+.modeShy .duck {
+  --look-x: 0px;
+  --look-y: 4px; /* Mắt cụp xuống xíu */
+}
+.modeShy .armLeft {
+  transform: translate(35px, -80px) rotate(120deg);
+}
+.modeShy .armRight {
+  transform: translate(-35px, -80px) rotate(-120deg);
+}
+
+.modeThinking .float {
+  animation: floatIdle 2.2s ease-in-out infinite;
+}
+.modeThinking .thinkingDots {
+  opacity: 1;
+}
+
+.modeHappy .float {
+  animation: happyBounce 700ms ease-out 1;
+}
+.modeHappy .sparkle {
+  opacity: 1;
+  border-color: #fbbf24;
+  animation: sparklePop 700ms ease-out 1;
+}
+
+.modeOops .float {
+  animation: oopsShake 520ms ease-in-out 1;
+}
+.modeOops .sweat {
+  opacity: 1;
+  background: #60a5fa;
+  animation: sweatDrop 520ms ease-in-out 1;
+}
+.modeOops .duck {
+  --look-x: 0px;
+  --look-y: 0px;
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes floatIdle {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shadowPulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(0.85);
+    opacity: 0.3;
+  }
+}
+
+@keyframes dotBounce {
+  0%,
+  100% {
+    transform: translateY(0px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+@keyframes happyBounce {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  35% {
+    transform: translateY(-20px);
+  }
+  70% {
+    transform: translateY(5px);
+  }
+}
+
+@keyframes oopsShake {
+  0%,
+  100% {
+    transform: translateX(0px);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes sparklePop {
+  0% {
+    transform: translate(0px, 0px) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  40% {
+    transform: translate(-10px, -15px) rotate(18deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-15px, -25px) rotate(28deg) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes sweatDrop {
+  0% {
+    transform: translateY(0px) rotate(18deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px) rotate(18deg);
+    opacity: 0;
+  }
+}
