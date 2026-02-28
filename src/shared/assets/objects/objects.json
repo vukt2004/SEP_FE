@@ -1,0 +1,30 @@
+{
+  "name": "default",
+  "description": "Default game object sprites for the map editor",
+  "objects": {
+    "player": {
+      "imagePath": "/assets/Pixel Adventure 1/Main Characters/Mask Dude/Idle (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
+    "goal": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/End/End (Idle).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameIndex": 0
+    },
+    "coin": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Cherries.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
+    "enemy": {
+      "imagePath": "/assets/Pixel Adventure 1/Traps/Spiked Ball/Spiked Ball.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    }
+  }
+}

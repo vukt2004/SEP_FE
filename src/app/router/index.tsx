@@ -7,30 +7,25 @@ import { studentRoutes } from "./routes.student";
 import { cmsRoutes } from "./routes.cms";
 import { AppLoader, NotFoundPage, RouteErrorPage } from "./router.ui";
 
-// Public pages
+// Public pages (lazy)
 const LandingPage = React.lazy(() => import("../../pages/Home"));
 const StudentLoginPage = React.lazy(() => import("@/portals/student/pages/LoginPage"));
-const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
-const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
-const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
 const StudentRegisterPage = React.lazy(() => import("@/portals/student/pages/RegisterPage"));
 const StudentVerifyOtpPage = React.lazy(() => import("@/portals/student/pages/VerifyOtpPage"));
 
-/**
- * Root route structure (normalized):
- *  - "/"            -> Landing (public)
- *  - "/login"       -> Student login (public)
- *  - "/cms/login"   -> CMS login (public)
- *  - "/app/*"       -> Student authenticated portal
- *  - "/cms/*"       -> CMS authenticated portal (except /cms/login)
- */
+const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
+
+const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
+const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
+
+const MapEditor = React.lazy(() => import("../../pages/Map-Editor/MapEditor"));
+
 const routes: RouteObject[] = [
   {
     path: ROUTES.LANDING,
     errorElement: <RouteErrorPage />,
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        {/* Root outlet-less structure: child routes render directly */}
         <LandingPage />
       </React.Suspense>
     ),
@@ -40,7 +35,6 @@ const routes: RouteObject[] = [
     errorElement: <RouteErrorPage />,
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        {/* Root outlet-less structure: child routes render directly */}
         <GameView />
       </React.Suspense>
     ),
@@ -50,24 +44,26 @@ const routes: RouteObject[] = [
     errorElement: <RouteErrorPage />,
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        {/* Root outlet-less structure: child routes render directly */}
         <PlatformGameView />
       </React.Suspense>
     ),
   },
   {
+    path: ROUTES.MAP_EDITOR ?? "/map-editor",
+    errorElement: <RouteErrorPage />,
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <MapEditor />
+      </React.Suspense>
+    ),
+  },
+
+  // Public auth pages
+  {
     path: ROUTES.STUDENT_LOGIN,
     element: (
       <React.Suspense fallback={<AppLoader />}>
         <StudentLoginPage />
-      </React.Suspense>
-    ),
-  },
-  {
-    path: ROUTES.CMS_LOGIN,
-    element: (
-      <React.Suspense fallback={<AppLoader />}>
-        <CmsLoginPage />
       </React.Suspense>
     ),
   },
@@ -88,7 +84,16 @@ const routes: RouteObject[] = [
     ),
   },
 
-  // Convenience redirects (optional but helps UX)
+  {
+    path: ROUTES.CMS_LOGIN,
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <CmsLoginPage />
+      </React.Suspense>
+    ),
+  },
+
+  // Convenience redirects
   {
     path: "/app",
     element: <Navigate to={ROUTES.STUDENT_HOME} replace />,
@@ -98,9 +103,8 @@ const routes: RouteObject[] = [
     element: <Navigate to={ROUTES.CMS_DASHBOARD} replace />,
   },
 
-  // Mount authenticated route groups
+  // Mount authenticated route groups (/app/* and /cms/*)
   {
-    // IMPORTANT: this mounts /app/* (studentRoutes.path = "app")
     path: "/",
     element: <React.Suspense fallback={<AppLoader />} />,
     children: [studentRoutes, cmsRoutes],

@@ -8,7 +8,7 @@ import type { LevelDefinition } from "../modules/map-system/types";
  */
 export async function loadLevelFromMockData(levelId: string): Promise<LevelDefinition> {
   try {
-    const response = await fetch(`/mock-data/${levelId}.json`);
+    const response = await fetch(`/mock-data/test-view/${levelId}.json`);
     if (!response.ok) {
       throw new Error(`Failed to load level: ${levelId}`);
     }
@@ -33,7 +33,7 @@ export async function loadLevelsIndex(): Promise<{
   }>;
 }> {
   try {
-    const response = await fetch("/mock-data/levels-index.json");
+    const response = await fetch("/mock-data/test-view/levels-index.json");
     if (!response.ok) {
       throw new Error("Failed to load levels index");
     }

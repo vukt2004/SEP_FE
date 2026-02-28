@@ -2,7 +2,9 @@ import type { LevelDefinition } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
-import { tileRegistry, TilesetCache } from "./tileRegistry";
+import type { TileDefinition } from "../../../shared/assets/tilesets";
+import { TilesetCache } from "../../../shared/assets/tilesets";
+import { TilesetLoader } from "../../../shared/assets/tilesets";
 
 const TILE_COLORS: Record<number, string> = {
   0: "#eeeeee", // Empty
@@ -24,6 +26,8 @@ export class Renderer {
   private animationSystem: AnimationSystem;
   private debugMode: boolean = true;
   private tilesetCache: TilesetCache;
+  private tilesetLoader: TilesetLoader;
+  private currentTileset: Record<number, TileDefinition> | null = null;
 
   constructor(
     ctx: CanvasRenderingContext2D,
@@ -34,6 +38,7 @@ export class Renderer {
     this.animationSystem = animationSystem;
     this.debugMode = debugMode;
     this.tilesetCache = new TilesetCache();
+    this.tilesetLoader = new TilesetLoader();
   }
 
   /**
@@ -41,6 +46,10 @@ export class Renderer {
    * Should be called before starting rendering
    */
   async preloadTilesets(level: LevelDefinition): Promise<void> {
+    // Load tileset definition (defaults to "default" if not specified)
+    const tilesetName = level.tileset || "default";
+    this.currentTileset = await this.tilesetLoader.loadTilesetDefinition(tilesetName);
+
     const tileIds = new Set<number>();
 
     // Collect all unique tile IDs from the level
@@ -53,7 +62,7 @@ export class Renderer {
     // Load all tilesets for the collected tile IDs
     const loadPromises: Promise<void>[] = [];
     for (const tileId of tileIds) {
-      const tileDef = tileRegistry[tileId];
+      const tileDef = this.currentTileset[tileId];
       if (tileDef) {
         loadPromises.push(
           this.tilesetCache
@@ -79,10 +88,15 @@ export class Renderer {
   private drawTiles(level: LevelDefinition, tileSize: number): void {
     const { background } = level.layers;
 
+    if (!this.currentTileset) {
+      console.warn("No tileset loaded, skipping tile rendering");
+      return;
+    }
+
     for (let row = 0; row < background.length; row++) {
       for (let col = 0; col < background[row].length; col++) {
         const tileId = background[row][col];
-        const tileDef = tileRegistry[tileId];
+        const tileDef = this.currentTileset[tileId];
 
         // Calculate pixel position
         const pixelX = col * tileSize;
