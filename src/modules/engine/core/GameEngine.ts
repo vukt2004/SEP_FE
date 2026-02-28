@@ -93,6 +93,9 @@ export class GameEngine {
         direction: "right",
         isMoving: false,
         animationState: "idle",
+        isJumping: false,
+        jumpPower: 2,
+        isGrounded: true,
       },
       stepCount: 0,
       hasPlayerWon: false,
@@ -175,6 +178,9 @@ export class GameEngine {
     this.runtime.player.targetPixelY = startPixelY;
     this.runtime.player.facing = "right";
     this.runtime.player.direction = "right";
+    this.runtime.player.isMoving = false;
+    this.runtime.player.isJumping = false;
+    this.runtime.player.isGrounded = true;
     this.runtime.player.isMoving = false;
     this.runtime.player.animationState = "idle";
 
@@ -284,6 +290,13 @@ export class GameEngine {
       );
     }
 
+    // Update animation for goal
+    const goalAnimMap = animationRegistry["goal"];
+    const goalAnim = goalAnimMap?.["default"];
+    if (goalAnim) {
+      this.animationSystem.update("goal", "default", goalAnim, deltaTime);
+    }
+
     // Render current frame
     const canvasWidth = this.level.width * this.tileSize;
     const canvasHeight = this.level.height * this.tileSize;
@@ -331,6 +344,36 @@ export class GameEngine {
         // Update player collider after physics
         this.updatePlayerCollider();
         break;
+      case "moveForward":
+        // Move in the current facing direction
+        this.moveInDirection(this.runtime.player.facing);
+        // Apply physics (gravity) based on controller type
+        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        // Update player collider after physics
+        this.updatePlayerCollider();
+        break;
+      case "turn": {
+        // Rotate facing direction by 90 degrees
+        const newDirection = this.rotateFacing(this.runtime.player.facing, command.rotation);
+        this.runtime.player.facing = newDirection;
+        // Update sprite direction for rendering (left/right flip)
+        if (newDirection === "left" || newDirection === "right") {
+          this.runtime.player.direction = newDirection;
+        }
+        break;
+      }
+      case "jump":
+        // Handle jump
+        this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        // Update player collider after jump
+        this.updatePlayerCollider();
+        // Apply gravity after a short delay to show the jump animation
+        setTimeout(() => {
+          this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+          this.updatePlayerCollider();
+          this.collisionSystem.update();
+        }, 200); // 200ms delay to show jump animation
+        break;
       case "interact":
         this.interact();
         break;
@@ -354,6 +397,37 @@ export class GameEngine {
 
     // Execute movement in that direction
     this.moveForward();
+  }
+
+  /**
+   * Rotate facing direction by 90 degrees
+   * @param currentFacing Current facing direction
+   * @param rotation Clockwise or counterclockwise rotation
+   * @returns New facing direction after rotation
+   */
+  private rotateFacing(
+    currentFacing: Direction,
+    rotation: "clockwise" | "counterclockwise",
+  ): Direction {
+    if (rotation === "clockwise") {
+      // Clockwise: up → right → down → left → up
+      const clockwiseMap: Record<Direction, Direction> = {
+        up: "right",
+        right: "down",
+        down: "left",
+        left: "up",
+      };
+      return clockwiseMap[currentFacing];
+    } else {
+      // Counter-clockwise: up → left → down → right → up
+      const counterclockwiseMap: Record<Direction, Direction> = {
+        up: "left",
+        left: "down",
+        down: "right",
+        right: "up",
+      };
+      return counterclockwiseMap[currentFacing];
+    }
   }
 
   isObstacleAhead(): boolean {
@@ -486,7 +560,7 @@ export class GameEngine {
    * This provides visual animation while keeping logic grid-based
    */
   private updatePlayerVisual(deltaTime: number): void {
-    const speed = 0.1; // Pixels per millisecond (adjust for faster/slower animation)
+    const speed = 0.5; // Pixels per millisecond (adjust for faster/slower animation)
     const maxDistance = speed * deltaTime;
 
     // Interpolate X

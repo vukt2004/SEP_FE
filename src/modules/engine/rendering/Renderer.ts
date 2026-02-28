@@ -149,13 +149,37 @@ export class Renderer {
     this.ctx.fillRect(startX, startY, tileSize, tileSize);
     this.ctx.globalAlpha = 1.0; // Reset alpha
 
-    // Draw goal position marker
+    // Draw goal with animation if available
     const goalX = level.goalPosition.col * tileSize;
     const goalY = level.goalPosition.row * tileSize;
-    this.ctx.fillStyle = GOAL_MARKER_COLOR;
-    this.ctx.globalAlpha = 0.3; // Semi-transparent
-    this.ctx.fillRect(goalX, goalY, tileSize, tileSize);
-    this.ctx.globalAlpha = 1.0; // Reset alpha
+
+    const goalAnimMap = animationRegistry["goal"];
+    const goalAnim = goalAnimMap?.["default"];
+
+    if (goalAnim) {
+      // Render animated goal
+      const frameIndex = this.animationSystem.getCurrentFrame("goal", "default");
+      const frame = goalAnim.frames[frameIndex];
+      const sx = frame * goalAnim.frameWidth;
+      const sy = 0;
+      this.ctx.drawImage(
+        goalAnim.image,
+        sx,
+        sy,
+        goalAnim.frameWidth,
+        goalAnim.frameHeight,
+        goalX,
+        goalY,
+        tileSize,
+        tileSize,
+      );
+    } else {
+      // Fallback to colored marker
+      this.ctx.fillStyle = GOAL_MARKER_COLOR;
+      this.ctx.globalAlpha = 0.3; // Semi-transparent
+      this.ctx.fillRect(goalX, goalY, tileSize, tileSize);
+      this.ctx.globalAlpha = 1.0; // Reset alpha
+    }
   }
 
   private drawObjects(level: LevelDefinition, tileSize: number): void {

@@ -10,11 +10,13 @@ import { loadLevelFromMockData } from "../../utils/levelLoader";
  *
  * Controls:
  * - Arrow Left/Right: Move horizontally
- * - Arrow Up/Down: Face up/down (for future jump/climb mechanics)
+ * - Space: Jump
+ * - Arrow Up/Down: Face up/down (for future climb mechanics)
  *
  * Physics:
  * - Gravity automatically pulls player down
  * - Player falls tile-by-tile until reaching solid ground
+ * - Player can jump when on solid ground
  */
 export default function PlatformGameView() {
   const location = useLocation();
@@ -86,6 +88,12 @@ export default function PlatformGameView() {
             case "ArrowDown":
               direction = "down";
               break;
+            case " ":
+              e.preventDefault();
+              engine.executeCommand({ type: "jump" });
+              return;
+            default:
+              return;
           }
 
           if (direction) {
@@ -139,7 +147,8 @@ export default function PlatformGameView() {
       </div>
       <h2>Platform Game View (with Gravity)</h2>
       <p>
-        <strong>Controls:</strong> Arrow keys to move left/right. Player will fall with gravity.
+        <strong>Controls:</strong> Arrow Left/Right to move, Space to jump. Player will fall with
+        gravity.
       </p>
 
       {isLoading && (

@@ -48,8 +48,12 @@ export interface BlockConfig {
   command: string;
   previousStatement?: boolean;
   nextStatement?: boolean;
+  output?: string; // For value blocks (e.g., "Boolean", "Number", "String")
   inputs?: BlockInputConfig[];
   statementInput?: StatementInputConfig;
+  elseStatementInput?: StatementInputConfig; // For if-else blocks
+  postStatementInputs?: BlockInputConfig[]; // Inputs that appear after the statement block
+  postStatementLabel?: string; // Label that appears before postStatementInputs
 }
 
 /**

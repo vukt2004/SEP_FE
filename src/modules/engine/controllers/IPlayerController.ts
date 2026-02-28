@@ -27,4 +27,9 @@ export interface IPlayerController {
    * Check if a tile position is solid (wall or collidable object)
    */
   isSolidTile(x: number, y: number, level: LevelDefinition): boolean;
+
+  /**
+   * Execute a jump (platform game only)
+   */
+  jump(player: Player, level: LevelDefinition, tileSize: number): void;
 }

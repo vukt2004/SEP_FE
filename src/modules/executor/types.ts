@@ -4,11 +4,33 @@
 export type Direction = "up" | "down" | "left" | "right";
 
 /**
+ * Rotation direction for relative turning
+ */
+export type Rotation = "clockwise" | "counterclockwise";
+
+/**
  * Move command with absolute direction
  */
 export interface MoveNode {
   type: "move";
   direction: Direction;
+  blockId: string;
+}
+
+/**
+ * Move forward command - moves in the current facing direction
+ */
+export interface MoveForwardNode {
+  type: "moveForward";
+  blockId: string;
+}
+
+/**
+ * Turn command - rotates facing direction
+ */
+export interface TurnNode {
+  type: "turn";
+  rotation: Rotation;
   blockId: string;
 }
 
@@ -24,31 +46,47 @@ export interface RepeatNode {
 }
 
 /**
- * Conditional if block for path ahead
- * Evaluates condition at runtime and executes body if path is clear
+ * Condition types for reusable boolean blocks
  */
-export interface IfPathAheadNode {
-  type: "ifPathAhead";
+export type ConditionType = "wallAhead" | "pathAhead" | "obstacleAhead";
+
+/**
+ * Condition node representing a boolean expression
+ */
+export interface ConditionNode {
+  type: "condition";
+  conditionType: ConditionType;
+  blockId: string;
+}
+
+/**
+ * Custom if block with dynamic condition
+ */
+export interface CustomIfNode {
+  type: "customIf";
+  condition: ASTNode | null;
+  body: ASTNode[];
+  elseBranch: ASTNode[];
+  blockId: string;
+}
+
+/**
+ * Custom while block with dynamic condition
+ */
+export interface CustomWhileNode {
+  type: "customWhile";
+  condition: ASTNode | null;
   body: ASTNode[];
   blockId: string;
 }
 
 /**
- * Conditional if block for wall ahead
- * Evaluates condition at runtime and executes body if wall detected
+ * Custom do-while block with dynamic condition
+ * Executes body at least once, then repeats while condition is true
  */
-export interface IfWallAheadNode {
-  type: "ifWallAhead";
-  body: ASTNode[];
-  blockId: string;
-}
-
-/**
- * While loop control flow block for obstacle ahead
- * Repeats body blocks while obstacle condition remains true
- */
-export interface WhileObstacleAheadNode {
-  type: "whileObstacleAhead";
+export interface CustomDoWhileNode {
+  type: "customDoWhile";
+  condition: ASTNode | null;
   body: ASTNode[];
   blockId: string;
 }
@@ -58,10 +96,13 @@ export interface WhileObstacleAheadNode {
  */
 export type ASTNode =
   | MoveNode
+  | MoveForwardNode
+  | TurnNode
   | RepeatNode
-  | IfPathAheadNode
-  | IfWallAheadNode
-  | WhileObstacleAheadNode;
+  | ConditionNode
+  | CustomIfNode
+  | CustomWhileNode
+  | CustomDoWhileNode;
 
 /**
  * A program is a sequence of AST nodes to execute

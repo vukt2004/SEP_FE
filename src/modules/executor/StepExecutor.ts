@@ -1,10 +1,5 @@
-import type { BlockProgram, ASTNode } from "./types";
+import type { BlockProgram, ASTNode, ConditionType } from "./types";
 import type { ExecutionResult } from "./commands";
-
-/**
- * Condition type for runtime evaluation
- */
-export type ConditionType = "pathAhead" | "wallAhead" | "obstacleAhead";
 
 /**
  * Stack frame for execution state tracking
@@ -12,12 +7,16 @@ export type ConditionType = "pathAhead" | "wallAhead" | "obstacleAhead";
  * - index: Current position in the nodes array
  * - repeatLeft: For repeat blocks, tracks remaining iterations
  * - whileCondition: For while loops, specifies which condition to check
+ * - isDoWhile: For do-while loops, indicates this is a do-while frame
+ * - doWhileFirstRun: For do-while loops, tracks if this is the first execution
  */
 interface StackFrame {
   nodes: ASTNode[];
   index: number;
   repeatLeft?: number;
   whileCondition?: ConditionType;
+  isDoWhile?: boolean;
+  doWhileFirstRun?: boolean;
 }
 
 /**
@@ -106,13 +105,35 @@ export class StepExecutor {
         }
 
         // Handle while loop continuation
-        if (frame.whileCondition) {
-          // Re-evaluate condition
+        if (frame.whileCondition && !frame.isDoWhile) {
+          // Re-evaluate condition for regular while loop
           if (this.conditionChecker(frame.whileCondition)) {
             frame.index = 0; // Reset to beginning of loop
             continue;
           }
           // Condition false, exit while loop
+          this.stack.pop();
+          continue;
+        }
+
+        // Handle do-while loop continuation
+        if (frame.isDoWhile && frame.whileCondition) {
+          // For do-while, always execute at least once
+          if (frame.doWhileFirstRun) {
+            // First run complete, now check condition
+            frame.doWhileFirstRun = false;
+            if (this.conditionChecker(frame.whileCondition)) {
+              frame.index = 0; // Reset to beginning of loop
+              continue;
+            }
+          } else {
+            // Check condition for subsequent runs
+            if (this.conditionChecker(frame.whileCondition)) {
+              frame.index = 0; // Reset to beginning of loop
+              continue;
+            }
+          }
+          // Condition false, exit do-while loop
           this.stack.pop();
           continue;
         }
@@ -137,6 +158,23 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "moveForward":
+          return {
+            command: {
+              type: "moveForward",
+            },
+            blockId: node.blockId,
+          };
+
+        case "turn":
+          return {
+            command: {
+              type: "turn",
+              rotation: node.rotation,
+            },
+            blockId: node.blockId,
+          };
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
@@ -153,50 +191,98 @@ export class StepExecutor {
           continue;
         }
 
-        case "ifPathAhead": {
-          // Evaluate path ahead condition at runtime
-          if (this.conditionChecker("pathAhead")) {
+        case "customIf": {
+          // Evaluate dynamic condition
+          const conditionResult = this.evaluateCondition(node.condition);
+          if (conditionResult) {
             // Condition true: execute body
             if (node.body.length > 0) {
               this.stack.push({ nodes: node.body, index: 0 });
+            }
+          } else {
+            // Condition false: execute else branch
+            if (node.elseBranch.length > 0) {
+              this.stack.push({ nodes: node.elseBranch, index: 0 });
             }
           }
           // Continue to next iteration
           continue;
         }
 
-        case "ifWallAhead": {
-          // Evaluate wall ahead condition at runtime
-          if (this.conditionChecker("wallAhead")) {
-            // Condition true: execute body
-            if (node.body.length > 0) {
-              this.stack.push({ nodes: node.body, index: 0 });
-            }
-          }
-          // Continue to next iteration
-          continue;
-        }
-
-        case "whileObstacleAhead": {
-          // Evaluate obstacle ahead condition at runtime
-          if (this.conditionChecker("obstacleAhead")) {
-            // Condition true: push while frame with condition marker
+        case "customWhile": {
+          // Evaluate dynamic condition
+          const conditionResult = this.evaluateCondition(node.condition);
+          if (conditionResult) {
+            // Condition true: push while frame
             if (node.body.length > 0) {
               this.stack.push({
                 nodes: node.body,
                 index: 0,
-                whileCondition: "obstacleAhead",
+                whileCondition: this.extractConditionType(node.condition),
               });
             }
           }
           // If condition false, skip the while block entirely
           continue;
         }
+
+        case "customDoWhile": {
+          // Do-while always executes body at least once
+          if (node.body.length > 0) {
+            this.stack.push({
+              nodes: node.body,
+              index: 0,
+              whileCondition: this.extractConditionType(node.condition),
+              isDoWhile: true,
+              doWhileFirstRun: true,
+            });
+          }
+          // Continue to process the pushed frame
+          continue;
+        }
+
+        case "condition":
+          // Condition blocks shouldn't be executed directly in the main flow
+          // They should only be evaluated as part of if/while blocks
+          console.warn("Condition block executed directly - this should not happen");
+          continue;
       }
     }
 
     // Stack is empty, no more commands
     return null;
+  }
+
+  /**
+   * Evaluate a condition node and return boolean result
+   * @param conditionNode The condition AST node to evaluate
+   * @returns true if condition is met, false otherwise
+   */
+  private evaluateCondition(conditionNode: ASTNode | null): boolean {
+    if (!conditionNode) {
+      return false;
+    }
+
+    if (conditionNode.type === "condition") {
+      return this.conditionChecker(conditionNode.conditionType);
+    }
+
+    // Unknown condition type
+    console.warn("Unknown condition type:", conditionNode.type);
+    return false;
+  }
+
+  /**
+   * Extract the condition type from a condition node
+   * Used to store condition type in while loop frames
+   * @param conditionNode The condition AST node
+   * @returns The condition type, or undefined if not extractable
+   */
+  private extractConditionType(conditionNode: ASTNode | null): ConditionType | undefined {
+    if (!conditionNode || conditionNode.type !== "condition") {
+      return undefined;
+    }
+    return conditionNode.conditionType;
   }
 
   /**

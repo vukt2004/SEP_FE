@@ -1,4 +1,4 @@
-import type { Direction } from "./types";
+import type { Direction, Rotation } from "./types";
 
 /**
  * Command types for the game engine
@@ -8,11 +8,29 @@ export interface MoveCommand {
   direction: Direction;
 }
 
+export interface MoveForwardCommand {
+  type: "moveForward";
+}
+
+export interface TurnCommand {
+  type: "turn";
+  rotation: Rotation;
+}
+
 export interface InteractCommand {
   type: "interact";
 }
 
-export type EngineCommand = MoveCommand | InteractCommand;
+export interface JumpCommand {
+  type: "jump";
+}
+
+export type EngineCommand =
+  | MoveCommand
+  | MoveForwardCommand
+  | TurnCommand
+  | InteractCommand
+  | JumpCommand;
 
 /**
  * Result of executing a single block

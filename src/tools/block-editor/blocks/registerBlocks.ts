@@ -79,6 +79,46 @@ function registerBlock(blockDef: BlockConfig): void {
         ]);
       }
 
+      // Add else statement input if defined (for if-else blocks)
+      if (blockDef.elseStatementInput) {
+        const elseStatementMessage = blockDef.elseStatementInput.label
+          ? blockDef.elseStatementInput.label.charAt(0).toUpperCase() +
+            blockDef.elseStatementInput.label.slice(1) +
+            " %1"
+          : "Else %1";
+        messages.push(elseStatementMessage);
+        args.push([
+          {
+            type: "input_statement",
+            name: blockDef.elseStatementInput.name,
+          },
+        ]);
+      }
+
+      // Add post-statement inputs if defined (for do-while pattern)
+      if (blockDef.postStatementInputs && blockDef.postStatementInputs.length > 0) {
+        let postMessage = blockDef.postStatementLabel || "";
+        const postArgs: unknown[] = [];
+
+        blockDef.postStatementInputs.forEach((input) => {
+          if (input.kind === "value") {
+            postMessage += ` %${postArgs.length + 1}`;
+            postArgs.push({
+              type: "input_value",
+              name: input.name,
+              check: input.check,
+            });
+            // Add label after the input
+            if (input.label) {
+              postMessage += ` ${input.label}`;
+            }
+          }
+        });
+
+        messages.push(postMessage);
+        args.push(postArgs);
+      }
+
       // Build the final configuration object
       interface DynamicBlockConfig {
         type: string;
@@ -87,6 +127,7 @@ function registerBlock(blockDef: BlockConfig): void {
         helpUrl: string;
         previousStatement?: boolean | null;
         nextStatement?: boolean | null;
+        output?: string | null;
         [key: string]: unknown;
       }
 
@@ -104,6 +145,11 @@ function registerBlock(blockDef: BlockConfig): void {
           config[`args${index}`] = args[index];
         }
       });
+
+      // Set output type for value blocks (e.g., Boolean)
+      if (blockDef.output !== undefined) {
+        config.output = blockDef.output;
+      }
 
       // Set statement connections based on config
       if (blockDef.previousStatement !== undefined) {

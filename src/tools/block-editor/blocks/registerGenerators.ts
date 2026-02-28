@@ -33,26 +33,25 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
 
   switch (blockType) {
     case "move_forward":
-      // Legacy forward movement - could map to up in grid coordinates
+      // Move forward in the current facing direction
       return {
-        type: "move",
-        direction: "up",
+        type: "moveForward",
         blockId,
       };
 
     case "turn_left":
-      // Map to left movement in absolute coordinates
+      // Rotate 90 degrees counter-clockwise
       return {
-        type: "move",
-        direction: "left",
+        type: "turn",
+        rotation: "counterclockwise",
         blockId,
       };
 
     case "turn_right":
-      // Map to right movement in absolute coordinates
+      // Rotate 90 degrees clockwise
       return {
-        type: "move",
-        direction: "right",
+        type: "turn",
+        rotation: "clockwise",
         blockId,
       };
 
@@ -96,28 +95,59 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       };
     }
 
-    case "if_path_ahead": {
+    // New condition blocks (return condition AST nodes)
+    case "wall_ahead":
+      return {
+        type: "condition",
+        conditionType: "wallAhead",
+        blockId,
+      };
+
+    case "path_ahead":
+      return {
+        type: "condition",
+        conditionType: "pathAhead",
+        blockId,
+      };
+
+    case "obstacle_ahead":
+      return {
+        type: "condition",
+        conditionType: "obstacleAhead",
+        blockId,
+      };
+
+    // New control blocks with dynamic conditions
+    case "custom_if": {
+      const condition = getValueInput(block, "CONDITION");
+      const body = getStatementBlocks(block, "DO");
+      const elseBranch = getStatementBlocks(block, "ELSE");
+      return {
+        type: "customIf",
+        condition,
+        body,
+        elseBranch,
+        blockId,
+      };
+    }
+
+    case "custom_while": {
+      const condition = getValueInput(block, "CONDITION");
       const body = getStatementBlocks(block, "DO");
       return {
-        type: "ifPathAhead",
+        type: "customWhile",
+        condition,
         body,
         blockId,
       };
     }
 
-    case "if_wall_ahead": {
+    case "custom_do_while": {
+      const condition = getValueInput(block, "CONDITION");
       const body = getStatementBlocks(block, "DO");
       return {
-        type: "ifWallAhead",
-        body,
-        blockId,
-      };
-    }
-
-    case "while_obstacle_ahead": {
-      const body = getStatementBlocks(block, "DO");
-      return {
-        type: "whileObstacleAhead",
+        type: "customDoWhile",
+        condition,
         body,
         blockId,
       };
@@ -147,6 +177,26 @@ function getStatementBlocks(block: Blockly.Block, inputName: string): ASTNode[] 
   }
 
   return getConnectedBlocks(targetBlock);
+}
+
+/**
+ * Extracts and converts a value input block (e.g., Boolean condition)
+ * @param block The parent block
+ * @param inputName The name of the value input
+ * @returns The converted AST node, or null if not connected
+ */
+function getValueInput(block: Blockly.Block, inputName: string): ASTNode | null {
+  const input = block.getInput(inputName);
+  if (!input?.connection) {
+    return null;
+  }
+
+  const targetBlock = input.connection.targetBlock();
+  if (!targetBlock) {
+    return null;
+  }
+
+  return convertBlockToAST(targetBlock);
 }
 
 /**
