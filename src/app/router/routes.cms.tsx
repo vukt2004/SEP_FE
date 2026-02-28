@@ -3,10 +3,10 @@ import React from "react";
 import type { RouteObject } from "react-router-dom";
 
 // Guard (cms token + (optionally) role check inside)
-import { RequireCmsAuth } from "@/portals/cms/guards/RequireCmsAuth";
+//import { RequireCmsAuth } from "@/portals/cms/guards/RequireCmsAuth";
 
 // Layout (cms shell)
-const CmsLayout = React.lazy(() => import("@/portals/cms/layout/CmsLayout"));
+// const CmsLayout = React.lazy(() => import("@/portals/cms/layout/CmsLayout"));
 
 // Pages (cms authenticated)
 const CmsDashboardPage = React.lazy(() => import("@/portals/cms/pages/DashboardPage"));
@@ -16,11 +16,11 @@ const CmsDashboardPage = React.lazy(() => import("@/portals/cms/pages/DashboardP
 
 export const cmsRoutes: RouteObject = {
   path: "cms",
-  element: (
-    <RequireCmsAuth>
-      <CmsLayout />
-    </RequireCmsAuth>
-  ),
+  // element: (
+  //   // <RequireCmsAuth>
+  //   //   <CmsLayout />
+  //   // </RequireCmsAuth>
+  // ),
   children: [
     {
       index: true,
