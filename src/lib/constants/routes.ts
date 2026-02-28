@@ -3,6 +3,7 @@ export const ROUTES = {
   LANDING: "/",
   GAME: "/game",
   PLATFORM: "/platform",
+  MAP_EDITOR: "/map-editor",
 
   // Student
   STUDENT_LOGIN: "/login",
