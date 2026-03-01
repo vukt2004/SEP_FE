@@ -3,10 +3,10 @@
   "description": "Default Pixel Adventure tileset",
   "tiles": {
     "0": {
-      "imagePath": "/assets/Pixel Adventure 1/Background/Blue.png",
-      "tileX": 0,
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 16
     },
     "1": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
@@ -15,10 +15,10 @@
       "tileSize": 16
     },
     "2": {
-      "imagePath": "/assets/Pixel Adventure 1/Background/Green.png",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 16
     },
     "3": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",

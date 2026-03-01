@@ -17,6 +17,7 @@ const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 
 const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
 const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
+const GameMenu = React.lazy(() => import("../../pages/Game-Menu/GameMenu"));
 
 const MapEditor = React.lazy(() => import("../../pages/Map-Editor/MapEditor"));
 
@@ -27,6 +28,15 @@ const routes: RouteObject[] = [
     element: (
       <React.Suspense fallback={<AppLoader />}>
         <LandingPage />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: ROUTES.GAMEMENU,
+    errorElement: <RouteErrorPage />,
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <GameMenu />
       </React.Suspense>
     ),
   },

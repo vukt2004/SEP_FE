@@ -341,18 +341,6 @@
       "Tree canopies you can walk under",
       "Bridge/overpass effect",
       "Multiple layers create visual depth"
-    ],
-    "tileKey": {
-      "0": "Empty/transparent",
-      "1": "Rock/stone tile",
-      "2": "Grass walkable floor",
-      "3": "Stone wall/border",
-      "4": "Flower decoration (ground layer)",
-      "5": "Bridge edge/support",
-      "6": "Bridge walkway",
-      "7": "Tree canopy (foreground - renders above player)",
-      "8": "Tree canopy center (foreground)",
-      "9": "Banner/cloth (foreground decoration)"
-    }
+    ]
   }
 }

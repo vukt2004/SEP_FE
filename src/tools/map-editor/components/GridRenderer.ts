@@ -1,11 +1,13 @@
 import type { MapData } from "../../../shared/types/MapSchema";
 import type { EditorStore } from "../store/editorStore";
-import { TilesetLoader, TilesetCache, type TileDefinition } from "../../../shared/assets/tilesets";
 import {
+  TilesetLoader,
+  TilesetCache,
+  type TileDefinition,
   ObjectSpriteLoader,
   ObjectSpriteCache,
   type ObjectDefinition,
-} from "../../../shared/assets/objects";
+} from "../../../modules/engine/assets";
 
 /**
  * Grid renderer with tileset support

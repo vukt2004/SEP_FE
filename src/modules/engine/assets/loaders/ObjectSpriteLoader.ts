@@ -1,4 +1,4 @@
-import type { ObjectDefinition } from "./ObjectDefinition";
+import type { ObjectDefinition } from "../definitions/ObjectDefinition";
 
 /**
  * Object sprites configuration format loaded from JSON

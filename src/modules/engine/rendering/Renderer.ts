@@ -2,9 +2,7 @@ import type { LevelDefinition } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
-import type { TileDefinition } from "../../../shared/assets/tilesets";
-import { TilesetCache } from "../../../shared/assets/tilesets";
-import { TilesetLoader } from "../../../shared/assets/tilesets";
+import { type TileDefinition, TilesetCache, TilesetLoader } from "../assets";
 
 const TILE_COLORS: Record<number, string> = {
   0: "#eeeeee", // Empty
