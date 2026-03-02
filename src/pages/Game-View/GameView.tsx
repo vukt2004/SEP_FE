@@ -57,7 +57,7 @@ export default function GameView() {
 
         // Create TopDown game config (no gravity)
         const config = createGameConfig(LevelType.TopDown);
-        const engine = new GameEngine(levelDefinition, tileSize, ctx, config);
+        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, "topdown");
         engineRef.current = engine;
 
         // Integrate collision example

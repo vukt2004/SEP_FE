@@ -5,7 +5,7 @@ import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
   type ObjectDefinition,
-} from "../../shared/assets/objects";
+} from "../../modules/engine/assets";
 
 interface MapEditorControlsProps {
   mapData: MapData;

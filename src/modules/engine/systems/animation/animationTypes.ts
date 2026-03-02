@@ -5,4 +5,5 @@ export interface AnimationDefinition {
   frames: number[];
   frameDuration: number;
   loop: boolean;
+  row?: number; // Sprite sheet row offset (for multi-row spritesheets)
 }

@@ -58,7 +58,7 @@ export default function PlatformGameView() {
 
         // Create Platform game config (with gravity)
         const config = createGameConfig(LevelType.Platform);
-        const engine = new GameEngine(levelDefinition, tileSize, ctx, config);
+        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, "platformer");
         engineRef.current = engine;
 
         // Initialize and start

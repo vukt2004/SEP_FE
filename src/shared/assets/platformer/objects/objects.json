@@ -1,0 +1,72 @@
+{
+  "name": "platformer-objects",
+  "description": "Object definitions for platformer game using Pixel Adventure assets",
+  "objects": {
+    "apple": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "banana": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Bananas.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "cherry": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Cherries.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "kiwi": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Kiwi.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "melon": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Melon.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "orange": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Orange.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "strawberry": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Strawberry.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 32
+    },
+    "box1": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 28
+    },
+    "box2": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 28
+    },
+    "box3": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 28
+    },
+    "checkpoint": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    }
+  }
+}

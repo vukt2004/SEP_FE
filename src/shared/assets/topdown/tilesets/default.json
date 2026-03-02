@@ -1,0 +1,102 @@
+{
+  "name": "default",
+  "description": "Default topdown tileset using Sprout Lands assets",
+  "tiles": {
+    "0": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "1": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "2": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "3": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "4": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "5": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "6": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "7": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "8": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "9": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "10": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Water.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "11": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Water.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "12": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled_Dirt.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "13": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "14": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "15": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Paths.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    }
+  }
+}

@@ -8,7 +8,7 @@ import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
 import { AnimationSystem } from "../systems/animation/AnimationSystem";
 import { animationRegistry } from "../systems/animation/animationRegistry";
-import { loadAnimations } from "../systems/animation/animationLoader";
+import { initializeAnimationSystem, loadAnimations } from "../systems/animation/animationLoader";
 import { CollisionSystem } from "../systems/collision/CollisionSystem";
 import { BoxCollider } from "../physics/BoxCollider";
 import type { GameConfig } from "./GameConfig";
@@ -17,6 +17,7 @@ import { PlayerControllerFactory } from "../controllers/PlayerControllerFactory"
 import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
+import type { GameType } from "../../../shared/types/GameType";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -57,22 +58,32 @@ export class GameEngine {
   private lastTimestamp: number = 0;
   private config: GameConfig;
   private controller: IPlayerController;
+  private gameType: GameType;
 
+  /**
+   * @param level - Level definition
+   * @param tileSize - Size of each tile in pixels
+   * @param ctx - Canvas rendering context
+   * @param config - Game configuration
+   * @param gameType - Game type for asset loading (topdown or platformer)
+   */
   constructor(
     level: LevelDefinition,
     tileSize: number,
     ctx: CanvasRenderingContext2D,
     config: GameConfig,
+    gameType: GameType,
   ) {
     this.level = level;
     this.tileSize = tileSize;
     this.ctx = ctx;
     this.config = config;
+    this.gameType = gameType;
     this.controller = PlayerControllerFactory.getController(config.levelType);
     this.animationSystem = new AnimationSystem();
     this.collisionSystem = new CollisionSystem();
     this.collisionSystem.setEventEmitter((event) => this.emit(event));
-    this.renderer = new Renderer(ctx, this.animationSystem);
+    this.renderer = new Renderer(ctx, this.animationSystem, gameType);
 
     // Initialize runtime state
     const startX = level.startPosition.col;
@@ -104,6 +115,8 @@ export class GameEngine {
   }
 
   async initialize(): Promise<void> {
+    // Initialize animation system with game type
+    initializeAnimationSystem(this.gameType);
     await loadAnimations();
     await this.renderer.preloadTilesets(this.level);
   }
@@ -176,13 +189,13 @@ export class GameEngine {
     this.runtime.player.pixelY = startPixelY;
     this.runtime.player.targetPixelX = startPixelX;
     this.runtime.player.targetPixelY = startPixelY;
-    this.runtime.player.facing = "right";
-    this.runtime.player.direction = "right";
+    this.runtime.player.facing = this.gameType === "topdown" ? "down" : "right";
+    this.runtime.player.direction = this.gameType === "topdown" ? "down" : "right";
     this.runtime.player.isMoving = false;
     this.runtime.player.isJumping = false;
     this.runtime.player.isGrounded = true;
     this.runtime.player.isMoving = false;
-    this.runtime.player.animationState = "idle";
+    this.runtime.player.animationState = this.resolvePlayerAnimationState(this.runtime.player);
 
     // Reset game state
     this.runtime.stepCount = 0;
@@ -292,9 +305,10 @@ export class GameEngine {
 
     // Update animation for goal
     const goalAnimMap = animationRegistry["goal"];
-    const goalAnim = goalAnimMap?.["default"];
+    const goalAnim = goalAnimMap?.["idle"] || goalAnimMap?.["default"];
+    const goalState = goalAnimMap?.["idle"] ? "idle" : "default";
     if (goalAnim) {
-      this.animationSystem.update("goal", "default", goalAnim, deltaTime);
+      this.animationSystem.update("goal", goalState, goalAnim, deltaTime);
     }
 
     // Render current frame
@@ -312,10 +326,16 @@ export class GameEngine {
   }
 
   private resolvePlayerAnimationState(player: Player): string {
-    if (player.isMoving) {
-      return "run";
+    const baseState = player.isMoving ? "run" : "idle";
+
+    // For topdown games, use directional animations
+    if (this.gameType === "topdown") {
+      const direction = player.direction || "down";
+      return `${baseState}-${direction}`;
     }
-    return "idle";
+
+    // For platformer games, use simple run/idle
+    return baseState;
   }
 
   /**
@@ -356,9 +376,15 @@ export class GameEngine {
         // Rotate facing direction by 90 degrees
         const newDirection = this.rotateFacing(this.runtime.player.facing, command.rotation);
         this.runtime.player.facing = newDirection;
-        // Update sprite direction for rendering (left/right flip)
-        if (newDirection === "left" || newDirection === "right") {
+        // Update sprite direction for rendering
+        if (this.gameType === "topdown") {
+          // Topdown: use all four directions
           this.runtime.player.direction = newDirection;
+        } else {
+          // Platformer: only update for left/right (for sprite flipping)
+          if (newDirection === "left" || newDirection === "right") {
+            this.runtime.player.direction = newDirection;
+          }
         }
         break;
       }
@@ -390,9 +416,15 @@ export class GameEngine {
     // Update player facing direction for movement
     this.runtime.player.facing = direction;
 
-    // Update sprite direction for rendering (left/right flip)
-    if (direction === "left" || direction === "right") {
+    // Update sprite direction for rendering
+    if (this.gameType === "topdown") {
+      // Topdown: use all four directions
       this.runtime.player.direction = direction;
+    } else {
+      // Platformer: only update for left/right (for sprite flipping)
+      if (direction === "left" || direction === "right") {
+        this.runtime.player.direction = direction;
+      }
     }
 
     // Execute movement in that direction
@@ -494,16 +526,20 @@ export class GameEngine {
 
   private turnLeft(): void {
     this.runtime.player.facing = TURN_LEFT[this.runtime.player.facing];
-    // Update sprite direction if turning to horizontal
-    if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
+    // Update sprite direction
+    if (this.gameType === "topdown") {
+      this.runtime.player.direction = this.runtime.player.facing;
+    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }
   }
 
   private turnRight(): void {
     this.runtime.player.facing = TURN_RIGHT[this.runtime.player.facing];
-    // Update sprite direction if turning to horizontal
-    if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
+    // Update sprite direction
+    if (this.gameType === "topdown") {
+      this.runtime.player.direction = this.runtime.player.facing;
+    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }
   }

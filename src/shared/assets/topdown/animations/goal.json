@@ -1,0 +1,21 @@
+{
+  "objectType": "goal",
+  "states": {
+    "idle": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Objects/Goal (Idle).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "pressed": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Objects/Goal (Pressed) (64x64).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": false
+    }
+  }
+}

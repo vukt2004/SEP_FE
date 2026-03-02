@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { TilesetLoader, TilesetCache, type TileDefinition } from "../../shared/assets/tilesets";
+import { TilesetLoader, TilesetCache, type TileDefinition } from "../../modules/engine/assets";
 
 interface TilePaletteProps {
   selectedTile: number | null;

@@ -2,9 +2,8 @@ import type { LevelDefinition } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
-import type { TileDefinition } from "../../../shared/assets/tilesets";
-import { TilesetCache } from "../../../shared/assets/tilesets";
-import { TilesetLoader } from "../../../shared/assets/tilesets";
+import { type TileDefinition, TilesetCache, TilesetLoader } from "../assets";
+import type { GameType } from "../../../shared/types/GameType";
 
 const TILE_COLORS: Record<number, string> = {
   0: "#eeeeee", // Empty
@@ -28,17 +27,26 @@ export class Renderer {
   private tilesetCache: TilesetCache;
   private tilesetLoader: TilesetLoader;
   private currentTileset: Record<number, TileDefinition> | null = null;
+  private gameType: GameType;
 
+  /**
+   * @param ctx - Canvas rendering context
+   * @param animationSystem - Animation system instance
+   * @param gameType - Game type for asset loading
+   * @param debugMode - Enable debug rendering
+   */
   constructor(
     ctx: CanvasRenderingContext2D,
     animationSystem: AnimationSystem,
-    debugMode: boolean = true,
+    gameType: GameType,
+    debugMode: boolean = false,
   ) {
     this.ctx = ctx;
     this.animationSystem = animationSystem;
     this.debugMode = debugMode;
+    this.gameType = gameType;
     this.tilesetCache = new TilesetCache();
-    this.tilesetLoader = new TilesetLoader();
+    this.tilesetLoader = new TilesetLoader(gameType);
   }
 
   /**
@@ -184,14 +192,16 @@ export class Renderer {
     const goalY = level.goalPosition.row * tileSize;
 
     const goalAnimMap = animationRegistry["goal"];
-    const goalAnim = goalAnimMap?.["default"];
+    const goalAnim = goalAnimMap?.["idle"] || goalAnimMap?.["default"];
 
     if (goalAnim) {
       // Render animated goal
-      const frameIndex = this.animationSystem.getCurrentFrame("goal", "default");
+      const goalState = goalAnimMap?.["idle"] ? "idle" : "default";
+      const frameIndex = this.animationSystem.getCurrentFrame("goal", goalState);
       const frame = goalAnim.frames[frameIndex];
       const sx = frame * goalAnim.frameWidth;
-      const sy = 0;
+      const sy = (goalAnim.row ?? 0) * goalAnim.frameHeight;
+
       this.ctx.drawImage(
         goalAnim.image,
         sx,
@@ -229,7 +239,7 @@ export class Renderer {
         const frameIndex = this.animationSystem.getCurrentFrame(obj.id, stateKey);
         const frame = anim.frames[frameIndex];
         const sx = frame * anim.frameWidth;
-        const sy = 0;
+        const sy = (anim.row ?? 0) * anim.frameHeight;
         this.ctx.drawImage(
           anim.image,
           sx,
@@ -263,18 +273,29 @@ export class Renderer {
     const pixelX = player.pixelX;
     const pixelY = player.pixelY;
 
+    // Scale topdown player to be 2x larger for better visibility
+    const isTopdown = this.gameType === "topdown";
+    const scale = isTopdown ? 2.0 : 1.0;
+    const renderWidth = tileSize * scale;
+    const renderHeight = tileSize * scale;
+    // Center the larger sprite on the tile
+    const offsetX = isTopdown ? -(tileSize * (scale - 1)) / 2 : 0;
+    const offsetY = isTopdown ? -(tileSize * (scale - 1)) / 2 : 0;
+
     if (anim) {
       // Sprite-based rendering
       const frameIndex = this.animationSystem.getCurrentFrame(player.id, player.animationState);
       const frame = anim.frames[frameIndex];
       const sx = frame * anim.frameWidth;
-      const sy = 0;
+      const sy = (anim.row ?? 0) * anim.frameHeight;
 
       this.ctx.save();
 
-      // Flip sprite horizontally if facing left
-      if (player.direction === "left") {
-        this.ctx.translate(pixelX + tileSize, pixelY);
+      // Only flip for platformer when facing left (topdown has separate left/right sprites)
+      const shouldFlip = this.gameType === "platformer" && player.direction === "left";
+
+      if (shouldFlip) {
+        this.ctx.translate(pixelX + offsetX + renderWidth, pixelY + offsetY);
         this.ctx.scale(-1, 1);
         this.ctx.drawImage(
           anim.image,
@@ -284,8 +305,8 @@ export class Renderer {
           anim.frameHeight,
           0,
           0,
-          tileSize,
-          tileSize,
+          renderWidth,
+          renderHeight,
         );
       } else {
         this.ctx.drawImage(
@@ -294,10 +315,10 @@ export class Renderer {
           sy,
           anim.frameWidth,
           anim.frameHeight,
-          pixelX,
-          pixelY,
-          tileSize,
-          tileSize,
+          pixelX + offsetX,
+          pixelY + offsetY,
+          renderWidth,
+          renderHeight,
         );
       }
 
@@ -305,7 +326,7 @@ export class Renderer {
     } else {
       // Fallback: colored square
       this.ctx.fillStyle = PLAYER_COLOR;
-      this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
+      this.ctx.fillRect(pixelX + offsetX, pixelY + offsetY, renderWidth, renderHeight);
     }
 
     // Debug: Draw direction arrow
