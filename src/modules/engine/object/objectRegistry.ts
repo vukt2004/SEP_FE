@@ -5,9 +5,9 @@ export const objectRegistry: Record<string, ObjectBehavior> = {
     isWinObject: true,
   },
 
-  coin: {
-    isCollidable: () => false, // Player can walk through coins
-    // coins are collectibles but don't trigger win condition
+  fruit: {
+    isCollidable: () => false, // Player can walk through fruits
+    // fruits are collectibles but don't trigger win condition
   },
 
   door: {

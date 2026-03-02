@@ -105,7 +105,7 @@ export class Renderer {
     }
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
-    // 4. Objects (coins, etc.)
+    // 4. Objects (fruits, etc.)
     this.drawObjects(level, tileSize);
     // 5. Player character
     this.drawPlayer(player, tileSize);

@@ -399,8 +399,8 @@
   },
   "objects": [
     {
-      "id": "coin-1",
-      "type": "coin",
+      "id": "fruit-1",
+      "type": "fruit",
       "position": {
         "row": 11,
         "col": 4
@@ -410,8 +410,8 @@
       }
     },
     {
-      "id": "coin-2",
-      "type": "coin",
+      "id": "fruit-2",
+      "type": "fruit",
       "position": {
         "row": 13,
         "col": 3
@@ -421,8 +421,8 @@
       }
     },
     {
-      "id": "coin-3",
-      "type": "coin",
+      "id": "fruit-3",
+      "type": "fruit",
       "position": {
         "row": 8,
         "col": 16
@@ -432,8 +432,8 @@
       }
     },
     {
-      "id": "coin-4",
-      "type": "coin",
+      "id": "fruit-4",
+      "type": "fruit",
       "position": {
         "row": 1,
         "col": 12

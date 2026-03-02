@@ -18,7 +18,7 @@ export class EditorStore {
   private mapData: MapData;
   private activeLayer: LayerType;
   private selectedTile: number | null;
-  private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
+  private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
   private layerVisibility: Record<LayerType, boolean>;
   private listeners: Set<() => void>;
   private undoStack: MapData[];
@@ -71,7 +71,7 @@ export class EditorStore {
   /**
    * Get the currently selected tool
    */
-  getSelectedTool(): "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null {
+  getSelectedTool(): "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null {
     return this.selectedTool;
   }
 
@@ -201,7 +201,7 @@ export class EditorStore {
    * @param tool - The tool to select (or null to deselect)
    */
   setSelectedTool(
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
   ): void {
     this.selectedTool = tool;
 
@@ -262,9 +262,9 @@ export class EditorStore {
    * @returns True if the tool is an object tool
    */
   private isObjectTool(
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
   ): boolean {
-    return tool === "player" || tool === "goal" || tool === "coin" || tool === "enemy";
+    return tool === "player" || tool === "goal" || tool === "fruit" || tool === "enemy";
   }
 
   /**
@@ -414,17 +414,17 @@ export class EditorStore {
         this.mapData.objects.goal = { x, y };
         break;
 
-      case "coin": {
-        // Toggle coin at position
-        const coinIndex = this.mapData.objects.coins.findIndex(
-          (coin) => coin.x === x && coin.y === y,
+      case "fruit": {
+        // Toggle fruit at position
+        const fruitIndex = this.mapData.objects.fruits.findIndex(
+          (fruit) => fruit.x === x && fruit.y === y,
         );
-        if (coinIndex !== -1) {
-          // Remove existing coin
-          this.mapData.objects.coins.splice(coinIndex, 1);
+        if (fruitIndex !== -1) {
+          // Remove existing fruit
+          this.mapData.objects.fruits.splice(fruitIndex, 1);
         } else {
-          // Add new coin
-          this.mapData.objects.coins.push({ x, y });
+          // Add new fruit
+          this.mapData.objects.fruits.push({ x, y });
         }
         break;
       }
@@ -495,7 +495,7 @@ export class EditorStore {
     // Clear objects that might be out of bounds
     this.mapData.objects.playerSpawn = null;
     this.mapData.objects.goal = null;
-    this.mapData.objects.coins = [];
+    this.mapData.objects.fruits = [];
     this.mapData.objects.enemies = [];
 
     this.notify();
@@ -517,6 +517,28 @@ export class EditorStore {
     this.selectedTile = 0;
     this.selectedTool = "paint";
 
+    this.notify();
+  }
+
+  /**
+   * Update the map name
+   *
+   * @param name - New map name
+   */
+  setMapName(name: string): void {
+    this.saveHistory();
+    this.mapData.config.name = name;
+    this.notify();
+  }
+
+  /**
+   * Update the map description
+   *
+   * @param description - New map description
+   */
+  setMapDescription(description: string): void {
+    this.saveHistory();
+    this.mapData.config.description = description;
     this.notify();
   }
 
@@ -545,6 +567,14 @@ export class EditorStore {
         loadedMap.config.height,
         0,
       );
+    }
+
+    // Backward compatibility: Add missing name and description if needed
+    if (!loadedMap.config.name) {
+      loadedMap.config.name = "";
+    }
+    if (!loadedMap.config.description) {
+      loadedMap.config.description = "";
     }
 
     this.mapData = loadedMap;

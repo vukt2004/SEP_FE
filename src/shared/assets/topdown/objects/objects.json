@@ -9,16 +9,16 @@
       "frameIndex": 0
     },
     "goal": {
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Goal (Idle).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
       "frameIndex": 0
     },
-    "coin": {
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Egg_item.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
-      "frameIndex": 0
+    "fruit": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Apple.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 1
     },
     "enemy": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Free Chicken Sprites.png",

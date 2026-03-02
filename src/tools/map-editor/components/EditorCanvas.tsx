@@ -24,7 +24,7 @@ function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
  *
  * Object placement rules:
  * - Player and Goal: Single click placement only (no drag)
- * - Coins and Enemies: Toggle on click (can drag)
+ * - Fruits and Enemies: Toggle on click (can drag)
  * - Paint and Erase: Standard drag painting
  */
 export function EditorCanvas({ store }: EditorCanvasProps) {
