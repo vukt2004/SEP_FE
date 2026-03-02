@@ -1,6 +1,6 @@
 // src/app/router/index.tsx
 import React from "react";
-import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, type RouteObject } from "react-router-dom";
 
 import { ROUTES } from "@/lib/constants/routes";
 import { studentRoutes } from "./routes.student";
@@ -116,7 +116,11 @@ const routes: RouteObject[] = [
   // Mount authenticated route groups (/app/* and /cms/*)
   {
     path: "/",
-    element: <React.Suspense fallback={<AppLoader />} />,
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <Outlet />
+      </React.Suspense>
+    ),
     children: [studentRoutes, cmsRoutes],
   },
 

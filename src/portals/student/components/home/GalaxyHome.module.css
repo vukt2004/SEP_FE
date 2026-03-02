@@ -1,0 +1,262 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* HUD */
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 16px;
+}
+
+.hudLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+}
+.hudName {
+  font-weight: 800;
+  line-height: 1.1;
+}
+.hudMeta {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.hudMid {
+  flex: 1;
+  max-width: 420px;
+  min-width: 220px;
+}
+.xpRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.xpBar {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.xpFill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.hudRight {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.statPill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .hud {
+    flex-wrap: wrap;
+  }
+  .hudMid {
+    max-width: none;
+  }
+}
+
+/* Map Area */
+.mapArea {
+  position: relative;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 20px;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.mapBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.06), transparent 55%),
+    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.05), transparent 55%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.04), transparent 60%);
+  pointer-events: none;
+}
+
+/* Planets layout (MVP map-ish) */
+.planets {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px;
+}
+
+.planets > :nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .mapArea {
+    min-height: unset;
+  }
+  .planets {
+    grid-template-columns: 1fr;
+  }
+  .planets > :nth-child(3) {
+    grid-column: auto;
+  }
+}
+
+/* Planet card */
+.planetCard {
+  position: relative;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  min-height: 160px;
+}
+
+.planetHit {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  outline: none;
+}
+
+.planetHit:focus-visible {
+  box-shadow: 0 0 0 3px rgba(106, 140, 255, 0.35);
+}
+
+.planetTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.planetTitle {
+  font-weight: 900;
+}
+.planetSubtitle {
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.planetActions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.locked {
+  opacity: 0.75;
+}
+
+/* Tags */
+.tag {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tagNew {
+  border-color: rgba(255, 199, 89, 0.4);
+}
+.tagLocked {
+  border-color: rgba(255, 82, 82, 0.35);
+}
+.tagReady {
+  border-color: rgba(70, 214, 140, 0.35);
+}
+
+/* Widgets */
+.sideArea {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.widgetTitle {
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+.recoList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recoItem {
+  display: block;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  color: inherit;
+}
+.recoTitle {
+  font-weight: 700;
+}
+.recoMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dot {
+  opacity: 0.6;
+}
+
+.quickHint {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}

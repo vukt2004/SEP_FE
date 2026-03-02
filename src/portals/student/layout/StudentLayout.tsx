@@ -1,30 +1,12 @@
-import React from "react";
+// src/portals/student/layout/StudentLayout.tsx
+import { Outlet } from "react-router-dom";
 
-const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export default function StudentLayout() {
   return (
-    <div className="student-layout">
-      <header className="header">
-        <h1>Student Portal</h1>
-      </header>
-      <nav className="sidebar">
-        <ul>
-          <li>
-            <a href="/dashboard">Dashboard</a>
-          </li>
-          <li>
-            <a href="/courses">Courses</a>
-          </li>
-          <li>
-            <a href="/grades">Grades</a>
-          </li>
-          <li>
-            <a href="/profile">Profile</a>
-          </li>
-        </ul>
-      </nav>
-      <main className="content">{children}</main>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+      <main className="container" style={{ paddingTop: 18, paddingBottom: 24 }}>
+        <Outlet />
+      </main>
     </div>
   );
-};
-
-export default StudentLayout;
+}
