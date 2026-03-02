@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { TilesetLoader, TilesetCache, type TileDefinition } from "../../modules/engine/assets";
+import type { MapData } from "../../shared/types/MapSchema";
+import type { GameType } from "../../shared/types/GameType";
 
 interface TilePaletteProps {
   selectedTile: number | null;
   onTileSelect: (tileId: number | null) => void;
+  mapData: MapData;
   tilesetName?: string;
+}
+
+/**
+ * Convert MapData config type to GameType
+ */
+function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
+  return mapType === "platform" ? "platformer" : "topdown";
 }
 
 /**
@@ -16,20 +26,23 @@ interface TilePaletteProps {
 export function TilePalette({
   selectedTile,
   onTileSelect,
+  mapData,
   tilesetName = "default",
 }: TilePaletteProps) {
   const [tileset, setTileset] = useState<Record<number, TileDefinition> | null>(null);
   const [tileImages, setTileImages] = useState<Map<string, HTMLImageElement>>(new Map());
-  const tilesetLoaderRef = useRef(new TilesetLoader());
+  const gameType = mapTypeToGameType(mapData.config.type);
   const tilesetCacheRef = useRef(new TilesetCache());
 
   /**
-   * Load tileset on mount
+   * Load tileset on mount or when game type/tileset name changes
    */
   useEffect(() => {
     async function loadTileset() {
       try {
-        const tilesetDef = await tilesetLoaderRef.current.loadTilesetDefinition(tilesetName);
+        // Create loader with current game type
+        const tilesetLoader = new TilesetLoader(gameType);
+        const tilesetDef = await tilesetLoader.loadTilesetDefinition(tilesetName);
         setTileset(tilesetDef);
 
         // Load all unique tileset images
@@ -53,7 +66,7 @@ export function TilePalette({
     }
 
     loadTileset();
-  }, [tilesetName]);
+  }, [tilesetName, gameType]);
 
   if (!tileset) {
     return (

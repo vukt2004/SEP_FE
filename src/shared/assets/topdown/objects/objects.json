@@ -2,47 +2,71 @@
   "name": "topdown-objects",
   "description": "Object definitions for topdown game using Sprout Lands assets",
   "objects": {
+    "player": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameIndex": 0
+    },
+    "goal": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
+    },
+    "coin": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Egg_item.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
+    },
+    "enemy": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Free Chicken Sprites.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
     "chest": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     },
     "tree": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
-      "tileX": 2,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 2
     },
     "rock": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
-      "tileX": 3,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 3
     },
     "flower": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     },
     "bush": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
-      "tileX": 1,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 1
     },
     "egg": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Egg_item.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     },
     "milk": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Simple_Milk_and_grass_item.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 16
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     }
   }
 }

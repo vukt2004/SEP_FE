@@ -2,71 +2,95 @@
   "name": "platformer-objects",
   "description": "Object definitions for platformer game using Pixel Adventure assets",
   "objects": {
+    "player": {
+      "imagePath": "/assets/Pixel Adventure 1/Main Characters/Virtual Guy/Idle (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
+    "goal": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameIndex": 0
+    },
+    "coin": {
+      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
+    "enemy": {
+      "imagePath": "/assets/Pixel Adventure 1/Main Characters/Ninja Frog/Idle (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
     "apple": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "banana": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Bananas.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "cherry": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Cherries.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "kiwi": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Kiwi.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "melon": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Melon.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "orange": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Orange.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "strawberry": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Strawberry.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 32
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "box1": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 28
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameIndex": 0
     },
     "box2": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 28
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameIndex": 0
     },
     "box3": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 28
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameIndex": 0
     },
     "checkpoint": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
-      "tileX": 0,
-      "tileY": 0,
-      "tileSize": 64
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameIndex": 0
     }
   }
 }

@@ -2,9 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { EditorStore } from "../store/editorStore";
 import { TileRenderer } from "./GridRenderer";
 import { getGridPosition } from "../utils/getGridPosition";
+import type { GameType } from "../../../shared/types/GameType";
 
 interface EditorCanvasProps {
   store: EditorStore;
+}
+
+/**
+ * Convert MapData config type to GameType
+ */
+function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
+  return mapType === "platform" ? "platformer" : "topdown";
 }
 
 /**
@@ -21,19 +29,25 @@ interface EditorCanvasProps {
  */
 export function EditorCanvas({ store }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rendererRef = useRef<TileRenderer>(new TileRenderer());
   const [isPainting, setIsPainting] = useState(false);
   const [, forceUpdate] = useState({});
   const lastPaintedTileRef = useRef<{ x: number; y: number } | null>(null);
 
+  const mapData = store.getState();
+  const gameType = mapTypeToGameType(mapData.config.type);
+  const rendererRef = useRef<TileRenderer | null>(null);
+
   /**
-   * Initialize tileset on mount
+   * Initialize renderer and tileset on mount or when game type changes
    */
   useEffect(() => {
+    // Create or recreate renderer with the correct game type
+    rendererRef.current = new TileRenderer(gameType);
+
     rendererRef.current.loadTileset("default").then(() => {
-      forceUpdate({}); // Re-render once tileset is loaded
+      forceUpdate({}); // Re-render once tileset and objects are loaded
     });
-  }, []);
+  }, [gameType]);
 
   /**
    * Subscribe to store changes and set up rendering
@@ -53,7 +67,7 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
    */
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !rendererRef.current) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
