@@ -5,8 +5,8 @@
       "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
-      "frameCount": 4,
-      "frameDuration": 200,
+      "frameCount": 2,
+      "frameDuration": 400,
       "loop": true,
       "row": 0
     },
@@ -14,8 +14,8 @@
       "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
-      "frameCount": 4,
-      "frameDuration": 200,
+      "frameCount": 2,
+      "frameDuration": 400,
       "loop": true,
       "row": 1
     },
@@ -23,8 +23,8 @@
       "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
-      "frameCount": 4,
-      "frameDuration": 200,
+      "frameCount": 2,
+      "frameDuration": 400,
       "loop": true,
       "row": 2
     },
@@ -32,8 +32,8 @@
       "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
-      "frameCount": 4,
-      "frameDuration": 200,
+      "frameCount": 2,
+      "frameDuration": 400,
       "loop": true,
       "row": 3
     },

@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import type { MapData } from "../../shared/types/MapSchema";
+import type { GameType } from "../../shared/types/GameType";
 import { TilePalette } from "./TilePalette";
 import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
   type ObjectDefinition,
 } from "../../modules/engine/assets";
+
+/**
+ * Convert MapData config type to GameType
+ */
+function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
+  return mapType === "platform" ? "platformer" : "topdown";
+}
 
 interface MapEditorControlsProps {
   mapData: MapData;
@@ -166,7 +174,7 @@ export function MapEditorControls({
   const [resetHeight, setResetHeight] = useState(15);
   const [resetTileSize, setResetTileSize] = useState(32);
 
-  const [objectLoader] = useState(() => new ObjectSpriteLoader());
+  const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
   const [objectDefinitions, setObjectDefinitions] = useState<Record<
     string,
@@ -174,11 +182,17 @@ export function MapEditorControls({
   > | null>(null);
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
 
-  // Load object sprites on mount
+  // Load object sprites on mount or when game type changes
   useEffect(() => {
+    let cancelled = false;
+
     async function loadObjects() {
       try {
+        // Create loader with current game type
+        const objectLoader = new ObjectSpriteLoader(gameType);
         const defs = await objectLoader.loadObjectDefinitions("objects");
+
+        if (cancelled) return;
         setObjectDefinitions(defs);
 
         // Preload all sprite images
@@ -189,14 +203,22 @@ export function MapEditorControls({
 
         await Promise.all(Array.from(imagePathsSet).map((path) => objectCache.loadSprite(path)));
 
+        if (cancelled) return;
         setObjectSpritesLoaded(true);
       } catch (error) {
         console.error("Failed to load object sprites:", error);
+        if (!cancelled) {
+          setObjectSpritesLoaded(false);
+        }
       }
     }
 
     loadObjects();
-  }, [objectLoader, objectCache]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gameType, objectCache]);
 
   const handleResizeConfirm = () => {
     onResize(resizeWidth, resizeHeight);
@@ -422,7 +444,7 @@ export function MapEditorControls({
         activeLayer === "foreground") && (
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Select Tile</h3>
-          <TilePalette selectedTile={selectedTile} onTileSelect={onTileSelect} />
+          <TilePalette selectedTile={selectedTile} onTileSelect={onTileSelect} mapData={mapData} />
         </div>
       )}
 

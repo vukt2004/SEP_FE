@@ -1,5 +1,6 @@
 import type { MapData } from "../../../shared/types/MapSchema";
 import type { EditorStore } from "../store/editorStore";
+import type { GameType } from "../../../shared/types/GameType";
 import {
   TilesetLoader,
   TilesetCache,
@@ -24,11 +25,13 @@ export class TileRenderer {
   private currentStore: EditorStore | null = null;
   private objectDefinitions: Record<string, ObjectDefinition> | null = null;
   private objectSpritesLoaded: boolean = false;
+  private gameType: GameType;
 
-  constructor() {
-    this.tilesetLoader = new TilesetLoader();
+  constructor(gameType: GameType) {
+    this.gameType = gameType;
+    this.tilesetLoader = new TilesetLoader(gameType);
     this.tilesetCache = new TilesetCache();
-    this.objectSpriteLoader = new ObjectSpriteLoader();
+    this.objectSpriteLoader = new ObjectSpriteLoader(gameType);
     this.objectSpriteCache = new ObjectSpriteCache();
     this.loadObjectSprites();
   }
@@ -78,6 +81,11 @@ export class TileRenderer {
       );
 
       this.isReady = true;
+
+      // Also ensure objects are loaded
+      if (!this.objectSpritesLoaded) {
+        await this.loadObjectSprites();
+      }
     } catch (error) {
       console.error(`Failed to load tileset: ${error}`);
       this.isReady = false;
