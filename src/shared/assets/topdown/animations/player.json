@@ -1,0 +1,113 @@
+{
+  "objectType": "player",
+  "states": {
+    "idle-down": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 200,
+      "loop": true,
+      "row": 0
+    },
+    "idle-up": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 200,
+      "loop": true,
+      "row": 1
+    },
+    "idle-left": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 200,
+      "loop": true,
+      "row": 2
+    },
+    "idle-right": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 200,
+      "loop": true,
+      "row": 3
+    },
+    "walk-down": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 150,
+      "loop": true,
+      "row": 0
+    },
+    "walk-up": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 150,
+      "loop": true,
+      "row": 1
+    },
+    "walk-left": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 150,
+      "loop": true,
+      "row": 2
+    },
+    "walk-right": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 150,
+      "loop": true,
+      "row": 3
+    },
+    "run-down": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 100,
+      "loop": true,
+      "row": 0
+    },
+    "run-up": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 100,
+      "loop": true,
+      "row": 1
+    },
+    "run-left": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 100,
+      "loop": true,
+      "row": 2
+    },
+    "run-right": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
+      "frameCount": 4,
+      "frameDuration": 100,
+      "loop": true,
+      "row": 3
+    }
+  }
+}

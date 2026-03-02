@@ -1,0 +1,61 @@
+{
+  "objectType": "player",
+  "states": {
+    "idle": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Idle (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 11,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "run": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Run (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 12,
+      "frameDuration": 80,
+      "loop": true
+    },
+    "jump": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Jump (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": false
+    },
+    "fall": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Fall (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": false
+    },
+    "doubleJump": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Double Jump (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 6,
+      "frameDuration": 80,
+      "loop": false
+    },
+    "hit": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Hit (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 7,
+      "frameDuration": 80,
+      "loop": false
+    },
+    "wallJump": {
+      "sprite": "../Pixel Adventure 1/Main Characters/Mask Dude/Wall Jump (32x32).png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 5,
+      "frameDuration": 80,
+      "loop": false
+    }
+  }
+}

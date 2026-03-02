@@ -1,83 +1,43 @@
 import { animationRegistry } from "./animationRegistry";
-import type { AnimationDefinition } from "./animationTypes";
+import type { GameType } from "../../../../shared/types/GameType";
+import { AnimationLoader } from "../../assets/loaders/AnimationLoader";
 
-interface AnimationStateConfig {
-  sprite: string;
-  frameWidth: number;
-  frameHeight: number;
-  frameCount: number;
-  frameDuration: number;
-  loop: boolean;
+/**
+ * Global animation loader instance
+ * This will be initialized with the correct game type when the engine starts
+ */
+let globalAnimationLoader: AnimationLoader | null = null;
+
+/**
+ * Initialize the animation system with a specific game type
+ * This MUST be called before loadAnimations()
+ *
+ * @param gameType - The game type to load animations for
+ */
+export function initializeAnimationSystem(gameType: GameType): void {
+  globalAnimationLoader = new AnimationLoader(gameType);
 }
 
-interface AnimationConfig {
-  objectType: string;
-  states: {
-    [state: string]: AnimationStateConfig;
-  };
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
+/**
+ * Load animations for the current game type
+ * Must call initializeAnimationSystem() first
+ */
 export async function loadAnimations(): Promise<void> {
-  const modules = import.meta.glob<{ default: AnimationConfig }>(
-    "/src/shared/assets/animations/*.json",
-    {
-      eager: true,
-    },
-  );
-
-  const loadPromises: Promise<void>[] = [];
-
-  for (const path in modules) {
-    const module = modules[path];
-    const config = module.default;
-
-    if (!config || !config.objectType || !config.states) {
-      console.warn(`Invalid animation config at ${path}`);
-      continue;
-    }
-
-    const { objectType, states } = config;
-
-    // Initialize state map for this object type
-    if (!animationRegistry[objectType]) {
-      animationRegistry[objectType] = {};
-    }
-
-    // Load all states for this object type
-    for (const stateName in states) {
-      const stateConfig = states[stateName];
-
-      const loadPromise = loadImage(stateConfig.sprite).then((image) => {
-        // Generate frames array from frameCount
-        const frames: number[] = [];
-        for (let i = 0; i < stateConfig.frameCount; i++) {
-          frames.push(i);
-        }
-
-        const animDef: AnimationDefinition = {
-          image,
-          frameWidth: stateConfig.frameWidth,
-          frameHeight: stateConfig.frameHeight,
-          frames,
-          frameDuration: stateConfig.frameDuration,
-          loop: stateConfig.loop,
-        };
-
-        animationRegistry[objectType][stateName] = animDef;
-      });
-
-      loadPromises.push(loadPromise);
-    }
+  if (!globalAnimationLoader) {
+    throw new Error(
+      "Animation system not initialized. Call initializeAnimationSystem(gameType) first.",
+    );
   }
 
-  await Promise.all(loadPromises);
+  const registry = await globalAnimationLoader.loadAllAnimations();
+
+  // Populate the global animation registry
+  Object.assign(animationRegistry, registry);
+}
+
+/**
+ * Get the current animation loader (for advanced use cases)
+ */
+export function getAnimationLoader(): AnimationLoader | null {
+  return globalAnimationLoader;
 }

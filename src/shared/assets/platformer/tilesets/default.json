@@ -1,0 +1,84 @@
+{
+  "name": "default",
+  "description": "Default platformer tileset using Pixel Adventure assets",
+  "tiles": {
+    "0": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "1": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "2": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "3": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "4": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "5": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "6": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 5,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "7": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "8": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "9": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "10": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "11": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "12": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 1,
+      "tileSize": 16
+    }
+  }
+}

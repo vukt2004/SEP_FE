@@ -2,104 +2,155 @@
 
 ## Overview
 
-The tile rendering system uses sprite-based tiles from the `/public/assets` folder to visualize the game map. This provides a visually rich experience compared to solid color tiles.
+The tile rendering system uses **game-type-specific sprite assets** to visualize maps. The system supports multiple game types (topdown, platformer) with their own dedicated sprite packs.
 
 ## Architecture
 
-### Tile Registry (`src/modules/engine/rendering/tileRegistry.ts`)
+### Multi-Game-Type Asset System
 
-Defines tile mappings from tile IDs to sprite positions in tileset images.
+Assets are organized by game type:
 
-**TileDefinition Interface:**
+```
+src/shared/assets/
+  topdown/
+    tilesets/default.json    - Sprout Lands tiles
+    animations/player.json   - Character animations
+    objects/objects.json     - Interactive objects
+  platformer/
+    tilesets/default.json    - Pixel Adventure tiles
+    animations/player.json   - Character animations
+    objects/objects.json     - Interactive objects
 
-```typescript
-interface TileDefinition {
-  imagePath: string; // Path to tileset image
-  tileX: number; // X position in tileset (in tiles)
-  tileY: number; // Y position in tileset (in tiles)
-  tileSize: number; // Size of one tile in pixels
+public/assets/
+  Sprout Lands - Sprites - Basic pack/  - Topdown sprites
+  Pixel Adventure 1/                     - Platformer sprites
+```
+
+### Tileset Definition Format
+
+Tilesets are defined in JSON files using numeric tile IDs:
+
+```json
+{
+  "name": "default",
+  "description": "Tileset description",
+  "tiles": {
+    "0": {
+      "imagePath": "/assets/Sprite Pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "1": {
+      "imagePath": "/assets/Sprite Pack/Terrain/Terrain.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    }
+  }
 }
 ```
 
-**Example Tile Definition:**
+**TileDefinition Properties:**
 
-```typescript
-wall: {
-  imagePath: "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
-  tileX: 1,    // Second tile horizontally
-  tileY: 0,    // First row
-  tileSize: 16 // Each tile is 16x16 pixels
-}
-```
+- `imagePath` - Absolute path to sprite sheet (starts with `/assets/`)
+- `tileX` - X position in tileset (in tiles, 0-based)
+- `tileY` - Y position in tileset (in tiles, 0-based)
+- `tileSize` - Size of one tile in pixels (usually 16 or 32)
 
 ### Tileset Cache
 
-Automatically loads and caches tileset images to prevent redundant downloads:
+Automatically loads and caches tileset images:
 
-- Images are loaded once and reused
+- Images loaded once and reused across frames
 - Async loading with promise handling
-- Automatic error recovery with console warnings
+- Automatic error recovery with fallback rendering
 
 ### Rendering Pipeline
 
-1. **Preload Phase** (on engine initialization):
-   - Scans level for all unique tile IDs
-   - Loads corresponding tilesets asynchronously
-   - Caches images for rendering
+1. **Initialization Phase**:
+   - GameEngine receives `gameType` parameter ("topdown" or "platformer")
+   - Loads tileset definitions from `src/shared/assets/{gameType}/tilesets/`
+   - Preloads all tileset images referenced in the level
 
 2. **Render Phase** (every frame):
-   - For each tile position, looks up tile definition
-   - Draws tile from cached tileset if available
-   - Falls back to solid colors if tileset not loaded
+   - Renders layers in order: background → ground → objects/player → foreground
+   - For each tile, looks up definition and draws from cached sprite sheet
+   - Tile ID `0` is treated as transparent/empty
 
 ## Available Tiles
 
-### Current Tile IDs
+### Topdown Tiles (Sprout Lands)
 
-| Tile ID         | Description      | Tileset          | Position |
-| --------------- | ---------------- | ---------------- | -------- |
-| `empty`         | Empty floor/sky  | Blue background  | (0,0)    |
-| `wall`          | Solid wall block | Terrain 16x16    | (1,0)    |
-| `start`         | Start position   | Blue background  | (0,0)    |
-| `goal`          | Goal position    | Green background | (0,0)    |
-| `terrain-block` | Ground block     | Terrain 16x16    | (0,0)    |
-| `grass`         | Grass tile       | Green background | (0,0)    |
+Location: `src/shared/assets/topdown/tilesets/default.json`
+
+| Tile ID | Description              | Source Image                | Position |
+| ------- | ------------------------ | --------------------------- | -------- |
+| 0       | Grass (light)            | Grass.png                   | (1,0)    |
+| 1       | Grass (dark)             | Grass.png                   | (0,0)    |
+| 2       | Grass (medium)           | Grass.png                   | (2,0)    |
+| 3       | Grass (variant)          | Grass.png                   | (3,0)    |
+| 4       | Small plant              | Basic_Plants.png            | (0,0)    |
+| 5       | Bridge left              | Wood_Bridge.png             | (0,0)    |
+| 6       | Bridge right             | Wood_Bridge.png             | (1,0)    |
+| 7       | Tree canopy L            | Basic_Grass_Biom_things.png | (0,0)    |
+| 8       | Tree canopy C            | Basic_Grass_Biom_things.png | (1,0)    |
+| 9       | Bush                     | Basic_Plants.png            | (1,0)    |
+| 10      | Water                    | Water.png                   | (0,0)    |
+| 11-15   | Soil, fence, chest, path | Various                     | Various  |
+
+### Platformer Tiles (Pixel Adventure)
+
+Location: `src/shared/assets/platformer/tilesets/default.json`
+
+| Tile ID | Description      | Source Image        | Position |
+| ------- | ---------------- | ------------------- | -------- |
+| 0       | Sky/empty        | Terrain (16x16).png | (6,0)    |
+| 1       | Stone block      | Terrain (16x16).png | (1,0)    |
+| 2       | Ground top-left  | Terrain (16x16).png | (0,0)    |
+| 3       | Ground top-right | Terrain (16x16).png | (2,0)    |
+| 4-12    | Terrain variants | Terrain (16x16).png | Various  |
 
 ## Adding New Tiles
 
-### Step 1: Add Tile Definition
+### Step 1: Add Tile to Tileset JSON
 
-Edit `src/modules/engine/rendering/tileRegistry.ts`:
+Edit the appropriate tileset file:
 
-```typescript
-export const tileRegistry: Record<string, TileDefinition> = {
-  // ... existing tiles ...
+- Topdown: `src/shared/assets/topdown/tilesets/default.json`
+- Platformer: `src/shared/assets/platformer/tilesets/default.json`
 
-  "my-custom-tile": {
-    imagePath: "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
-    tileX: 2, // Third tile in X direction
-    tileY: 1, // Second row in Y direction
-    tileSize: 16,
-  },
-};
+```json
+{
+  "name": "default",
+  "description": "My tileset",
+  "tiles": {
+    "16": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    }
+  }
+}
 ```
 
 ### Step 2: Use in Level Data
 
-Update level JSON files to use the new tile ID:
+Update level JSON files to use the new tile ID (numeric):
 
 ```json
 {
   "layers": {
     "background": [
-      ["wall", "wall", "wall"],
-      ["wall", "my-custom-tile", "wall"],
-      ["wall", "wall", "wall"]
+      [1, 1, 1, 1, 1],
+      [1, 16, 0, 0, 1],
+      [1, 1, 1, 1, 1]
     ],
     "collision": [
-      [true, true, true],
-      [true, false, true],
-      [true, true, true]
+      [true, true, true, true, true],
+      [true, false, false, false, true],
+      [true, true, true, true, true]
     ]
   }
 }
@@ -107,26 +158,81 @@ Update level JSON files to use the new tile ID:
 
 ### Step 3: Test
 
-The tile will automatically be loaded and rendered when the level initializes.
+The tile will automatically be loaded and rendered when the level initializes. Refresh the page to see changes.
 
-## Available Tilesets
+## Layer System Details
 
-### Pixel Adventure 1
+### Background Layer
+
+- Base visual layer
+- Rendered first (bottom-most)
+- Use for floors, walls, base terrain
+
+### Ground Layer (Optional)
+
+- Mid-layer for decorations
+- Rendered after background, before player
+- Use for small objects on the ground (flowers, rocks, items)
+- Use `0` for transparent/empty cells
+
+### Foreground Layer (Optional)
+
+- Top layer for depth effects
+- Rendered AFTER player (covers player)
+- Use for tree canopies, overhangs, bridges
+- Creates visual depth and hiding spots
+- Use `0` for transparent/empty cells
+
+### Collision Layer
+
+- Boolean grid (true/false)
+- Independent of visual layers
+- `true` = blocked, `false` = walkable
+
+## Available Sprite Packs
+
+### Sprout Lands - Sprites - Basic pack (Topdown)
+
+Located in `/public/assets/Sprout Lands - Sprites - Basic pack/`
+
+**Tilesets:**
+
+- Grass.png - Grass variations
+- Water.png - Water tiles
+- Tilled_Dirt.png - Farmland
+- Fences.png - Fence pieces
+- Wooden*House*\*.png - Building tiles
+
+**Objects:**
+
+- Basic_Plants.png - Flowers, bushes
+- Basic_Grass_Biom_things.png - Trees, rocks
+- Wood_Bridge.png - Bridge pieces
+- Chest.png - Treasure chest
+- Paths.png - Path tiles
+
+**Characters:**
+
+- Basic Charakter Spritesheet.png - Player sprites (48x48)
+
+### Pixel Adventure 1 (Platformer)
 
 Located in `/public/assets/Pixel Adventure 1/`
 
-- **Terrain (16x16).png**: Various terrain blocks (grass, stone, dirt)
-- **Background**: Colored background patterns
-  - Blue.png, Brown.png, Gray.png, Green.png, Pink.png, Purple.png, Yellow.png
+**Terrain:**
 
-### Sprout Lands
+- Terrain (16x16).png - Ground blocks, platforms
 
-Located in `/public/assets/Sprout Lands - Sprites - Basic pack/Tilesets/`
+**Main Characters:**
 
-- Grass.png: Grass tiles with variations
-- Water.png: Water tiles
-- Tilled Dirt: Various farmland tiles
-- Wooden House: Building tiles
+- Mask Dude/ - Player character (32x32)
+  - Idle, Run, Jump, Fall, Hit, Wall Jump, Double Jump
+
+**Items:**
+
+- Fruits/ - Collectibles (Apple, Banana, Cherry, etc.)
+- Boxes/ - Breakable boxes
+- Checkpoints/ - Level checkpoints
 
 ## Tileset Coordinates
 
