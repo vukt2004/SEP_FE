@@ -28,7 +28,7 @@ const CmsLayout: React.FC = () => {
     { path: "/cms/maps", label: "Maps", icon: "🗺️" },
     { path: "/cms/users", label: "Users", icon: "👥" },
     { path: "/cms/reports", label: "Reports", icon: "🚩" },
-    { path: "/cms/marketplace", label: "Marketplace", icon: "🛒" },
+    { path: "/cms/packages", label: "Packages", icon: "📦" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
