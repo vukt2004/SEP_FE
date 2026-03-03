@@ -17,4 +17,5 @@ export const ROUTES = {
   CMS_LOGIN: "/cms/login",
   CMS_APP: "/cms",
   CMS_DASHBOARD: "/cms/dashboard",
+  CMS_USERS: "/cms/users",
 } as const;
