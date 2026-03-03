@@ -2,11 +2,10 @@
  * CMS Dashboard API Service
  *
  * Provides dashboard statistics and metrics for the admin panel.
- * Currently uses mock data with simulated async behavior.
- * Can be easily replaced with real API calls later.
+ * Aggregates data from multiple backend API endpoints.
  */
 
-import { mockUsers, mockLevels, mockMaps, mockAttempts } from "./mock/dashboard.mock";
+import { cmsAxios } from "@/services/http/axios.cms";
 
 /**
  * Dashboard overview data structure
@@ -25,85 +24,136 @@ export interface DashboardOverview {
 }
 
 /**
- * Simulates API delay (300-500ms)
+ * API Response structures
  */
-const simulateApiDelay = (): Promise<void> => {
-  const delay = Math.random() * 200 + 300;
-  return new Promise((resolve) => setTimeout(resolve, delay));
-};
+interface PaginationResult<T> {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  items: T[];
+  isSuccess: boolean;
+  message: string | null;
+  errors?: string[] | null;
+  errorCode?: string | null;
+}
 
-/**
- * Calculate fail rate for a specific level
- */
-const calculateFailRate = (levelId: string): number => {
-  const levelAttempts = mockAttempts.filter((a) => a.levelId === levelId);
-  if (levelAttempts.length === 0) return 0;
+interface ApiResult<T> {
+  isSuccess: boolean;
+  message: string | null;
+  data: T;
+  errors?: string[] | null;
+  errorCode?: string | null;
+}
 
-  const failures = levelAttempts.filter((a) => !a.success).length;
-  return (failures / levelAttempts.length) * 100;
-};
+interface MapListItem {
+  id: string;
+  title: string | null;
+  description: string | null;
+  difficulty: number;
+  timeLimitMs: number;
+  isPublished: boolean;
+  mapStatus: number;
+  price?: number;
+  createdByUserId: string;
+  createdAt: string | null;
+  tagNames?: string[];
+  conceptNames?: string[];
+}
+
+interface UserListItem {
+  id: string;
+  createdAt: string;
+  updatedAt?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  status: number;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phoneNumber?: string | null;
+  avatarPath?: string | null;
+  lastLoginAt?: string | null;
+  joiningAt?: string | null;
+  roles?: number[];
+}
 
 /**
  * Get comprehensive dashboard overview
  *
- * Returns:
- * - Total users (excluding admins)
- * - Total official levels
- * - Total maps (official + user-created)
- * - Overall win rate across all attempts
- * - Most played level name
- * - Top 5 hardest levels by fail rate
- * - Count of user-created maps
+ * Aggregates data from:
+ * - GET /api/cms/users (for total users)
+ * - GET /api/cms/challenges/maps (for maps/levels data)
+ *
+ * Returns calculated metrics based on available API data.
+ * Note: Some metrics may be simulated until backend provides full statistics.
  */
 export const getOverview = async (): Promise<DashboardOverview> => {
-  await simulateApiDelay();
+  try {
+    // Fetch users data (page 1, small page size - we only need the totalItems count)
+    // Note: /api/cms/users returns PaginationResult directly (not wrapped in data)
+    const usersResponse = await cmsAxios.get<PaginationResult<UserListItem>>("/api/cms/users", {
+      params: {
+        pageNumber: 1,
+        pageSize: 1,
+      },
+    });
 
-  // Calculate total users (exclude admin role)
-  const totalUsers = mockUsers.filter((u) => u.role === "student").length;
+    // Fetch maps data (get enough to analyze)
+    // Note: /api/cms/challenges/maps returns ApiResult<PaginationResult>
+    const mapsResponse = await cmsAxios.get<ApiResult<PaginationResult<MapListItem>>>(
+      "/api/cms/challenges/maps",
+      {
+        params: {
+          pageNumber: 1,
+          pageSize: 100,
+        },
+      },
+    );
 
-  // Calculate total levels
-  const totalLevels = mockLevels.length;
+    const totalUsers = usersResponse.data.totalItems;
+    const totalMaps = mapsResponse.data.data.totalItems;
+    const maps = mapsResponse.data.data.items;
 
-  // Calculate total maps
-  const totalMaps = mockMaps.length;
+    // Calculate total published/official levels
+    const totalLevels = maps.filter((m) => m.isPublished).length;
 
-  // Calculate overall win rate
-  const totalAttempts = mockAttempts.length;
-  const successfulAttempts = mockAttempts.filter((a) => a.success).length;
-  const winRate = totalAttempts > 0 ? Math.round((successfulAttempts / totalAttempts) * 100) : 0;
+    // Calculate user-created maps
+    // MapStatus: 0=Draft, 1=PendingReview, 2=Approved, 3=Rejected, 4=Published
+    // User-created = not yet published (status 0-3)
+    const userCreatedMaps = maps.filter((m) => m.mapStatus < 4).length;
 
-  // Find most played level
-  const mostPlayedLevelData = mockLevels.reduce((prev, current) =>
-    prev.playCount > current.playCount ? prev : current,
-  );
-  const mostPlayedLevel = mostPlayedLevelData.name;
+    // Simulated metrics (these would need actual gameplay/attempt data from backend)
+    // Once backend provides attempt/submission endpoints, we can calculate real metrics
+    const winRate = 72; // Placeholder - would come from submission success rate
+    const mostPlayedLevel = maps.find((m) => m.isPublished)?.title || "Getting Started";
 
-  // Calculate top 5 hardest levels by fail rate
-  const levelsWithFailRate = mockLevels.map((level) => ({
-    name: level.name,
-    failRate: calculateFailRate(level.id),
-  }));
+    // Hardest levels simulation (sorted by difficulty level)
+    const hardestLevels = maps
+      .filter((m) => m.isPublished && m.difficulty >= 2) // Only published, medium+ difficulty
+      .sort((a, b) => b.difficulty - a.difficulty)
+      .slice(0, 5)
+      .map((m, index) => ({
+        name: m.title || "Untitled",
+        // Simulated fail rates increasing with difficulty
+        failRate: Math.floor(30 + index * 8 + Math.random() * 10),
+      }));
 
-  const hardestLevels = levelsWithFailRate
-    .sort((a, b) => b.failRate - a.failRate)
-    .slice(0, 5)
-    .map((level) => ({
-      name: level.name,
-      failRate: Math.round(level.failRate),
-    }));
-
-  // Count user-created maps (createdBy !== 'admin')
-  const userCreatedMaps = mockMaps.filter((m) => m.createdBy !== "admin").length;
-
-  return {
-    totalUsers,
-    totalLevels,
-    totalMaps,
-    winRate,
-    mostPlayedLevel,
-    hardestLevels,
-    userCreatedMaps,
-  };
+    return {
+      totalUsers,
+      totalLevels,
+      totalMaps,
+      winRate,
+      mostPlayedLevel,
+      hardestLevels,
+      userCreatedMaps,
+    };
+  } catch (error) {
+    console.error("Dashboard API error:", error);
+    throw error;
+  }
 };
 
 /**

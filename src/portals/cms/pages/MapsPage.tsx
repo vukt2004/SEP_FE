@@ -1,0 +1,1069 @@
+/**
+ * CMS Maps Page
+ *
+ * Displays paginated list of all challenge maps with:
+ * - Status indicators (Draft/Published/Archived)
+ * - Difficulty levels
+ * - Publishing status
+ * - Tags and concepts
+ * - Pagination controls
+ * - Action buttons (View, Approve, Reject)
+ */
+
+import React, { useEffect, useState } from "react";
+import { cmsMapsApi } from "@/services/api/cms/maps.api";
+import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps";
+import { Modal } from "../components/Modal";
+
+export const MapsPage: React.FC = () => {
+  const [maps, setMaps] = useState<MapListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Modal and action states
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedMap, setSelectedMap] = useState<MapDetail | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    fetchMaps();
+  }, [currentPage]);
+
+  const fetchMaps = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await cmsMapsApi.getMaps({
+        pageNumber: currentPage,
+        pageSize,
+      });
+
+      const paginationData = response.data.data;
+      if (paginationData) {
+        setMaps(paginationData.items);
+        setTotalPages(paginationData.totalPages);
+        setTotalItems(paginationData.totalItems);
+      }
+    } catch (err) {
+      setError("Failed to load maps");
+      console.error("Maps fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDetails = async (mapId: string) => {
+    try {
+      setActionLoading(true);
+      const response = await cmsMapsApi.getMapById(mapId);
+      const mapDetail = response.data.data;
+      if (mapDetail) {
+        setSelectedMap(mapDetail);
+        setDetailModalOpen(true);
+      } else {
+        alert("Map not found");
+      }
+    } catch (err) {
+      alert("Failed to load map details");
+      console.error("Map detail error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleApprove = async (mapId: string, mapTitle: string) => {
+    const reviewNote = prompt(`Approve "${mapTitle}"?\n\nEnter review note (optional):`);
+    if (reviewNote === null) return; // User cancelled
+
+    try {
+      setActionLoading(true);
+      await cmsMapsApi.approveMap(mapId, { reviewNote: reviewNote || undefined });
+      alert("Map approved successfully!");
+      fetchMaps();
+    } catch (err) {
+      alert("Failed to approve map");
+      console.error("Approve error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async (mapId: string, mapTitle: string) => {
+    const rejectReason = prompt(`Reject "${mapTitle}"?\n\nEnter rejection reason (optional):`);
+    if (rejectReason === null) return; // User cancelled
+
+    try {
+      setActionLoading(true);
+      await cmsMapsApi.rejectMap(mapId, { rejectReason: rejectReason || undefined });
+      alert("Map rejected successfully!");
+      fetchMaps();
+    } catch (err) {
+      alert("Failed to reject map");
+      console.error("Reject error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const getMapStatusLabel = (status: MapStatusEnum) => {
+    switch (status) {
+      case 0:
+        return "Draft";
+      case 1:
+        return "Published";
+      case 2:
+        return "Archived";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const getMapStatusColor = (status: MapStatusEnum) => {
+    switch (status) {
+      case 0:
+        return "var(--muted)";
+      case 1:
+        return "var(--success)";
+      case 2:
+        return "var(--warning)";
+      default:
+        return "var(--text-2)";
+    }
+  };
+
+  const getDifficultyLabel = (difficulty: number) => {
+    if (difficulty <= 2) return "Easy";
+    if (difficulty <= 5) return "Medium";
+    if (difficulty <= 8) return "Hard";
+    return "Expert";
+  };
+
+  const getDifficultyColor = (difficulty: number) => {
+    if (difficulty <= 2) return "var(--success)";
+    if (difficulty <= 5) return "var(--info)";
+    if (difficulty <= 8) return "var(--warning)";
+    return "var(--danger)";
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
+  if (loading && maps.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "400px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              display: "inline-block",
+              width: "48px",
+              height: "48px",
+              border: "4px solid var(--border)",
+              borderTop: "4px solid var(--primary)",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          ></div>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading maps...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "24px", maxWidth: "1600px", margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ marginBottom: "24px" }}>
+        <h1
+          style={{
+            color: "var(--text)",
+            fontSize: "28px",
+            fontWeight: "bold",
+            marginBottom: "8px",
+          }}
+        >
+          Challenge Maps
+        </h1>
+        <p style={{ color: "var(--text-2)" }}>View and manage all challenge maps</p>
+      </div>
+
+      {/* Stats */}
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            padding: "16px 20px",
+            minWidth: "150px",
+          }}
+        >
+          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
+            Total Maps
+          </div>
+          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
+            {totalItems}
+          </div>
+        </div>
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            padding: "16px 20px",
+            minWidth: "150px",
+          }}
+        >
+          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
+            Published Maps
+          </div>
+          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
+            {maps.filter((m) => m.isPublished).length}
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div
+          style={{
+            padding: "16px",
+            background: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid var(--danger)",
+            borderRadius: "12px",
+            color: "var(--danger)",
+            marginBottom: "24px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* Maps Table */}
+      <div
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              color: "var(--text)",
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  background: "var(--surface-2)",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  TITLE
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  DIFFICULTY
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  TIME LIMIT
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  STATUS
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  PRICE
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  TAGS
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  CREATED
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "center",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  ACTIONS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {maps.map((map) => (
+                <tr
+                  key={map.id}
+                  style={{
+                    borderBottom: "1px solid var(--border)",
+                    transition: "background 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--surface-2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <td style={{ padding: "16px" }}>
+                    <div>
+                      <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
+                        {map.title}
+                      </div>
+                      {map.description && (
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "var(--text-2)",
+                            maxWidth: "300px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {map.description}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "4px 12px",
+                        borderRadius: "999px",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        background: `color-mix(in srgb, ${getDifficultyColor(map.difficulty)} 15%, transparent)`,
+                        color: getDifficultyColor(map.difficulty),
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          background: getDifficultyColor(map.difficulty),
+                        }}
+                      ></span>
+                      {getDifficultyLabel(map.difficulty)} ({map.difficulty}/10)
+                    </span>
+                  </td>
+                  <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
+                    {formatTime(map.timeLimitMs)}
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "4px 12px",
+                          borderRadius: "999px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          background: `color-mix(in srgb, ${getMapStatusColor(map.mapStatus)} 15%, transparent)`,
+                          color: getMapStatusColor(map.mapStatus),
+                          width: "fit-content",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "6px",
+                            height: "6px",
+                            borderRadius: "50%",
+                            background: getMapStatusColor(map.mapStatus),
+                          }}
+                        ></span>
+                        {getMapStatusLabel(map.mapStatus)}
+                      </span>
+                      {map.isPublished && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "var(--success)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          ✓ Published
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <div
+                      style={{
+                        color: map.price > 0 ? "var(--primary)" : "var(--text-2)",
+                        fontSize: "14px",
+                        fontWeight: map.price > 0 ? "500" : "normal",
+                      }}
+                    >
+                      {map.price > 0 ? `$${map.price}` : "Free"}
+                    </div>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                      {map.tagNames.slice(0, 3).map((tag, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: "inline-block",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            background: "var(--surface-2)",
+                            color: "var(--text-2)",
+                            border: "1px solid var(--border)",
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {map.tagNames.length > 3 && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "var(--text-2)",
+                            padding: "2px 4px",
+                          }}
+                        >
+                          +{map.tagNames.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
+                    {formatDate(map.createdAt)}
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                      {/* View Details */}
+                      <button
+                        onClick={() => handleViewDetails(map.id)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--info)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          transition: "all 0.2s ease",
+                        }}
+                        title="View Details"
+                      >
+                        👁️
+                      </button>
+
+                      {/* Approve */}
+                      <button
+                        onClick={() => handleApprove(map.id, map.title)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--success)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          transition: "all 0.2s ease",
+                        }}
+                        title="Approve Map"
+                      >
+                        ✅
+                      </button>
+
+                      {/* Reject */}
+                      <button
+                        onClick={() => handleReject(map.id, map.title)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--danger)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          transition: "all 0.2s ease",
+                        }}
+                        title="Reject Map"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div
+            style={{
+              padding: "16px 24px",
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "16px",
+            }}
+          >
+            <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
+              Showing page {currentPage} of {totalPages}
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: "8px 16px",
+                  background: currentPage === 1 ? "var(--surface-2)" : "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: currentPage === 1 ? "var(--muted)" : "var(--text)",
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Previous
+              </button>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: "8px 16px",
+                  background: currentPage === totalPages ? "var(--surface-2)" : "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: currentPage === totalPages ? "var(--muted)" : "var(--text)",
+                  cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Map Detail Modal */}
+      <Modal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        title="Map Details"
+        maxWidth="800px"
+      >
+        {selectedMap && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* Basic Info */}
+            <div style={{ paddingBottom: "16px", borderBottom: "1px solid var(--border)" }}>
+              <h2
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "600",
+                  color: "var(--text)",
+                  marginBottom: "8px",
+                }}
+              >
+                {selectedMap.title}
+              </h2>
+              <p style={{ color: "var(--text-2)", fontSize: "14px", lineHeight: "1.5" }}>
+                {selectedMap.description}
+              </p>
+            </div>
+
+            {/* Metadata Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Difficulty
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  {getDifficultyLabel(selectedMap.difficulty)} ({selectedMap.difficulty}/10)
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Time Limit
+                </div>
+                <div style={{ color: "var(--text)" }}>{formatTime(selectedMap.timeLimitMs)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Status
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  {getMapStatusLabel(selectedMap.mapStatus)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Published
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  {selectedMap.isPublished ? "✅ Yes" : "❌ No"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Price
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  {selectedMap.price > 0 ? `$${selectedMap.price}` : "Free"}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Unlock Editorial After
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  {selectedMap.unlockEditorialAfterStars} stars
+                </div>
+              </div>
+            </div>
+
+            {/* Editorial Content */}
+            {selectedMap.editorialContent && (
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Editorial Content
+                </div>
+                <div
+                  style={{
+                    padding: "12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "13px",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  {selectedMap.editorialContent}
+                </div>
+              </div>
+            )}
+
+            {/* Hints */}
+            {selectedMap.hints.length > 0 && (
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Hints ({selectedMap.hints.length})
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedMap.hints.map((hint, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "10px 12px",
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      <span style={{ fontWeight: "500", color: "var(--text)" }}>
+                        #{hint.orderNo}:
+                      </span>{" "}
+                      {hint.content}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Constraints */}
+            {selectedMap.constraints.length > 0 && (
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Constraints ({selectedMap.constraints.length})
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedMap.constraints.map((constraint, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "10px 12px",
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
+                        Type: {constraint.type}
+                      </div>
+                      <div
+                        style={{
+                          color: "var(--text-2)",
+                          fontSize: "12px",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {constraint.payload}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Spec */}
+            <div>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "var(--text)",
+                  marginBottom: "8px",
+                }}
+              >
+                Active Specification (v{selectedMap.activeSpec.version})
+              </div>
+              <div
+                style={{
+                  padding: "12px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                }}
+              >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                      Grid Spec
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        color: "var(--text)",
+                        maxHeight: "80px",
+                        overflow: "auto",
+                        padding: "8px",
+                        background: "var(--bg)",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {selectedMap.activeSpec.gridSpec}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                      Initial State
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        color: "var(--text)",
+                        maxHeight: "80px",
+                        overflow: "auto",
+                        padding: "8px",
+                        background: "var(--bg)",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {selectedMap.activeSpec.initialStateSpec}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                      Win Condition
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        color: "var(--text)",
+                        maxHeight: "80px",
+                        overflow: "auto",
+                        padding: "8px",
+                        background: "var(--bg)",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {selectedMap.activeSpec.winConditionSpec}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                      Fail Condition
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        color: "var(--text)",
+                        maxHeight: "80px",
+                        overflow: "auto",
+                        padding: "8px",
+                        background: "var(--bg)",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {selectedMap.activeSpec.failConditionSpec}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tags and Concepts */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Tags
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {selectedMap.tagNames.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        background: "var(--surface-2)",
+                        color: "var(--text)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Concepts
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {selectedMap.conceptNames.map((concept, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        background: "var(--surface-2)",
+                        color: "var(--text)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      {concept}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Metadata */}
+            <div
+              style={{
+                paddingTop: "16px",
+                borderTop: "1px solid var(--border)",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Map ID
+                </div>
+                <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
+                  {selectedMap.id}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Created At
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text)" }}>
+                  {formatDate(selectedMap.createdAt)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Created By User ID
+                </div>
+                <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
+                  {selectedMap.createdByUserId}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Spec Version
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text)" }}>
+                  v{selectedMap.activeSpec.version}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Add keyframes for loading spinner */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default MapsPage;
