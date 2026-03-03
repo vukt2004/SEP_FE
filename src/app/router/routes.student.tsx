@@ -1,5 +1,5 @@
 // src/app/router/routes.student.tsx
-import React from "react";
+import React, { Suspense } from "react";
 import type { RouteObject } from "react-router-dom";
 
 // Guard (student token)
@@ -40,7 +40,9 @@ export const studentRoutes: RouteObject = {
   path: "app",
   element: (
     <RequireStudentAuth>
-      <StudentLayout children={undefined} />
+      <Suspense fallback={<div style={{ padding: 16, color: "white" }}>Loading page...</div>}>
+        <StudentLayout />
+      </Suspense>
     </RequireStudentAuth>
   ),
   children: [

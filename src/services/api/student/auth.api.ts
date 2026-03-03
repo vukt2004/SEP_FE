@@ -27,25 +27,25 @@ function toFormData(payload: StudentRegisterForm): FormData {
 
 export const studentAuthApi = {
   login(payload: LoginRequest) {
-    return studentAxios.post<AuthResponseResult>("/api/student/auth/login", {
+    return studentAxios.post<AuthResponseResult>("/api/learner/auth/login", {
       ...payload,
       grantType: payload.grantType ?? 0,
     });
   },
 
   logout() {
-    return studentAxios.post<Result>("/api/student/auth/logout");
+    return studentAxios.post<Result>("/api/learner/auth/logout");
   },
 
   register(payload: StudentRegisterForm) {
     const fd = toFormData(payload);
-    return studentAxios.post<Result>("/api/student/auth/register", fd, {
+    return studentAxios.post<Result>("/api/learner/auth/register", fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
 
   verifyOtp(payload: VerifyOtpRequest) {
-    return studentAxios.post<VerifyOtpResponseResult>("/api/student/auth/verify-otp", {
+    return studentAxios.post<VerifyOtpResponseResult>("/api/learner/auth/verify-otp", {
       ...payload,
       otpType: payload.otpType ?? 1,
       otpSentChannel: payload.otpSentChannel ?? 1,
@@ -53,10 +53,10 @@ export const studentAuthApi = {
   },
 
   profile() {
-    return studentAxios.get<Result>("/api/student/auth/profile");
+    return studentAxios.get<Result>("/api/learner/auth/profile");
   },
 
   refreshToken() {
-    return studentAxios.get<AuthResponseResult>("/api/student/auth/refresh-token");
+    return studentAxios.get<AuthResponseResult>("/api/learner/auth/refresh-token");
   },
 };

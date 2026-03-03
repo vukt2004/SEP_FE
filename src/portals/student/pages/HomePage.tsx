@@ -1,16 +1,6 @@
-import React from "react";
-import StudentLayout from "../layout/StudentLayout";
+import GalaxyHomeLayout from "@/portals/student/components/home/GalaxyHomeLayout";
+import { mockStudentHome } from "../components/home/home.mock";
 
-export const HomePage: React.FC = () => {
-  return (
-    <StudentLayout>
-      <div style={{ padding: "20px" }}>
-        <h1>Welcome to Student Home</h1>
-        <p>This is a simple home page for testing.</p>
-        <button onClick={() => alert("Button clicked!")}>Test Button</button>
-      </div>
-    </StudentLayout>
-  );
-};
-
-export default HomePage;
+export default function HomePage() {
+  return <GalaxyHomeLayout vm={mockStudentHome} />;
+}
