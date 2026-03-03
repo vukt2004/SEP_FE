@@ -1,24 +1,20 @@
 /**
- * CMS Marketplace Page
+ * CMS Packages Page
  *
  * Displays paginated list of all user packages with:
  * - Package details (name, duration, limit, price)
  * - Status indicators (Active/Inactive/Archived)
  * - Features specification
  * - Pagination controls
- * - Action buttons (View Details)
+ * - Action buttons (View Details, Edit)
  */
 
 import React, { useEffect, useState } from "react";
-import { cmsMarketplaceApi } from "@/services/api/cms/marketplace.api";
-import type {
-  PackageListItem,
-  PackageDetail,
-  PackageStatusEnum,
-} from "@/types/api/cms/marketplace";
+import { cmsPackagesApi } from "@/services/api/cms/packages.api";
+import type { PackageListItem, PackageDetail, PackageStatusEnum } from "@/types/api/cms/packages";
 import { Modal } from "../components/Modal";
 
-export const MarketplacePage: React.FC = () => {
+export const PackagesPage: React.FC = () => {
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +59,7 @@ export const MarketplacePage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await cmsMarketplaceApi.getPackages({
+      const response = await cmsPackagesApi.getPackages({
         pageNumber: currentPage,
         pageSize,
       });
@@ -85,7 +81,7 @@ export const MarketplacePage: React.FC = () => {
   const handleViewDetails = async (packageId: string) => {
     try {
       setActionLoading(true);
-      const response = await cmsMarketplaceApi.getPackageById(packageId);
+      const response = await cmsPackagesApi.getPackageById(packageId);
       const packageDetail = response.data.data;
       if (packageDetail) {
         setSelectedPackage(packageDetail);
@@ -105,7 +101,7 @@ export const MarketplacePage: React.FC = () => {
     e.preventDefault();
     try {
       setActionLoading(true);
-      const response = await cmsMarketplaceApi.createPackage(createForm);
+      const response = await cmsPackagesApi.createPackage(createForm);
       if (response.data.isSuccess) {
         alert(`Package created successfully! ID: ${response.data.data}`);
         setCreateModalOpen(false);
@@ -125,7 +121,7 @@ export const MarketplacePage: React.FC = () => {
   const handleOpenUpdateModal = async (packageId: string) => {
     try {
       setActionLoading(true);
-      const response = await cmsMarketplaceApi.getPackageById(packageId);
+      const response = await cmsPackagesApi.getPackageById(packageId);
       const packageDetail = response.data.data;
       if (packageDetail) {
         setSelectedPackage(packageDetail);
@@ -154,7 +150,7 @@ export const MarketplacePage: React.FC = () => {
     if (!selectedPackage) return;
     try {
       setActionLoading(true);
-      const response = await cmsMarketplaceApi.updatePackage(selectedPackage.id, updateForm);
+      const response = await cmsPackagesApi.updatePackage(selectedPackage.id, updateForm);
       if (response.data.isSuccess) {
         alert(response.data.message || "Package updated successfully!");
         setUpdateModalOpen(false);
@@ -263,7 +259,7 @@ export const MarketplacePage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            Marketplace Packages
+            Packages Management
           </h1>
           <p style={{ color: "var(--text-2)" }}>Manage user subscription packages</p>
         </div>
@@ -1268,4 +1264,4 @@ export const MarketplacePage: React.FC = () => {
   );
 };
 
-export default MarketplacePage;
+export default PackagesPage;

@@ -11,6 +11,7 @@ export const ROUTES = {
   STUDENT_APP: "/app",
   STUDENT_HOME: "/app/home",
   STUDENT_CHALLENGES: "/app/challenges",
+  STUDENT_PACKAGES: "/app/packages",
   STUDENT_VERIFY_OTP: "/verify-otp",
   STUDENT_REGISTER: "/register",
 
