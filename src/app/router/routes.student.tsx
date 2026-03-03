@@ -10,6 +10,7 @@ const StudentLayout = React.lazy(() => import("@/portals/student/layout/StudentL
 
 // Pages (student authenticated)
 const StudentHomePage = React.lazy(() => import("@/portals/student/pages/HomePage"));
+const StudentChallengesPage = React.lazy(() => import("@/portals/student/pages/ChallengesPage"));
 const StudentPackagesPage = React.lazy(() => import("@/portals/student/pages/PackagesPage"));
 
 // Pages (student public)
@@ -49,6 +50,7 @@ export const studentRoutes: RouteObject = {
   children: [
     { index: true, element: <StudentHomePage /> },
     { path: "home", element: <StudentHomePage /> },
+    { path: "challenges", element: <StudentChallengesPage /> },
     { path: "packages", element: <StudentPackagesPage /> },
   ],
 };
