@@ -367,9 +367,9 @@ export class TileRenderer {
       this.renderObject(ctx, "goal", objects.goal.x, objects.goal.y, tileSize);
     }
 
-    // Draw coins
-    objects.coins.forEach((coin) => {
-      this.renderObject(ctx, "coin", coin.x, coin.y, tileSize);
+    // Draw fruits
+    objects.fruits.forEach((fruit) => {
+      this.renderObject(ctx, "fruit", fruit.x, fruit.y, tileSize);
     });
 
     // Draw enemies
@@ -439,7 +439,7 @@ export class TileRenderer {
     > = {
       player: { color: "#0066FF", text: "P", textColor: "#FFFFFF", shape: "rect" },
       goal: { color: "#FFD700", text: "G", textColor: "#000000", shape: "rect" },
-      coin: { color: "#FFD700", text: "$", textColor: "#000000", shape: "circle" },
+      fruit: { color: "#FF6347", text: "F", textColor: "#FFFFFF", shape: "circle" },
       enemy: { color: "#9932CC", text: "E", textColor: "#FFFFFF", shape: "rect" },
     };
 

@@ -12,7 +12,7 @@ interface EditorState {
   mapData: MapData | null;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -67,7 +67,7 @@ export default function MapEditor() {
   };
 
   const handleToolSelect = (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
   ) => {
     store?.setSelectedTool(tool);
   };
@@ -81,8 +81,25 @@ export default function MapEditor() {
     width: number,
     height: number,
     tileSize: number,
+    name?: string,
+    description?: string,
   ) => {
     store?.resetMap(type, width, height, tileSize);
+    // Update name and description if provided
+    if (name !== undefined && store) {
+      store.setMapName(name);
+    }
+    if (description !== undefined && store) {
+      store.setMapDescription(description);
+    }
+  };
+
+  const handleNameChange = (name: string) => {
+    store?.setMapName(name);
+  };
+
+  const handleDescriptionChange = (description: string) => {
+    store?.setMapDescription(description);
   };
 
   const handleUndo = () => {
@@ -159,6 +176,8 @@ export default function MapEditor() {
                   onImport={handleImport}
                   onUndo={handleUndo}
                   onRedo={handleRedo}
+                  onNameChange={handleNameChange}
+                  onDescriptionChange={handleDescriptionChange}
                 />
               </div>
             </div>

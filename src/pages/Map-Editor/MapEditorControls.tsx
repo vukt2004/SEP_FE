@@ -19,30 +19,39 @@ interface MapEditorControlsProps {
   mapData: MapData;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
   ) => void;
   onResize: (width: number, height: number) => void;
-  onReset: (type: "platform" | "topdown", width: number, height: number, tileSize: number) => void;
+  onReset: (
+    type: "platform" | "topdown",
+    width: number,
+    height: number,
+    tileSize: number,
+    name?: string,
+    description?: string,
+  ) => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onNameChange?: (name: string) => void;
+  onDescriptionChange?: (description: string) => void;
 }
 
 interface ObjectToolButtonProps {
-  objectType: "player" | "goal" | "coin" | "enemy";
+  objectType: "player" | "goal" | "fruit" | "enemy";
   label: string;
   objectDef: ObjectDefinition;
   cache: ObjectSpriteCache;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
   onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "coin" | "enemy" | null,
+    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
   ) => void;
 }
 
@@ -106,19 +115,13 @@ function ObjectToolButton({
         padding: "12px",
         fontSize: "13px",
         fontWeight: "500",
-        border: "2px solid #ddd",
+        border: selectedTool === objectType ? "2px solid #4CAF50" : "2px solid #ddd",
         borderRadius: "6px",
-        backgroundColor: "white",
+        backgroundColor: selectedTool === objectType ? "#e8f5e9" : "white",
         cursor: "pointer",
         transition: "all 0.2s",
         minWidth: "80px",
-        ...(selectedTool === objectType
-          ? {
-              borderColor: "#4CAF50",
-              backgroundColor: "#e8f5e9",
-              boxShadow: "0 2px 6px rgba(76,175,80,0.3)",
-            }
-          : {}),
+        boxShadow: selectedTool === objectType ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
       }}
       onClick={() => onToolSelect(selectedTool === objectType ? null : objectType)}
       title={`${label} (click again to deselect)`}
@@ -164,6 +167,8 @@ export function MapEditorControls({
   onImport,
   onUndo,
   onRedo,
+  onNameChange,
+  onDescriptionChange,
 }: MapEditorControlsProps) {
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -173,6 +178,8 @@ export function MapEditorControls({
   const [resetWidth, setResetWidth] = useState(20);
   const [resetHeight, setResetHeight] = useState(15);
   const [resetTileSize, setResetTileSize] = useState(32);
+  const [resetName, setResetName] = useState("");
+  const [resetDescription, setResetDescription] = useState("");
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
@@ -192,10 +199,7 @@ export function MapEditorControls({
         const objectLoader = new ObjectSpriteLoader(gameType);
         const defs = await objectLoader.loadObjectDefinitions("objects");
 
-        if (cancelled) return;
-        setObjectDefinitions(defs);
-
-        // Preload all sprite images
+        // Preload all sprite images BEFORE setting definitions
         const imagePathsSet = new Set<string>();
         for (const objDef of Object.values(defs)) {
           imagePathsSet.add(objDef.imagePath);
@@ -203,12 +207,15 @@ export function MapEditorControls({
 
         await Promise.all(Array.from(imagePathsSet).map((path) => objectCache.loadSprite(path)));
 
+        // Only set definitions after all images are loaded
         if (cancelled) return;
+        setObjectDefinitions(defs);
         setObjectSpritesLoaded(true);
       } catch (error) {
         console.error("Failed to load object sprites:", error);
         if (!cancelled) {
           setObjectSpritesLoaded(false);
+          setObjectDefinitions(null);
         }
       }
     }
@@ -221,13 +228,29 @@ export function MapEditorControls({
   }, [gameType, objectCache]);
 
   const handleResizeConfirm = () => {
-    onResize(resizeWidth, resizeHeight);
+    // Validate map size (10-30)
+    const validWidth = Math.max(10, Math.min(30, resizeWidth));
+    const validHeight = Math.max(10, Math.min(30, resizeHeight));
+
+    if (validWidth !== resizeWidth || validHeight !== resizeHeight) {
+      alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
+    }
+
+    onResize(validWidth, validHeight);
     setShowResizeDialog(false);
   };
 
   const handleResetConfirm = () => {
+    // Validate map size (10-30)
+    const validWidth = Math.max(10, Math.min(30, resetWidth));
+    const validHeight = Math.max(10, Math.min(30, resetHeight));
+
+    if (validWidth !== resetWidth || validHeight !== resetHeight) {
+      alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
+    }
+
     if (confirm("This will clear all map data. Are you sure?")) {
-      onReset(resetType, resetWidth, resetHeight, resetTileSize);
+      onReset(resetType, validWidth, validHeight, resetTileSize, resetName, resetDescription);
       setShowResetDialog(false);
     }
   };
@@ -403,6 +426,7 @@ export function MapEditorControls({
           <p style={styles.helpText}>Place game objects (click again to deselect)</p>
           <div style={styles.objectToolGrid}>
             <ObjectToolButton
+              key={objectDefinitions.player.imagePath}
               objectType="player"
               label="Player"
               objectDef={objectDefinitions.player}
@@ -411,6 +435,7 @@ export function MapEditorControls({
               onToolSelect={onToolSelect}
             />
             <ObjectToolButton
+              key={objectDefinitions.goal.imagePath}
               objectType="goal"
               label="Goal"
               objectDef={objectDefinitions.goal}
@@ -419,14 +444,16 @@ export function MapEditorControls({
               onToolSelect={onToolSelect}
             />
             <ObjectToolButton
-              objectType="coin"
-              label="Coin"
-              objectDef={objectDefinitions.coin}
+              key={objectDefinitions.fruit.imagePath}
+              objectType="fruit"
+              label="Fruit"
+              objectDef={objectDefinitions.fruit}
               cache={objectCache}
               selectedTool={selectedTool}
               onToolSelect={onToolSelect}
             />
             <ObjectToolButton
+              key={objectDefinitions.enemy.imagePath}
               objectType="enemy"
               label="Enemy"
               objectDef={objectDefinitions.enemy}
@@ -452,6 +479,26 @@ export function MapEditorControls({
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Map Info</h3>
         <div style={styles.info}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Name:</label>
+            <input
+              type="text"
+              value={mapData.config.name}
+              onChange={(e) => onNameChange?.(e.target.value)}
+              placeholder="Enter map name"
+              style={styles.input}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Description:</label>
+            <textarea
+              value={mapData.config.description}
+              onChange={(e) => onDescriptionChange?.(e.target.value)}
+              placeholder="Enter map description"
+              style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
+              rows={3}
+            />
+          </div>
           <p style={styles.infoText}>
             Type: <strong>{mapData.config.type}</strong>
           </p>
@@ -493,12 +540,13 @@ export function MapEditorControls({
           <div style={styles.modalContent}>
             <h3 style={styles.modalTitle}>Resize Map</h3>
             <p style={styles.warningText}>⚠️ This will clear all map data</p>
+            <p style={styles.helpText}>Map size must be between 10x10 and 30x30</p>
             <div style={styles.formGroup}>
               <label style={styles.label}>Width (tiles):</label>
               <input
                 type="number"
-                min="1"
-                max="100"
+                min="10"
+                max="30"
                 value={resizeWidth}
                 onChange={(e) => setResizeWidth(Number(e.target.value))}
                 style={styles.input}
@@ -508,8 +556,8 @@ export function MapEditorControls({
               <label style={styles.label}>Height (tiles):</label>
               <input
                 type="number"
-                min="1"
-                max="100"
+                min="10"
+                max="30"
                 value={resizeHeight}
                 onChange={(e) => setResizeHeight(Number(e.target.value))}
                 style={styles.input}
@@ -532,6 +580,27 @@ export function MapEditorControls({
         <div style={styles.modal}>
           <div style={styles.modalContent}>
             <h3 style={styles.modalTitle}>Create New Map</h3>
+            <p style={styles.helpText}>Map size must be between 10x10 and 30x30</p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Map Name:</label>
+              <input
+                type="text"
+                value={resetName}
+                onChange={(e) => setResetName(e.target.value)}
+                placeholder="Enter map name"
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Description:</label>
+              <textarea
+                value={resetDescription}
+                onChange={(e) => setResetDescription(e.target.value)}
+                placeholder="Enter map description"
+                style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
+                rows={3}
+              />
+            </div>
             <div style={styles.formGroup}>
               <label style={styles.label}>Type:</label>
               <select
@@ -547,8 +616,8 @@ export function MapEditorControls({
               <label style={styles.label}>Width (tiles):</label>
               <input
                 type="number"
-                min="1"
-                max="100"
+                min="10"
+                max="30"
                 value={resetWidth}
                 onChange={(e) => setResetWidth(Number(e.target.value))}
                 style={styles.input}
@@ -558,8 +627,8 @@ export function MapEditorControls({
               <label style={styles.label}>Height (tiles):</label>
               <input
                 type="number"
-                min="1"
-                max="100"
+                min="10"
+                max="30"
                 value={resetHeight}
                 onChange={(e) => setResetHeight(Number(e.target.value))}
                 style={styles.input}

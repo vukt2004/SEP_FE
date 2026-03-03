@@ -46,13 +46,16 @@ export interface GameLevelFormat {
  * override lower layers.
  *
  * @param mapData - Map data from the editor
- * @param levelName - Optional name for the level
+ * @param levelName - Optional name for the level (overrides mapData.config.name)
  * @returns Game level format
  */
 export function exportMapToGameFormat(mapData: MapData, levelName?: string): GameLevelFormat {
   const timestamp = Date.now();
   const id = `level-${mapData.config.type}-${timestamp}`;
-  const name = levelName || `${mapData.config.type} Level`;
+  const name = levelName || mapData.config.name || `${mapData.config.type} Level`;
+  const description =
+    mapData.config.description ||
+    `A ${mapData.config.type} level with ${mapData.config.width}x${mapData.config.height} tiles`;
 
   // Merge visual layers: background -> ground -> foreground
   // Later layers override earlier ones (non-zero values take priority)
@@ -97,17 +100,17 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       }
     : null;
 
-  // Convert coins and enemies to objects array
+  // Convert fruits and enemies to objects array
   const objects: GameLevelFormat["objects"] = [];
 
-  // Add coins as collectible objects
-  mapData.objects.coins.forEach((coin, index) => {
+  // Add fruits as collectible objects
+  mapData.objects.fruits.forEach((fruit, index) => {
     objects.push({
-      id: `coin-${index + 1}`,
-      type: "coin",
+      id: `fruit-${index + 1}`,
+      type: "fruit",
       position: {
-        row: coin.y,
-        col: coin.x,
+        row: fruit.y,
+        col: fruit.x,
       },
       metadata: {
         points: 10,
@@ -145,7 +148,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     ...(objects.length > 0 && { objects }),
     metadata: {
       difficulty: "medium",
-      description: `A ${mapData.config.type} level with ${mapData.config.width}x${mapData.config.height} tiles`,
+      description: description,
       targetAlgorithm: "manual",
       estimatedSteps: 50,
     },

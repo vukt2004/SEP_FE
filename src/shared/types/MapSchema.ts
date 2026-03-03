@@ -17,6 +17,10 @@ export interface MapConfig {
   height: number;
   /** Size of each tile in pixels */
   tileSize: number;
+  /** Map name */
+  name: string;
+  /** Map description */
+  description: string;
 }
 
 /**
@@ -59,8 +63,8 @@ export interface Objects {
   playerSpawn: TilePosition | null;
   /** Goal/finish position */
   goal: TilePosition | null;
-  /** Collectible coins */
-  coins: TilePosition[];
+  /** Collectible fruits */
+  fruits: TilePosition[];
   /** Enemy spawns */
   enemies: Enemy[];
 }

@@ -14,7 +14,7 @@
       "frameHeight": 64,
       "frameIndex": 0
     },
-    "coin": {
+    "fruit": {
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
       "frameWidth": 32,
       "frameHeight": 32,
