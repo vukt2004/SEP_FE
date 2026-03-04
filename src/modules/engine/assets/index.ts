@@ -1,5 +1,6 @@
 // Asset Definitions
 export type { ObjectDefinition, TileDefinition } from "./definitions";
+export { RESERVED_OBJECT_NAMES } from "./definitions";
 
 // Asset Loaders
 export {

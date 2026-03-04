@@ -38,12 +38,6 @@
       "tileY": 0,
       "tileSize": 16
     },
-    "6": {
-      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
-      "tileX": 5,
-      "tileY": 0,
-      "tileSize": 16
-    },
     "7": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
@@ -79,6 +73,642 @@
       "tileX": 2,
       "tileY": 1,
       "tileSize": 16
+    },
+    "13": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "15": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "16": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "17": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "18": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "19": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "20": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "22": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "23": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "24": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "25": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "26": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "28": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "29": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "30": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "31": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "32": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "33": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "34": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "38": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "39": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "40": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "45": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "46": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "47": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "64": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "65": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "66": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "67": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "68": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "70": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "71": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "72": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "73": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "74": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "76": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "77": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "78": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "79": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "80": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "81": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "82": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "83": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "84": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "86": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "87": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "88": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "89": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "90": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "92": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "93": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "94": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "95": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "96": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "97": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "98": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "102": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "103": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "104": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "109": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "110": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "111": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "128": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "129": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "130": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "131": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "132": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "134": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "135": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "136": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "137": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "138": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "140": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "141": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "142": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "143": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "144": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "145": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "146": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "147": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 3,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "148": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 4,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "150": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "151": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "152": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "153": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 9,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "154": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 10,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "156": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 12,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "157": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "158": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "159": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 9,
+      "tileSize": 16
+    },
+    "160": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 0,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "161": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 1,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "162": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 2,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "166": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 6,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "167": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 7,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "168": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 8,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "173": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 13,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "174": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 14,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "175": {
+      "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
+      "tileX": 15,
+      "tileY": 10,
+      "tileSize": 16
+    },
+    "176": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Blue.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "177": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Brown.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "178": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Gray.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "179": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Green.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "180": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Pink.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "181": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Purple.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
+    },
+    "182": {
+      "imagePath": "/assets/Pixel Adventure 1/Background/Yellow.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 64
     }
   }
 }

@@ -56,6 +56,18 @@ export interface Enemy {
 }
 
 /**
+ * Decorative object placement
+ */
+export interface DecorativeObject {
+  /** Object ID from objects.json */
+  id: number;
+  /** Tile x coordinate */
+  x: number;
+  /** Tile y coordinate */
+  y: number;
+}
+
+/**
  * Game objects and entities placed on the map
  */
 export interface Objects {
@@ -67,6 +79,8 @@ export interface Objects {
   fruits: TilePosition[];
   /** Enemy spawns */
   enemies: Enemy[];
+  /** Decorative objects (trees, chests, rocks, etc.) */
+  decorativeObjects: DecorativeObject[];
 }
 
 /**

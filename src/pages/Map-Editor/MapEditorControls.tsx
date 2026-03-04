@@ -19,14 +19,14 @@ interface MapEditorControlsProps {
   mapData: MapData;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
+  selectedObjectId: number | null; // Changed from string enum to numeric ID
+  selectedTool: "paint" | "erase" | "fill" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
-  onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ) => void;
+  onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
+  onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
   onResize: (width: number, height: number) => void;
   onReset: (
     type: "platform" | "topdown",
@@ -44,25 +44,23 @@ interface MapEditorControlsProps {
   onDescriptionChange?: (description: string) => void;
 }
 
-interface ObjectToolButtonProps {
-  objectType: "player" | "goal" | "fruit" | "enemy";
+interface ObjectSelectionButtonProps {
+  objectId: number; // Numeric object ID
   label: string;
   objectDef: ObjectDefinition;
   cache: ObjectSpriteCache;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
-  onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ) => void;
+  selectedObjectId: number | null;
+  onObjectSelect: (objectId: number | null) => void;
 }
 
-function ObjectToolButton({
-  objectType,
+function ObjectSelectionButton({
+  objectId,
   label,
   objectDef,
   cache,
-  selectedTool,
-  onToolSelect,
-}: ObjectToolButtonProps) {
+  selectedObjectId,
+  onObjectSelect,
+}: ObjectSelectionButtonProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -115,15 +113,15 @@ function ObjectToolButton({
         padding: "12px",
         fontSize: "13px",
         fontWeight: "500",
-        border: selectedTool === objectType ? "2px solid #4CAF50" : "2px solid #ddd",
+        border: selectedObjectId === objectId ? "2px solid #4CAF50" : "2px solid #ddd",
         borderRadius: "6px",
-        backgroundColor: selectedTool === objectType ? "#e8f5e9" : "white",
+        backgroundColor: selectedObjectId === objectId ? "#e8f5e9" : "white",
         cursor: "pointer",
         transition: "all 0.2s",
         minWidth: "80px",
-        boxShadow: selectedTool === objectType ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
+        boxShadow: selectedObjectId === objectId ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
       }}
-      onClick={() => onToolSelect(selectedTool === objectType ? null : objectType)}
+      onClick={() => onObjectSelect(selectedObjectId === objectId ? null : objectId)}
       title={`${label} (click again to deselect)`}
     >
       <div
@@ -155,11 +153,13 @@ export function MapEditorControls({
   mapData,
   activeLayer,
   selectedTile,
+  selectedObjectId,
   selectedTool,
   canUndo,
   canRedo,
   onLayerChange,
   onTileSelect,
+  onObjectSelect,
   onToolSelect,
   onResize,
   onReset,
@@ -419,48 +419,28 @@ export function MapEditorControls({
         </div>
       )}
 
-      {/* Object Tools - Only show on background layer */}
+      {/* Object Palette - Only show on background layer */}
       {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
         <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Object Tools</h3>
-          <p style={styles.helpText}>Place game objects (click again to deselect)</p>
+          <h3 style={styles.sectionTitle}>Objects</h3>
+          <p style={styles.helpText}>Select an object, then use paint tool to place it</p>
           <div style={styles.objectToolGrid}>
-            <ObjectToolButton
-              key={objectDefinitions.player.imagePath}
-              objectType="player"
-              label="Player"
-              objectDef={objectDefinitions.player}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.goal.imagePath}
-              objectType="goal"
-              label="Goal"
-              objectDef={objectDefinitions.goal}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.fruit.imagePath}
-              objectType="fruit"
-              label="Fruit"
-              objectDef={objectDefinitions.fruit}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.enemy.imagePath}
-              objectType="enemy"
-              label="Enemy"
-              objectDef={objectDefinitions.enemy}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
+            {/* Dynamically render ALL objects from definitions */}
+            {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
+              const objectId = parseInt(idStr, 10);
+              const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+              return (
+                <ObjectSelectionButton
+                  key={objectId}
+                  objectId={objectId}
+                  label={label}
+                  objectDef={objDef}
+                  cache={objectCache}
+                  selectedObjectId={selectedObjectId}
+                  onObjectSelect={onObjectSelect}
+                />
+              );
+            })}
           </div>
         </div>
       )}
