@@ -2,7 +2,7 @@ import type { StudentHomeVM } from "./home.types";
 
 export const mockStudentHome: StudentHomeVM = {
   hud: {
-    displayName: "Student",
+    displayName: "Test Learner",
     level: 7,
     xp: 320,
     xpToNext: 500,
