@@ -14,6 +14,8 @@ export const ROUTES = {
   STUDENT_PACKAGES: "/app/packages",
   STUDENT_VERIFY_OTP: "/verify-otp",
   STUDENT_REGISTER: "/register",
+  STUDENT_LEARN: "/app/browse",
+  STUDENT_PROFILE: "/app/profile",
 
   // CMS
   CMS_LOGIN: "/cms/login",
