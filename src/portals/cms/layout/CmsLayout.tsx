@@ -11,6 +11,18 @@ import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
 import { useState } from "react";
+import {
+  LayoutDashboard,
+  Map,
+  Users,
+  Flag,
+  Package,
+  Bird,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  LogOut,
+} from "lucide-react";
 
 const CmsLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -24,11 +36,11 @@ const CmsLayout: React.FC = () => {
   };
 
   const navItems = [
-    { path: "/cms/dashboard", label: "Dashboard", icon: "📊" },
-    { path: "/cms/maps", label: "Maps", icon: "🗺️" },
-    { path: "/cms/users", label: "Users", icon: "👥" },
-    { path: "/cms/reports", label: "Reports", icon: "🚩" },
-    { path: "/cms/marketplace", label: "Marketplace", icon: "🛒" },
+    { path: "/cms/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/cms/maps", label: "Maps", icon: Map },
+    { path: "/cms/users", label: "Users", icon: Users },
+    { path: "/cms/reports", label: "Reports", icon: Flag },
+    { path: "/cms/packages", label: "Packages", icon: Package },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -59,7 +71,7 @@ const CmsLayout: React.FC = () => {
             gap: "12px",
           }}
         >
-          <span style={{ fontSize: "24px" }}>🦆</span>
+          <Bird size={28} style={{ color: "var(--primary)" }} />
           {!isSidebarCollapsed && (
             <div>
               <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "bold" }}>
@@ -72,38 +84,43 @@ const CmsLayout: React.FC = () => {
 
         {/* Navigation */}
         <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                marginBottom: "4px",
-                textDecoration: "none",
-                color: isActive(item.path) ? "var(--text)" : "var(--text-2)",
-                background: isActive(item.path) ? "var(--surface-2)" : "transparent",
-                border: isActive(item.path) ? "1px solid var(--primary)" : "1px solid transparent",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive(item.path)) {
-                  e.currentTarget.style.background = "var(--surface-2)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive(item.path)) {
-                  e.currentTarget.style.background = "transparent";
-                }
-              }}
-            >
-              <span style={{ fontSize: "20px" }}>{item.icon}</span>
-              {!isSidebarCollapsed && <span>{item.label}</span>}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  marginBottom: "4px",
+                  textDecoration: "none",
+                  color: isActive(item.path) ? "var(--text)" : "var(--text-2)",
+                  background: isActive(item.path) ? "var(--surface-2)" : "transparent",
+                  border: isActive(item.path)
+                    ? "1px solid var(--primary)"
+                    : "1px solid transparent",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive(item.path)) {
+                    e.currentTarget.style.background = "var(--surface-2)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive(item.path)) {
+                    e.currentTarget.style.background = "transparent";
+                  }
+                }}
+              >
+                <IconComponent size={20} />
+                {!isSidebarCollapsed && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Collapse Toggle */}
@@ -122,7 +139,7 @@ const CmsLayout: React.FC = () => {
             gap: "8px",
           }}
         >
-          <span>{isSidebarCollapsed ? "→" : "←"}</span>
+          {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           {!isSidebarCollapsed && <span>Collapse</span>}
         </button>
       </aside>
@@ -165,6 +182,37 @@ const CmsLayout: React.FC = () => {
               {role || "Admin"}
             </div>
 
+            {/* Profile Button */}
+            <button
+              onClick={() => navigate("/cms/profile")}
+              style={{
+                padding: "8px 16px",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                color: "var(--text-2)",
+                cursor: "pointer",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--surface-2)";
+                e.currentTarget.style.borderColor = "var(--primary)";
+                e.currentTarget.style.color = "var(--primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-2)";
+              }}
+            >
+              <User size={18} />
+              <span>Profile</span>
+            </button>
+
             {/* Logout Button */}
             <button
               onClick={handleLogout}
@@ -192,6 +240,7 @@ const CmsLayout: React.FC = () => {
                 e.currentTarget.style.color = "var(--text-2)";
               }}
             >
+              <LogOut size={18} />
               <span>Logout</span>
             </button>
           </div>

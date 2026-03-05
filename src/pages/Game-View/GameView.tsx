@@ -6,7 +6,7 @@ import type { BlockProgram, ConditionType } from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
-import { loadLevelFromMockData } from "../../utils/levelLoader";
+import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 
@@ -21,8 +21,9 @@ export default function GameView() {
   const [error, setError] = useState<string | null>(null);
   const [isExecutorRunning, setIsExecutorRunning] = useState(false);
 
-  // Get level file from location state or use default
-  const levelFile = (location.state as { levelFile?: string })?.levelFile || "level-tutorial-01";
+  // Get level ID from location state
+  const levelId = (location.state as { levelId?: string })?.levelId;
+  const levelFile = (location.state as { levelFile?: string })?.levelFile;
 
   useEffect(() => {
     console.log("[useEffect] GameView useEffect triggered");
@@ -41,9 +42,11 @@ export default function GameView() {
         console.log("Starting game initialization...");
         setIsLoading(true);
 
-        // Load level from mock data
-        console.log("Loading level:", levelFile);
-        const levelDefinition = await loadLevelFromMockData(levelFile);
+        // Load level from API or fallback to mock data
+        console.log("Loading level:", levelId || levelFile);
+        const levelDefinition = levelId
+          ? await loadLevelFromAPI(levelId)
+          : await loadLevelFromMockData(levelFile || "level-tutorial-01");
         console.log("Level loaded successfully:", levelDefinition.name);
 
         // Set canvas size based on level dimensions

@@ -1,4 +1,4 @@
-// src/types/api/cms/marketplace.ts
+// src/types/api/cms/packages.ts
 import type { ApiResult } from "../common";
 
 /**

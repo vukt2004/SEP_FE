@@ -18,7 +18,8 @@ export class EditorStore {
   private mapData: MapData;
   private activeLayer: LayerType;
   private selectedTile: number | null;
-  private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
+  private selectedObjectId: number | null; // Numeric object ID from objects.json
+  private selectedTool: "paint" | "erase" | "fill" | null;
   private layerVisibility: Record<LayerType, boolean>;
   private listeners: Set<() => void>;
   private undoStack: MapData[];
@@ -34,6 +35,7 @@ export class EditorStore {
     this.mapData = structuredClone(initialMap);
     this.activeLayer = "background";
     this.selectedTile = null;
+    this.selectedObjectId = null;
     this.selectedTool = null;
     this.layerVisibility = {
       background: true,
@@ -69,9 +71,16 @@ export class EditorStore {
   }
 
   /**
+   * Get the currently selected object ID
+   */
+  getSelectedObjectId(): number | null {
+    return this.selectedObjectId;
+  }
+
+  /**
    * Get the currently selected tool
    */
-  getSelectedTool(): "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null {
+  getSelectedTool(): "paint" | "erase" | "fill" | null {
     return this.selectedTool;
   }
 
@@ -159,12 +168,10 @@ export class EditorStore {
     // Automatically make the active layer visible
     this.layerVisibility[layer] = true;
 
-    // If switching to collision layer, clear selections and auto-select paint
+    // If switching to collision layer, clear tile/object selections and auto-select paint
     if (layer === "collision") {
       this.selectedTile = null; // Clear tile selection
-      if (this.isObjectTool(this.selectedTool)) {
-        this.selectedTool = null; // Clear object tool selection
-      }
+      this.selectedObjectId = null; // Clear object selection
       // Auto-select paint tool for collision drawing
       if (this.selectedTool === null) {
         this.selectedTool = "paint";
@@ -182,12 +189,31 @@ export class EditorStore {
   setSelectedTile(tileId: number | null): void {
     this.selectedTile = tileId;
 
-    // If selecting a tile, deselect object tools and auto-select paint (mutual exclusion)
+    // If selecting a tile, deselect objects and auto-select paint (mutual exclusion)
     if (tileId !== null) {
-      if (this.isObjectTool(this.selectedTool)) {
-        this.selectedTool = "paint";
-      } else if (this.selectedTool === null) {
+      this.selectedObjectId = null;
+      if (this.selectedTool === null) {
         // Auto-select paint tool when selecting a tile
+        this.selectedTool = "paint";
+      }
+    }
+
+    this.notify();
+  }
+
+  /**
+   * Set the selected object ID
+   *
+   * @param objectId - The object ID to select (or null to deselect)
+   */
+  setSelectedObjectId(objectId: number | null): void {
+    this.selectedObjectId = objectId;
+
+    // If selecting an object, deselect tiles and auto-select paint (mutual exclusion)
+    if (objectId !== null) {
+      this.selectedTile = null;
+      if (this.selectedTool === null) {
+        // Auto-select paint tool when selecting an object
         this.selectedTool = "paint";
       }
     }
@@ -200,16 +226,8 @@ export class EditorStore {
    *
    * @param tool - The tool to select (or null to deselect)
    */
-  setSelectedTool(
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ): void {
+  setSelectedTool(tool: "paint" | "erase" | "fill" | null): void {
     this.selectedTool = tool;
-
-    // If selecting an object tool, deselect tile (mutual exclusion)
-    if (this.isObjectTool(tool)) {
-      this.selectedTile = null;
-    }
-
     this.notify();
   }
 
@@ -256,35 +274,30 @@ export class EditorStore {
   }
 
   /**
-   * Check if a tool is an object placement tool
-   *
-   * @param tool - The tool to check
-   * @returns True if the tool is an object tool
-   */
-  private isObjectTool(
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ): boolean {
-    return tool === "player" || tool === "goal" || tool === "fruit" || tool === "enemy";
-  }
-
-  /**
    * Apply the selected tool at the given coordinates
    *
    * @param x - Tile x coordinate
    * @param y - Tile y coordinate
    */
   applyTool(x: number, y: number): void {
-    // If a tile is selected but no tool, auto-paint
+    // Priority 1: If an object is selected, place it (regardless of tool)
+    if (this.selectedObjectId !== null) {
+      this.placeObject(x, y);
+      return;
+    }
+
+    // Priority 2: If a tile is selected but no tool, auto-paint
     if (this.selectedTool === null && this.selectedTile !== null) {
       this.updateTile(x, y, this.selectedTile);
       return;
     }
 
-    // Do nothing if no tool is selected and no tile
+    // Do nothing if no tool is selected and nothing to place
     if (this.selectedTool === null) {
       return;
     }
 
+    // Apply the selected tool
     if (this.selectedTool === "paint") {
       // Paint with selected tile, or with 1 for collision layer
       if (this.selectedTile !== null) {
@@ -297,9 +310,6 @@ export class EditorStore {
       this.updateTile(x, y, 0);
     } else if (this.selectedTool === "fill") {
       this.floodFill(x, y);
-    } else {
-      // Object placement tools
-      this.placeObject(x, y);
     }
   }
 
@@ -388,6 +398,7 @@ export class EditorStore {
 
   /**
    * Place an object at the given coordinates
+   * Handles both reserved objects (1-4) and decorative objects (5+)
    *
    * @param x - Tile x coordinate
    * @param y - Tile y coordinate
@@ -401,20 +412,26 @@ export class EditorStore {
       return;
     }
 
+    if (!this.selectedObjectId) {
+      return;
+    }
+
     this.saveHistory();
 
-    switch (this.selectedTool) {
-      case "player":
+    // Handle reserved objects (1-4)
+    switch (this.selectedObjectId) {
+      case 1: // player
         // Only one player spawn allowed - replace existing
         this.mapData.objects.playerSpawn = { x, y };
         break;
 
-      case "goal":
+      case 2: // goal
         // Only one goal allowed - replace existing
         this.mapData.objects.goal = { x, y };
         break;
 
-      case "fruit": {
+      case 3: {
+        // fruit
         // Toggle fruit at position
         const fruitIndex = this.mapData.objects.fruits.findIndex(
           (fruit) => fruit.x === x && fruit.y === y,
@@ -429,7 +446,8 @@ export class EditorStore {
         break;
       }
 
-      case "enemy": {
+      case 4: {
+        // enemy
         // Toggle enemy at position
         const enemyIndex = this.mapData.objects.enemies.findIndex(
           (enemy) => enemy.x === x && enemy.y === y,
@@ -440,6 +458,24 @@ export class EditorStore {
         } else {
           // Add new enemy with default type
           this.mapData.objects.enemies.push({ x, y, type: "slime" });
+        }
+        break;
+      }
+
+      default: {
+        // Handle decorative objects (5+)
+        if (this.selectedObjectId >= 5) {
+          // Toggle decorative object at position
+          const objIndex = this.mapData.objects.decorativeObjects.findIndex(
+            (obj) => obj.x === x && obj.y === y && obj.id === this.selectedObjectId,
+          );
+          if (objIndex !== -1) {
+            // Remove existing decorative object
+            this.mapData.objects.decorativeObjects.splice(objIndex, 1);
+          } else {
+            // Add new decorative object
+            this.mapData.objects.decorativeObjects.push({ id: this.selectedObjectId, x, y });
+          }
         }
         break;
       }
@@ -497,6 +533,7 @@ export class EditorStore {
     this.mapData.objects.goal = null;
     this.mapData.objects.fruits = [];
     this.mapData.objects.enemies = [];
+    this.mapData.objects.decorativeObjects = [];
 
     this.notify();
   }
@@ -515,6 +552,7 @@ export class EditorStore {
     this.mapData = createEmptyMap(type, width, height, tileSize);
     this.activeLayer = "background";
     this.selectedTile = 0;
+    this.selectedObjectId = null;
     this.selectedTool = "paint";
 
     this.notify();
@@ -577,9 +615,15 @@ export class EditorStore {
       loadedMap.config.description = "";
     }
 
+    // Backward compatibility: Add decorativeObjects if missing
+    if (!loadedMap.objects.decorativeObjects) {
+      loadedMap.objects.decorativeObjects = [];
+    }
+
     this.mapData = loadedMap;
     this.activeLayer = "background";
     this.selectedTile = 0;
+    this.selectedObjectId = null;
     this.selectedTool = "paint";
 
     this.notify();

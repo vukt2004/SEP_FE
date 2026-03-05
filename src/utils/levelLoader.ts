@@ -1,4 +1,27 @@
 import type { LevelDefinition } from "../modules/map-system/types";
+import { cmsMapsApi } from "../services/api/cms/maps.api";
+
+/**
+ * Load level data from API
+ *
+ * @param levelId - Level map ID from API
+ * @returns Level definition
+ */
+export async function loadLevelFromAPI(levelId: string): Promise<LevelDefinition> {
+  try {
+    const response = await cmsMapsApi.getLevelMapById(levelId);
+
+    if (!response.data.isSuccess || !response.data.data) {
+      throw new Error(response.data.message || "Failed to load level");
+    }
+
+    // Return the jsonContent as LevelDefinition
+    return response.data.data.jsonContent as LevelDefinition;
+  } catch (error) {
+    console.error("Error loading level from API:", error);
+    throw error;
+  }
+}
 
 /**
  * Load level data from mock JSON files in the public/mock-data folder
