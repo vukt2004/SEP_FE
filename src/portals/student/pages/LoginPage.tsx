@@ -1,7 +1,7 @@
 import "@/shared/styles/login.css";
 import "@/shared/styles/tokens.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // ✅ add Link
 import { useStudentAuthStore } from "@/stores/auth/studentAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
 
@@ -14,7 +14,6 @@ import DuckSpeechBubble from "../components/login/DuckSpeechBubble";
 import { selectDuckMode } from "../login/duckMode";
 import DuckAstronaut from "../components/login/DuckAstronaut";
 
-// ===== Message System (A) =====
 import type { FieldKey, MessageCode } from "../login/messages";
 import { buildMessage } from "../login/messages";
 import { validateForm, firstErrorField } from "../login/validation";
@@ -37,11 +36,9 @@ type AxiosLikeError = { response: { status: number } };
 function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }
-
 function isApiErrorLike(x: unknown): x is ApiErrorLike {
   return isRecord(x) && typeof x.status === "number";
 }
-
 function isAxiosLikeError(x: unknown): x is AxiosLikeError {
   return (
     isRecord(x) &&
@@ -49,17 +46,14 @@ function isAxiosLikeError(x: unknown): x is AxiosLikeError {
     typeof (x.response as Record<string, unknown>).status === "number"
   );
 }
-
 function getHttpStatus(err: unknown): number | null {
   if (isApiErrorLike(err)) return err.status;
   if (isAxiosLikeError(err)) return err.response.status;
   return null;
 }
-
 function isAuthFormError(code: MessageCode): code is AuthFormErrorCode {
   return code === "AUTH_INVALID" || code === "AUTH_LOCKED" || code === "AUTH_TOO_MANY_ATTEMPTS";
 }
-
 function isAuthSystemError(code: MessageCode): code is AuthSystemErrorCode {
   return code === "AUTH_SERVER_ERROR" || code === "AUTH_NETWORK_ERROR";
 }
@@ -72,17 +66,15 @@ export default function LoginPage() {
 
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
 
-  // Phase 4.1: info banner (e.g., verify ok but no token -> ask to login)
   const infoMessage = (location.state as { info?: string } | null)?.info ?? null;
 
-  // micro-interactions
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false); // ✅ add
   const [shake, setShake] = useState(false);
   const [confetti, setConfetti] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
-  // message system state
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -104,7 +96,7 @@ export default function LoginPage() {
   const bubble = useMemo(
     () =>
       selectTopBubbleMessage({
-        isSubmitting,
+        isSubmitting: isSubmitting || isGoogleSubmitting, // ✅ include google
         isSuccess,
         focusedField,
         capsLockOn,
@@ -114,6 +106,7 @@ export default function LoginPage() {
       }),
     [
       isSubmitting,
+      isGoogleSubmitting,
       isSuccess,
       focusedField,
       capsLockOn,
@@ -126,14 +119,22 @@ export default function LoginPage() {
   const duckMode = useMemo(
     () =>
       selectDuckMode({
-        isSubmitting,
+        isSubmitting: isSubmitting || isGoogleSubmitting, // ✅ include google
         isSuccess,
         focusedField,
         fieldErrors,
         formErrorCode,
         systemErrorCode,
       }),
-    [isSubmitting, isSuccess, focusedField, fieldErrors, formErrorCode, systemErrorCode],
+    [
+      isSubmitting,
+      isGoogleSubmitting,
+      isSuccess,
+      focusedField,
+      fieldErrors,
+      formErrorCode,
+      systemErrorCode,
+    ],
   );
 
   function triggerShake() {
@@ -149,7 +150,6 @@ export default function LoginPage() {
   function setField<K extends keyof LoginValues>(key: K, value: LoginValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
 
-    // clear field error as user edits that field
     setFieldErrors((prev) => {
       const fk = key as FieldKey;
       if (!prev[fk]) return prev;
@@ -158,17 +158,30 @@ export default function LoginPage() {
       return next;
     });
 
-    // optional: clear form/system errors on any edit
     clearNonFieldErrors();
   }
 
+  // ✅ Google OAuth redirect (frontend chỉ cần bấm -> redirect)
+  const GOOGLE_OAUTH_URL =
+    import.meta.env.VITE_GOOGLE_OAUTH_URL ??
+    `${import.meta.env.VITE_API_BASE_URL ?? ""}/auth/google`;
+
+  const handleGoogleLogin = () => {
+    if (isSubmitting || isGoogleSubmitting) return;
+
+    clearNonFieldErrors();
+    setIsGoogleSubmitting(true);
+
+    // Nếu BE dùng endpoint khác, đổi lại GOOGLE_OAUTH_URL cho đúng.
+    window.location.assign(GOOGLE_OAUTH_URL);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || isGoogleSubmitting) return;
 
     setIsSuccess(false);
 
-    // ===== Client validation (A) =====
     const { fieldErrors: fe } = validateForm(values);
     setFieldErrors(fe);
 
@@ -184,10 +197,8 @@ export default function LoginPage() {
     clearNonFieldErrors();
 
     try {
-      // ===== Real API: store login(email, password) =====
       await login(values.email, values.password);
 
-      // success micro + game-like loading
       setIsSuccess(true);
       setConfetti(true);
       setShowLoading(true);
@@ -215,12 +226,10 @@ export default function LoginPage() {
       } else if (isAuthSystemError(code)) {
         setSystemErrorCode(code);
       } else {
-        // fallback safety
         setSystemErrorCode("AUTH_SERVER_ERROR");
       }
     } finally {
       setIsSubmitting(false);
-      // nếu navigate nhanh, overlay tự mất theo route; nếu không navigate, đảm bảo tắt:
       setShowLoading(false);
     }
   };
@@ -233,17 +242,13 @@ export default function LoginPage() {
     <>
       <div className="login-page" style={pageStyle}>
         <LoginAriaAnnouncer message={bubble} />
-        {/* ====== SET 2: Parallax Starfield (nền tổng) ====== */}
         <div className={styles.sceneRoot} aria-hidden="true">
           <Starfield />
         </div>
 
-        {/* LEFT: DUCK PANEL */}
         <div className="login-duck" style={{ position: "relative", overflow: "visible" }}>
-          {/* overlay nhẹ để chữ/nhân vật nổi */}
           <div style={{ position: "absolute", inset: 0, background: "rgba(2,6,23,0.25)" }} />
 
-          {/* orbiting blocks (decor) */}
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden="true">
             <OrbitBlocks />
           </div>
@@ -254,22 +259,18 @@ export default function LoginPage() {
               Learn logic through fun 2D gameplay. Build skills while exploring levels.
             </p>
 
-            {/* Anchor bubble + duck */}
             <div style={{ marginTop: 18, position: "relative", minHeight: 340 }}>
               <DuckSpeechBubble
                 key={`${bubble.code}:${String(bubble.type)}`}
                 message={bubble}
                 placement="top-center"
               />
-
               <DuckAstronaut mode={duckMode} />
             </div>
           </div>
         </div>
 
-        {/* FORM PANEL */}
         <div className="login-form-wrapper" style={{ position: "relative" }}>
-          {/* orbit nhỏ phía sau card (nhẹ, không ảnh hưởng layout) */}
           <div
             className="hidden md:block"
             style={{ position: "absolute", inset: "-48px", pointerEvents: "none", opacity: 0.9 }}
@@ -282,8 +283,7 @@ export default function LoginPage() {
             className={["login-card", shake ? styles.shake : ""].join(" ")}
             style={{ position: "relative" }}
           >
-            {/* ====== SET 3: Loading bar khi submit ====== */}
-            {isSubmitting && (
+            {(isSubmitting || isGoogleSubmitting) && (
               <div className={styles.loadingBarWrap} aria-hidden="true">
                 <div className={styles.loadingBar} />
               </div>
@@ -293,7 +293,6 @@ export default function LoginPage() {
 
             <h2>Learner Login</h2>
 
-            {/* Phase 4.1: info banner */}
             {infoMessage ? (
               <div
                 role="status"
@@ -323,7 +322,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isGoogleSubmitting}
               />
               {fieldErrors.email ? (
                 <div
@@ -351,7 +350,7 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isGoogleSubmitting}
               />
               {fieldErrors.password ? (
                 <div
@@ -367,11 +366,85 @@ export default function LoginPage() {
                 type="submit"
                 className="login-button"
                 style={{ backgroundColor: "#2563EB" }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isGoogleSubmitting}
               >
                 {isSubmitting ? "Signing in..." : "Sign In"}
               </button>
             </form>
+
+            {/* ✅ Register navigation */}
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 13,
+                display: "flex",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <span style={{ color: "#A7B0C0" }}>Don't have an account yet?</span>
+              <Link
+                to={ROUTES.STUDENT_REGISTER}
+                style={{ color: "#2563EB", fontWeight: 700, textDecoration: "none" }}
+              >
+                Create Account
+              </Link>
+            </div>
+
+            {/* ✅ Divider (đặt dưới register) */}
+            <div
+              aria-hidden="true"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                margin: "14px 0 10px",
+                opacity: 0.9,
+              }}
+            >
+              <div style={{ height: 1, background: "rgba(229,231,235,0.18)", flex: 1 }} />
+              <div style={{ fontSize: 12, color: "#A7B0C0" }}>or</div>
+              <div style={{ height: 1, background: "rgba(229,231,235,0.18)", flex: 1 }} />
+            </div>
+
+            {/* ✅ Google login button (xuống dưới) */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="login-button"
+              disabled={isSubmitting || isGoogleSubmitting}
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid rgba(229,231,235,0.25)",
+                color: "#E5E7EB",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+              }}
+            >
+              {/* Google logo (inline SVG) */}
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <path
+                  fill="#EA4335"
+                  d="M24 9.5c3.54 0 6.73 1.22 9.25 3.61l6.9-6.9C35.97 2.39 30.45 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.02 6.23C12.55 13.27 17.8 9.5 24 9.5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M46.5 24.5c0-1.64-.15-3.22-.43-4.75H24v9h12.7c-.55 2.93-2.2 5.41-4.7 7.08l7.22 5.6C43.73 37.29 46.5 31.43 46.5 24.5z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M10.58 28.55A14.47 14.47 0 0 1 9.5 24c0-1.58.27-3.11.76-4.55l-8.02-6.23A23.95 23.95 0 0 0 0 24c0 3.89.93 7.57 2.56 10.78l8.02-6.23z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M24 48c6.45 0 11.97-2.13 15.96-5.78l-7.22-5.6c-2 1.35-4.57 2.15-8.74 2.15-6.2 0-11.45-3.77-13.42-9.05l-8.02 6.23C6.51 42.62 14.62 48 24 48z"
+                />
+              </svg>
+
+              {isGoogleSubmitting ? "Redirecting..." : "Continue with Google"}
+            </button>
 
             <div className="login-footer">Continue your learning journey</div>
           </div>
