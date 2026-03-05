@@ -13,6 +13,7 @@ import React, { useEffect, useState } from "react";
 import { cmsUsersApi } from "@/services/api/cms/users.api";
 import type { UserListItem, UserDetail, EntityStatusEnum, RoleEnum } from "@/types/api/cms/users";
 import { Modal } from "../components/Modal";
+import { Eye, Pencil, Lock, CheckCircle, Check, X } from "lucide-react";
 
 export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -508,7 +509,7 @@ export const UsersPage: React.FC = () => {
                         }}
                         title="View Details"
                       >
-                        👁️
+                        <Eye size={16} />
                       </button>
 
                       {/* Edit */}
@@ -527,7 +528,7 @@ export const UsersPage: React.FC = () => {
                         }}
                         title="Edit User"
                       >
-                        ✏️
+                        <Pencil size={16} />
                       </button>
 
                       {/* Toggle Status */}
@@ -546,7 +547,7 @@ export const UsersPage: React.FC = () => {
                         }}
                         title={user.status === 1 ? "Deactivate" : "Activate"}
                       >
-                        {user.status === 1 ? "🔒" : "✅"}
+                        {user.status === 1 ? <Lock size={16} /> : <CheckCircle size={16} />}
                       </button>
                     </div>
                   </td>
@@ -685,16 +686,46 @@ export const UsersPage: React.FC = () => {
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
                   Email Confirmed
                 </div>
-                <div style={{ color: "var(--text)" }}>
-                  {selectedUser.emailConfirmed ? "✅ Yes" : "❌ No"}
+                <div
+                  style={{
+                    color: "var(--text)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  {selectedUser.emailConfirmed ? (
+                    <>
+                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                    </>
+                  ) : (
+                    <>
+                      <X size={16} color="var(--danger)" /> <span>No</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
                   Phone Confirmed
                 </div>
-                <div style={{ color: "var(--text)" }}>
-                  {selectedUser.phoneNumberConfirmed ? "✅ Yes" : "❌ No"}
+                <div
+                  style={{
+                    color: "var(--text)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  {selectedUser.phoneNumberConfirmed ? (
+                    <>
+                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                    </>
+                  ) : (
+                    <>
+                      <X size={16} color="var(--danger)" /> <span>No</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div>

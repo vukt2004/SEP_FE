@@ -12,6 +12,16 @@ import React, { useEffect, useState } from "react";
 import { dashboardApi } from "../../../services/api/cms/dashboard.api";
 import type { DashboardOverview } from "../../../services/api/cms/dashboard.api";
 import { StatCard } from "../components/StatCard";
+import {
+  AlertTriangle,
+  Users,
+  Gamepad2,
+  Map,
+  CheckCircle,
+  Flame,
+  Star,
+  Trophy,
+} from "lucide-react";
 
 export const DashboardPage: React.FC = () => {
   const [data, setData] = useState<DashboardOverview | null>(null);
@@ -51,7 +61,10 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-[var(--danger)] text-lg mb-2">⚠️ {error}</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <AlertTriangle size={20} color="var(--danger)" />
+            <p className="text-[var(--danger)] text-lg">{error}</p>
+          </div>
           <button
             onClick={() => window.location.reload()}
             className="text-[var(--primary)] hover:underline"
@@ -73,27 +86,52 @@ export const DashboardPage: React.FC = () => {
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <StatCard label="Total Users" value={data.totalUsers} icon="👥" variant="primary" />
-        <StatCard label="Total Levels" value={data.totalLevels} icon="🎮" variant="info" />
-        <StatCard label="Total Maps" value={data.totalMaps} icon="🗺️" variant="accent" />
+        <StatCard
+          label="Total Users"
+          value={data.totalUsers}
+          icon={<Users size={28} />}
+          variant="primary"
+        />
+        <StatCard
+          label="Total Levels"
+          value={data.totalLevels}
+          icon={<Gamepad2 size={28} />}
+          variant="info"
+        />
+        <StatCard
+          label="Total Maps"
+          value={data.totalMaps}
+          icon={<Map size={28} />}
+          variant="accent"
+        />
       </div>
 
       {/* Secondary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <StatCard label="Overall Win Rate" value={`${data.winRate}%`} icon="✅" variant="success" />
+        <StatCard
+          label="Overall Win Rate"
+          value={`${data.winRate}%`}
+          icon={<CheckCircle size={28} />}
+          variant="success"
+        />
         <StatCard
           label="Most Played Level"
           value={data.mostPlayedLevel}
-          icon="🔥"
+          icon={<Flame size={28} />}
           variant="accent"
         />
-        <StatCard label="User Created Maps" value={data.userCreatedMaps} icon="⭐" variant="info" />
+        <StatCard
+          label="User Created Maps"
+          value={data.userCreatedMaps}
+          icon={<Star size={28} />}
+          variant="info"
+        />
       </div>
 
       {/* Hardest Levels Card */}
       <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">🏆</span>
+          <Trophy size={28} />
           <div>
             <h2 className="text-xl font-bold text-[var(--text)]">Top 5 Hardest Levels</h2>
             <p className="text-sm text-[var(--text-2)]">Ranked by failure rate</p>

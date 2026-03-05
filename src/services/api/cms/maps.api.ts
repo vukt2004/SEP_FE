@@ -6,6 +6,11 @@ import type {
   MapDetailResult,
   ApproveMapParams,
   RejectMapParams,
+  UploadMapParams,
+  UploadMapResult,
+  GetLevelMapsParams,
+  LevelMapsListResult,
+  LevelMapDetailResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -58,5 +63,48 @@ export const cmsMapsApi = {
    */
   rejectMap(id: string, params?: RejectMapParams) {
     return cmsAxios.post<ApiResult>(`/api/cms/challenges/maps/${id}/reject`, null, { params });
+  },
+
+  /**
+   * Upload a new level map
+   * POST /api/cms/level-maps/upload
+   *
+   * @param params - Upload parameters with level file and metadata
+   * @returns Upload result
+   */
+  uploadMap(params: UploadMapParams) {
+    const formData = new FormData();
+    formData.append("levelFile", params.levelFile);
+    formData.append("name", params.name);
+    formData.append("type", params.type);
+    formData.append("difficulty", params.difficulty);
+
+    return cmsAxios.post<UploadMapResult>("/api/cms/level-maps/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
+   * Get paginated list of level maps
+   * GET /api/cms/level-maps
+   *
+   * @param params - Query parameters (page, size, filters)
+   * @returns Paginated level maps list
+   */
+  getLevelMaps(params?: GetLevelMapsParams) {
+    return cmsAxios.get<LevelMapsListResult>("/api/cms/level-maps", { params });
+  },
+
+  /**
+   * Get level map detail by ID
+   * GET /api/cms/level-maps/{id}
+   *
+   * @param id - Level map ID
+   * @returns Level map detail with full JSON content
+   */
+  getLevelMapById(id: string) {
+    return cmsAxios.get<LevelMapDetailResult>(`/api/cms/level-maps/${id}`);
   },
 };
