@@ -1,19 +1,19 @@
 const FEATURES = [
   {
     title: "Challenge Mode",
-    desc: "Giải đố theo cấp độ với mục tiêu rõ ràng. Học nhanh các khái niệm cốt lõi bằng nhiệm vụ ngắn.",
+    desc: "Solve puzzles by level with clear objectives. Quickly learn core concepts through short tasks.",
     tone: "primary" as const,
-    bullets: ["Feedback tức thì", "Gợi ý theo ngữ cảnh", "Theo dõi tiến độ"],
+    bullets: ["Instant feedback", "Context-aware hints", "Progress tracking"],
   },
   {
     title: "Competitive Mode",
-    desc: "Thi đấu realtime để tối ưu lời giải. Hệ thống rank tạo động lực học dài hạn.",
+    desc: "Compete in real-time to optimize solutions. Ranking system creates long-term learning motivation.",
     tone: "accent" as const,
-    bullets: ["Realtime scoreboard", "Matchmaking", "Phân tích hiệu suất"],
+    bullets: ["Realtime scoreboard", "Matchmaking", "Performance analysis"],
   },
   {
     title: "Marketplace / UGC",
-    desc: "Tạo level và chia sẻ cộng đồng. Mở rộng nội dung liên tục mà không phụ thuộc dev team.",
+    desc: "Create levels and share with the community. Continuously expand content without depending on dev team.",
     tone: "info" as const,
     bullets: ["Publish level", "Rating & review", "Moderation workflow"],
   },
@@ -23,9 +23,10 @@ export function Features() {
   return (
     <section className="section" id="features">
       <div className="container">
-        <h2 style={{ margin: "0 0 10px", fontSize: 32, letterSpacing: -0.2 }}>Tính năng chính</h2>
+        <h2 style={{ margin: "0 0 10px", fontSize: 32, letterSpacing: -0.2 }}>Key Features</h2>
         <p style={{ margin: "0 0 22px", color: "var(--text-2)", lineHeight: 1.6, maxWidth: 820 }}>
-          Nền tảng được thiết kế theo hướng “học qua chơi”: nhiệm vụ rõ, tiến độ rõ, và động lực rõ.
+          The platform is designed around "learn by playing": clear tasks, clear progress, and clear
+          motivation.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>

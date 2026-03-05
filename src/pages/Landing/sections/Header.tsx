@@ -11,9 +11,9 @@ export function Header() {
 
   const nav = useMemo(
     () => [
-      { label: "Tính năng", id: "features" },
-      { label: "Cách hoạt động", id: "how" },
-      { label: "Bắt đầu", id: "cta" },
+      { label: "Features", id: "features" },
+      { label: "How It Works", id: "how" },
+      { label: "Get Started", id: "cta" },
     ],
     [],
   );
@@ -80,7 +80,7 @@ export function Header() {
           </div>
 
           <button className="btn btnPrimary" onClick={() => scrollToId("cta")}>
-            Chơi ngay
+            Play Now
           </button>
 
           <button

@@ -21,9 +21,9 @@ export function Footer() {
               color: "var(--text-2)",
             }}
           >
-            <a href="#features">Tính năng</a>
-            <a href="#how">Cách hoạt động</a>
-            <a href="#cta">Bắt đầu</a>
+            <a href="#features">Features</a>
+            <a href="#how">How It Works</a>
+            <a href="#cta">Get Started</a>
           </div>
         </div>
 
@@ -40,7 +40,7 @@ export function Footer() {
           }}
         >
           <span>© {new Date().getFullYear()} QuackOrbit</span>
-          <span>Không dùng gradient • Solid color system</span>
+          <span>No gradients • Solid color system</span>
         </div>
       </div>
     </footer>

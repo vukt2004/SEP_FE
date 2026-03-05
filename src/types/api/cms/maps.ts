@@ -132,3 +132,74 @@ export interface ApproveMapParams {
 export interface RejectMapParams {
   rejectReason?: string;
 }
+
+/**
+ * Parameters for uploading a new map
+ */
+export interface UploadMapParams {
+  levelFile: File;
+  name: string;
+  type: string;
+  difficulty: string;
+}
+
+/**
+ * Response from map upload
+ */
+export interface UploadMapResult {
+  mapId?: string;
+  success?: boolean;
+  message?: string;
+}
+
+/**
+ * Level map item in list view
+ */
+export interface LevelMapItem {
+  id: string;
+  name: string;
+  type: string;
+  difficulty: string;
+  description?: string;
+}
+
+/**
+ * Query parameters for getting level maps list
+ */
+export interface GetLevelMapsParams {
+  pageNumber?: number;
+  pageSize?: number;
+  searchTerm?: string;
+  type?: string;
+  difficulty?: string;
+}
+
+/**
+ * Pagination result for level maps list
+ */
+export type LevelMapsPaginationResult = PaginationResult<LevelMapItem>;
+
+/**
+ * Full API response wrapper for level maps list
+ */
+export type LevelMapsListResult = ApiResult<LevelMapsPaginationResult>;
+
+/**
+ * Detailed level map information
+ */
+export interface LevelMapDetail {
+  id: string;
+  name: string;
+  type: string;
+  difficulty: string;
+  description?: string;
+  gridSpec: string;
+  initialStateSpec: string;
+  winConditionSpec: string;
+  failConditionSpec: string;
+}
+
+/**
+ * Level map detail API response
+ */
+export type LevelMapDetailResult = ApiResult<LevelMapDetail>;
