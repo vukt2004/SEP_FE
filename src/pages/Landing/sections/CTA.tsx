@@ -15,22 +15,23 @@ export function CTA() {
         >
           <div>
             <h2 style={{ margin: "0 0 10px", fontSize: 30, letterSpacing: -0.2 }}>
-              Sẵn sàng “học bằng chơi” chưa?
+              Ready to "learn by playing"?
             </h2>
             <p style={{ margin: 0, color: "var(--text-2)", lineHeight: 1.6 }}>
-              Bắt đầu với challenge ngắn hoặc vào competitive để thử sức realtime.
+              Start with a short challenge or enter competitive mode to test your skills in
+              real-time.
             </p>
           </div>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <button className="btn btnSecondary">Xem roadmap</button>
-            <button className="btn btnPrimary">Tạo tài khoản</button>
-            <button className="btn btnAccent">Vào phòng đấu</button>
+            <button className="btn btnSecondary">View roadmap</button>
+            <button className="btn btnPrimary">Create account</button>
+            <button className="btn btnAccent">Join battle room</button>
           </div>
         </div>
 
         <div style={{ marginTop: 14, color: "var(--muted)", fontSize: 12 }}>
-          Tip: Nhấn <span className="kbd">D</span> để mở demo (nếu bạn gắn phím tắt sau).
+          Tip: Press <span className="kbd">D</span> to open demo (if you set up the shortcut later).
         </div>
 
         <style>{`

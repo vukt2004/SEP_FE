@@ -41,28 +41,28 @@ export function Hero() {
             </div>
 
             <h1 style={{ margin: "0 0 10px", fontSize: 44, lineHeight: 1.08, letterSpacing: -0.4 }}>
-              Học tư duy lập trình bằng game 2D — nhanh, rõ, và có tính cạnh tranh
+              Learn programming logic through 2D games — fast, clear, and competitive
             </h1>
 
             <p
               style={{ margin: "0 0 18px", color: "var(--text-2)", fontSize: 16, lineHeight: 1.6 }}
             >
-              QuackOrbit biến các khái niệm như điều kiện, vòng lặp, biến và hàm thành nhiệm vụ giải
-              đố trực quan. Bạn học qua thử–sai, nhận điểm, leo rank, và có thể xây level chia sẻ
-              cộng đồng.
+              QuackOrbit transforms concepts like conditions, loops, variables, and functions into
+              visual puzzle-solving tasks. Learn through trial-and-error, earn points, climb the
+              ranks, and build levels to share with the community.
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
               <button className="btn btnPrimary" onClick={() => navigate("/game-menu")}>
-                Bắt đầu ngay <span aria-hidden>→</span>
+                Get Started <span aria-hidden>→</span>
               </button>
 
               <button className="btn btnSecondary">
-                Xem demo <span className="kbd">D</span>
+                View Demo <span className="kbd">D</span>
               </button>
 
               <button className="btn btnAccent">
-                Vào đấu rank <span aria-hidden>⚡</span>
+                Play Ranked <span aria-hidden>⚡</span>
               </button>
             </div>
 

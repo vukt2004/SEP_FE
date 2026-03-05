@@ -1,17 +1,17 @@
 const STEPS = [
   {
-    title: "Chọn nhiệm vụ",
-    desc: "Bắt đầu bằng challenge theo chủ đề: điều kiện, vòng lặp, biến, hàm…",
+    title: "Choose a task",
+    desc: "Start with themed challenges: conditions, loops, variables, functions…",
     tone: "primary" as const,
   },
   {
-    title: "Lắp ghép block",
-    desc: "Kéo-thả block để tạo logic. Hệ thống kiểm tra và feedback ngay lập tức.",
+    title: "Assemble blocks",
+    desc: "Drag and drop blocks to create logic. The system checks and provides instant feedback.",
     tone: "info" as const,
   },
   {
-    title: "Nhận XP & leo rank",
-    desc: "Hoàn thành nhanh hơn, đúng hơn → nhiều điểm hơn. Vào Competitive để thử sức.",
+    title: "Earn XP & climb ranks",
+    desc: "Complete faster and more accurately → more points. Enter Competitive to test your skills.",
     tone: "accent" as const,
   },
 ];
@@ -20,9 +20,9 @@ export function HowItWorks() {
   return (
     <section className="section alt" id="how">
       <div className="container">
-        <h2 style={{ margin: "0 0 10px", fontSize: 32, letterSpacing: -0.2 }}>Cách hoạt động</h2>
+        <h2 style={{ margin: "0 0 10px", fontSize: 32, letterSpacing: -0.2 }}>How It Works</h2>
         <p style={{ margin: "0 0 22px", color: "var(--text-2)", lineHeight: 1.6, maxWidth: 820 }}>
-          Quy trình cực ngắn: chọn → làm → nhận feedback → tối ưu.
+          Very short workflow: choose → do → receive feedback → optimize.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>

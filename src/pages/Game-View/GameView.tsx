@@ -9,6 +9,7 @@ import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfi
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
+import "../../shared/styles/tokens.css";
 
 export default function GameView() {
   const location = useLocation();
@@ -249,15 +250,24 @@ export default function GameView() {
   };
 
   return (
-    <div style={{ padding: "20px", height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div
+      style={{
+        padding: "20px",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "var(--bg)",
+        color: "var(--text)",
+      }}
+    >
       <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
         <button
           onClick={() => navigate("/game-menu")}
           style={{
             padding: "8px 16px",
-            backgroundColor: "#4a5568",
+            backgroundColor: "var(--surface-2)",
             color: "white",
-            border: "none",
+            border: "1px solid var(--border)",
             borderRadius: "4px",
             cursor: "pointer",
           }}
@@ -270,7 +280,7 @@ export default function GameView() {
           disabled={isLoading || !!error || isExecutorRunning}
           style={{
             padding: "8px 16px",
-            backgroundColor: isExecutorRunning ? "#9ca3af" : "#10b981",
+            backgroundColor: isExecutorRunning ? "var(--muted)" : "var(--success)",
             color: "white",
             border: "none",
             borderRadius: "4px",
@@ -285,7 +295,7 @@ export default function GameView() {
           disabled={!isExecutorRunning}
           style={{
             padding: "8px 16px",
-            backgroundColor: isExecutorRunning ? "#ef4444" : "#9ca3af",
+            backgroundColor: isExecutorRunning ? "var(--danger)" : "var(--muted)",
             color: "white",
             border: "none",
             borderRadius: "4px",
@@ -300,8 +310,8 @@ export default function GameView() {
           disabled={isLoading || !!error}
           style={{
             padding: "8px 16px",
-            backgroundColor: "#f59e0b",
-            color: "white",
+            backgroundColor: "var(--warning)",
+            color: "#0b1220",
             border: "none",
             borderRadius: "4px",
             cursor: "pointer",
@@ -311,27 +321,47 @@ export default function GameView() {
         </button>
       </div>
 
-      <h2 style={{ margin: "0 0 10px 0" }}>Game View - Block Programming</h2>
-      <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#666" }}>
-        <strong>Controls:</strong> Space for step execution, S to stop
-      </p>
+      <h2 style={{ margin: "0 0 10px 0", color: "var(--text)" }}>Game View - Block Programming</h2>
+      <div style={{ marginBottom: "20px" }}>
+        <p style={{ margin: "0 0 10px 0", fontSize: "14px", color: "var(--text-2)" }}>
+          <strong>Challenge:</strong> Collect all berry and reach the goal
+        </p>
+        <p style={{ margin: 0, fontSize: "14px", color: "var(--muted)" }}>
+          <strong>Controls:</strong> Space for step execution, S to stop
+        </p>
+      </div>
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center" }}>
-          <p>Loading level...</p>
+          <p style={{ color: "var(--text)" }}>Loading level...</p>
         </div>
       )}
 
       {error && (
-        <div style={{ padding: "20px", color: "red" }}>
-          <h3>Error Loading Game</h3>
-          <p>{error}</p>
-          <p style={{ fontSize: "12px", marginTop: "10px" }}>
+        <div
+          style={{
+            padding: "20px",
+            backgroundColor: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+          }}
+        >
+          <h3 style={{ color: "var(--danger)", margin: "0 0 10px 0" }}>Error Loading Game</h3>
+          <p style={{ color: "var(--text-2)", margin: "0 0 10px 0" }}>{error}</p>
+          <p style={{ fontSize: "12px", marginTop: "10px", color: "var(--muted)" }}>
             Check browser console (F12) for more details.
           </p>
           <button
             onClick={() => window.location.reload()}
-            style={{ marginTop: "10px", padding: "8px 16px" }}
+            style={{
+              marginTop: "10px",
+              padding: "8px 16px",
+              backgroundColor: "var(--primary)",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
           >
             Retry
           </button>
@@ -349,11 +379,11 @@ export default function GameView() {
       >
         {/* Game Canvas */}
         <div style={{ flex: "0 0 auto" }}>
-          <h3 style={{ margin: "0 0 10px 0" }}>Game</h3>
+          <h3 style={{ margin: "0 0 10px 0", color: "var(--text)" }}>Game</h3>
           <canvas
             ref={canvasRef}
             style={{
-              border: "2px solid #333",
+              border: "2px solid var(--border)",
               display: "block",
             }}
           />
@@ -370,11 +400,13 @@ export default function GameView() {
             overflow: "hidden",
           }}
         >
-          <h3 style={{ margin: "0 0 10px 0", flex: "0 0 auto" }}>Block Editor</h3>
+          <h3 style={{ margin: "0 0 10px 0", flex: "0 0 auto", color: "var(--text)" }}>
+            Block Editor
+          </h3>
           <div
             style={{
               flex: 1,
-              border: "2px solid #333",
+              border: "2px solid var(--border)",
               minHeight: 0,
               overflow: "hidden",
               position: "relative",

@@ -12,11 +12,11 @@ export function SocialProof() {
         >
           <div>
             <h2 style={{ margin: 0, fontSize: 28, letterSpacing: -0.2 }}>
-              Tập trung vào kết quả học thật
+              Focus on real learning outcomes
             </h2>
             <p style={{ margin: "10px 0 0", color: "var(--text-2)", lineHeight: 1.6 }}>
-              Nhiệm vụ ngắn, feedback rõ ràng, và hệ thống điểm/leaderboard giúp duy trì động lực
-              học.
+              Short tasks, clear feedback, and a points/leaderboard system help maintain learning
+              motivation.
             </p>
           </div>
 

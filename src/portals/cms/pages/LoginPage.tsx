@@ -38,14 +38,44 @@ export default function LoginPage() {
     <div className="login-page" style={pageStyle}>
       <div className="login-brand">
         <div className="login-brand-content">
-          <h1 style={{ color: "#2563EB" }}>QuackOrbit</h1>
-          <p>Manage content, levels, and moderation.</p>
+          <div className="login-brand-icon">🦆</div>
+          <h1>QuackOrbit</h1>
+          <p className="login-brand-tagline">Management System</p>
+
+          <div className="login-features">
+            <div className="login-feature-item">
+              <span className="login-feature-icon">📊</span>
+              <div>
+                <div className="login-feature-title">Content Management</div>
+                <div className="login-feature-desc">Create & manage challenges</div>
+              </div>
+            </div>
+
+            <div className="login-feature-item">
+              <span className="login-feature-icon">🎮</span>
+              <div>
+                <div className="login-feature-title">Level Management</div>
+                <div className="login-feature-desc">Design game levels</div>
+              </div>
+            </div>
+
+            <div className="login-feature-item">
+              <span className="login-feature-icon">🛡️</span>
+              <div>
+                <div className="login-feature-title">Moderation</div>
+                <div className="login-feature-desc">Review user content</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="login-form-wrapper">
         <div className="login-card">
-          <h2>Admin / Moderator Login</h2>
+          <div className="login-card-header">
+            <h2>Admin Login</h2>
+            <p className="login-card-subtitle">Access the management panel</p>
+          </div>
 
           {error && (
             <div
@@ -64,25 +94,31 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <input
-              className="login-input"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-              required
-            />
+            <div className="login-form-group">
+              <label className="login-label">Email Address</label>
+              <input
+                className="login-input"
+                type="email"
+                placeholder="admin@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
 
-            <input
-              className="login-input"
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              required
-            />
+            <div className="login-form-group">
+              <label className="login-label">Password</label>
+              <input
+                className="login-input"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
 
             <button
               type="submit"
@@ -94,7 +130,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="login-footer">Manage your learning platform</div>
+          <div className="login-footer">Secure management portal for administrators</div>
         </div>
       </div>
     </div>

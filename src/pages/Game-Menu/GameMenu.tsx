@@ -2,6 +2,159 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import type { LevelMapItem } from "../../types/api/cms/maps";
+import "../../shared/styles/tokens.css";
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    minHeight: "100vh",
+    backgroundColor: "var(--bg)",
+    padding: "32px",
+  },
+  maxWidth: {
+    maxWidth: "1440px",
+    margin: "0 auto",
+  },
+  header: {
+    textAlign: "center",
+    marginBottom: "48px",
+  },
+  title: {
+    fontSize: "48px",
+    fontWeight: "bold",
+    color: "var(--text)",
+    marginBottom: "16px",
+  },
+  subtitle: {
+    color: "var(--text-2)",
+    fontSize: "18px",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    gap: "24px",
+  },
+  card: {
+    backgroundColor: "var(--surface)",
+    borderRadius: "12px",
+    overflow: "hidden",
+    cursor: "pointer",
+    transform: "scale(1)",
+    transition: "all 300ms ease",
+    border: "1px solid var(--border)",
+  } as React.CSSProperties,
+  cardHeader: {
+    background: "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)",
+    padding: "24px",
+    textAlign: "center",
+  } as React.CSSProperties,
+  typeIcon: {
+    fontSize: "48px",
+    marginBottom: "8px",
+  },
+  typeLabel: {
+    color: "white",
+    fontSize: "12px",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+  } as React.CSSProperties,
+  cardContent: {
+    padding: "24px",
+  },
+  cardTitle: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    color: "var(--text)",
+    marginBottom: "16px",
+  },
+  difficultyContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "16px",
+  },
+  levelId: {
+    fontSize: "13px",
+    color: "var(--text-2)",
+    marginBottom: "16px",
+    fontFamily: "monospace",
+  },
+  playButton: {
+    width: "100%",
+    background: "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)",
+    color: "white",
+    fontWeight: "bold",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    transition: "all 300ms ease",
+    fontSize: "16px",
+  } as React.CSSProperties,
+  backButton: {
+    backgroundColor: "var(--surface-2)",
+    color: "var(--text)",
+    fontWeight: "bold",
+    padding: "12px 32px",
+    borderRadius: "8px",
+    border: "1px solid var(--border)",
+    cursor: "pointer",
+    transition: "all 300ms ease",
+    fontSize: "16px",
+  } as React.CSSProperties,
+  loadingError: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    backgroundColor: "var(--bg)",
+  },
+  loadingText: {
+    color: "var(--text)",
+    fontSize: "24px",
+  },
+  errorText: {
+    color: "var(--danger)",
+    fontSize: "20px",
+  },
+  backButtonContainer: {
+    textAlign: "center",
+    marginTop: "48px",
+  } as React.CSSProperties,
+};
+
+const getDifficultyColor = (difficulty: string): string => {
+  switch (difficulty) {
+    case "1":
+      return "var(--success)";
+    case "2":
+      return "var(--warning)";
+    case "3":
+      return "var(--accent)";
+    case "4":
+      return "var(--danger)";
+    default:
+      return "var(--text-2)";
+  }
+};
+
+const getDifficultyLabel = (difficulty: string): string => {
+  switch (difficulty) {
+    case "1":
+      return "Easy";
+    case "2":
+      return "Medium";
+    case "3":
+      return "Hard";
+    case "4":
+      return "Expert";
+    default:
+      return "Unknown";
+  }
+};
+
+const getTypeIcon = (type: string): string => {
+  return type === "platform" ? "🎮" : "🎯";
+};
 
 export default function GameMenu() {
   const [levels, setLevels] = useState<LevelMapItem[]>([]);
@@ -19,9 +172,10 @@ export default function GameMenu() {
           pageSize: 100, // Get all levels
         });
 
-        // API returns pagination data directly in response.data
+        // API returns PaginationResult<LevelMapItem> directly in response.data
         if (response.data.isSuccess && response.data.items) {
-          setLevels(response.data.items);
+          const items = response.data.items;
+          setLevels(items);
         } else {
           throw new Error(response.data.message || "Failed to load levels");
         }
@@ -43,98 +197,75 @@ export default function GameMenu() {
     navigate(route, { state: { levelId: level.id } });
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "1":
-        return "bg-green-500";
-      case "2":
-        return "bg-yellow-500";
-      case "3":
-        return "bg-orange-500";
-      case "4":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getDifficultyLabel = (difficulty: string) => {
-    switch (difficulty) {
-      case "1":
-        return "Easy";
-      case "2":
-        return "Medium";
-      case "3":
-        return "Hard";
-      case "4":
-        return "Expert";
-      default:
-        return "Unknown";
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    return type === "platform" ? "🎮" : "🎯";
-  };
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 to-purple-900">
-        <div className="text-white text-2xl">Loading levels...</div>
+      <div style={styles.loadingError}>
+        <div style={styles.loadingText}>Loading levels...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 to-purple-900">
-        <div className="text-red-400 text-xl">Error: {error}</div>
+      <div style={styles.loadingError}>
+        <div style={styles.errorText}>Error: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div style={styles.container}>
+      <div style={styles.maxWidth}>
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">Game Levels</h1>
-          <p className="text-blue-200 text-lg">Choose a level to start playing</p>
+        <div style={styles.header}>
+          <h1 style={styles.title}>Game Levels</h1>
+          <p style={styles.subtitle}>Choose a level to start playing</p>
         </div>
 
         {/* Level Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={styles.grid}>
           {levels.map((level) => (
             <div
               key={level.id}
               onClick={() => handleLevelSelect(level)}
-              className="bg-white rounded-lg shadow-xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              style={styles.card}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = "scale(1)";
+              }}
             >
               {/* Level Type Icon */}
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center">
-                <div className="text-6xl mb-2">{getTypeIcon(level.type)}</div>
-                <div className="text-white text-sm uppercase tracking-wider">{level.type}</div>
+              <div style={styles.cardHeader}>
+                <div style={styles.typeIcon}>{getTypeIcon(level.type)}</div>
+                <div style={styles.typeLabel}>{level.type}</div>
               </div>
 
               {/* Level Info */}
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">{level.name}</h3>
+              <div style={styles.cardContent}>
+                <h3 style={styles.cardTitle}>{level.name}</h3>
 
                 {/* Difficulty Badge */}
-                <div className="flex items-center gap-2 mb-4">
+                <div style={styles.difficultyContainer}>
                   <span
-                    className={`px-3 py-1 rounded-full text-white text-xs font-semibold ${getDifficultyColor(
-                      level.difficulty,
-                    )}`}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "9999px",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      backgroundColor: getDifficultyColor(level.difficulty),
+                    }}
                   >
                     {getDifficultyLabel(level.difficulty)}
                   </span>
                 </div>
 
-                {/* Level ID */}
-                <div className="text-sm text-gray-500 mb-4">
-                  Level ID: <span className="font-mono">{level.id}</span>
-                </div>
+                {/* Level ID
+                <div style={styles.levelId}>
+                  Level ID: <span style={{ fontFamily: "monospace" }}>{level.id}</span>
+                </div> */}
 
                 {/* Play Button */}
                 <button
@@ -142,7 +273,13 @@ export default function GameMenu() {
                     e.stopPropagation();
                     handleLevelSelect(level);
                   }}
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                  style={styles.playButton}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.opacity = "0.9";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.opacity = "1";
+                  }}
                 >
                   Play Now
                 </button>
@@ -152,10 +289,16 @@ export default function GameMenu() {
         </div>
 
         {/* Back Button */}
-        <div className="text-center mt-12">
+        <div style={styles.backButtonContainer}>
           <button
             onClick={() => navigate("/")}
-            className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300"
+            style={styles.backButton}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)";
+            }}
           >
             ← Back to Home
           </button>
