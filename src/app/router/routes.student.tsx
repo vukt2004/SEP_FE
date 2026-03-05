@@ -19,6 +19,7 @@ const StudentRegisterPage = React.lazy(() => import("@/portals/student/pages/Reg
 // Phase 2 sẽ tạo file này:
 const StudentVerifyOtpPage = React.lazy(() => import("@/portals/student/pages/VerifyOtpPage"));
 const StudentProfilePage = React.lazy(() => import("@/portals/student/pages/ProfilePage"));
+const StudentModeSelectPage = React.lazy(() => import("@/portals/student/pages/ModeSelectPage"));
 
 /**
  * Public student routes:
@@ -54,5 +55,6 @@ export const studentRoutes: RouteObject = {
     { path: "profile", element: <StudentProfilePage /> },
     { path: "challenges", element: <StudentChallengesPage /> },
     { path: "packages", element: <StudentPackagesPage /> },
+    { path: "browse", element: <StudentModeSelectPage /> },
   ],
 };

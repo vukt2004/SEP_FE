@@ -67,7 +67,7 @@ export default function StudentHeader() {
 
           <nav aria-label="Learner primary" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <TopNavLink to={ROUTES.STUDENT_HOME ?? "/app"} label="Home" />
-            <TopNavLink to={ROUTES.STUDENT_CHALLENGES ?? "/app/challenges"} label="Game Menu" />
+            <TopNavLink to={ROUTES.STUDENT_LEARN ?? "/app/browse"} label="Game Mode Browse" />
             <TopNavLink to={ROUTES.STUDENT_PROFILE ?? "/app/profile"} label="Profile" />
             <TopNavLink to={ROUTES.STUDENT_PACKAGES ?? "/app/packages"} label="Packages" />
           </nav>
