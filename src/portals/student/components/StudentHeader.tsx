@@ -15,10 +15,12 @@ export default function StudentHeader() {
     <header
       style={{
         position: "sticky",
+        height: 95,
         top: 0,
         zIndex: 30,
         background: "var(--bg)",
         borderBottom: "1px solid var(--border)",
+        overflow: "visible",
       }}
     >
       <div
@@ -47,26 +49,27 @@ export default function StudentHeader() {
               whiteSpace: "nowrap",
             }}
           >
-            <img
-              src="/brand/logo.png"
-              alt="QuackOrbit"
-              width={80}
-              height={80}
-              style={{
-                display: "block",
-                borderRadius: 10,
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                objectFit: "contain",
-              }}
-            />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>QuackOrbit</span>
+            <a style={{ display: "block", height: "100%", paddingRight: 40, paddingTop: 10 }}>
+              <img
+                src="/brand/logo.png"
+                alt="QuackOrbit"
+                style={{
+                  height: 80, // kích thước layout (nhỏ, không đẩy header)
+                  width: "auto",
+                  display: "block",
+                  objectFit: "contain",
+                  transform: "scale(1.8)", // kích thước hiển thị (to lên)
+                  transformOrigin: "left center",
+                }}
+              />
+            </a>
           </NavLink>
 
           <nav aria-label="Learner primary" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <TopNavLink to={ROUTES.STUDENT_HOME ?? "/app"} label="Home" />
-            <TopNavLink to={ROUTES.STUDENT_LEARN ?? "/app/browse"} label="Browse" />
+            <TopNavLink to={ROUTES.STUDENT_CHALLENGES ?? "/app/challenges"} label="Game Menu" />
             <TopNavLink to={ROUTES.STUDENT_PROFILE ?? "/app/profile"} label="Profile" />
+            <TopNavLink to={ROUTES.STUDENT_PACKAGES ?? "/app/packages"} label="Packages" />
           </nav>
         </div>
 

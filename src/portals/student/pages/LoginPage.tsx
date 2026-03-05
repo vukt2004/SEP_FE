@@ -291,7 +291,7 @@ export default function LoginPage() {
 
             <PixelConfetti show={confetti} />
 
-            <h2>Student Login</h2>
+            <h2>Learner Login</h2>
 
             {/* Phase 4.1: info banner */}
             {infoMessage ? (
