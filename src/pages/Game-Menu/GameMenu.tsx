@@ -1,20 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-interface LevelInfo {
-  id: string;
-  file: string;
-  name: string;
-  type: "topdown" | "platform";
-  difficulty: "easy" | "medium" | "hard";
-}
-
-interface LevelsIndex {
-  levels: LevelInfo[];
-}
+import { cmsMapsApi } from "../../services/api/cms/maps.api";
+import type { LevelMapItem } from "../../types/api/cms/maps";
 
 export default function GameMenu() {
-  const [levels, setLevels] = useState<LevelInfo[]>([]);
+  const [levels, setLevels] = useState<LevelMapItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -23,13 +13,18 @@ export default function GameMenu() {
     const loadLevels = async () => {
       try {
         setIsLoading(true);
-        // Load levels index from JSON
-        const response = await fetch("/mock-data/test-view/levels-index.json");
-        if (!response.ok) {
-          throw new Error("Failed to load levels index");
+        // Fetch level maps from API
+        const response = await cmsMapsApi.getLevelMaps({
+          pageNumber: 1,
+          pageSize: 100, // Get all levels
+        });
+
+        // API returns pagination data directly in response.data
+        if (response.data.isSuccess && response.data.items) {
+          setLevels(response.data.items);
+        } else {
+          throw new Error(response.data.message || "Failed to load levels");
         }
-        const data: LevelsIndex = await response.json();
-        setLevels(data.levels);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
         console.error("Failed to load levels:", err);
@@ -41,24 +36,40 @@ export default function GameMenu() {
     loadLevels();
   }, []);
 
-  const handleLevelSelect = (level: LevelInfo) => {
+  const handleLevelSelect = (level: LevelMapItem) => {
     // Navigate to appropriate game view based on level type
     const route = level.type === "platform" ? "/platform" : "/game";
-    // Remove .json extension since levelLoader adds it
-    const levelFile = level.file.replace(".json", "");
-    navigate(route, { state: { levelFile } });
+    // Use the level ID directly
+    navigate(route, { state: { levelId: level.id } });
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case "easy":
+      case "1":
         return "bg-green-500";
-      case "medium":
+      case "2":
         return "bg-yellow-500";
-      case "hard":
+      case "3":
+        return "bg-orange-500";
+      case "4":
         return "bg-red-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const getDifficultyLabel = (difficulty: string) => {
+    switch (difficulty) {
+      case "1":
+        return "Easy";
+      case "2":
+        return "Medium";
+      case "3":
+        return "Hard";
+      case "4":
+        return "Expert";
+      default:
+        return "Unknown";
     }
   };
 
@@ -116,7 +127,7 @@ export default function GameMenu() {
                       level.difficulty,
                     )}`}
                   >
-                    {level.difficulty.toUpperCase()}
+                    {getDifficultyLabel(level.difficulty)}
                   </span>
                 </div>
 

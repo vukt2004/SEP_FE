@@ -13,6 +13,7 @@ import React, { useEffect, useState } from "react";
 import { cmsPackagesApi } from "@/services/api/cms/packages.api";
 import type { PackageListItem, PackageDetail, PackageStatusEnum } from "@/types/api/cms/packages";
 import { Modal } from "../components/Modal";
+import { Plus, Eye, Pencil, Check } from "lucide-react";
 
 export const PackagesPage: React.FC = () => {
   const [packages, setPackages] = useState<PackageListItem[]>([]);
@@ -279,7 +280,8 @@ export const PackagesPage: React.FC = () => {
             gap: "8px",
           }}
         >
-          ➕ Create Package
+          <Plus size={16} />
+          <span>Create Package</span>
         </button>
       </div>
 
@@ -515,7 +517,7 @@ export const PackagesPage: React.FC = () => {
                             gap: "4px",
                           }}
                         >
-                          ✓ Available
+                          <Check size={14} /> Available
                         </span>
                       )}
                     </div>
@@ -552,7 +554,7 @@ export const PackagesPage: React.FC = () => {
                         }}
                         title="View Details"
                       >
-                        👁️
+                        <Eye size={16} />
                       </button>
                       {/* Edit Package */}
                       <button
@@ -570,7 +572,7 @@ export const PackagesPage: React.FC = () => {
                         }}
                         title="Edit Package"
                       >
-                        ✏️
+                        <Pencil size={16} />
                       </button>
                     </div>
                   </td>
@@ -1154,9 +1156,12 @@ export const PackagesPage: React.FC = () => {
                       fontSize: "12px",
                       color: "var(--success)",
                       fontWeight: "500",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
                     }}
                   >
-                    ✓ Currently Available
+                    <Check size={14} /> Currently Available
                   </span>
                 )}
               </div>
