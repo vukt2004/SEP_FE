@@ -29,8 +29,16 @@ export const MapsPage: React.FC = () => {
 
   // Modal and action states
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedMap, setSelectedMap] = useState<MapDetail | null>(null);
+  const [selectedMapForAction, setSelectedMapForAction] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     fetchMaps();
@@ -79,14 +87,31 @@ export const MapsPage: React.FC = () => {
     }
   };
 
-  const handleApprove = async (mapId: string, mapTitle: string) => {
-    const reviewNote = prompt(`Approve "${mapTitle}"?\n\nEnter review note (optional):`);
-    if (reviewNote === null) return; // User cancelled
+  const handleOpenApproveModal = (mapId: string, mapTitle: string) => {
+    setSelectedMapForAction({ id: mapId, title: mapTitle });
+    setReviewNote("");
+    setApproveModalOpen(true);
+  };
+
+  const handleOpenRejectModal = (mapId: string, mapTitle: string) => {
+    setSelectedMapForAction({ id: mapId, title: mapTitle });
+    setRejectReason("");
+    setRejectModalOpen(true);
+  };
+
+  const handleApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMapForAction) return;
 
     try {
       setActionLoading(true);
-      await cmsMapsApi.approveMap(mapId, { reviewNote: reviewNote || undefined });
+      await cmsMapsApi.approveMap(selectedMapForAction.id, {
+        reviewNote: reviewNote || undefined,
+      });
       alert("Map approved successfully!");
+      setApproveModalOpen(false);
+      setSelectedMapForAction(null);
+      setReviewNote("");
       fetchMaps();
     } catch (err) {
       alert("Failed to approve map");
@@ -96,14 +121,19 @@ export const MapsPage: React.FC = () => {
     }
   };
 
-  const handleReject = async (mapId: string, mapTitle: string) => {
-    const rejectReason = prompt(`Reject "${mapTitle}"?\n\nEnter rejection reason (optional):`);
-    if (rejectReason === null) return; // User cancelled
+  const handleReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMapForAction) return;
 
     try {
       setActionLoading(true);
-      await cmsMapsApi.rejectMap(mapId, { rejectReason: rejectReason || undefined });
+      await cmsMapsApi.rejectMap(selectedMapForAction.id, {
+        rejectReason: rejectReason || undefined,
+      });
       alert("Map rejected successfully!");
+      setRejectModalOpen(false);
+      setSelectedMapForAction(null);
+      setRejectReason("");
       fetchMaps();
     } catch (err) {
       alert("Failed to reject map");
@@ -121,6 +151,8 @@ export const MapsPage: React.FC = () => {
         return "Published";
       case 2:
         return "Archived";
+      case 4:
+        return "Active";
       default:
         return "Unknown";
     }
@@ -134,6 +166,8 @@ export const MapsPage: React.FC = () => {
         return "var(--success)";
       case 2:
         return "var(--warning)";
+      case 4:
+        return "var(--success)";
       default:
         return "var(--text-2)";
     }
@@ -563,7 +597,7 @@ export const MapsPage: React.FC = () => {
 
                       {/* Approve */}
                       <button
-                        onClick={() => handleApprove(map.id, map.title)}
+                        onClick={() => handleOpenApproveModal(map.id, map.title)}
                         disabled={actionLoading}
                         style={{
                           padding: "6px 12px",
@@ -582,7 +616,7 @@ export const MapsPage: React.FC = () => {
 
                       {/* Reject */}
                       <button
-                        onClick={() => handleReject(map.id, map.title)}
+                        onClick={() => handleOpenRejectModal(map.id, map.title)}
                         disabled={actionLoading}
                         style={{
                           padding: "6px 12px",
@@ -1005,21 +1039,27 @@ export const MapsPage: React.FC = () => {
                   Concepts
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  {selectedMap.conceptNames.map((concept, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        fontSize: "12px",
-                        background: "var(--surface-2)",
-                        color: "var(--text)",
-                        border: "1px solid var(--border)",
-                      }}
-                    >
-                      {concept}
+                  {selectedMap.conceptNames && selectedMap.conceptNames.length > 0 ? (
+                    selectedMap.conceptNames.map((concept, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          background: "var(--surface-2)",
+                          color: "var(--text)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        {concept}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
+                      No concepts assigned
                     </span>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -1068,6 +1108,190 @@ export const MapsPage: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Approve Map Modal */}
+      <Modal
+        isOpen={approveModalOpen}
+        onClose={() => setApproveModalOpen(false)}
+        title="Approve Map"
+        maxWidth="500px"
+      >
+        {selectedMapForAction && (
+          <form
+            onSubmit={handleApprove}
+            style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+          >
+            <div>
+              <p style={{ color: "var(--text)", fontSize: "14px", marginBottom: "16px" }}>
+                Are you sure you want to approve <strong>"{selectedMapForAction.title}"</strong>?
+              </p>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "var(--text)",
+                  marginBottom: "8px",
+                }}
+              >
+                Review Note (Optional)
+              </label>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+                placeholder="Add a review note (optional)"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+                paddingTop: "16px",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setApproveModalOpen(false)}
+                disabled={actionLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  cursor: actionLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: actionLoading ? "var(--surface-2)" : "var(--success)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: actionLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {actionLoading ? "Approving..." : "Approve Map"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Reject Map Modal */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Reject Map"
+        maxWidth="500px"
+      >
+        {selectedMapForAction && (
+          <form
+            onSubmit={handleReject}
+            style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+          >
+            <div>
+              <p style={{ color: "var(--text)", fontSize: "14px", marginBottom: "16px" }}>
+                Are you sure you want to reject <strong>"{selectedMapForAction.title}"</strong>?
+              </p>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "var(--text)",
+                  marginBottom: "8px",
+                }}
+              >
+                Rejection Reason (Optional)
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+                placeholder="Add a rejection reason (optional)"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+                paddingTop: "16px",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setRejectModalOpen(false)}
+                disabled={actionLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  cursor: actionLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: actionLoading ? "var(--surface-2)" : "var(--danger)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: actionLoading ? "not-allowed" : "pointer",
+                }}
+              >
+                {actionLoading ? "Rejecting..." : "Reject Map"}
+              </button>
+            </div>
+          </form>
         )}
       </Modal>
 

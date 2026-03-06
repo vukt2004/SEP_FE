@@ -23,8 +23,9 @@ export interface PaginationResult<T> {
  * 0 = Draft
  * 1 = Published
  * 2 = Archived
+ * 4 = Active (or other status)
  */
-export type MapStatusEnum = 0 | 1 | 2;
+export type MapStatusEnum = 0 | 1 | 2 | 4;
 
 /**
  * Map item in list view
@@ -41,7 +42,8 @@ export interface MapListItem {
   createdByUserId: string;
   createdAt: string;
   tagNames: string[];
-  conceptNames: string[];
+  winCondition: number;
+  conceptNames?: string[];
 }
 
 /**
@@ -115,6 +117,8 @@ export interface MapDetail {
   constraints: MapConstraint[];
   tagNames: string[];
   conceptNames: string[];
+  winCondition: number;
+  mapDetailJson?: unknown; // Optional field that might be added by backend
 }
 
 /**

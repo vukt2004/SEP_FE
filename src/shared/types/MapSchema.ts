@@ -21,6 +21,14 @@ export interface MapConfig {
   name: string;
   /** Map description */
   description: string;
+  /** Difficulty level: 1 (easy), 2 (normal), 3 (hard) */
+  difficulty: 1 | 2 | 3;
+  /** Time limit in seconds */
+  timeLimitSeconds: number;
+  /** Win condition: 1 (reach goal), 2 (collect all fruits) */
+  winCondition: 1 | 2;
+  /** Map price */
+  price: number;
 }
 
 /**

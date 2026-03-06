@@ -207,8 +207,8 @@ export const PackagesPage: React.FC = () => {
     return `${days} ${days === 1 ? "day" : "days"}`;
   };
 
-  const formatLimit = (limit: number) => {
-    if (limit === 0) return "Unlimited";
+  const formatLimit = (limit: number | null) => {
+    if (limit === null || limit === 0) return "Unlimited";
     return limit.toString();
   };
 

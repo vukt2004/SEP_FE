@@ -33,6 +33,10 @@ export function createEmptyMap(
       tileSize,
       name,
       description,
+      difficulty: 1, // Default: Easy
+      timeLimitSeconds: 300, // Default: 5 minutes
+      winCondition: 1, // Default: Reach goal
+      price: 0, // Default: Free
     },
     layers: {
       background: createEmptyLayer(width, height, 0),

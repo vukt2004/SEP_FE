@@ -581,6 +581,50 @@ export class EditorStore {
   }
 
   /**
+   * Update the map difficulty
+   *
+   * @param difficulty - Difficulty level (1=easy, 2=normal, 3=hard)
+   */
+  setMapDifficulty(difficulty: 1 | 2 | 3): void {
+    this.saveHistory();
+    this.mapData.config.difficulty = difficulty;
+    this.notify();
+  }
+
+  /**
+   * Update the map time limit
+   *
+   * @param seconds - Time limit in seconds
+   */
+  setMapTimeLimitSeconds(seconds: number): void {
+    this.saveHistory();
+    this.mapData.config.timeLimitSeconds = seconds;
+    this.notify();
+  }
+
+  /**
+   * Update the map win condition
+   *
+   * @param winCondition - Win condition (1=reach goal, 2=collect all fruits)
+   */
+  setMapWinCondition(winCondition: 1 | 2): void {
+    this.saveHistory();
+    this.mapData.config.winCondition = winCondition;
+    this.notify();
+  }
+
+  /**
+   * Update the map price
+   *
+   * @param price - Map price
+   */
+  setMapPrice(price: number): void {
+    this.saveHistory();
+    this.mapData.config.price = price;
+    this.notify();
+  }
+
+  /**
    * Load a new map into the editor
    * Supports backward compatibility with 2-layer maps
    *
@@ -613,6 +657,20 @@ export class EditorStore {
     }
     if (!loadedMap.config.description) {
       loadedMap.config.description = "";
+    }
+
+    // Backward compatibility: Add missing config fields if needed
+    if (loadedMap.config.difficulty === undefined) {
+      loadedMap.config.difficulty = 1; // Default: Easy
+    }
+    if (loadedMap.config.timeLimitSeconds === undefined) {
+      loadedMap.config.timeLimitSeconds = 300; // Default: 5 minutes
+    }
+    if (loadedMap.config.winCondition === undefined) {
+      loadedMap.config.winCondition = 1; // Default: Reach goal
+    }
+    if (loadedMap.config.price === undefined) {
+      loadedMap.config.price = 0; // Default: Free
     }
 
     // Backward compatibility: Add decorativeObjects if missing
