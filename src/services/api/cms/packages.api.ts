@@ -1,4 +1,4 @@
-// src/services/api/cms/marketplace.api.ts
+// src/services/api/cms/packages.api.ts
 import { cmsAxios } from "@/services/http/axios.cms";
 import type {
   GetPackagesParams,
@@ -8,13 +8,13 @@ import type {
   CreatePackageResult,
   UpdatePackageRequest,
   UpdatePackageResult,
-} from "@/types/api/cms/marketplace";
+} from "@/types/api/cms/packages";
 
 /**
- * CMS Marketplace API
+ * CMS Packages API
  * Handles package management operations
  */
-export const cmsMarketplaceApi = {
+export const cmsPackagesApi = {
   /**
    * Get paginated list of all packages
    * GET /api/cms/marketplace/packages

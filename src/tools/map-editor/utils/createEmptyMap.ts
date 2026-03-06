@@ -45,6 +45,7 @@ export function createEmptyMap(
       goal: null,
       fruits: [],
       enemies: [],
+      decorativeObjects: [],
     },
   };
 }

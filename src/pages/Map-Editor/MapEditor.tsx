@@ -12,7 +12,8 @@ interface EditorState {
   mapData: MapData | null;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
+  selectedObjectId: number | null; // Changed to numeric ID
+  selectedTool: "paint" | "erase" | "fill" | null;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -28,6 +29,7 @@ export default function MapEditor() {
       mapData: store.getState(),
       activeLayer: store.getActiveLayer(),
       selectedTile: store.getSelectedTile(),
+      selectedObjectId: store.getSelectedObjectId(),
       selectedTool: store.getSelectedTool(),
       canUndo: store.canUndo(),
       canRedo: store.canRedo(),
@@ -46,6 +48,7 @@ export default function MapEditor() {
         mapData: store.getState(),
         activeLayer: store.getActiveLayer(),
         selectedTile: store.getSelectedTile(),
+        selectedObjectId: store.getSelectedObjectId(),
         selectedTool: store.getSelectedTool(),
         canUndo: store.canUndo(),
         canRedo: store.canRedo(),
@@ -66,9 +69,11 @@ export default function MapEditor() {
     store?.setSelectedTile(tileId);
   };
 
-  const handleToolSelect = (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ) => {
+  const handleObjectSelect = (objectId: number | null) => {
+    store?.setSelectedObjectId(objectId);
+  };
+
+  const handleToolSelect = (tool: "paint" | "erase" | "fill" | null) => {
     store?.setSelectedTool(tool);
   };
 
@@ -144,7 +149,8 @@ export default function MapEditor() {
     reader.readAsText(file);
   };
 
-  const { mapData, activeLayer, selectedTile, selectedTool, canUndo, canRedo } = editorState;
+  const { mapData, activeLayer, selectedTile, selectedObjectId, selectedTool, canUndo, canRedo } =
+    editorState;
 
   return (
     <div style={styles.container}>
@@ -164,11 +170,13 @@ export default function MapEditor() {
                   mapData={mapData}
                   activeLayer={activeLayer}
                   selectedTile={selectedTile}
+                  selectedObjectId={selectedObjectId}
                   selectedTool={selectedTool}
                   canUndo={canUndo}
                   canRedo={canRedo}
                   onLayerChange={handleLayerChange}
                   onTileSelect={handleTileSelect}
+                  onObjectSelect={handleObjectSelect}
                   onToolSelect={handleToolSelect}
                   onResize={handleResize}
                   onReset={handleReset}

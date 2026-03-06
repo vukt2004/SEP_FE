@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
 import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
-import { loadLevelFromMockData } from "../../utils/levelLoader";
+import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 
 /**
  * PlatformGameView - Test view for platformer levels with gravity
@@ -26,8 +26,9 @@ export default function PlatformGameView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get level file from location state or use default
-  const levelFile = (location.state as { levelFile?: string })?.levelFile || "level-platform-01";
+  // Get level ID from location state
+  const levelId = (location.state as { levelId?: string })?.levelId;
+  const levelFile = (location.state as { levelFile?: string })?.levelFile;
 
   useEffect(() => {
     console.log("[useEffect] PlatformGameView useEffect triggered");
@@ -45,8 +46,10 @@ export default function PlatformGameView() {
       try {
         setIsLoading(true);
 
-        // Load platform level from mock data
-        const levelDefinition = await loadLevelFromMockData(levelFile);
+        // Load level from API or fallback to mock data
+        const levelDefinition = levelId
+          ? await loadLevelFromAPI(levelId)
+          : await loadLevelFromMockData(levelFile || "level-platform-01");
 
         // Set canvas size based on level dimensions
         const tileSize = 48;
@@ -126,7 +129,7 @@ export default function PlatformGameView() {
         cleanup();
       }
     };
-  }, [levelFile]);
+  }, [levelId, levelFile]);
 
   return (
     <div style={{ padding: "20px" }}>

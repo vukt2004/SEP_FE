@@ -2,71 +2,89 @@
   "name": "topdown-objects",
   "description": "Object definitions for topdown game using Sprout Lands assets",
   "objects": {
-    "player": {
+    "1": {
+      "name": "player",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
       "frameIndex": 0
     },
-    "goal": {
+    "2": {
+      "name": "goal",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Goal (Idle).png",
       "frameWidth": 64,
       "frameHeight": 64,
       "frameIndex": 0
     },
-    "fruit": {
+    "3": {
+      "name": "fruit",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Apple.png",
       "frameWidth": 32,
       "frameHeight": 32,
       "frameIndex": 1
     },
-    "enemy": {
+    "4": {
+      "name": "enemy",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Free Chicken Sprites.png",
       "frameWidth": 32,
       "frameHeight": 32,
       "frameIndex": 0
     },
-    "chest": {
+    "5": {
+      "name": "chest",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 0
     },
-    "tree": {
+    "6": {
+      "name": "tree",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 2
     },
-    "rock": {
+    "7": {
+      "name": "rock",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 3
     },
-    "flower": {
+    "8": {
+      "name": "flower",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 0
     },
-    "bush": {
+    "9": {
+      "name": "bush",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 1
     },
-    "egg": {
+    "10": {
+      "name": "egg",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Egg_item.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 0
     },
-    "milk": {
+    "11": {
+      "name": "milk",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Simple_Milk_and_grass_item.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 0
+    },
+    "12": {
+      "name": "door",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 1
     }
   }
 }

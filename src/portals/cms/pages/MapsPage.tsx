@@ -14,6 +14,7 @@ import React, { useEffect, useState } from "react";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
+import { Eye, Check, CheckCircle, X } from "lucide-react";
 
 export const MapsPage: React.FC = () => {
   const [maps, setMaps] = useState<MapListItem[]>([]);
@@ -489,7 +490,7 @@ export const MapsPage: React.FC = () => {
                             gap: "4px",
                           }}
                         >
-                          ✓ Published
+                          <Check size={14} /> Published
                         </span>
                       )}
                     </div>
@@ -557,7 +558,7 @@ export const MapsPage: React.FC = () => {
                         }}
                         title="View Details"
                       >
-                        👁️
+                        <Eye size={16} />
                       </button>
 
                       {/* Approve */}
@@ -576,7 +577,7 @@ export const MapsPage: React.FC = () => {
                         }}
                         title="Approve Map"
                       >
-                        ✅
+                        <CheckCircle size={16} />
                       </button>
 
                       {/* Reject */}
@@ -595,7 +596,7 @@ export const MapsPage: React.FC = () => {
                         }}
                         title="Reject Map"
                       >
-                        ❌
+                        <X size={16} />
                       </button>
                     </div>
                   </td>
@@ -715,8 +716,23 @@ export const MapsPage: React.FC = () => {
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
                   Published
                 </div>
-                <div style={{ color: "var(--text)" }}>
-                  {selectedMap.isPublished ? "✅ Yes" : "❌ No"}
+                <div
+                  style={{
+                    color: "var(--text)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  {selectedMap.isPublished ? (
+                    <>
+                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                    </>
+                  ) : (
+                    <>
+                      <X size={16} color="var(--danger)" /> <span>No</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div>

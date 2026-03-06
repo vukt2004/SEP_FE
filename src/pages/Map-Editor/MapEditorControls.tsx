@@ -7,6 +7,8 @@ import {
   ObjectSpriteCache,
   type ObjectDefinition,
 } from "../../modules/engine/assets";
+import { cmsMapsApi } from "../../services/api/cms/maps.api";
+import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
 
 /**
  * Convert MapData config type to GameType
@@ -19,14 +21,14 @@ interface MapEditorControlsProps {
   mapData: MapData;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
+  selectedObjectId: number | null; // Changed from string enum to numeric ID
+  selectedTool: "paint" | "erase" | "fill" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
-  onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ) => void;
+  onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
+  onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
   onResize: (width: number, height: number) => void;
   onReset: (
     type: "platform" | "topdown",
@@ -44,25 +46,23 @@ interface MapEditorControlsProps {
   onDescriptionChange?: (description: string) => void;
 }
 
-interface ObjectToolButtonProps {
-  objectType: "player" | "goal" | "fruit" | "enemy";
+interface ObjectSelectionButtonProps {
+  objectId: number; // Numeric object ID
   label: string;
   objectDef: ObjectDefinition;
   cache: ObjectSpriteCache;
-  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null;
-  onToolSelect: (
-    tool: "paint" | "erase" | "fill" | "player" | "goal" | "fruit" | "enemy" | null,
-  ) => void;
+  selectedObjectId: number | null;
+  onObjectSelect: (objectId: number | null) => void;
 }
 
-function ObjectToolButton({
-  objectType,
+function ObjectSelectionButton({
+  objectId,
   label,
   objectDef,
   cache,
-  selectedTool,
-  onToolSelect,
-}: ObjectToolButtonProps) {
+  selectedObjectId,
+  onObjectSelect,
+}: ObjectSelectionButtonProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -115,15 +115,15 @@ function ObjectToolButton({
         padding: "12px",
         fontSize: "13px",
         fontWeight: "500",
-        border: selectedTool === objectType ? "2px solid #4CAF50" : "2px solid #ddd",
+        border: selectedObjectId === objectId ? "2px solid #4CAF50" : "2px solid #ddd",
         borderRadius: "6px",
-        backgroundColor: selectedTool === objectType ? "#e8f5e9" : "white",
+        backgroundColor: selectedObjectId === objectId ? "#e8f5e9" : "white",
         cursor: "pointer",
         transition: "all 0.2s",
         minWidth: "80px",
-        boxShadow: selectedTool === objectType ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
+        boxShadow: selectedObjectId === objectId ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
       }}
-      onClick={() => onToolSelect(selectedTool === objectType ? null : objectType)}
+      onClick={() => onObjectSelect(selectedObjectId === objectId ? null : objectId)}
       title={`${label} (click again to deselect)`}
     >
       <div
@@ -155,11 +155,13 @@ export function MapEditorControls({
   mapData,
   activeLayer,
   selectedTile,
+  selectedObjectId,
   selectedTool,
   canUndo,
   canRedo,
   onLayerChange,
   onTileSelect,
+  onObjectSelect,
   onToolSelect,
   onResize,
   onReset,
@@ -172,6 +174,7 @@ export function MapEditorControls({
 }: MapEditorControlsProps) {
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
   const [resetType, setResetType] = useState<"platform" | "topdown">(mapData.config.type);
@@ -180,6 +183,7 @@ export function MapEditorControls({
   const [resetTileSize, setResetTileSize] = useState(32);
   const [resetName, setResetName] = useState("");
   const [resetDescription, setResetDescription] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
@@ -252,6 +256,44 @@ export function MapEditorControls({
     if (confirm("This will clear all map data. Are you sure?")) {
       onReset(resetType, validWidth, validHeight, resetTileSize, resetName, resetDescription);
       setShowResetDialog(false);
+    }
+  };
+
+  const handleUploadConfirm = async () => {
+    const mapName = mapData.config.name?.trim();
+    if (!mapName) {
+      alert("Please set a map name before uploading");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Convert map to game format
+      const gameLevelFormat = exportMapToGameFormat(mapData);
+      const json = JSON.stringify(gameLevelFormat, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
+
+      // Upload to API using map config values
+      const response = await cmsMapsApi.uploadMap({
+        levelFile: file,
+        name: mapData.config.name,
+        type: mapData.config.type,
+        difficulty: "1", // Default difficulty
+      });
+
+      if (response.data.isSuccess) {
+        alert("Map uploaded successfully!");
+        setShowUploadDialog(false);
+      } else {
+        alert(`Upload failed: ${response.data.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(`Failed to upload map: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -419,48 +461,28 @@ export function MapEditorControls({
         </div>
       )}
 
-      {/* Object Tools - Only show on background layer */}
+      {/* Object Palette - Only show on background layer */}
       {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
         <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Object Tools</h3>
-          <p style={styles.helpText}>Place game objects (click again to deselect)</p>
+          <h3 style={styles.sectionTitle}>Objects</h3>
+          <p style={styles.helpText}>Select an object, then use paint tool to place it</p>
           <div style={styles.objectToolGrid}>
-            <ObjectToolButton
-              key={objectDefinitions.player.imagePath}
-              objectType="player"
-              label="Player"
-              objectDef={objectDefinitions.player}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.goal.imagePath}
-              objectType="goal"
-              label="Goal"
-              objectDef={objectDefinitions.goal}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.fruit.imagePath}
-              objectType="fruit"
-              label="Fruit"
-              objectDef={objectDefinitions.fruit}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
-            <ObjectToolButton
-              key={objectDefinitions.enemy.imagePath}
-              objectType="enemy"
-              label="Enemy"
-              objectDef={objectDefinitions.enemy}
-              cache={objectCache}
-              selectedTool={selectedTool}
-              onToolSelect={onToolSelect}
-            />
+            {/* Dynamically render ALL objects from definitions */}
+            {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
+              const objectId = parseInt(idStr, 10);
+              const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+              return (
+                <ObjectSelectionButton
+                  key={objectId}
+                  objectId={objectId}
+                  label={label}
+                  objectDef={objDef}
+                  cache={objectCache}
+                  selectedObjectId={selectedObjectId}
+                  onObjectSelect={onObjectSelect}
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -526,6 +548,9 @@ export function MapEditorControls({
           </button>
           <button style={styles.actionButton} onClick={onExport}>
             Export JSON
+          </button>
+          <button style={styles.actionButton} onClick={() => setShowUploadDialog(true)}>
+            Upload to CMS
           </button>
           <label style={styles.importLabel}>
             Import JSON
@@ -650,6 +675,64 @@ export function MapEditorControls({
                 Create
               </button>
               <button style={styles.cancelButton} onClick={() => setShowResetDialog(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Dialog */}
+      {showUploadDialog && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <h3 style={styles.modalTitle}>Upload Map to CMS</h3>
+            <p style={styles.helpText}>
+              This will upload the map using the current map information below
+            </p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Map Name:</label>
+              <div style={styles.infoBox}>{mapData.config.name || "(No name set)"}</div>
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Description:</label>
+              <div style={styles.infoBox}>
+                {mapData.config.description || "(No description set)"}
+              </div>
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Type:</label>
+              <div style={styles.infoBox}>
+                {mapData.config.type === "platform" ? "Platform" : "Top Down"}
+              </div>
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Dimensions:</label>
+              <div style={styles.infoBox}>
+                {mapData.config.width} × {mapData.config.height} tiles
+              </div>
+            </div>
+            {(!mapData.config.name || !mapData.config.description) && (
+              <p style={styles.warningText}>
+                ⚠️ Set map name and description in the Map Info section before uploading
+              </p>
+            )}
+            <div style={styles.modalButtons}>
+              <button
+                style={{
+                  ...styles.confirmButton,
+                  ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                }}
+                onClick={handleUploadConfirm}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Upload"}
+              </button>
+              <button
+                style={styles.cancelButton}
+                onClick={() => setShowUploadDialog(false)}
+                disabled={uploading}
+              >
                 Cancel
               </button>
             </div>
@@ -860,6 +943,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     border: "2px solid #ddd",
     borderRadius: "4px",
+    boxSizing: "border-box",
+  },
+  infoBox: {
+    width: "100%",
+    padding: "8px 12px",
+    fontSize: "14px",
+    border: "2px solid #e0e0e0",
+    borderRadius: "4px",
+    backgroundColor: "#f5f5f5",
+    color: "#333",
+    minHeight: "38px",
+    display: "flex",
+    alignItems: "center",
     boxSizing: "border-box",
   },
   select: {

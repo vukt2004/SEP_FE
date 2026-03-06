@@ -13,6 +13,7 @@
 import React, { useEffect, useState } from "react";
 import { cmsReportsApi } from "@/services/api/cms/reports.api";
 import type { ReportListItem } from "@/types/api/cms/reports";
+import { CheckCircle, X } from "lucide-react";
 
 export const ReportsPage: React.FC = () => {
   const [reports, setReports] = useState<ReportListItem[]>([]);
@@ -429,7 +430,7 @@ export const ReportsPage: React.FC = () => {
                         }}
                         title="Resolve Report"
                       >
-                        ✅
+                        <CheckCircle size={16} />
                       </button>
 
                       {/* Dismiss */}
@@ -448,7 +449,7 @@ export const ReportsPage: React.FC = () => {
                         }}
                         title="Dismiss Report"
                       >
-                        ❌
+                        <X size={16} />
                       </button>
                     </div>
                   </td>

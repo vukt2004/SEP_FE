@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "default",
   "description": "Default topdown tileset using Sprout Lands assets",
   "tiles": {
@@ -87,15 +87,1383 @@
       "tileSize": 16
     },
     "14": {
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Paths.png",
       "tileX": 0,
       "tileY": 0,
       "tileSize": 16
     },
     "15": {
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Paths.png",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "16": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "17": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 3,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "18": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 0,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "19": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "20": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 2,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "21": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "22": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 0,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "23": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 1,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "24": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 2,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "25": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 3,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "26": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 0,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "27": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 1,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "28": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 2,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "29": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
+      "tileX": 3,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "30": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "31": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "32": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "33": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "34": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "35": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "36": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "37": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "38": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "39": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "40": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "41": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "42": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "43": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "44": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "45": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "46": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "47": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "48": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "49": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "50": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "51": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "52": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "53": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "54": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "55": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "56": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 10,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "57": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "58": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "59": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "60": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "61": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "62": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "63": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "64": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "65": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "66": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "67": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 10,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "68": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "69": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "70": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "71": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "72": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "73": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "74": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "75": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "76": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "77": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "78": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "79": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "80": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "81": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "82": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "83": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "84": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "85": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "86": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "87": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 9,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "88": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 0,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "89": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 1,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "90": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 2,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "91": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 3,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "92": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 4,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "93": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 5,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "94": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 6,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "95": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 7,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "96": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
+      "tileX": 8,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "97": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 0,
+      "tileSize": 16
+    },
+    "98": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "99": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "100": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "101": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "102": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "103": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "104": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "105": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "106": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "107": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "108": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "109": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "110": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "111": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "112": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "113": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "114": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "115": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "116": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "117": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "118": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "119": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "120": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "121": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "122": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "123": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "124": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "125": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "126": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "127": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 10,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "128": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "129": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "130": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "131": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "132": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "133": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "134": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "135": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "136": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "137": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "138": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 10,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "139": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "140": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "141": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "142": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "143": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "144": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "145": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 10,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "146": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "147": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "148": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "149": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "150": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "151": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "152": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "153": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "154": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "155": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "156": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 10,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "157": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "158": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "159": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "160": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "161": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "162": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "163": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "164": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "165": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 8,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "166": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 9,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "167": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 10,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "168": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "169": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "170": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "171": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "172": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "173": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "174": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 0,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "175": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 1,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "176": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 2,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "177": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 3,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "178": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 4,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "179": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 5,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "180": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 6,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "181": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
+      "tileX": 7,
+      "tileY": 8,
+      "tileSize": 16
+    },
+    "182": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "183": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "184": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "185": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "186": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "187": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "188": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "189": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 0,
+      "tileSize": 16
+    },
+    "190": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "191": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "192": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "193": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "194": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "195": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "196": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "197": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 1,
+      "tileSize": 16
+    },
+    "198": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "199": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "200": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "201": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "202": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "203": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "204": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 2,
+      "tileSize": 16
+    },
+    "205": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "206": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "207": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "208": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "209": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "210": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "211": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "212": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 3,
+      "tileSize": 16
+    },
+    "213": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "214": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "215": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "216": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "217": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "218": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "219": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "220": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 4,
+      "tileSize": 16
+    },
+    "221": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "222": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "223": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "224": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "225": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "226": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "227": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "228": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 5,
+      "tileSize": 16
+    },
+    "229": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 0,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "230": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "231": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "232": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "233": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "234": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "235": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "236": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 6,
+      "tileSize": 16
+    },
+    "237": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 1,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "238": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 2,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "239": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 3,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "240": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 4,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "241": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 5,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "242": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 6,
+      "tileY": 7,
+      "tileSize": 16
+    },
+    "243": {
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
+      "tileX": 7,
+      "tileY": 7,
       "tileSize": 16
     }
   }

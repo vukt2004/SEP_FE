@@ -10,8 +10,14 @@ export const ROUTES = {
   STUDENT_LOGIN: "/login",
   STUDENT_APP: "/app",
   STUDENT_HOME: "/app/home",
+  STUDENT_CHALLENGES: "/app/challenges",
+  STUDENT_PACKAGES: "/app/packages",
   STUDENT_VERIFY_OTP: "/verify-otp",
   STUDENT_REGISTER: "/register",
+  STUDENT_LEARN: "/app/browse",
+  STUDENT_PROFILE: "/app/profile",
+  STUDENT_ROOM_CREATE: "/app/room/create",
+  STUDENT_ROOM_JOIN: "/app/room/join",
 
   // CMS
   CMS_LOGIN: "/cms/login",
