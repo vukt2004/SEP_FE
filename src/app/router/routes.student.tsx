@@ -20,6 +20,9 @@ const StudentRegisterPage = React.lazy(() => import("@/portals/student/pages/Reg
 const StudentVerifyOtpPage = React.lazy(() => import("@/portals/student/pages/VerifyOtpPage"));
 const StudentProfilePage = React.lazy(() => import("@/portals/student/pages/ProfilePage"));
 const StudentModeSelectPage = React.lazy(() => import("@/portals/student/pages/ModeSelectPage"));
+const StudentRoomCreatePage = React.lazy(
+  () => import("@/pages/Multiplayer/MultiplayerRoomCreation"),
+);
 
 /**
  * Public student routes:
@@ -56,5 +59,6 @@ export const studentRoutes: RouteObject = {
     { path: "challenges", element: <StudentChallengesPage /> },
     { path: "packages", element: <StudentPackagesPage /> },
     { path: "browse", element: <StudentModeSelectPage /> },
+    { path: "room/create", element: <StudentRoomCreatePage /> },
   ],
 };
