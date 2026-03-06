@@ -9,6 +9,7 @@ import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfi
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
+import type { MapConfig } from "../../shared/types/MapSchema";
 
 export default function GameView() {
   const location = useLocation();
@@ -20,6 +21,7 @@ export default function GameView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExecutorRunning, setIsExecutorRunning] = useState(false);
+  const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
 
   // Get level ID from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -44,10 +46,22 @@ export default function GameView() {
 
         // Load level from API or fallback to mock data
         console.log("Loading level:", levelId || levelFile);
-        const levelDefinition = levelId
+        const levelResult = levelId
           ? await loadLevelFromAPI(levelId)
           : await loadLevelFromMockData(levelFile || "level-tutorial-01");
-        console.log("Level loaded successfully:", levelDefinition.name);
+
+        console.log("Level result loaded:", levelResult);
+
+        // Store map config if available
+        if (levelResult.mapConfig) {
+          console.log("Setting map config:", levelResult.mapConfig);
+          setMapConfig(levelResult.mapConfig as MapConfig);
+        } else {
+          console.log("No map config in result");
+        }
+
+        const levelDefinition = levelResult.level;
+        console.log("Level loaded successfully:", levelDefinition.name || levelDefinition.id);
 
         // Set canvas size based on level dimensions
         // Using larger tileSize (48) for better visibility
@@ -143,7 +157,7 @@ export default function GameView() {
         cleanup();
       }
     };
-  }, [levelFile]);
+  }, [levelFile, levelId]); // Include both dependencies
 
   // Handle workspace ready
   const handleWorkspaceReady = (workspace: Blockly.WorkspaceSvg) => {
@@ -311,10 +325,51 @@ export default function GameView() {
         </button>
       </div>
 
-      <h2 style={{ margin: "0 0 10px 0" }}>Game View - Block Programming</h2>
-      <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#666" }}>
-        <strong>Controls:</strong> Space for step execution, S to stop
-      </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "20px",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: "0 0 10px 0" }}>Game View - Block Programming</h2>
+          <p style={{ margin: "0 0 0 0", fontSize: "14px", color: "#666" }}>
+            <strong>Controls:</strong> Space for step execution, S to stop
+          </p>
+        </div>
+        {mapConfig && (
+          <div
+            style={{
+              padding: "12px 20px",
+              backgroundColor: "#f3f4f6",
+              borderRadius: "8px",
+              border: "2px solid #e5e7eb",
+            }}
+          >
+            <div style={{ fontSize: "14px", marginBottom: "8px" }}>
+              <strong style={{ color: "#374151" }}>Win Condition:</strong>{" "}
+              <span style={{ color: "#1f2937" }}>
+                {mapConfig.winCondition === 1
+                  ? "🎯 Reach Goal"
+                  : mapConfig.winCondition === 2
+                    ? "🍎 Collect All Fruits"
+                    : "Unknown"}
+              </span>
+            </div>
+            <div style={{ fontSize: "14px" }}>
+              <strong style={{ color: "#374151" }}>Time Limit:</strong>{" "}
+              <span style={{ color: "#1f2937" }}>
+                ⏱️{" "}
+                {(mapConfig.timeLimitSeconds ?? 0) > 0
+                  ? `${mapConfig.timeLimitSeconds}s`
+                  : "No limit"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center" }}>

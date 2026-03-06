@@ -107,6 +107,22 @@ export default function MapEditor() {
     store?.setMapDescription(description);
   };
 
+  const handleDifficultyChange = (difficulty: 1 | 2 | 3) => {
+    store?.setMapDifficulty(difficulty);
+  };
+
+  const handleTimeLimitChange = (seconds: number) => {
+    store?.setMapTimeLimitSeconds(seconds);
+  };
+
+  const handleWinConditionChange = (winCondition: 1 | 2) => {
+    store?.setMapWinCondition(winCondition);
+  };
+
+  const handlePriceChange = (price: number) => {
+    store?.setMapPrice(price);
+  };
+
   const handleUndo = () => {
     store?.undo();
   };
@@ -186,6 +202,10 @@ export default function MapEditor() {
                   onRedo={handleRedo}
                   onNameChange={handleNameChange}
                   onDescriptionChange={handleDescriptionChange}
+                  onDifficultyChange={handleDifficultyChange}
+                  onTimeLimitChange={handleTimeLimitChange}
+                  onWinConditionChange={handleWinConditionChange}
+                  onPriceChange={handlePriceChange}
                 />
               </div>
             </div>

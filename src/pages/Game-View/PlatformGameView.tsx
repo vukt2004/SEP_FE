@@ -47,9 +47,11 @@ export default function PlatformGameView() {
         setIsLoading(true);
 
         // Load level from API or fallback to mock data
-        const levelDefinition = levelId
+        const levelResult = levelId
           ? await loadLevelFromAPI(levelId)
           : await loadLevelFromMockData(levelFile || "level-platform-01");
+
+        const levelDefinition = levelResult.level;
 
         // Set canvas size based on level dimensions
         const tileSize = 48;

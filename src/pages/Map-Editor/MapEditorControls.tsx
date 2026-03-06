@@ -44,6 +44,10 @@ interface MapEditorControlsProps {
   onRedo: () => void;
   onNameChange?: (name: string) => void;
   onDescriptionChange?: (description: string) => void;
+  onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
+  onTimeLimitChange?: (seconds: number) => void;
+  onWinConditionChange?: (winCondition: 1 | 2) => void;
+  onPriceChange?: (price: number) => void;
 }
 
 interface ObjectSelectionButtonProps {
@@ -171,6 +175,10 @@ export function MapEditorControls({
   onRedo,
   onNameChange,
   onDescriptionChange,
+  onDifficultyChange,
+  onTimeLimitChange,
+  onWinConditionChange,
+  onPriceChange,
 }: MapEditorControlsProps) {
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -275,16 +283,26 @@ export function MapEditorControls({
       const blob = new Blob([json], { type: "application/json" });
       const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
 
-      // Upload to API using map config values
-      const response = await cmsMapsApi.uploadMap({
-        levelFile: file,
-        name: mapData.config.name,
-        type: mapData.config.type,
-        difficulty: "1", // Default difficulty
+      // Upload to API
+      const response = await cmsMapsApi.uploadMapFromJson({
+        Title: mapData.config.name,
+        Description: mapData.config.description || "Map created with Map Editor",
+        Difficulty: mapData.config.difficulty,
+        TimeLimitMs: mapData.config.timeLimitSeconds * 1000, // Convert seconds to milliseconds
+        WinCondition: mapData.config.winCondition,
+        Price: mapData.config.price,
+        MapDetailFile: file,
+        // Optional fields can be added:
+        // HintsJson: JSON.stringify([]),
+        // TagIdsCsv: "",
       });
 
       if (response.data.isSuccess) {
-        alert("Map uploaded successfully!");
+        const mapId =
+          response.data.data && typeof response.data.data === "object" && "id" in response.data.data
+            ? String(response.data.data.id)
+            : "";
+        alert(`Map uploaded successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
         setShowUploadDialog(false);
       } else {
         alert(`Upload failed: ${response.data.message || "Unknown error"}`);
@@ -519,6 +537,50 @@ export function MapEditorControls({
               placeholder="Enter map description"
               style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
               rows={3}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Difficulty:</label>
+            <select
+              value={mapData.config.difficulty}
+              onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
+              style={styles.select}
+            >
+              <option value={1}>Easy</option>
+              <option value={2}>Normal</option>
+              <option value={3}>Hard</option>
+            </select>
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Time Limit (seconds):</label>
+            <input
+              type="number"
+              min="30"
+              max="3600"
+              value={mapData.config.timeLimitSeconds}
+              onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+              style={styles.input}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Win Condition:</label>
+            <select
+              value={mapData.config.winCondition}
+              onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+              style={styles.select}
+            >
+              <option value={1}>Reach Goal</option>
+              <option value={2}>Collect All Fruits</option>
+            </select>
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Price:</label>
+            <input
+              type="number"
+              min="0"
+              value={mapData.config.price}
+              onChange={(e) => onPriceChange?.(Number(e.target.value))}
+              style={styles.input}
             />
           </div>
           <p style={styles.infoText}>

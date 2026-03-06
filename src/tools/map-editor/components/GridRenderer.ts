@@ -120,6 +120,12 @@ export class TileRenderer {
 
     // Render layers in order, checking visibility
     for (const layer of renderOrder) {
+      // Skip collision layer in normal render pass if it's visible
+      // We'll render it separately at the end to ensure it's always on top
+      if (layer === "collision") {
+        continue;
+      }
+
       // Always render the active layer, regardless of visibility setting
       const shouldRender = layer === activeLayer || store.isLayerVisible(layer);
 
@@ -127,18 +133,20 @@ export class TileRenderer {
         continue; // Skip invisible non-active layers
       }
 
-      if (layer === "collision") {
-        // Special rendering for collision layer
-        this.renderCollisionLayer(ctx, mapData);
-      } else {
-        // Render tile layer
-        this.renderLayer(ctx, mapData, layer, tileSize);
+      // Render tile layer
+      this.renderLayer(ctx, mapData, layer, tileSize);
 
-        // Render objects after ground layer (objects sit on ground, before foreground)
-        if (layer === "ground") {
-          this.renderObjects(ctx, mapData);
-        }
+      // Render objects after ground layer (objects sit on ground, before foreground)
+      if (layer === "ground") {
+        this.renderObjects(ctx, mapData);
       }
+    }
+
+    // Render collision layer last if it's visible or active
+    // This ensures collision is always rendered on top of other layers
+    const shouldRenderCollision = activeLayer === "collision" || store.isLayerVisible("collision");
+    if (shouldRenderCollision) {
+      this.renderCollisionLayer(ctx, mapData);
     }
 
     // Highlight active layer with a subtle overlay on non-active tiles
@@ -225,19 +233,11 @@ export class TileRenderer {
 
   /**
    * Render collision layer with clear visual indicators
+   * Always renders as transparent overlay so other layers remain visible
    */
   private renderCollisionLayer(ctx: CanvasRenderingContext2D, mapData: MapData): void {
     const { width, height, tileSize } = mapData.config;
     const layer = mapData.layers.collision;
-
-    // Draw background checkerboard
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const isCheckerDark = (x + y) % 2 === 0;
-        ctx.fillStyle = isCheckerDark ? "#f5f5f5" : "#ffffff";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
 
     // Draw collision tiles (solid = 1, empty = 0)
     for (let y = 0; y < height; y++) {
@@ -245,19 +245,14 @@ export class TileRenderer {
         const value = layer[y][x];
 
         if (value === 1) {
-          // Solid collision - red with pattern
+          // Solid collision - red with transparency so layers below are visible
           ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
           ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
 
-          // Add diagonal lines pattern
-          // ctx.strokeStyle = "rgba(200, 0, 0, 0.6)";
-          // ctx.lineWidth = 2;
-          // ctx.beginPath();
-          // ctx.moveTo(x * tileSize, y * tileSize);
-          // ctx.lineTo((x + 1) * tileSize, (y + 1) * tileSize);
-          // ctx.moveTo((x + 1) * tileSize, y * tileSize);
-          // ctx.lineTo(x * tileSize, (y + 1) * tileSize);
-          // ctx.stroke();
+          // Add border to make collision tiles more visible
+          ctx.strokeStyle = "rgba(200, 0, 0, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
         }
       }
     }

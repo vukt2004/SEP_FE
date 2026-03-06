@@ -70,6 +70,7 @@ export default function StudentHeader() {
             <TopNavLink to={ROUTES.STUDENT_LEARN ?? "/app/browse"} label="Game Mode Browse" />
             <TopNavLink to={ROUTES.STUDENT_PROFILE ?? "/app/profile"} label="Profile" />
             <TopNavLink to={ROUTES.STUDENT_PACKAGES ?? "/app/packages"} label="Packages" />
+            <TopNavLink to={ROUTES.MAP_EDITOR ?? "/map-editor"} label="Map Editor" />
           </nav>
         </div>
 
