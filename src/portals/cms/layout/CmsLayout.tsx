@@ -17,7 +17,6 @@ import {
   Users,
   Flag,
   Package,
-  Bird,
   ChevronLeft,
   ChevronRight,
   User,
@@ -71,7 +70,7 @@ const CmsLayout: React.FC = () => {
             gap: "12px",
           }}
         >
-          <Bird size={28} style={{ color: "var(--primary)" }} />
+          <img src="/brand/logo.png" alt="Logo" style={{ height: "50px", width: "auto" }} />
           {!isSidebarCollapsed && (
             <div>
               <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "bold" }}>
