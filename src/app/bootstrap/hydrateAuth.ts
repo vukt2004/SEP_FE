@@ -2,15 +2,15 @@
  * Hydrate Auth Stores
  *
  * Restores authentication state from localStorage on app startup
- * for both Student and CMS portals
+ * for both Learner and CMS portals
  */
 
-import { useStudentAuthStore } from "@/stores/auth/studentAuth.store";
+import { useLearnerAuthStore } from "@/stores/auth/learnerAuth.store";
 import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
 
 export function hydrateAuth() {
-  // Restore student auth state
-  useStudentAuthStore.getState().hydrate();
+  // Restore learner auth state
+  useLearnerAuthStore.getState().hydrate();
 
   // Restore CMS auth state
   useCmsAuthStore.getState().hydrate();

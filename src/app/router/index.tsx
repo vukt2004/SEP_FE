@@ -3,15 +3,15 @@ import React from "react";
 import { createBrowserRouter, Navigate, Outlet, type RouteObject } from "react-router-dom";
 
 import { ROUTES } from "@/lib/constants/routes";
-import { studentRoutes } from "./routes.student";
+import { learnerRoutes } from "./routes.learner";
 import { cmsRoutes } from "./routes.cms";
 import { AppLoader, NotFoundPage, RouteErrorPage } from "./router.ui";
 
 // Public pages (lazy)
 const LandingPage = React.lazy(() => import("../../pages/Home"));
-const StudentLoginPage = React.lazy(() => import("@/portals/student/pages/LoginPage"));
-const StudentRegisterPage = React.lazy(() => import("@/portals/student/pages/RegisterPage"));
-const StudentVerifyOtpPage = React.lazy(() => import("@/portals/student/pages/VerifyOtpPage"));
+const LearnerLoginPage = React.lazy(() => import("@/portals/learner/pages/LoginPage"));
+const LearnerRegisterPage = React.lazy(() => import("@/portals/learner/pages/RegisterPage"));
+const LearnerVerifyOtpPage = React.lazy(() => import("@/portals/learner/pages/VerifyOtpPage"));
 
 const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 
@@ -70,26 +70,26 @@ const routes: RouteObject[] = [
 
   // Public auth pages
   {
-    path: ROUTES.STUDENT_LOGIN,
+    path: ROUTES.LEARNER_LOGIN,
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        <StudentLoginPage />
+        <LearnerLoginPage />
       </React.Suspense>
     ),
   },
   {
-    path: ROUTES.STUDENT_REGISTER ?? "/register",
+    path: ROUTES.LEARNER_REGISTER ?? "/register",
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        <StudentRegisterPage />
+        <LearnerRegisterPage />
       </React.Suspense>
     ),
   },
   {
-    path: ROUTES.STUDENT_VERIFY_OTP ?? "/verify-otp",
+    path: ROUTES.LEARNER_VERIFY_OTP ?? "/verify-otp",
     element: (
       <React.Suspense fallback={<AppLoader />}>
-        <StudentVerifyOtpPage />
+        <LearnerVerifyOtpPage />
       </React.Suspense>
     ),
   },
@@ -106,7 +106,7 @@ const routes: RouteObject[] = [
   // Convenience redirects
   {
     path: "/app",
-    element: <Navigate to={ROUTES.STUDENT_HOME} replace />,
+    element: <Navigate to={ROUTES.LEARNER_HOME} replace />,
   },
   {
     path: "/cms",
@@ -121,7 +121,7 @@ const routes: RouteObject[] = [
         <Outlet />
       </React.Suspense>
     ),
-    children: [studentRoutes, cmsRoutes],
+    children: [learnerRoutes, cmsRoutes],
   },
 
   // Catch-all
