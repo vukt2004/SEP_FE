@@ -12,6 +12,7 @@ const LearnerLayout = React.lazy(() => import("@/portals/learner/layout/LearnerL
 const LearnerHomePage = React.lazy(() => import("@/portals/learner/pages/HomePage"));
 const LearnerChallengesPage = React.lazy(() => import("@/portals/learner/pages/ChallengesPage"));
 const LearnerPackagesPage = React.lazy(() => import("@/portals/learner/pages/PackagesPage"));
+const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/WalletPage"));
 
 // Pages (learner public)
 const LearnerLoginPage = React.lazy(() => import("@/portals/learner/pages/LoginPage"));
@@ -53,6 +54,7 @@ export const learnerRoutes: RouteObject = {
     { index: true, element: <LearnerHomePage /> },
     { path: "home", element: <LearnerHomePage /> },
     { path: "profile", element: <LearnerProfilePage /> },
+    { path: "wallet", element: <LearnerWalletPage /> },
     { path: "challenges", element: <LearnerChallengesPage /> },
     { path: "packages", element: <LearnerPackagesPage /> },
     { path: "browse", element: <LearnerModeSelectPage /> },

@@ -69,6 +69,7 @@ export default function LearnerHeader() {
             <TopNavLink to={ROUTES.LEARNER_HOME ?? "/app"} label="Home" />
             <TopNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} label="Game Mode Browse" />
             <TopNavLink to={ROUTES.LEARNER_PROFILE ?? "/app/profile"} label="Profile" />
+            <TopNavLink to={ROUTES.LEARNER_WALLET ?? "/app/wallet"} label="Wallet" />
             <TopNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} label="Packages" />
             <TopNavLink to={ROUTES.MAP_EDITOR ?? "/map-editor"} label="Map Editor" />
           </nav>
