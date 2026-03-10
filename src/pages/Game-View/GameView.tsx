@@ -10,6 +10,7 @@ import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 import type { MapConfig } from "../../shared/types/MapSchema";
+import { ROUTES } from "@/lib/constants/routes";
 
 export default function GameView() {
   const location = useLocation();
@@ -72,9 +73,23 @@ export default function GameView() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        // Create TopDown game config (no gravity)
-        const config = createGameConfig(LevelType.TopDown);
-        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, "topdown");
+        // Determine level type from map config, default to TopDown
+        const mapType = levelResult.mapConfig?.type || "topdown";
+        const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
+        // Convert map type to GameType format
+        const gameType = mapType === "platform" ? "platformer" : "topdown";
+        console.log(
+          "Using level type:",
+          levelType,
+          "game type:",
+          gameType,
+          "from map type:",
+          mapType,
+        );
+
+        // Create game config based on map type
+        const config = createGameConfig(levelType);
+        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
         // Integrate collision example
@@ -266,7 +281,7 @@ export default function GameView() {
     <div style={{ padding: "20px", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
         <button
-          onClick={() => navigate("/game-menu")}
+          onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
           style={{
             padding: "8px 16px",
             backgroundColor: "#4a5568",
@@ -276,7 +291,7 @@ export default function GameView() {
             cursor: "pointer",
           }}
         >
-          ← Back to Menu
+          ← Back to Challenges
         </button>
 
         <button

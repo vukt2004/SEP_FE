@@ -21,11 +21,12 @@ export interface PaginationResult<T> {
 /**
  * Map status enum
  * 0 = Draft
- * 1 = Published
- * 2 = Archived
- * 4 = Active (or other status)
+ * 1 = Pending Review
+ * 2 = Approved
+ * 3 = Rejected
+ * 4 = Published
  */
-export type MapStatusEnum = 0 | 1 | 2 | 4;
+export type MapStatusEnum = 0 | 1 | 2 | 3 | 4;
 
 /**
  * Map item in list view
@@ -35,6 +36,7 @@ export interface MapListItem {
   title: string;
   description: string;
   difficulty: number;
+  type: "Topdown" | "Platform";
   timeLimitMs: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
@@ -103,6 +105,7 @@ export interface MapDetail {
   id: string;
   title: string;
   description: string;
+  type: "Topdown" | "Platform";
   difficulty: number;
   timeLimitMs: number;
   isPublished: boolean;

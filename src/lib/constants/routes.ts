@@ -6,18 +6,19 @@ export const ROUTES = {
   MAP_EDITOR: "/map-editor",
   GAMEMENU: "/game-menu",
 
-  // Student
-  STUDENT_LOGIN: "/login",
-  STUDENT_APP: "/app",
-  STUDENT_HOME: "/app/home",
-  STUDENT_CHALLENGES: "/app/challenges",
-  STUDENT_PACKAGES: "/app/packages",
-  STUDENT_VERIFY_OTP: "/verify-otp",
-  STUDENT_REGISTER: "/register",
-  STUDENT_LEARN: "/app/browse",
-  STUDENT_PROFILE: "/app/profile",
-  STUDENT_ROOM_CREATE: "/app/room/create",
-  STUDENT_ROOM_JOIN: "/app/room/join",
+  // Learner
+  LEARNER_LOGIN: "/login",
+  LEARNER_APP: "/app",
+  LEARNER_HOME: "/app/home",
+  LEARNER_CHALLENGES: "/app/challenges",
+  LEARNER_PACKAGES: "/app/packages",
+  LEARNER_VERIFY_OTP: "/verify-otp",
+  LEARNER_REGISTER: "/register",
+  LEARNER_LEARN: "/app/browse",
+  LEARNER_PROFILE: "/app/profile",
+  LEARNER_WALLET: "/app/wallet",
+  LEARNER_ROOM_CREATE: "/app/room/create",
+  LEARNER_ROOM_JOIN: "/app/room/join",
 
   // CMS
   CMS_LOGIN: "/cms/login",
