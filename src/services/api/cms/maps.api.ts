@@ -73,6 +73,7 @@ export const cmsMapsApi = {
   uploadMapFromJson(params: {
     Title: string;
     Description: string;
+    Type: "Topdown" | "Platform";
     Difficulty: number;
     TimeLimitMs: number;
     WinCondition: number;
@@ -84,6 +85,7 @@ export const cmsMapsApi = {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
+    formData.append("Type", params.Type);
     formData.append("Difficulty", params.Difficulty.toString());
     formData.append("TimeLimitMs", params.TimeLimitMs.toString());
     formData.append("WinCondition", params.WinCondition.toString());

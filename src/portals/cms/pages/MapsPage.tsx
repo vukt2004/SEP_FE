@@ -148,11 +148,13 @@ export const MapsPage: React.FC = () => {
       case 0:
         return "Draft";
       case 1:
-        return "Published";
+        return "Pending Review";
       case 2:
-        return "Archived";
+        return "Approved";
+      case 3:
+        return "Rejected";
       case 4:
-        return "Active";
+        return "Published";
       default:
         return "Unknown";
     }
@@ -163,9 +165,11 @@ export const MapsPage: React.FC = () => {
       case 0:
         return "var(--muted)";
       case 1:
-        return "var(--success)";
-      case 2:
         return "var(--warning)";
+      case 2:
+        return "var(--info)";
+      case 3:
+        return "var(--danger)";
       case 4:
         return "var(--success)";
       default:
@@ -174,17 +178,29 @@ export const MapsPage: React.FC = () => {
   };
 
   const getDifficultyLabel = (difficulty: number) => {
-    if (difficulty <= 2) return "Easy";
-    if (difficulty <= 5) return "Medium";
-    if (difficulty <= 8) return "Hard";
-    return "Expert";
+    switch (difficulty) {
+      case 1:
+        return "Easy";
+      case 2:
+        return "Medium";
+      case 3:
+        return "Hard";
+      default:
+        return "Unknown";
+    }
   };
 
   const getDifficultyColor = (difficulty: number) => {
-    if (difficulty <= 2) return "var(--success)";
-    if (difficulty <= 5) return "var(--info)";
-    if (difficulty <= 8) return "var(--warning)";
-    return "var(--danger)";
+    switch (difficulty) {
+      case 1:
+        return "var(--success)";
+      case 2:
+        return "var(--warning)";
+      case 3:
+        return "var(--danger)";
+      default:
+        return "var(--text-2)";
+    }
   };
 
   const formatDate = (dateString: string | null) => {
@@ -354,6 +370,17 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
+                  TYPE
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
                   DIFFICULTY
                 </th>
                 <th
@@ -463,6 +490,21 @@ export const MapsPage: React.FC = () => {
                   <td style={{ padding: "16px" }}>
                     <span
                       style={{
+                        display: "inline-block",
+                        padding: "4px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
+                        color: map.type === "Platform" ? "#1e40af" : "#92400e",
+                      }}
+                    >
+                      {map.type}
+                    </span>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    <span
+                      style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "6px",
@@ -482,7 +524,7 @@ export const MapsPage: React.FC = () => {
                           background: getDifficultyColor(map.difficulty),
                         }}
                       ></span>
-                      {getDifficultyLabel(map.difficulty)} ({map.difficulty}/10)
+                      {getDifficultyLabel(map.difficulty)}
                     </span>
                   </td>
                   <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
@@ -729,7 +771,7 @@ export const MapsPage: React.FC = () => {
                   Difficulty
                 </div>
                 <div style={{ color: "var(--text)" }}>
-                  {getDifficultyLabel(selectedMap.difficulty)} ({selectedMap.difficulty}/10)
+                  {getDifficultyLabel(selectedMap.difficulty)}
                 </div>
               </div>
               <div>

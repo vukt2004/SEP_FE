@@ -8,6 +8,9 @@ import {
   type ObjectDefinition,
 } from "../../modules/engine/assets";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
+import { learnerMapsApi } from "../../services/api/learner/maps.api";
+import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
+import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
 
 /**
@@ -195,6 +198,13 @@ export function MapEditorControls({
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
+
+  // Detect user type for API selection
+  const learnerAuth = useLearnerAuthStore();
+  const cmsAuth = useCmsAuthStore();
+  const isLearner = learnerAuth.isAuthenticated;
+  const isCms = cmsAuth.isAuthenticated;
+  const userType = isLearner ? "learner" : isCms ? "cms" : "unknown";
   const [objectDefinitions, setObjectDefinitions] = useState<Record<
     string,
     ObjectDefinition
@@ -274,6 +284,11 @@ export function MapEditorControls({
       return;
     }
 
+    if (userType === "unknown") {
+      alert("You must be logged in as a learner or CMS user to upload maps");
+      return;
+    }
+
     try {
       setUploading(true);
 
@@ -283,10 +298,17 @@ export function MapEditorControls({
       const blob = new Blob([json], { type: "application/json" });
       const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
 
-      // Upload to API
-      const response = await cmsMapsApi.uploadMapFromJson({
+      // Convert map type from internal format to API format
+      const mapType: "Topdown" | "Platform" =
+        mapData.config.type === "platform" ? "Platform" : "Topdown";
+
+      // Use the appropriate API based on user type
+      const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
+
+      const response = await mapsApi.uploadMapFromJson({
         Title: mapData.config.name,
         Description: mapData.config.description || "Map created with Map Editor",
+        Type: mapType,
         Difficulty: mapData.config.difficulty,
         TimeLimitMs: mapData.config.timeLimitSeconds * 1000, // Convert seconds to milliseconds
         WinCondition: mapData.config.winCondition,
@@ -611,8 +633,13 @@ export function MapEditorControls({
           <button style={styles.actionButton} onClick={onExport}>
             Export JSON
           </button>
-          <button style={styles.actionButton} onClick={() => setShowUploadDialog(true)}>
-            Upload to CMS
+          <button
+            style={styles.actionButton}
+            onClick={() => setShowUploadDialog(true)}
+            disabled={userType === "unknown"}
+            title={userType === "unknown" ? "Please login to upload maps" : "Upload map to server"}
+          >
+            Upload Map
           </button>
           <label style={styles.importLabel}>
             Import JSON
@@ -748,7 +775,9 @@ export function MapEditorControls({
       {showUploadDialog && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Upload Map to CMS</h3>
+            <h3 style={styles.modalTitle}>
+              Upload Map{userType !== "unknown" ? ` (${userType.toUpperCase()})` : ""}
+            </h3>
             <p style={styles.helpText}>
               This will upload the map using the current map information below
             </p>

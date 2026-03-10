@@ -1,57 +1,78 @@
 // src/portals/learner/pages/ChallengesPage.tsx
 import { useEffect, useState } from "react";
-// import { useNavigate } from "react-router-dom";
-import { learnerChallengesApi } from "@/services/api/learner/challenges.api";
-import type { Challenge } from "@/types/api/learner/challenges";
+import { useNavigate } from "react-router-dom";
+import { Search, ArrowUpDown } from "lucide-react";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import type { Map } from "@/types/api/learner/maps";
+import { ROUTES } from "@/lib/constants/routes";
 import "@/shared/styles/tokens.css";
 import "@/shared/styles/challenges.css";
 
 export default function ChallengesPage() {
-  // const navigate = useNavigate();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const navigate = useNavigate();
+  const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<number | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<number | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("Title");
+  const [sortAscending, setSortAscending] = useState(true);
 
   useEffect(() => {
-    loadChallenges(currentPage);
-  }, [currentPage]);
+    loadMaps();
+  }, [currentPage, selectedDifficulty, sortBy, sortAscending]);
 
-  const loadChallenges = async (page: number) => {
+  const loadMaps = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await learnerChallengesApi.getAll(page, 20);
+      const response = await learnerMapsApi.getMaps({
+        pageNumber: currentPage,
+        pageSize: 20,
+        publishedOnly: true,
+        difficulty: selectedDifficulty,
+        search: searchQuery || undefined,
+        sortBy,
+        sortAscending,
+      });
 
       if (response.data.isSuccess && response.data.data) {
-        setChallenges(response.data.data.items);
+        setMaps(response.data.data.items);
         setTotalPages(response.data.data.totalPages);
       } else {
-        setError(response.data.message || "Failed to load challenges");
+        setError(response.data.message || "Failed to load maps");
       }
     } catch (err) {
-      setError("An error occurred while loading challenges");
+      setError("An error occurred while loading maps");
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectChallenge = (challenge: Challenge) => {
-    // TODO: Navigate to game with selected challenge
-    console.log("Selected challenge:", challenge);
-    // navigate(`/game?challengeId=${challenge.id}`);
+  const handleSearch = () => {
+    setCurrentPage(1); // Reset to first page when searching
+    loadMaps();
+  };
+
+  const handleSelectMap = (map: Map) => {
+    // Navigate to game view with the selected map ID
+    navigate(ROUTES.GAME, {
+      state: {
+        levelId: map.id,
+      },
+    });
   };
 
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
-      case 0:
-        return "Easy";
       case 1:
-        return "Medium";
+        return "Easy";
       case 2:
+        return "Medium";
+      case 3:
         return "Hard";
       default:
         return "Unknown";
@@ -60,11 +81,11 @@ export default function ChallengesPage() {
 
   const getDifficultyColor = (difficulty: number) => {
     switch (difficulty) {
-      case 0:
-        return "difficulty-easy";
       case 1:
-        return "difficulty-medium";
+        return "difficulty-easy";
       case 2:
+        return "difficulty-medium";
+      case 3:
         return "difficulty-hard";
       default:
         return "";
@@ -85,16 +106,20 @@ export default function ChallengesPage() {
     return `${price.toLocaleString("vi-VN")} VND`;
   };
 
-  const filteredChallenges =
-    selectedDifficulty !== null
-      ? challenges.filter((c) => c.difficulty === selectedDifficulty)
-      : challenges;
+  const toggleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortAscending(!sortAscending);
+    } else {
+      setSortBy(field);
+      setSortAscending(true);
+    }
+  };
 
   if (loading) {
     return (
       <div className="challenges-page">
         <div className="container">
-          <div className="challenges-loading">Loading challenges...</div>
+          <div className="challenges-loading">Loading maps...</div>
         </div>
       </div>
     );
@@ -114,50 +139,147 @@ export default function ChallengesPage() {
     <div className="challenges-page">
       <div className="container">
         <div className="challenges-header">
-          <h1 className="challenges-title">Challenges Map Menu</h1>
-          <p className="challenges-subtitle">Choose your challenge and start coding!</p>
+          <h1 className="challenges-title">Browse Maps</h1>
+          <p className="challenges-subtitle">Choose your map and start coding!</p>
+        </div>
+
+        {/* Search Bar */}
+        <div style={{ marginBottom: "1.5rem", display: "flex", gap: "12px", alignItems: "center" }}>
+          <div style={{ position: "relative", flex: 1, maxWidth: "500px" }}>
+            <Search
+              size={20}
+              style={{
+                position: "absolute",
+                left: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--muted)",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search maps by title or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+              style={{
+                width: "100%",
+                padding: "10px 16px 10px 44px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+          <button
+            className="btn btnPrimary"
+            onClick={handleSearch}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            Search
+          </button>
+        </div>
+
+        {/* Sort Controls */}
+        <div style={{ marginBottom: "1rem", display: "flex", gap: "8px", alignItems: "center" }}>
+          <span style={{ fontSize: "14px", color: "var(--muted)", fontWeight: 500 }}>Sort by:</span>
+          <button
+            className={`filter-btn ${sortBy === "Title" ? "active" : ""}`}
+            onClick={() => toggleSort("Title")}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            Title
+            {sortBy === "Title" && (
+              <ArrowUpDown
+                size={14}
+                style={{ transform: sortAscending ? "rotate(0deg)" : "rotate(180deg)" }}
+              />
+            )}
+          </button>
+          <button
+            className={`filter-btn ${sortBy === "Difficulty" ? "active" : ""}`}
+            onClick={() => toggleSort("Difficulty")}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            Difficulty
+            {sortBy === "Difficulty" && (
+              <ArrowUpDown
+                size={14}
+                style={{ transform: sortAscending ? "rotate(0deg)" : "rotate(180deg)" }}
+              />
+            )}
+          </button>
+          <button
+            className={`filter-btn ${sortBy === "CreatedAt" ? "active" : ""}`}
+            onClick={() => toggleSort("CreatedAt")}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            Date
+            {sortBy === "CreatedAt" && (
+              <ArrowUpDown
+                size={14}
+                style={{ transform: sortAscending ? "rotate(0deg)" : "rotate(180deg)" }}
+              />
+            )}
+          </button>
         </div>
 
         <div className="challenges-filters">
           <button
-            className={`filter-btn ${selectedDifficulty === null ? "active" : ""}`}
-            onClick={() => setSelectedDifficulty(null)}
+            className={`filter-btn ${selectedDifficulty === undefined ? "active" : ""}`}
+            onClick={() => setSelectedDifficulty(undefined)}
           >
             All
-          </button>
-          <button
-            className={`filter-btn ${selectedDifficulty === 0 ? "active" : ""}`}
-            onClick={() => setSelectedDifficulty(0)}
-          >
-            Easy
           </button>
           <button
             className={`filter-btn ${selectedDifficulty === 1 ? "active" : ""}`}
             onClick={() => setSelectedDifficulty(1)}
           >
-            Medium
+            Easy
           </button>
           <button
             className={`filter-btn ${selectedDifficulty === 2 ? "active" : ""}`}
             onClick={() => setSelectedDifficulty(2)}
+          >
+            Medium
+          </button>
+          <button
+            className={`filter-btn ${selectedDifficulty === 3 ? "active" : ""}`}
+            onClick={() => setSelectedDifficulty(3)}
           >
             Hard
           </button>
         </div>
 
         <div className="challenges-grid">
-          {filteredChallenges.map((challenge) => (
-            <div key={challenge.id} className="card challenge-card">
+          {maps.map((map) => (
+            <div key={map.id} className="card challenge-card">
               <div className="challenge-header">
-                <h3 className="challenge-title">{challenge.title}</h3>
-                <span
-                  className={`challenge-difficulty ${getDifficultyColor(challenge.difficulty)}`}
-                >
-                  {getDifficultyLabel(challenge.difficulty)}
-                </span>
+                <h3 className="challenge-title">{map.title}</h3>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <span
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
+                      color: map.type === "Platform" ? "#1e40af" : "#92400e",
+                    }}
+                  >
+                    {map.type}
+                  </span>
+                  <span className={`challenge-difficulty ${getDifficultyColor(map.difficulty)}`}>
+                    {getDifficultyLabel(map.difficulty)}
+                  </span>
+                </div>
               </div>
 
-              <p className="challenge-description">{challenge.description}</p>
+              <p className="challenge-description">{map.description}</p>
 
               <div className="challenge-meta">
                 <div className="meta-item">
@@ -170,7 +292,7 @@ export default function ChallengesPage() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span>{formatTimeLimit(challenge.timeLimitMs)}</span>
+                  <span>{formatTimeLimit(map.timeLimitMs)}</span>
                 </div>
 
                 <div className="meta-item">
@@ -183,13 +305,13 @@ export default function ChallengesPage() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span>{formatPrice(challenge.price)}</span>
+                  <span>{formatPrice(map.price)}</span>
                 </div>
               </div>
 
-              {challenge.tagNames && challenge.tagNames.length > 0 && (
+              {map.tagNames && map.tagNames.length > 0 && (
                 <div className="challenge-tags">
-                  {challenge.tagNames.map((tag, idx) => (
+                  {map.tagNames.map((tag, idx) => (
                     <span key={idx} className="tag">
                       {tag}
                     </span>
@@ -197,35 +319,22 @@ export default function ChallengesPage() {
                 </div>
               )}
 
-              {challenge.conceptNames && challenge.conceptNames.length > 0 && (
-                <div className="challenge-concepts">
-                  <span className="concepts-label">Concepts:</span>
-                  <div className="concepts-list">
-                    {challenge.conceptNames.map((concept, idx) => (
-                      <span key={idx} className="concept">
-                        {concept}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="challenge-actions">
                 <button
                   className="btn btnPrimary"
-                  onClick={() => handleSelectChallenge(challenge)}
-                  disabled={!challenge.isPublished}
+                  onClick={() => handleSelectMap(map)}
+                  disabled={!map.isPublished}
                 >
-                  {challenge.isPublished ? "Start Challenge" : "Coming Soon"}
+                  {map.isPublished ? "Start Challenge" : "Coming Soon"}
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {filteredChallenges.length === 0 && !loading && (
+        {maps.length === 0 && !loading && (
           <div className="challenges-empty">
-            <p>No challenges found for the selected difficulty.</p>
+            <p>No maps found matching your criteria.</p>
           </div>
         )}
 

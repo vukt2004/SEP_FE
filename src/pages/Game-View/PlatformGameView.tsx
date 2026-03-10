@@ -4,6 +4,7 @@ import { GameEngine } from "../../modules/engine/core/GameEngine";
 import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
+import { ROUTES } from "@/lib/constants/routes";
 
 /**
  * PlatformGameView - Test view for platformer levels with gravity
@@ -61,9 +62,15 @@ export default function PlatformGameView() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        // Create Platform game config (with gravity)
-        const config = createGameConfig(LevelType.Platform);
-        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, "platformer");
+        // Determine level type from map config, default to Platform
+        const mapType = levelResult.mapConfig?.type || "platform";
+        const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
+        // Convert map type to GameType format
+        const gameType = mapType === "platform" ? "platformer" : "topdown";
+
+        // Create game config based on map type
+        const config = createGameConfig(levelType);
+        const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
         // Initialize and start
@@ -137,7 +144,7 @@ export default function PlatformGameView() {
     <div style={{ padding: "20px" }}>
       <div style={{ marginBottom: "20px" }}>
         <button
-          onClick={() => navigate("/game-menu")}
+          onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
           style={{
             padding: "8px 16px",
             backgroundColor: "#4a5568",
@@ -147,7 +154,7 @@ export default function PlatformGameView() {
             cursor: "pointer",
           }}
         >
-          ← Back to Menu
+          ← Back to Challenges
         </button>
       </div>
       <h2>Platform Game View (with Gravity)</h2>

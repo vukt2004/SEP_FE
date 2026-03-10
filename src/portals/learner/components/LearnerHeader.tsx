@@ -54,25 +54,16 @@ export default function LearnerHeader() {
                 src="/brand/logo.png"
                 alt="QuackOrbit"
                 style={{
-                  height: 80, // kích thước layout (nhỏ, không đẩy header)
+                  height: 80,
                   width: "auto",
                   display: "block",
                   objectFit: "contain",
-                  transform: "scale(1.8)", // kích thước hiển thị (to lên)
+                  transform: "scale(1.8)",
                   transformOrigin: "left center",
                 }}
               />
             </a>
           </NavLink>
-
-          <nav aria-label="Learner primary" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <TopNavLink to={ROUTES.LEARNER_HOME ?? "/app"} label="Home" />
-            <TopNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} label="Game Mode Browse" />
-            <TopNavLink to={ROUTES.LEARNER_PROFILE ?? "/app/profile"} label="Profile" />
-            <TopNavLink to={ROUTES.LEARNER_WALLET ?? "/app/wallet"} label="Wallet" />
-            <TopNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} label="Packages" />
-            <TopNavLink to={ROUTES.MAP_EDITOR ?? "/map-editor"} label="Map Editor" />
-          </nav>
         </div>
 
         {/* Right */}
@@ -96,25 +87,6 @@ export default function LearnerHeader() {
         </div>
       </div>
     </header>
-  );
-}
-
-function TopNavLink({ to, label }: { to: string; label: string }) {
-  return (
-    <NavLink
-      to={to}
-      style={({ isActive }) => ({
-        textDecoration: "none",
-        color: isActive ? "var(--text)" : "var(--muted)",
-        fontWeight: 700,
-        padding: "8px 10px",
-        borderRadius: 10,
-        background: isActive ? "var(--surface)" : "transparent",
-        border: isActive ? "1px solid var(--border)" : "1px solid transparent",
-      })}
-    >
-      {label}
-    </NavLink>
   );
 }
 

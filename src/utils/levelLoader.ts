@@ -1,6 +1,8 @@
 import type { LevelDefinition } from "../modules/map-system/types";
 import type { MapConfig } from "../shared/types/MapSchema";
 import { cmsMapsApi } from "../services/api/cms/maps.api";
+import { learnerMapsApi } from "../services/api/learner/maps.api";
+import { tokenStorage } from "../lib/storage/tokenStorage";
 
 /**
  * Result of loading a level from API
@@ -11,14 +13,28 @@ export interface LevelLoadResult {
 }
 
 /**
- * Load level data from API
+ * Load level data from API (context-aware: uses learner or CMS API based on authentication)
  *
  * @param levelId - Level map ID from API
  * @returns Level definition with map config
  */
 export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult> {
   try {
-    const response = await cmsMapsApi.getMapById(levelId);
+    // Detect which user is authenticated
+    const learnerToken = tokenStorage.getLearnerToken();
+    const cmsToken = tokenStorage.getCmsToken();
+
+    const isLearner = !!learnerToken;
+    const isCms = !!cmsToken;
+
+    // Use the appropriate API
+    const mapsApi = isLearner ? learnerMapsApi : isCms ? cmsMapsApi : null;
+
+    if (!mapsApi) {
+      throw new Error("No authentication found. Please log in to play.");
+    }
+
+    const response = await mapsApi.getMapById(levelId, false);
 
     if (!response.data.isSuccess || !response.data.data) {
       throw new Error(response.data.message || "Failed to load level");
@@ -51,6 +67,7 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
     const mapConfig: Partial<MapConfig> = {
       name: mapDetail.title,
       description: mapDetail.description,
+      type: mapDetail.type === "Platform" ? "platform" : "topdown", // Convert API format to MapConfig format
       difficulty: mapDetail.difficulty as 1 | 2 | 3,
       timeLimitSeconds: Math.floor(mapDetail.timeLimitMs / 1000), // Convert ms to seconds
       winCondition: mapDetail.winCondition as 1 | 2,
