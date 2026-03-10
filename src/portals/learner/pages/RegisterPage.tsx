@@ -220,7 +220,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="login-duck-content" style={{ position: "relative" }}>
-          <h1 style={{ color: "#2563EB", marginBottom: 8 }}>QuackOrbit</h1>
+          <h1 style={{ color: "#2563EB", marginBottom: 8, fontSize: 80 }}>QuackOrbit</h1>
           <p style={{ maxWidth: 420 }}>Create your student account and start learning.</p>
 
           <div style={{ marginTop: 18, position: "relative", minHeight: 340 }}>
@@ -246,7 +246,7 @@ export default function RegisterPage() {
         <div className={["login-card", shake ? styles.shake : ""].join(" ")}>
           <PixelConfetti show={confetti} />
 
-          <h2>Student Register</h2>
+          <h2>Learner Register</h2>
 
           <form onSubmit={handleSubmit}>
             {submitError ? (

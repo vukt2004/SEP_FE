@@ -67,7 +67,7 @@
 .login-input {
   width: 100%;
   padding: 12px 14px;
-  margin-bottom: 16px;
+  margin-top: 16px;
   border-radius: 10px;
   font-size: 14px;
   transition: all 0.2s ease;
@@ -91,6 +91,7 @@
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-top: 24px;
 }
 
 .login-input::placeholder {
