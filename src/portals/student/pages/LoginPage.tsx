@@ -254,7 +254,7 @@ export default function LoginPage() {
           </div>
 
           <div className="login-duck-content" style={{ position: "relative" }}>
-            <h1 style={{ color: "#2563EB", marginBottom: 8 }}>QuackOrbit</h1>
+            <h1 style={{ color: "#2563EB", marginBottom: 8, fontSize: 80 }}>QuackOrbit</h1>
             <p style={{ maxWidth: 420 }}>
               Learn logic through fun 2D gameplay. Build skills while exploring levels.
             </p>
