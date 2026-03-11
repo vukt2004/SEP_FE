@@ -196,6 +196,7 @@ export function MapEditorControls({
   const [resetName, setResetName] = useState("");
   const [resetDescription, setResetDescription] = useState("");
   const [hints, setHints] = useState<string[]>([""]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const gameType = mapTypeToGameType(mapData.config.type);
@@ -334,6 +335,79 @@ export function MapEditorControls({
     } catch (error) {
       console.error("Upload error:", error);
       alert(`Failed to upload map: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveMap = async () => {
+    const mapName = mapData.config.name?.trim();
+    if (!mapName) {
+      alert("Please set a map name before saving");
+      return;
+    }
+
+    if (userType === "unknown") {
+      alert("You must be logged in as a learner or CMS user to save maps");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Convert map to game format
+      const gameLevelFormat = exportMapToGameFormat(mapData);
+      const json = JSON.stringify(gameLevelFormat, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
+
+      // Convert map type from internal format to API format
+      const mapType: "Topdown" | "Platform" =
+        mapData.config.type === "platform" ? "Platform" : "Topdown";
+
+      // Use the appropriate API based on user type
+      const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
+
+      // Prepare hints JSON if any hints are provided
+      const hintsWithContent = hints.filter((hint) => hint.trim());
+      const hintsJson =
+        hintsWithContent.length > 0
+          ? JSON.stringify(
+              hintsWithContent.map((content, index) => ({
+                orderNo: index + 1,
+                content,
+              })),
+            )
+          : undefined;
+
+      const response = await mapsApi.uploadMapFromJson({
+        Title: mapData.config.name,
+        Description: mapData.config.description || "Map created with Map Editor",
+        Type: mapType,
+        Difficulty: mapData.config.difficulty,
+        TimeLimitMs: mapData.config.timeLimitSeconds * 1000,
+        WinCondition: mapData.config.winCondition,
+        Price: mapData.config.price,
+        MapDetailFile: file,
+        HintsJson: hintsJson,
+        AvatarFile: avatarFile,
+      });
+
+      if (response.data.isSuccess) {
+        const mapId =
+          response.data.data && typeof response.data.data === "object" && "id" in response.data.data
+            ? String(response.data.data.id)
+            : "";
+        alert(`Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
+        setShowMapInfoModal(false);
+        setAvatarFile(null);
+        setHints([""]);
+      } else {
+        alert(`Save failed: ${response.data.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      alert(`Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setUploading(false);
     }
@@ -557,11 +631,11 @@ export function MapEditorControls({
           </button>
           <button
             style={styles.actionButton}
-            onClick={() => setShowUploadDialog(true)}
+            onClick={() => setShowMapInfoModal(true)}
             disabled={userType === "unknown"}
-            title={userType === "unknown" ? "Please login to upload maps" : "Upload map to server"}
+            title={userType === "unknown" ? "Please login to save maps" : "Save map to server"}
           >
-            Upload Map
+            Save Map
           </button>
           <label style={styles.importLabel}>
             Import JSON
@@ -888,6 +962,76 @@ export function MapEditorControls({
               </div>
 
               <div style={styles.formGroup}>
+                <label style={styles.label}>Map Avatar (Optional):</label>
+                <p style={styles.helpText}>Upload an image to be displayed as the map thumbnail</p>
+                <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ ...styles.importLabel, display: "block" }}>
+                      Choose Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
+                        style={styles.fileInput}
+                      />
+                    </label>
+                    {avatarFile && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          marginTop: "8px",
+                        }}
+                      >
+                        <span style={styles.helpText}>{avatarFile.name}</span>
+                        <button
+                          onClick={() => setAvatarFile(null)}
+                          style={{
+                            padding: "6px 12px",
+                            background: "#ff6b6b",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {avatarFile && (
+                    <div
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        border: "2px solid var(--border)",
+                        backgroundColor: "var(--surface-2)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <img
+                        src={URL.createObjectURL(avatarFile)}
+                        alt="Avatar Preview"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.formGroup}>
                 <label style={styles.label}>Map Info (Read-only):</label>
                 <p style={styles.infoText}>
                   Type: <strong>{mapData.config.type}</strong>
@@ -905,8 +1049,25 @@ export function MapEditorControls({
             </div>
 
             <div style={styles.modalButtons}>
-              <button style={styles.confirmButton} onClick={() => setShowMapInfoModal(false)}>
-                Done
+              <button
+                style={{
+                  ...styles.confirmButton,
+                  ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                }}
+                onClick={handleSaveMap}
+                disabled={uploading}
+              >
+                {uploading ? "Saving..." : "Save Map"}
+              </button>
+              <button
+                style={styles.cancelButton}
+                onClick={() => {
+                  setShowMapInfoModal(false);
+                  setAvatarFile(null);
+                }}
+                disabled={uploading}
+              >
+                Cancel
               </button>
             </div>
           </div>

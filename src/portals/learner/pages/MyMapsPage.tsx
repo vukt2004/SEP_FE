@@ -13,8 +13,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerCommunityApi } from "@/services/api/learner/community.api";
 import type { Map } from "@/types/api/learner/maps";
-import { Eye, Plus, Search } from "lucide-react";
+import { Eye, Plus, Search, Edit, Star, Flag, Send } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 
 export const MyMapsPage: React.FC = () => {
@@ -22,6 +23,27 @@ export const MyMapsPage: React.FC = () => {
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Ownership tracking
+  const [ownershipMap, setOwnershipMap] = useState<Record<string, { isAuthor: boolean }>>({});
+
+  // Modal state for rating
+  const [ratingModal, setRatingModal] = useState<{ open: boolean; mapId: string | null }>({
+    open: false,
+    mapId: null,
+  });
+  const [rating, setRating] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  // Modal state for reporting
+  const [reportModal, setReportModal] = useState<{ open: boolean; mapId: string | null }>({
+    open: false,
+    mapId: null,
+  });
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,9 +99,150 @@ export const MyMapsPage: React.FC = () => {
     fetchMaps();
   }, [fetchMaps]);
 
+  // Check ownership for all maps after fetching
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (maps.length === 0) return;
+
+      const ownershipChecks = await Promise.allSettled(
+        maps.map((map) => learnerMapsApi.checkMapOwnership(map.id)),
+      );
+
+      const newOwnershipMap: Record<string, { isAuthor: boolean }> = {};
+      ownershipChecks.forEach((result, index) => {
+        if (result.status === "fulfilled" && result.value.data.isSuccess) {
+          newOwnershipMap[maps[index].id] = {
+            isAuthor: result.value.data.data?.isAuthor || false,
+          };
+        } else {
+          // Default to not author if check fails
+          newOwnershipMap[maps[index].id] = { isAuthor: false };
+        }
+      });
+
+      setOwnershipMap(newOwnershipMap);
+    };
+
+    checkOwnership();
+  }, [maps]);
+
   const handleViewDetails = async (mapId: string) => {
     // Navigate to map editor or view
     navigate(ROUTES.MAP_EDITOR, { state: { mapId } });
+  };
+
+  const handleUpdateMap = (mapId: string) => {
+    // Navigate to map editor with edit mode
+    navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
+  };
+
+  const handleSubmitForReview = async (mapId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to submit this map for review? You won't be able to edit it until it's reviewed.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await learnerMapsApi.submitMapForReview(mapId);
+
+      if (response.data.isSuccess) {
+        alert("Map submitted for review successfully!");
+        // Refresh the maps list
+        fetchMaps();
+      } else {
+        setError(response.data.message || "Failed to submit map for review");
+      }
+    } catch (err) {
+      setError("Failed to submit map for review");
+      console.error("Submit error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenRateModal = (mapId: string) => {
+    setRatingModal({ open: true, mapId });
+    setRating(5);
+    setRatingComment("");
+  };
+
+  const handleCloseRateModal = () => {
+    setRatingModal({ open: false, mapId: null });
+    setRating(5);
+    setRatingComment("");
+  };
+
+  const handleSubmitRating = async () => {
+    if (!ratingModal.mapId) return;
+
+    try {
+      setRatingLoading(true);
+      setError(null);
+
+      const response = await learnerCommunityApi.rateMap(ratingModal.mapId, {
+        rating,
+        comment: ratingComment || undefined,
+      });
+
+      if (response.data.isSuccess) {
+        alert("Rating submitted successfully!");
+        handleCloseRateModal();
+      } else {
+        setError(response.data.message || "Failed to submit rating");
+      }
+    } catch (err) {
+      setError("Failed to submit rating");
+      console.error("Rating error:", err);
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const handleOpenReportModal = (mapId: string) => {
+    setReportModal({ open: true, mapId });
+    setReportReason("");
+    setReportDetails("");
+  };
+
+  const handleCloseReportModal = () => {
+    setReportModal({ open: false, mapId: null });
+    setReportReason("");
+    setReportDetails("");
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportModal.mapId || !reportReason) {
+      setError("Please provide a reason for the report");
+      return;
+    }
+
+    try {
+      setReportLoading(true);
+      setError(null);
+
+      const response = await learnerCommunityApi.reportMap(reportModal.mapId, {
+        reason: reportReason,
+        details: reportDetails || undefined,
+      });
+
+      if (response.data.isSuccess) {
+        alert("Report submitted successfully!");
+        handleCloseReportModal();
+      } else {
+        setError(response.data.message || "Failed to submit report");
+      }
+    } catch (err) {
+      setError("Failed to submit report");
+      console.error("Report error:", err);
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   const handleFilterChange = (updaters: Array<() => void>) => {
@@ -489,6 +652,16 @@ export const MyMapsPage: React.FC = () => {
                   <th
                     style={{
                       padding: "16px",
+                      textAlign: "center",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                      color: "var(--text-2)",
+                      width: "120px",
+                    }}
+                  ></th>
+                  <th
+                    style={{
+                      padding: "16px",
                       textAlign: "left",
                       fontWeight: "600",
                       fontSize: "13px",
@@ -602,6 +775,38 @@ export const MyMapsPage: React.FC = () => {
                       e.currentTarget.style.background = "transparent";
                     }}
                   >
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                      <div
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          backgroundColor: "var(--surface-2)",
+                          border: "1px solid var(--border)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {map.avatarUrl ? (
+                          <img
+                            src={map.avatarUrl}
+                            alt={map.title}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: "20px" }}>🗺️</span>
+                        )}
+                      </div>
+                    </td>
                     <td style={{ padding: "16px" }}>
                       <div>
                         <div
@@ -741,22 +946,129 @@ export const MyMapsPage: React.FC = () => {
                     </td>
                     <td style={{ padding: "16px" }}>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                        <button
-                          onClick={() => handleViewDetails(map.id)}
-                          style={{
-                            padding: "6px 12px",
-                            background: "transparent",
-                            border: "1px solid var(--border)",
-                            borderRadius: "6px",
-                            color: "var(--info)",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            transition: "all 0.2s ease",
-                          }}
-                          title="Edit Map"
-                        >
-                          <Eye size={16} />
-                        </button>
+                        {ownershipMap[map.id]?.isAuthor && map.mapStatus === 0 ? (
+                          // Show update and submit buttons for draft maps owned by user
+                          <>
+                            <button
+                              onClick={() => handleViewDetails(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--info)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="View Map"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateMap(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--primary)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="Update Map"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleSubmitForReview(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--success)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="Submit for Review"
+                            >
+                              <Send size={16} />
+                            </button>
+                          </>
+                        ) : !ownershipMap[map.id]?.isAuthor ? (
+                          // Show rate and report buttons for maps not owned by user
+                          <>
+                            <button
+                              onClick={() => handleViewDetails(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--info)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="View Map"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenRateModal(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--warning)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="Rate Map"
+                            >
+                              <Star size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenReportModal(map.id)}
+                              style={{
+                                padding: "6px 12px",
+                                background: "transparent",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--danger)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="Report Map"
+                            >
+                              <Flag size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          // Show only view button for other cases
+                          <button
+                            onClick={() => handleViewDetails(map.id)}
+                            style={{
+                              padding: "6px 12px",
+                              background: "transparent",
+                              border: "1px solid var(--border)",
+                              borderRadius: "6px",
+                              color: "var(--info)",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              transition: "all 0.2s ease",
+                            }}
+                            title="View Map"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -819,6 +1131,277 @@ export const MyMapsPage: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {ratingModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={handleCloseRateModal}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "500px",
+              width: "90%",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
+              Rate This Map
+            </h2>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  marginBottom: "8px",
+                }}
+              >
+                Rating (1-5)
+              </label>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setRating(value)}
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      background: rating >= value ? "var(--warning)" : "var(--surface-2)",
+                      color: rating >= value ? "white" : "var(--text-2)",
+                      cursor: "pointer",
+                      fontSize: "20px",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  marginBottom: "8px",
+                }}
+              >
+                Comment (optional)
+              </label>
+              <textarea
+                value={ratingComment}
+                onChange={(e) => setRatingComment(e.target.value)}
+                placeholder="Share your thoughts about this map..."
+                style={{
+                  width: "100%",
+                  minHeight: "100px",
+                  padding: "12px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button
+                onClick={handleCloseRateModal}
+                disabled={ratingLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  cursor: ratingLoading ? "not-allowed" : "pointer",
+                  opacity: ratingLoading ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitRating}
+                disabled={ratingLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: "var(--primary)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: ratingLoading ? "not-allowed" : "pointer",
+                  opacity: ratingLoading ? 0.5 : 1,
+                }}
+              >
+                {ratingLoading ? "Submitting..." : "Submit Rating"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {reportModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={handleCloseReportModal}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "500px",
+              width: "90%",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
+              Report This Map
+            </h2>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  marginBottom: "8px",
+                }}
+              >
+                Reason *
+              </label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">Select a reason...</option>
+                <option value="inappropriate">Inappropriate Content</option>
+                <option value="spam">Spam or Misleading</option>
+                <option value="broken">Broken or Unplayable</option>
+                <option value="copyright">Copyright Violation</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  marginBottom: "8px",
+                }}
+              >
+                Additional Details (optional)
+              </label>
+              <textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Provide more information about why you're reporting this map..."
+                style={{
+                  width: "100%",
+                  minHeight: "100px",
+                  padding: "12px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button
+                onClick={handleCloseReportModal}
+                disabled={reportLoading}
+                style={{
+                  padding: "10px 20px",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  color: "var(--text-2)",
+                  fontSize: "14px",
+                  cursor: reportLoading ? "not-allowed" : "pointer",
+                  opacity: reportLoading ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitReport}
+                disabled={reportLoading || !reportReason}
+                style={{
+                  padding: "10px 20px",
+                  background: "var(--danger)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: reportLoading || !reportReason ? "not-allowed" : "pointer",
+                  opacity: reportLoading || !reportReason ? 0.5 : 1,
+                }}
+              >
+                {reportLoading ? "Submitting..." : "Submit Report"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,10 +1,9 @@
 // src/portals/learner/pages/ChallengesPage.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, ArrowUpDown } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
-import { ROUTES } from "@/lib/constants/routes";
 import "@/shared/styles/tokens.css";
 import "@/shared/styles/challenges.css";
 
@@ -20,11 +19,7 @@ export default function ChallengesPage() {
   const [sortBy, setSortBy] = useState<string>("Title");
   const [sortAscending, setSortAscending] = useState(true);
 
-  useEffect(() => {
-    loadMaps();
-  }, [currentPage, selectedDifficulty, sortBy, sortAscending]);
-
-  const loadMaps = async () => {
+  const loadMaps = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -50,7 +45,11 @@ export default function ChallengesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, selectedDifficulty, sortBy, sortAscending, searchQuery]);
+
+  useEffect(() => {
+    loadMaps();
+  }, [loadMaps]);
 
   const handleSearch = () => {
     setCurrentPage(1); // Reset to first page when searching
@@ -58,12 +57,8 @@ export default function ChallengesPage() {
   };
 
   const handleSelectMap = (map: Map) => {
-    // Navigate to game view with the selected map ID
-    navigate(ROUTES.GAME, {
-      state: {
-        levelId: map.id,
-      },
-    });
+    // Navigate to map detail page
+    navigate(`/app/map/${map.id}`);
   };
 
   const getDifficultyLabel = (difficulty: number) => {
@@ -279,6 +274,36 @@ export default function ChallengesPage() {
                 </div>
               </div>
 
+              {map.avatarUrl && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "180px",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    backgroundColor: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <img
+                    src={map.avatarUrl}
+                    alt={map.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+
               <p className="challenge-description">{map.description}</p>
 
               <div className="challenge-meta">
@@ -325,7 +350,7 @@ export default function ChallengesPage() {
                   onClick={() => handleSelectMap(map)}
                   disabled={!map.isPublished}
                 >
-                  {map.isPublished ? "Start Challenge" : "Coming Soon"}
+                  {map.isPublished ? "View Detail" : "Coming Soon"}
                 </button>
               </div>
             </div>

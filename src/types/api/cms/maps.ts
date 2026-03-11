@@ -46,6 +46,7 @@ export interface MapListItem {
   tagNames: string[];
   winCondition: number;
   conceptNames?: string[];
+  avatarUrl: string | null;
 }
 
 /**

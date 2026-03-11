@@ -25,6 +25,8 @@ export interface UploadMapFromJsonParams {
   TagIdsCsv?: string;
   /** Map detail JSON file */
   MapDetailFile: File;
+  /** Avatar image file (optional) */
+  AvatarFile?: File | null;
 }
 
 /**
@@ -61,6 +63,7 @@ export interface Map {
   createdAt: string;
   tagNames: string[];
   winCondition: number;
+  avatarUrl: string | null;
 }
 
 /**
@@ -154,3 +157,17 @@ export interface MapDetail {
  * Map detail API response
  */
 export type MapDetailResult = ApiResult<MapDetail>;
+
+/**
+ * Map ownership check data
+ */
+export interface MapOwnershipData {
+  mapExists: boolean;
+  isOwned: boolean;
+  isAuthor: boolean;
+}
+
+/**
+ * Map ownership check API response
+ */
+export type MapOwnershipResult = ApiResult<MapOwnershipData>;
