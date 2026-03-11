@@ -22,7 +22,7 @@ export const cmsMapsApi = {
    * @returns Paginated maps list
    */
   getMaps(params?: GetMapsParams) {
-    return cmsAxios.get<MapsListResult>("/api/cms/maps", { params });
+    return cmsAxios.get<MapsListResult>("/api/cms/maps/all", { params });
   },
 
   /**

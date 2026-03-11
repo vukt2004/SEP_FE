@@ -10,13 +10,16 @@
  * - Action buttons (View, Approve, Reject)
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
-import { Eye, Check, CheckCircle, X } from "lucide-react";
+import { Eye, Check, CheckCircle, X, Plus, Search } from "lucide-react";
+import { ROUTES } from "@/lib/constants/routes";
 
 export const MapsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [maps, setMaps] = useState<MapListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +43,14 @@ export const MapsPage: React.FC = () => {
   const [reviewNote, setReviewNote] = useState("");
   const [rejectReason, setRejectReason] = useState("");
 
-  useEffect(() => {
-    fetchMaps();
-  }, [currentPage]);
+  // Search, filter & sort state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<MapStatusEnum | "">("");
+  const [filterDifficulty, setFilterDifficulty] = useState<number | "">("");
+  const [sortBy, setSortBy] = useState<"title" | "createdAt" | "difficulty" | "price">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const fetchMaps = async () => {
+  const fetchMaps = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -52,11 +58,36 @@ export const MapsPage: React.FC = () => {
       const response = await cmsMapsApi.getMaps({
         pageNumber: currentPage,
         pageSize,
+        searchTerm: searchTerm || undefined,
+        mapStatus: filterStatus !== "" ? filterStatus : undefined,
+        difficulty: filterDifficulty !== "" ? (filterDifficulty as number) : undefined,
       });
 
       const paginationData = response.data.data;
       if (paginationData) {
-        setMaps(paginationData.items);
+        const items = [...paginationData.items];
+        // Client-side sort
+        items.sort((a, b) => {
+          let aVal: string | number = 0;
+          let bVal: string | number = 0;
+          if (sortBy === "title") {
+            aVal = a.title.toLowerCase();
+            bVal = b.title.toLowerCase();
+          } else if (sortBy === "difficulty") {
+            aVal = a.difficulty;
+            bVal = b.difficulty;
+          } else if (sortBy === "price") {
+            aVal = a.price;
+            bVal = b.price;
+          } else {
+            aVal = a.createdAt;
+            bVal = b.createdAt;
+          }
+          if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
+          if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
+          return 0;
+        });
+        setMaps(items);
         setTotalPages(paginationData.totalPages);
         setTotalItems(paginationData.totalItems);
       }
@@ -66,7 +97,11 @@ export const MapsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchTerm, filterStatus, filterDifficulty, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchMaps();
+  }, [fetchMaps]);
 
   const handleViewDetails = async (mapId: string) => {
     try {
@@ -141,6 +176,11 @@ export const MapsPage: React.FC = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleFilterChange = (updaters: Array<() => void>) => {
+    updaters.forEach((fn) => fn());
+    setCurrentPage(1);
   };
 
   const getMapStatusLabel = (status: MapStatusEnum) => {
@@ -254,18 +294,48 @@ export const MapsPage: React.FC = () => {
   return (
     <div style={{ padding: "24px", maxWidth: "1600px", margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <h1
+      <div
+        style={{
+          marginBottom: "24px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              color: "var(--text)",
+              fontSize: "28px",
+              fontWeight: "bold",
+              marginBottom: "8px",
+            }}
+          >
+            Challenge Maps
+          </h1>
+          <p style={{ color: "var(--text-2)" }}>View and manage all challenge maps</p>
+        </div>
+        <button
+          onClick={() => navigate(ROUTES.MAP_EDITOR)}
           style={{
-            color: "var(--text)",
-            fontSize: "28px",
-            fontWeight: "bold",
-            marginBottom: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 20px",
+            background: "var(--primary)",
+            border: "none",
+            borderRadius: "8px",
+            color: "white",
+            fontSize: "14px",
+            fontWeight: "500",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
           }}
         >
-          Challenge Maps
-        </h1>
-        <p style={{ color: "var(--text-2)" }}>View and manage all challenge maps</p>
+          <Plus size={16} /> Create Map
+        </button>
       </div>
 
       {/* Stats */}
@@ -309,6 +379,165 @@ export const MapsPage: React.FC = () => {
             {maps.filter((m) => m.isPublished).length}
           </div>
         </div>
+      </div>
+
+      {/* Search, Filter & Sort */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        {/* Search */}
+        <div style={{ position: "relative", flex: "1", minWidth: "200px", maxWidth: "320px" }}>
+          <Search
+            size={15}
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-2)",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
+            placeholder="Search maps..."
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 32px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              color: "var(--text)",
+              fontSize: "14px",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Status Filter */}
+        <select
+          value={filterStatus}
+          onChange={(e) =>
+            handleFilterChange([
+              () =>
+                setFilterStatus(
+                  e.target.value === "" ? "" : (Number(e.target.value) as MapStatusEnum),
+                ),
+            ])
+          }
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="">All Statuses</option>
+          <option value="0">Draft</option>
+          <option value="1">Pending Review</option>
+          <option value="2">Approved</option>
+          <option value="3">Rejected</option>
+          <option value="4">Published</option>
+        </select>
+
+        {/* Difficulty Filter */}
+        <select
+          value={filterDifficulty}
+          onChange={(e) =>
+            handleFilterChange([
+              () => setFilterDifficulty(e.target.value === "" ? "" : Number(e.target.value)),
+            ])
+          }
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="">All Difficulties</option>
+          <option value="1">Easy</option>
+          <option value="2">Medium</option>
+          <option value="3">Hard</option>
+        </select>
+
+        {/* Sort By */}
+        <select
+          value={sortBy}
+          onChange={(e) =>
+            setSortBy(e.target.value as "title" | "createdAt" | "difficulty" | "price")
+          }
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="createdAt">Sort: Created</option>
+          <option value="title">Sort: Title</option>
+          <option value="difficulty">Sort: Difficulty</option>
+          <option value="price">Sort: Price</option>
+        </select>
+
+        {/* Sort Order */}
+        <button
+          onClick={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+          style={{
+            padding: "8px 14px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+            fontWeight: "500",
+          }}
+          title={sortOrder === "asc" ? "Ascending" : "Descending"}
+        >
+          {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+        </button>
+
+        {/* Clear Filters */}
+        {(searchTerm || filterStatus !== "" || filterDifficulty !== "") && (
+          <button
+            onClick={() =>
+              handleFilterChange([
+                () => setSearchTerm(""),
+                () => setFilterStatus(""),
+                () => setFilterDifficulty(""),
+              ])
+            }
+            style={{
+              padding: "8px 14px",
+              background: "transparent",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              color: "var(--text-2)",
+              fontSize: "13px",
+              cursor: "pointer",
+            }}
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {error && (
@@ -638,42 +867,46 @@ export const MapsPage: React.FC = () => {
                       </button>
 
                       {/* Approve */}
-                      <button
-                        onClick={() => handleOpenApproveModal(map.id, map.title)}
-                        disabled={actionLoading}
-                        style={{
-                          padding: "6px 12px",
-                          background: "transparent",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          color: "var(--success)",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          transition: "all 0.2s ease",
-                        }}
-                        title="Approve Map"
-                      >
-                        <CheckCircle size={16} />
-                      </button>
+                      {map.mapStatus === 1 && (
+                        <button
+                          onClick={() => handleOpenApproveModal(map.id, map.title)}
+                          disabled={actionLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            color: "var(--success)",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            transition: "all 0.2s ease",
+                          }}
+                          title="Approve Map"
+                        >
+                          <CheckCircle size={16} />
+                        </button>
+                      )}
 
                       {/* Reject */}
-                      <button
-                        onClick={() => handleOpenRejectModal(map.id, map.title)}
-                        disabled={actionLoading}
-                        style={{
-                          padding: "6px 12px",
-                          background: "transparent",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          color: "var(--danger)",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          transition: "all 0.2s ease",
-                        }}
-                        title="Reject Map"
-                      >
-                        <X size={16} />
-                      </button>
+                      {map.mapStatus === 1 && (
+                        <button
+                          onClick={() => handleOpenRejectModal(map.id, map.title)}
+                          disabled={actionLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            color: "var(--danger)",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            transition: "all 0.2s ease",
+                          }}
+                          title="Reject Map"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
