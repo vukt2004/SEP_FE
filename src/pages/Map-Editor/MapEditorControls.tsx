@@ -186,6 +186,7 @@ export function MapEditorControls({
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
   const [resetType, setResetType] = useState<"platform" | "topdown">(mapData.config.type);
@@ -194,6 +195,7 @@ export function MapEditorControls({
   const [resetTileSize, setResetTileSize] = useState(32);
   const [resetName, setResetName] = useState("");
   const [resetDescription, setResetDescription] = useState("");
+  const [hints, setHints] = useState<string[]>([""]);
   const [uploading, setUploading] = useState(false);
 
   const gameType = mapTypeToGameType(mapData.config.type);
@@ -537,93 +539,13 @@ export function MapEditorControls({
         </div>
       )}
 
-      {/* Map Info */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Map Info</h3>
-        <div style={styles.info}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Name:</label>
-            <input
-              type="text"
-              value={mapData.config.name}
-              onChange={(e) => onNameChange?.(e.target.value)}
-              placeholder="Enter map name"
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Description:</label>
-            <textarea
-              value={mapData.config.description}
-              onChange={(e) => onDescriptionChange?.(e.target.value)}
-              placeholder="Enter map description"
-              style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
-              rows={3}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Difficulty:</label>
-            <select
-              value={mapData.config.difficulty}
-              onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
-              style={styles.select}
-            >
-              <option value={1}>Easy</option>
-              <option value={2}>Normal</option>
-              <option value={3}>Hard</option>
-            </select>
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Time Limit (seconds):</label>
-            <input
-              type="number"
-              min="30"
-              max="3600"
-              value={mapData.config.timeLimitSeconds}
-              onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Win Condition:</label>
-            <select
-              value={mapData.config.winCondition}
-              onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
-              style={styles.select}
-            >
-              <option value={1}>Reach Goal</option>
-              <option value={2}>Collect All Fruits</option>
-            </select>
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Price:</label>
-            <input
-              type="number"
-              min="0"
-              value={mapData.config.price}
-              onChange={(e) => onPriceChange?.(Number(e.target.value))}
-              style={styles.input}
-            />
-          </div>
-          <p style={styles.infoText}>
-            Type: <strong>{mapData.config.type}</strong>
-          </p>
-          <p style={styles.infoText}>
-            Size:{" "}
-            <strong>
-              {mapData.config.width} × {mapData.config.height}
-            </strong>
-          </p>
-          <p style={styles.infoText}>
-            Tile Size: <strong>{mapData.config.tileSize}px</strong>
-          </p>
-        </div>
-      </div>
-
       {/* Actions */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Actions</h3>
         <div style={styles.actionButtons}>
+          <button style={styles.actionButton} onClick={() => setShowMapInfoModal(true)}>
+            Edit Map Info
+          </button>
           <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
             Resize Map
           </button>
@@ -830,6 +752,166 @@ export function MapEditorControls({
           </div>
         </div>
       )}
+
+      {/* Map Info Modal */}
+      {showMapInfoModal && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <h3 style={styles.modalTitle}>Edit Map Info</h3>
+            <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Name:</label>
+                <input
+                  type="text"
+                  value={mapData.config.name}
+                  onChange={(e) => onNameChange?.(e.target.value)}
+                  placeholder="Enter map name"
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Description:</label>
+                <textarea
+                  value={mapData.config.description}
+                  onChange={(e) => onDescriptionChange?.(e.target.value)}
+                  placeholder="Enter map description"
+                  style={{ ...styles.input, minHeight: "80px", resize: "vertical" }}
+                  rows={4}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Difficulty:</label>
+                <select
+                  value={mapData.config.difficulty}
+                  onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
+                  style={styles.select}
+                >
+                  <option value={1}>Easy</option>
+                  <option value={2}>Normal</option>
+                  <option value={3}>Hard</option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Time Limit (seconds):</label>
+                <input
+                  type="number"
+                  min="30"
+                  max="3600"
+                  value={mapData.config.timeLimitSeconds}
+                  onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Win Condition:</label>
+                <select
+                  value={mapData.config.winCondition}
+                  onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+                  style={styles.select}
+                >
+                  <option value={1}>Reach Goal</option>
+                  <option value={2}>Collect All Fruits</option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Price:</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={mapData.config.price}
+                  onChange={(e) => onPriceChange?.(Number(e.target.value))}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Hints (up to 3):</label>
+                <p style={styles.helpText}>Add helpful hints for players to solve the map</p>
+                {hints.map((hint, index) => (
+                  <div key={index} style={{ marginBottom: "12px" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <input
+                        type="text"
+                        value={hint}
+                        onChange={(e) => {
+                          const newHints = [...hints];
+                          newHints[index] = e.target.value;
+                          setHints(newHints);
+                        }}
+                        placeholder={`Hint ${index + 1}`}
+                        style={{ ...styles.input, flex: 1 }}
+                      />
+                      {hint && (
+                        <button
+                          onClick={() => {
+                            const newHints = hints.filter((_, i) => i !== index);
+                            setHints(newHints);
+                          }}
+                          style={{
+                            padding: "6px 12px",
+                            background: "#ff6b6b",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {hints.length < 3 && (
+                  <button
+                    onClick={() => setHints([...hints, ""])}
+                    style={{
+                      padding: "8px 12px",
+                      background: "#4CAF50",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      marginTop: "8px",
+                    }}
+                  >
+                    + Add Hint
+                  </button>
+                )}
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Map Info (Read-only):</label>
+                <p style={styles.infoText}>
+                  Type: <strong>{mapData.config.type}</strong>
+                </p>
+                <p style={styles.infoText}>
+                  Size:{" "}
+                  <strong>
+                    {mapData.config.width} × {mapData.config.height} tiles
+                  </strong>
+                </p>
+                <p style={styles.infoText}>
+                  Tile Size: <strong>{mapData.config.tileSize}px</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.modalButtons}>
+              <button style={styles.confirmButton} onClick={() => setShowMapInfoModal(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -908,6 +990,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
     gap: "8px",
+    maxHeight: "300px",
+    overflowY: "auto",
+    padding: "8px",
   },
   objectButton: {
     padding: "8px",
@@ -1035,6 +1120,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "2px solid #ddd",
     borderRadius: "4px",
     boxSizing: "border-box",
+    color: "black",
   },
   infoBox: {
     width: "100%",
@@ -1056,6 +1142,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "2px solid #ddd",
     borderRadius: "4px",
     boxSizing: "border-box",
+    color: "black",
   },
   modalButtons: {
     display: "flex",

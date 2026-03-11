@@ -167,7 +167,11 @@ export default function ProfilePage() {
                 alt="Avatar"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/brand/avatar-fallback.png";
+                  const img = e.currentTarget as HTMLImageElement;
+                  // Prevent infinite loop if fallback also fails
+                  if (img.src !== "/brand/avatar-fallback.png") {
+                    img.src = "/brand/avatar-fallback.png";
+                  }
                 }}
               />
             </div>

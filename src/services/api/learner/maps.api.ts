@@ -14,6 +14,19 @@ import type {
  */
 export const learnerMapsApi = {
   /**
+   * Get all maps owned by current user (created + purchased with OrbitCoin)
+   * GET /api/learner/maps/my-maps
+   *
+   * @param params - Query parameters for filtering and pagination
+   * @returns Paginated list of user's maps
+   */
+  getMyMaps(params?: GetMapsParams) {
+    return learnerAxios.get<MapsListResult>("/api/learner/maps/my-maps", {
+      params,
+    });
+  },
+
+  /**
    * Get list of maps with filters and pagination
    * GET /api/learner/maps
    *

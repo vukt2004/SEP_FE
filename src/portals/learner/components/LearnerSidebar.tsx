@@ -37,7 +37,7 @@ export default function LearnerSidebar() {
           label="Packages"
           icon={Package}
         />
-        <SideNavLink to={ROUTES.MAP_EDITOR ?? "/map-editor"} label="Map Editor" icon={Map} />
+        <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label="My Maps" icon={Map} />
       </nav>
     </aside>
   );
