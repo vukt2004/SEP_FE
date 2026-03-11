@@ -81,6 +81,7 @@ export const cmsMapsApi = {
     MapDetailFile: File;
     HintsJson?: string;
     TagIdsCsv?: string;
+    AvatarFile?: File | null;
   }) {
     const formData = new FormData();
     formData.append("Title", params.Title);
@@ -100,6 +101,10 @@ export const cmsMapsApi = {
     }
 
     formData.append("MapDetailFile", params.MapDetailFile);
+
+    if (params.AvatarFile) {
+      formData.append("AvatarFile", params.AvatarFile);
+    }
 
     return cmsAxios.post<ApiResult>("/api/cms/maps/upload-json", formData, {
       headers: {

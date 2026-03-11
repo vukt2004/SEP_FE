@@ -582,6 +582,16 @@ export const MapsPage: React.FC = () => {
                 <th
                   style={{
                     padding: "16px",
+                    textAlign: "center",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                    width: "120px",
+                  }}
+                ></th>
+                <th
+                  style={{
+                    padding: "16px",
                     textAlign: "left",
                     fontWeight: "600",
                     fontSize: "13px",
@@ -695,6 +705,38 @@ export const MapsPage: React.FC = () => {
                     e.currentTarget.style.background = "transparent";
                   }}
                 >
+                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <div
+                      style={{
+                        width: "80px",
+                        height: "80px",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        backgroundColor: "var(--surface-2)",
+                        border: "1px solid var(--border)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {map.avatarUrl ? (
+                        <img
+                          src={map.avatarUrl}
+                          alt={map.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "20px" }}>🗺️</span>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ padding: "16px" }}>
                     <div>
                       <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
