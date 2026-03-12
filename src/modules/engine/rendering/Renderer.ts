@@ -95,7 +95,12 @@ export class Renderer {
     await Promise.all(loadPromises);
   }
 
-  render(level: LevelDefinition, tileSize: number, player: Player): void {
+  render(
+    level: LevelDefinition,
+    tileSize: number,
+    player: Player,
+    collectedFruits: Set<string> = new Set(),
+  ): void {
     // Layer rendering order for proper depth:
     // 1. Background layer (base tiles)
     this.drawLayer(level.layers.background, tileSize);
@@ -106,7 +111,7 @@ export class Renderer {
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
     // 4. Objects (fruits, etc.)
-    this.drawObjects(level, tileSize);
+    this.drawObjects(level, tileSize, collectedFruits);
     // 5. Player character
     this.drawPlayer(player, tileSize);
     // 6. Foreground layer (renders ABOVE player for depth effect)
@@ -222,10 +227,19 @@ export class Renderer {
     }
   }
 
-  private drawObjects(level: LevelDefinition, tileSize: number): void {
+  private drawObjects(
+    level: LevelDefinition,
+    tileSize: number,
+    collectedFruits: Set<string> = new Set(),
+  ): void {
     const { objects } = level;
 
     for (const obj of objects || []) {
+      // Skip collected fruits
+      if (obj.type === "fruit" && collectedFruits.has(obj.id)) {
+        continue;
+      }
+
       const stateKey = obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
       const anim = animMap?.[stateKey];

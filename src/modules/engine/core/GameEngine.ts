@@ -111,6 +111,9 @@ export class GameEngine {
       stepCount: 0,
       hasPlayerWon: false,
       state: EngineState.Idle,
+      collectedFruits: new Set<string>(),
+      timeElapsed: 0,
+      startTime: null,
     };
   }
 
@@ -134,6 +137,11 @@ export class GameEngine {
     // Don't restart if game is won
     if (this.runtime.state === EngineState.Won) {
       return;
+    }
+
+    // Start timer if not already started
+    if (this.runtime.startTime === null) {
+      this.runtime.startTime = performance.now();
     }
 
     // Transition to Running state
@@ -201,12 +209,20 @@ export class GameEngine {
     this.runtime.stepCount = 0;
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
+    this.runtime.collectedFruits.clear();
+    this.runtime.timeElapsed = 0;
+    this.runtime.startTime = null;
 
     // Update player collider
     this.updatePlayerCollider();
 
     // Re-render the scene
-    this.renderer.render(this.level, this.tileSize, this.runtime.player);
+    this.renderer.render(
+      this.level,
+      this.tileSize,
+      this.runtime.player,
+      this.runtime.collectedFruits,
+    );
   }
 
   /**
@@ -217,6 +233,10 @@ export class GameEngine {
 
   private fail(): void {
     if (this.runtime.state === EngineState.Running) {
+      // Stop timer and save elapsed time
+      if (this.runtime.startTime !== null) {
+        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+      }
       this.runtime.state = EngineState.Failed;
       this.emit({ type: "engine:failed" });
     }
@@ -254,6 +274,30 @@ export class GameEngine {
    */
   getStepCount(): number {
     return this.runtime.stepCount;
+  }
+
+  /**
+   * Get number of collected fruits
+   */
+  getCollectedFruitsCount(): number {
+    return this.runtime.collectedFruits.size;
+  }
+
+  /**
+   * Get elapsed time in seconds
+   */
+  getElapsedTime(): number {
+    if (this.runtime.startTime === null) {
+      return 0;
+    }
+
+    // If game is still running, calculate current elapsed time
+    if (this.runtime.state === EngineState.Running) {
+      return (performance.now() - this.runtime.startTime) / 1000;
+    }
+
+    // Otherwise return stored elapsed time
+    return this.runtime.timeElapsed / 1000;
   }
 
   /**
@@ -322,7 +366,12 @@ export class GameEngine {
   };
 
   private render(): void {
-    this.renderer.render(this.level, this.tileSize, this.runtime.player);
+    this.renderer.render(
+      this.level,
+      this.tileSize,
+      this.runtime.player,
+      this.runtime.collectedFruits,
+    );
   }
 
   private resolvePlayerAnimationState(player: Player): string {
@@ -520,6 +569,7 @@ export class GameEngine {
     if (moved) {
       // Update player collider position if registered
       this.updatePlayerCollider();
+      this.checkFruitCollection();
       this.checkWinCondition();
     }
   }
@@ -576,9 +626,44 @@ export class GameEngine {
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
     if (isWinConditionMet(this.level, playerPos)) {
+      // Stop timer and save elapsed time
+      if (this.runtime.startTime !== null) {
+        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+      }
       this.runtime.hasPlayerWon = true;
       this.runtime.state = EngineState.Won;
       this.emit({ type: "win" });
+    }
+  }
+
+  /**
+   * Check if player has collected any fruits at current position
+   * Automatically collects fruits when player reaches their grid coordinate
+   */
+  private checkFruitCollection(): void {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    // Check all fruits in the level
+    for (const obj of this.level.objects || []) {
+      // Only check fruit objects
+      if (obj.type !== "fruit") continue;
+
+      // Skip already collected fruits
+      if (this.runtime.collectedFruits.has(obj.id)) continue;
+
+      // Check if player is at the fruit's position
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        // Collect the fruit
+        this.runtime.collectedFruits.add(obj.id);
+
+        // Emit collection event
+        this.emit({
+          type: "fruitCollected",
+          fruitId: obj.id,
+          totalCollected: this.runtime.collectedFruits.size,
+        });
+      }
     }
   }
 

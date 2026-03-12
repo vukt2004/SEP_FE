@@ -5,6 +5,9 @@ import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 import { ROUTES } from "@/lib/constants/routes";
+import type { EngineEvent } from "../../modules/engine/core/engineEvents";
+import { GameResultsModal } from "./GameResultsModal";
+import GameTimer from "./GameTimer";
 
 /**
  * PlatformGameView - Test view for platformer levels with gravity
@@ -26,6 +29,14 @@ export default function PlatformGameView() {
   const engineRef = useRef<GameEngine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [collectedFruits, setCollectedFruits] = useState(0);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [gameResult, setGameResult] = useState<{
+    isWin: boolean;
+    stepCount: number;
+    elapsedTime: number;
+    fruitsCollected: number;
+  } | null>(null);
 
   // Get level ID from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -79,9 +90,36 @@ export default function PlatformGameView() {
 
         // Event listener for win condition
         const handleWin = () => {
-          alert(`Platform Complete! Steps: ${engine.getStepCount()}`);
+          setGameResult({
+            isWin: true,
+            stepCount: engine.getStepCount(),
+            elapsedTime: engine.getElapsedTime(),
+            fruitsCollected: engine.getCollectedFruitsCount(),
+          });
+          setShowResultsModal(true);
         };
         engine.on("win", handleWin);
+
+        // Event listener for failure
+        const handleFailed = () => {
+          setGameResult({
+            isWin: false,
+            stepCount: engine.getStepCount(),
+            elapsedTime: engine.getElapsedTime(),
+            fruitsCollected: engine.getCollectedFruitsCount(),
+          });
+          setShowResultsModal(true);
+        };
+        engine.on("engine:failed", handleFailed);
+
+        // Event listener for fruit collection
+        const handleFruitCollected = (event: EngineEvent) => {
+          if (event.type === "fruitCollected") {
+            console.log("Fruit collected:", event);
+            setCollectedFruits(event.totalCollected);
+          }
+        };
+        engine.on("fruitCollected", handleFruitCollected);
 
         // Keyboard controls
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,6 +159,8 @@ export default function PlatformGameView() {
         cleanup = () => {
           window.removeEventListener("keydown", handleKeyDown);
           engine.off("win", handleWin);
+          engine.off("engine:failed", handleFailed);
+          engine.off("fruitCollected", handleFruitCollected);
           engine.stop();
         };
       } catch (err) {
@@ -140,9 +180,18 @@ export default function PlatformGameView() {
     };
   }, [levelId, levelFile]);
 
+  const handleReset = () => {
+    if (engineRef.current) {
+      engineRef.current.reset();
+      engineRef.current.start();
+    }
+    setCollectedFruits(0);
+    setShowResultsModal(false);
+  };
+
   return (
     <div style={{ padding: "20px" }}>
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
         <button
           onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
           style={{
@@ -156,12 +205,45 @@ export default function PlatformGameView() {
         >
           ← Back to Challenges
         </button>
+        <button
+          onClick={handleReset}
+          disabled={isLoading || !!error}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#f59e0b",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          🔄 Reset
+        </button>
       </div>
       <h2>Platform Game View (with Gravity)</h2>
       <p>
         <strong>Controls:</strong> Arrow Left/Right to move, Space to jump. Player will fall with
         gravity.
       </p>
+
+      {!isLoading && !error && (
+        <div style={{ display: "flex", gap: "12px", marginTop: "10px", marginBottom: "10px" }}>
+          <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
+          <div
+            style={{
+              padding: "12px 20px",
+              backgroundColor: "#fef3c7",
+              borderRadius: "8px",
+              border: "2px solid #fbbf24",
+              display: "inline-block",
+            }}
+          >
+            <div style={{ fontSize: "16px", fontWeight: "bold", color: "#92400e" }}>
+              🍎 Fruits Collected: {collectedFruits}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center" }}>
@@ -193,6 +275,23 @@ export default function PlatformGameView() {
           marginTop: "10px",
         }}
       />
+
+      {/* Game Results Modal */}
+      {gameResult && (
+        <GameResultsModal
+          isOpen={showResultsModal}
+          onClose={() => setShowResultsModal(false)}
+          isWin={gameResult.isWin}
+          stepCount={gameResult.stepCount}
+          elapsedTime={gameResult.elapsedTime}
+          fruitsCollected={gameResult.fruitsCollected}
+          onReset={() => {
+            setShowResultsModal(false);
+            handleReset();
+          }}
+          onBackToMenu={() => navigate(ROUTES.LEARNER_CHALLENGES)}
+        />
+      )}
     </div>
   );
 }

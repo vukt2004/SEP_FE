@@ -22,4 +22,13 @@ export interface EngineRuntimeState {
 
   /** Current engine execution state */
   state: EngineState;
+
+  /** Set of collected fruit IDs */
+  collectedFruits: Set<string>;
+
+  /** Time elapsed in milliseconds since game started */
+  timeElapsed: number;
+
+  /** Timestamp when game started */
+  startTime: number | null;
 }

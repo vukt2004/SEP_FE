@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
@@ -11,6 +11,8 @@ import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspa
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 import type { MapConfig } from "../../shared/types/MapSchema";
 import { ROUTES } from "@/lib/constants/routes";
+import { GameResultsModal } from "./GameResultsModal";
+import GameTimer from "./GameTimer";
 
 export default function GameView() {
   const location = useLocation();
@@ -23,6 +25,14 @@ export default function GameView() {
   const [error, setError] = useState<string | null>(null);
   const [isExecutorRunning, setIsExecutorRunning] = useState(false);
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
+  const [collectedFruits, setCollectedFruits] = useState(0);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [gameResult, setGameResult] = useState<{
+    isWin: boolean;
+    stepCount: number;
+    elapsedTime: number;
+    fruitsCollected: number;
+  } | null>(null);
 
   // Get level ID from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -105,7 +115,31 @@ export default function GameView() {
             executorRef.current.stop();
           }
           setIsExecutorRunning(false);
-          alert(`Level Complete! Steps: ${engine.getStepCount()}`);
+
+          // Show results modal
+          setGameResult({
+            isWin: true,
+            stepCount: engine.getStepCount(),
+            elapsedTime: engine.getElapsedTime(),
+            fruitsCollected: engine.getCollectedFruitsCount(),
+          });
+          setShowResultsModal(true);
+        };
+
+        const handleFailed = () => {
+          if (executorRef.current) {
+            executorRef.current.stop();
+          }
+          setIsExecutorRunning(false);
+
+          // Show results modal
+          setGameResult({
+            isWin: false,
+            stepCount: engine.getStepCount(),
+            elapsedTime: engine.getElapsedTime(),
+            fruitsCollected: engine.getCollectedFruitsCount(),
+          });
+          setShowResultsModal(true);
         };
 
         const handleObjectStateChanged = (event: EngineEvent) => {
@@ -114,8 +148,17 @@ export default function GameView() {
           }
         };
 
+        const handleFruitCollected = (event: EngineEvent) => {
+          if (event.type === "fruitCollected") {
+            console.log("Fruit collected:", event);
+            setCollectedFruits(event.totalCollected);
+          }
+        };
+
         engine.on("win", handleWin);
+        engine.on("engine:failed", handleFailed);
         engine.on("objectStateChanged", handleObjectStateChanged);
+        engine.on("fruitCollected", handleFruitCollected);
 
         const handleKeyDown = (e: KeyboardEvent) => {
           const executor = executorRef.current;
@@ -147,7 +190,9 @@ export default function GameView() {
         cleanup = () => {
           window.removeEventListener("keydown", handleKeyDown);
           engine.off("win", handleWin);
+          engine.off("engine:failed", handleFailed);
           engine.off("objectStateChanged", handleObjectStateChanged);
+          engine.off("fruitCollected", handleFruitCollected);
           if (executorRef.current) {
             executorRef.current.stop();
           }
@@ -174,10 +219,10 @@ export default function GameView() {
     };
   }, [levelFile, levelId]); // Include both dependencies
 
-  // Handle workspace ready
-  const handleWorkspaceReady = (workspace: Blockly.WorkspaceSvg) => {
+  // Handle workspace ready - memoized to prevent Blockly re-renders
+  const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
     workspaceRef.current = workspace;
-  };
+  }, []);
 
   // Generate program from Blockly and run it
   const handleRunProgram = () => {
@@ -275,6 +320,8 @@ export default function GameView() {
     }
 
     setIsExecutorRunning(false);
+    setCollectedFruits(0);
+    setShowResultsModal(false);
   };
 
   return (
@@ -354,36 +401,51 @@ export default function GameView() {
             <strong>Controls:</strong> Space for step execution, S to stop
           </p>
         </div>
-        {mapConfig && (
+        <div style={{ display: "flex", gap: "12px" }}>
+          <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
           <div
             style={{
               padding: "12px 20px",
-              backgroundColor: "#f3f4f6",
+              backgroundColor: "#fef3c7",
               borderRadius: "8px",
-              border: "2px solid #e5e7eb",
+              border: "2px solid #fbbf24",
             }}
           >
-            <div style={{ fontSize: "14px", marginBottom: "8px" }}>
-              <strong style={{ color: "#374151" }}>Win Condition:</strong>{" "}
-              <span style={{ color: "#1f2937" }}>
-                {mapConfig.winCondition === 1
-                  ? "🎯 Reach Goal"
-                  : mapConfig.winCondition === 2
-                    ? "🍎 Collect All Fruits"
-                    : "Unknown"}
-              </span>
-            </div>
-            <div style={{ fontSize: "14px" }}>
-              <strong style={{ color: "#374151" }}>Time Limit:</strong>{" "}
-              <span style={{ color: "#1f2937" }}>
-                ⏱️{" "}
-                {(mapConfig.timeLimitSeconds ?? 0) > 0
-                  ? `${mapConfig.timeLimitSeconds}s`
-                  : "No limit"}
-              </span>
+            <div style={{ fontSize: "14px", fontWeight: "bold", color: "#92400e" }}>
+              🍎 Fruits Collected: {collectedFruits}
             </div>
           </div>
-        )}
+          {mapConfig && (
+            <div
+              style={{
+                padding: "12px 20px",
+                backgroundColor: "#f3f4f6",
+                borderRadius: "8px",
+                border: "2px solid #e5e7eb",
+              }}
+            >
+              <div style={{ fontSize: "14px", marginBottom: "8px" }}>
+                <strong style={{ color: "#374151" }}>Win Condition:</strong>{" "}
+                <span style={{ color: "#1f2937" }}>
+                  {mapConfig.winCondition === 1
+                    ? "🎯 Reach Goal"
+                    : mapConfig.winCondition === 2
+                      ? "🍎 Collect All Fruits"
+                      : "Unknown"}
+                </span>
+              </div>
+              <div style={{ fontSize: "14px" }}>
+                <strong style={{ color: "#374151" }}>Time Limit:</strong>{" "}
+                <span style={{ color: "#1f2937" }}>
+                  ⏱️{" "}
+                  {(mapConfig.timeLimitSeconds ?? 0) > 0
+                    ? `${mapConfig.timeLimitSeconds}s`
+                    : "No limit"}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {isLoading && (
@@ -454,6 +516,23 @@ export default function GameView() {
           </div>
         </div>
       </div>
+
+      {/* Game Results Modal */}
+      {gameResult && (
+        <GameResultsModal
+          isOpen={showResultsModal}
+          onClose={() => setShowResultsModal(false)}
+          isWin={gameResult.isWin}
+          stepCount={gameResult.stepCount}
+          elapsedTime={gameResult.elapsedTime}
+          fruitsCollected={gameResult.fruitsCollected}
+          onReset={() => {
+            setShowResultsModal(false);
+            handleReset();
+          }}
+          onBackToMenu={() => navigate(ROUTES.LEARNER_CHALLENGES)}
+        />
+      )}
     </div>
   );
 }
