@@ -64,6 +64,11 @@ export interface Map {
   tagNames: string[];
   winCondition: number;
   avatarUrl: string | null;
+  /**
+   * true if this map is created by current user; false if it's only purchased/owned.
+   * (Field is returned by GET /api/learner/maps/my-maps)
+   */
+  isAuthor?: boolean;
 }
 
 /**
@@ -75,8 +80,16 @@ export interface GetMapsParams {
   publishedOnly?: boolean;
   difficulty?: number;
   search?: string;
-  sortBy?: string;
+  /**
+   * Backend supports: CreatedAt, Title, Difficulty, TimeLimitMs
+   */
+  sortBy?: "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs";
   sortAscending?: boolean;
+  /**
+   * true = only maps created by current user
+   * false/undefined = include created + purchased
+   */
+  isAuthorOnly?: boolean;
 }
 
 /**

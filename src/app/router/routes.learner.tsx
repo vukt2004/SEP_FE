@@ -9,7 +9,7 @@ import { RequireLearnerAuth } from "@/portals/learner/guards/RequireLearnerAuth"
 const LearnerLayout = React.lazy(() => import("@/portals/learner/layout/LearnerLayout"));
 
 // Pages (learner authenticated)
-const LearnerHomePage = React.lazy(() => import("@/portals/learner/pages/HomePage"));
+//const LearnerHomePage = React.lazy(() => import("@/portals/learner/pages/HomePage"));
 const LearnerChallengesPage = React.lazy(() => import("@/portals/learner/pages/ChallengesPage"));
 const LearnerPackagesPage = React.lazy(() => import("@/portals/learner/pages/PackagesPage"));
 const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/WalletPage"));
@@ -42,7 +42,7 @@ export const learnerAuthRoutes: RouteObject = {
 
 /**
  * Authenticated learner routes:
- * /app (guarded) -> /app/home
+ * /app (guarded) -> /app/marketplace
  */
 export const learnerRoutes: RouteObject = {
   path: "app",
@@ -54,8 +54,8 @@ export const learnerRoutes: RouteObject = {
     </RequireLearnerAuth>
   ),
   children: [
-    { index: true, element: <LearnerHomePage /> },
-    { path: "home", element: <LearnerHomePage /> },
+    // Default entry: Marketplace
+    { index: true, element: <LearnerMarketplacePage /> },
     { path: "profile", element: <LearnerProfilePage /> },
     { path: "wallet", element: <LearnerWalletPage /> },
     { path: "challenges", element: <LearnerChallengesPage /> },

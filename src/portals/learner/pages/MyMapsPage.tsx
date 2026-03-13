@@ -24,8 +24,8 @@ export const MyMapsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Ownership tracking
-  const [ownershipMap, setOwnershipMap] = useState<Record<string, { isAuthor: boolean }>>({});
+  // Tabs
+  const [activeTab, setActiveTab] = useState<"author" | "collected">("author");
 
   // Modal state for rating
   const [ratingModal, setRatingModal] = useState<{ open: boolean; mapId: string | null }>({
@@ -49,12 +49,13 @@ export const MyMapsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   // Search, filter & sort state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDifficulty, setFilterDifficulty] = useState<number | "">("");
-  const [sortBy, setSortBy] = useState<"title" | "createdAt" | "difficulty" | "price">("createdAt");
+  const [sortBy, setSortBy] = useState<"title" | "createdAt" | "difficulty" | "timeLimitMs">(
+    "createdAt",
+  );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const fetchMaps = useCallback(async () => {
@@ -75,15 +76,18 @@ export const MyMapsPage: React.FC = () => {
               ? "Title"
               : sortBy === "difficulty"
                 ? "Difficulty"
-                : "Price",
+                : "TimeLimitMs",
         sortAscending: sortOrder === "asc",
+        isAuthorOnly: activeTab === "author" ? true : false,
       });
 
       if (response.data.isSuccess && response.data.data) {
-        const items = [...response.data.data.items];
+        const items =
+          activeTab === "collected"
+            ? response.data.data.items.filter((m) => !(m.isAuthor ?? false))
+            : [...response.data.data.items];
         setMaps(items);
         setTotalPages(response.data.data.totalPages);
-        setTotalItems(response.data.data.totalItems);
       } else {
         setError(response.data.message || "Failed to load maps");
       }
@@ -93,38 +97,11 @@ export const MyMapsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchTerm, filterDifficulty, sortBy, sortOrder]);
+  }, [currentPage, pageSize, searchTerm, filterDifficulty, sortBy, sortOrder, activeTab]);
 
   useEffect(() => {
     fetchMaps();
   }, [fetchMaps]);
-
-  // Check ownership for all maps after fetching
-  useEffect(() => {
-    const checkOwnership = async () => {
-      if (maps.length === 0) return;
-
-      const ownershipChecks = await Promise.allSettled(
-        maps.map((map) => learnerMapsApi.checkMapOwnership(map.id)),
-      );
-
-      const newOwnershipMap: Record<string, { isAuthor: boolean }> = {};
-      ownershipChecks.forEach((result, index) => {
-        if (result.status === "fulfilled" && result.value.data.isSuccess) {
-          newOwnershipMap[maps[index].id] = {
-            isAuthor: result.value.data.data?.isAuthor || false,
-          };
-        } else {
-          // Default to not author if check fails
-          newOwnershipMap[maps[index].id] = { isAuthor: false };
-        }
-      });
-
-      setOwnershipMap(newOwnershipMap);
-    };
-
-    checkOwnership();
-  }, [maps]);
 
   const handleViewDetails = async (mapId: string) => {
     // Navigate to map editor or view
@@ -382,26 +359,69 @@ export const MyMapsPage: React.FC = () => {
           >
             My Maps
           </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage your challenge maps</p>
+          <p style={{ color: "var(--text-2)" }}>
+            {activeTab === "author" ? "Màn chơi do bạn tạo" : "Màn chơi bạn đã sưu tầm"}
+          </p>
         </div>
         <button
           onClick={() => navigate(ROUTES.MAP_EDITOR)}
+          disabled={activeTab !== "author"}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
             padding: "10px 20px",
-            background: "var(--primary)",
+            background: activeTab === "author" ? "var(--primary)" : "var(--surface-2)",
             border: "none",
             borderRadius: "8px",
-            color: "white",
+            color: activeTab === "author" ? "white" : "var(--muted)",
             fontSize: "14px",
             fontWeight: "500",
-            cursor: "pointer",
+            cursor: activeTab === "author" ? "pointer" : "not-allowed",
             whiteSpace: "nowrap",
           }}
         >
           <Plus size={16} /> Create Map
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("author");
+            setCurrentPage(1);
+          }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid var(--border)",
+            background: activeTab === "author" ? "var(--primary)" : "transparent",
+            color: activeTab === "author" ? "var(--on-primary, #0b1020)" : "var(--text)",
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          Bản đồ của tôi
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("collected");
+            setCurrentPage(1);
+          }}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: "1px solid var(--border)",
+            background: activeTab === "collected" ? "var(--primary)" : "transparent",
+            color: activeTab === "collected" ? "var(--on-primary, #0b1020)" : "var(--text)",
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          Sưu tầm
         </button>
       </div>
 
@@ -414,38 +434,24 @@ export const MyMapsPage: React.FC = () => {
           flexWrap: "wrap",
         }}
       >
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Maps
+        {activeTab === "author" ? (
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "16px 20px",
+              minWidth: "150px",
+            }}
+          >
+            <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
+              Published Maps
+            </div>
+            <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
+              {maps.filter((m) => m.isPublished).length}
+            </div>
           </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {totalItems}
-          </div>
-        </div>
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Published Maps
-          </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {maps.filter((m) => m.isPublished).length}
-          </div>
-        </div>
+        ) : null}
       </div>
 
       {/* Search, Filter & Sort */}
@@ -517,7 +523,7 @@ export const MyMapsPage: React.FC = () => {
         <select
           value={sortBy}
           onChange={(e) =>
-            setSortBy(e.target.value as "title" | "createdAt" | "difficulty" | "price")
+            setSortBy(e.target.value as "title" | "createdAt" | "difficulty" | "timeLimitMs")
           }
           style={{
             padding: "8px 12px",
@@ -532,7 +538,7 @@ export const MyMapsPage: React.FC = () => {
           <option value="createdAt">Sort: Created</option>
           <option value="title">Sort: Title</option>
           <option value="difficulty">Sort: Difficulty</option>
-          <option value="price">Sort: Price</option>
+          <option value="timeLimitMs">Sort: Time Limit</option>
         </select>
 
         {/* Sort Order */}
@@ -603,24 +609,26 @@ export const MyMapsPage: React.FC = () => {
           <div style={{ color: "var(--text-2)", fontSize: "16px", marginBottom: "16px" }}>
             No maps found
           </div>
-          <button
-            onClick={() => navigate(ROUTES.MAP_EDITOR)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              background: "var(--primary)",
-              border: "none",
-              borderRadius: "8px",
-              color: "white",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={16} /> Create Your First Map
-          </button>
+          {activeTab === "author" ? (
+            <button
+              onClick={() => navigate(ROUTES.MAP_EDITOR)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                background: "var(--primary)",
+                border: "none",
+                borderRadius: "8px",
+                color: "white",
+                fontSize: "14px",
+                fontWeight: "500",
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={16} /> Create Your First Map
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -946,7 +954,7 @@ export const MyMapsPage: React.FC = () => {
                     </td>
                     <td style={{ padding: "16px" }}>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                        {ownershipMap[map.id]?.isAuthor && map.mapStatus === 0 ? (
+                        {(map.isAuthor ?? false) && map.mapStatus === 0 ? (
                           // Show update and submit buttons for draft maps owned by user
                           <>
                             <button
@@ -998,7 +1006,7 @@ export const MyMapsPage: React.FC = () => {
                               <Send size={16} />
                             </button>
                           </>
-                        ) : !ownershipMap[map.id]?.isAuthor ? (
+                        ) : !(map.isAuthor ?? false) ? (
                           // Show rate and report buttons for maps not owned by user
                           <>
                             <button
