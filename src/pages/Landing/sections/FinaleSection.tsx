@@ -1,7 +1,8 @@
 import { ArrowRight, Rocket } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import Ring from "../effects/Ring";
 import { palette } from "../landing.theme";
-import { PrimaryButton, SecondaryButton } from "../shared/Buttons";
+import { PrimaryButton } from "../shared/Buttons";
 import Container from "../shared/Container";
 import SectionHeading from "../shared/SectionHeading";
 import { SurfaceCard } from "../shared/SurfaceCard";
@@ -10,9 +11,9 @@ export default function FinaleSection() {
   return (
     <section id="finale" className="relative overflow-hidden px-6 py-24">
       <SectionHeading
-        eyebrow="Finale"
-        title="Kết lại như một cảnh phóng tàu, không phải như một form đăng ký"
-        desc="CTA cuối nên tổng hợp lại cảm giác của toàn bộ landing page: đã đi qua hành trình, đã hiểu sản phẩm, và bây giờ là lúc bắt đầu mission."
+        eyebrow="Start your journey"
+        title="Ready to embark on your first journey in learning logic?"
+        desc="Start with a basic challenge, build strategies using blocks, and discover how QuackOrbit transforms learning programming logic into a more accessible and enjoyable experience."
       />
 
       <Container>
@@ -29,23 +30,25 @@ export default function FinaleSection() {
             </div>
 
             <h3 className="text-3xl font-bold md:text-5xl" style={{ color: palette.text }}>
-              Launch the first learning orbit.
+              Start learning through play.
             </h3>
 
             <p
               className="mx-auto mt-5 max-w-3xl text-lg leading-8"
               style={{ color: palette.text2 }}
             >
-              Khi component structure đã ổn định, bước sau sẽ dễ hơn rất nhiều: gắn mascot duck,
-              thêm scene riêng cho mascot và không làm vỡ bố cục tổng thể.
+              From individual challenges to multiplayer arenas, QuackOrbit provides a more visual
+              approach to learning programming logic and progressing step by step through each
+              level.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <PrimaryButton>
-                Start the mission
-                <ArrowRight size={18} />
-              </PrimaryButton>
-              <SecondaryButton>Explore challenge flow</SecondaryButton>
+              <NavLink to="/login">
+                <PrimaryButton>
+                  Start the mission
+                  <ArrowRight size={18} />
+                </PrimaryButton>
+              </NavLink>
             </div>
           </div>
         </SurfaceCard>

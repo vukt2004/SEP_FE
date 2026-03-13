@@ -45,9 +45,9 @@ export default function IntroHighlightsSection() {
   return (
     <section className="px-6 py-24">
       <SectionHeading
-        eyebrow="Cinematic direction"
-        title="Bản này không cố bán sản phẩm quá sớm — nó dựng bầu không khí trước"
-        desc="Component structure được dựng trước để sau đó bạn có thể tách file thật trong project mà không đập lại layout tổng thể."
+        eyebrow="Why QuackOrbit"
+        title="A more accessible way to learn programming logic for beginners."
+        desc="QuackOrbit combines 2D games, block-based interaction, and visual feedback to transform basic logic concepts into a dynamic and easy-to-understand learning experience."
       />
 
       <Container className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">

@@ -11,7 +11,7 @@ export default function LearningScene() {
         <div className="space-y-4">
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Logic choreography
+              Build the logic
             </div>
 
             <div className="space-y-2">
@@ -38,11 +38,12 @@ export default function LearningScene() {
 
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Learning promise
+              Learning feedback
             </div>
             <p className="text-sm leading-7" style={{ color: palette.text2 }}>
-              User hiểu logic qua chuyển động nhìn thấy được. Cảm giác học đến từ quan sát, phản hồi
-              và chỉnh sửa thay vì bị quăng vào cú pháp quá sớm.
+              QuackOrbit shows learners what happens after each decision. When a strategy isn't
+              right, they can adjust it step by step and learn from the results they've just
+              produced.
             </p>
           </PanelCard>
         </div>
@@ -54,7 +55,7 @@ export default function LearningScene() {
                 Simulation stage
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                Learning through visible cause and effect
+                See how your strategy works inside the world
               </div>
             </div>
             <Waypoints size={18} style={{ color: palette.primary }} />

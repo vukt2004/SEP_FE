@@ -4,7 +4,7 @@ import { ChevronDown, Play } from "lucide-react";
 import { palette, landingEase } from "../landing.theme";
 import Container from "../shared/Container";
 import Pill from "../shared/Pill";
-import { PrimaryButton, SecondaryButton } from "../shared/Buttons";
+import { PrimaryButton } from "../shared/Buttons";
 import GridVeil from "../effects/GridVeil";
 import Ring from "../effects/Ring";
 import StarLayer from "../effects/StarLayer";
@@ -12,14 +12,12 @@ import HeroMissionControl from "./HeroMissionControl";
 import HeroStats from "./HeroStats";
 
 export default function HeroSection() {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+
+  const yTitle = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const yPanel = useTransform(scrollYProgress, [0, 1], [0, 80]);
   const opacityHint = useTransform(scrollYProgress, [0, 0.28], [1, 0]);
-  const yTitle = useTransform(scrollYProgress, [0, 0.28], [0, -60]);
-  const yPanel = useTransform(scrollYProgress, [0, 0.28], [0, 60]);
 
   return (
     <section
@@ -41,9 +39,9 @@ export default function HeroSection() {
             transition={{ duration: 0.6, ease: landingEase }}
             className="mb-5 flex flex-wrap gap-3"
           >
-            <Pill tone="cyan">Cinematic landing</Pill>
-            <Pill tone="primary">Story-driven scroll</Pill>
-            <Pill tone="accent">Game-feel first</Pill>
+            <Pill tone="cyan">2D puzzle platform</Pill>
+            <Pill tone="primary">Block-based learning</Pill>
+            <Pill tone="accent">Solo & multiplayer</Pill>
           </motion.div>
 
           <motion.h1
@@ -53,8 +51,8 @@ export default function HeroSection() {
             className="text-5xl font-black leading-[1.02] md:text-7xl"
             style={{ color: palette.text }}
           >
-            Người xem không nên chỉ thấy một trang web.
-            <span style={{ color: palette.accent }}> Họ phải thấy một cuộc phóng tàu.</span>
+            Learn programming logic through
+            <span style={{ color: palette.accent }}> a 2D adventure.</span>
           </motion.h1>
 
           <motion.p
@@ -64,8 +62,9 @@ export default function HeroSection() {
             className="mt-6 max-w-2xl text-lg leading-8 md:text-xl"
             style={{ color: palette.text2 }}
           >
-            Với QuackOrbit, landing page nên tạo cảm giác như đang khởi động một hành trình học
-            logic trong không gian: có độ sâu, có cao trào và có nhịp cuộn rõ ràng.
+            QuackOrbit helps beginners learn sequence, condition, and loop by dragging and dropping
+            blocks, solving puzzles, and observing the direct results of their decisions in the game
+            world.
           </motion.p>
 
           <motion.div
@@ -76,9 +75,8 @@ export default function HeroSection() {
           >
             <PrimaryButton>
               <Play size={18} />
-              Begin the mission
+              Play Demo
             </PrimaryButton>
-            <SecondaryButton>View the cinematic flow</SecondaryButton>
           </motion.div>
 
           <HeroStats />
@@ -94,7 +92,7 @@ export default function HeroSection() {
         className="absolute inset-x-0 bottom-8 z-10 flex justify-center"
       >
         <div className="flex flex-col items-center gap-2 text-sm" style={{ color: palette.muted }}>
-          <span>Scroll to descend into the orbit</span>
+          <span>Scroll to discover how QuackOrbit works</span>
           <motion.div animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
             <ChevronDown size={18} />
           </motion.div>

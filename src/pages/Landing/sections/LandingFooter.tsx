@@ -18,10 +18,10 @@ export default function LandingFooter() {
         </div>
 
         <div className="flex gap-6 text-sm" style={{ color: palette.text2 }}>
-          <a href="#arrival">Arrival</a>
-          <a href="#learning">Learning</a>
-          <a href="#competition">Competition</a>
-          <a href="#finale">Finale</a>
+          <a href="#arrival">Discover</a>
+          <a href="#learning">Learn</a>
+          <a href="#competition">Compete</a>
+          <a href="#finale">Start</a>
         </div>
       </Container>
     </footer>

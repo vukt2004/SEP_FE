@@ -1,33 +1,42 @@
 import { motion } from "framer-motion";
-import { PanelCard, SurfaceCard } from "../shared/SurfaceCard";
-import { Timer } from "lucide-react";
-import { palette } from "../landing.theme";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Timer } from "lucide-react";
 import Pill from "../shared/Pill";
+import { PanelCard, SurfaceCard } from "../shared/SurfaceCard";
+import { palette } from "../landing.theme";
 import MissionGridPreview from "./MissionGridPreview";
 
-const HeroMissionControl = () => {
+export default function HeroMissionControl() {
   return (
-    <SurfaceCard>
-      <div>
-        <div className="text-xs" style={{ color: palette.muted }}>
-          Orbital sequence
+    <SurfaceCard className="relative w-full max-w-2xl overflow-hidden p-5 shadow-[0_32px_90px_rgba(0,0,0,0.32)]">
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{ background: "rgba(237,243,251,0.16)" }}
+      />
+
+      <div
+        className="mb-4 flex items-center justify-between rounded-[22px] border px-4 py-3"
+        style={{ background: palette.surface2, borderColor: palette.border }}
+      >
+        <div>
+          <div className="text-xs" style={{ color: palette.muted }}>
+            Featured challenge
+          </div>
+          <div className="text-sm font-semibold" style={{ color: palette.text }}>
+            Learn by planning, testing and improving
+          </div>
         </div>
-        <div className="text-sm font-semibold" style={{ color: palette.text }}>
-          Mission control preview
-        </div>
+        <Pill tone="accent">Live demo</Pill>
       </div>
-      <Pill tone="accent">Live</Pill>
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <PanelCard className="p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Duck Orbit // Act I
+                Ice Orbit // Loop Challenge
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                Observe before you solve
+                Collect items and reach the goal
               </div>
             </div>
             <Crosshair size={18} style={{ color: palette.accent }} />
@@ -39,7 +48,7 @@ const HeroMissionControl = () => {
         <div className="space-y-4">
           <PanelCard className="p-4">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Logic blocks
+              Block strategy
             </div>
 
             <div className="space-y-2">
@@ -66,7 +75,7 @@ const HeroMissionControl = () => {
           <PanelCard className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Cinematic tension
+                Current result
               </div>
               <Timer size={16} style={{ color: palette.accent }} />
             </div>
@@ -74,9 +83,9 @@ const HeroMissionControl = () => {
             <div className="space-y-3 text-sm">
               {[
                 ["Correctness", "82%"],
-                ["Speed", "01:19"],
-                ["Efficiency", "10 blocks"],
-                ["Arena rank", "#2 / 6"],
+                ["Time used", "01:19"],
+                ["Blocks used", "10"],
+                ["Rank preview", "#2 / 6"],
               ].map(([key, value]) => (
                 <div
                   key={key}
@@ -95,6 +104,4 @@ const HeroMissionControl = () => {
       </div>
     </SurfaceCard>
   );
-};
-
-export default HeroMissionControl;
+}

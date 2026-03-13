@@ -12,10 +12,10 @@ export default function CompetitionScene() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Arena chamber
+                Multiplayer arena
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                From learning to tension
+                Solve together, compete fairly, improve faster
               </div>
             </div>
             <Swords size={18} style={{ color: palette.accent }} />
@@ -51,7 +51,7 @@ export default function CompetitionScene() {
         <div className="space-y-4">
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Scoring drama
+              Match scoring
             </div>
             <div className="space-y-3 text-sm">
               {[
@@ -76,11 +76,11 @@ export default function CompetitionScene() {
 
           <PanelCard className="p-5">
             <div className="mb-2 text-sm font-semibold" style={{ color: palette.text }}>
-              Why it matters
+              Why multiplayer helps
             </div>
             <p className="text-sm leading-7" style={{ color: palette.text2 }}>
-              Đây là chapter làm trang có cao trào. Nó chuyển mạch từ “tôi hiểu game này dạy thế
-              nào” sang “tôi muốn được bước vào cuộc chơi này”.
+              Multiplayer mode increases motivation by transforming a logic puzzle into a more
+              paced, ranked challenge with a clear sense of accomplishment.
             </p>
           </PanelCard>
         </div>
