@@ -1,6 +1,6 @@
 // src/portals/learner/components/LearnerSidebar.tsx
 import { NavLink } from "react-router-dom";
-import { Home, Gamepad2, User, Wallet, Package, Map } from "lucide-react";
+import { Home, Gamepad2, User, Wallet, Package, Map, Store } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 
 export default function LearnerSidebar() {
@@ -38,6 +38,11 @@ export default function LearnerSidebar() {
           icon={Package}
         />
         <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label="My Maps" icon={Map} />
+        <SideNavLink
+          to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
+          label="Marketplace"
+          icon={Store}
+        />
       </nav>
     </aside>
   );
