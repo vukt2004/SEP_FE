@@ -340,79 +340,6 @@ export function MapEditorControls({
     }
   };
 
-  const handleSaveMap = async () => {
-    const mapName = mapData.config.name?.trim();
-    if (!mapName) {
-      alert("Please set a map name before saving");
-      return;
-    }
-
-    if (userType === "unknown") {
-      alert("You must be logged in as a learner or CMS user to save maps");
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      // Convert map to game format
-      const gameLevelFormat = exportMapToGameFormat(mapData);
-      const json = JSON.stringify(gameLevelFormat, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
-      const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
-
-      // Convert map type from internal format to API format
-      const mapType: "Topdown" | "Platform" =
-        mapData.config.type === "platform" ? "Platform" : "Topdown";
-
-      // Use the appropriate API based on user type
-      const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
-
-      // Prepare hints JSON if any hints are provided
-      const hintsWithContent = hints.filter((hint) => hint.trim());
-      const hintsJson =
-        hintsWithContent.length > 0
-          ? JSON.stringify(
-              hintsWithContent.map((content, index) => ({
-                orderNo: index + 1,
-                content,
-              })),
-            )
-          : undefined;
-
-      const response = await mapsApi.uploadMapFromJson({
-        Title: mapData.config.name,
-        Description: mapData.config.description || "Map created with Map Editor",
-        Type: mapType,
-        Difficulty: mapData.config.difficulty,
-        TimeLimitMs: mapData.config.timeLimitSeconds * 1000,
-        WinCondition: mapData.config.winCondition,
-        Price: mapData.config.price,
-        MapDetailFile: file,
-        HintsJson: hintsJson,
-        AvatarFile: avatarFile,
-      });
-
-      if (response.data.isSuccess) {
-        const mapId =
-          response.data.data && typeof response.data.data === "object" && "id" in response.data.data
-            ? String(response.data.data.id)
-            : "";
-        alert(`Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
-        setShowMapInfoModal(false);
-        setAvatarFile(null);
-        setHints([""]);
-      } else {
-        alert(`Save failed: ${response.data.message || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Save error:", error);
-      alert(`Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div style={styles.container}>
       {/* Undo/Redo */}
@@ -1049,15 +976,8 @@ export function MapEditorControls({
             </div>
 
             <div style={styles.modalButtons}>
-              <button
-                style={{
-                  ...styles.confirmButton,
-                  ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
-                }}
-                onClick={handleSaveMap}
-                disabled={uploading}
-              >
-                {uploading ? "Saving..." : "Save Map"}
+              <button style={styles.confirmButton} onClick={() => setShowMapInfoModal(false)}>
+                Save Map Info
               </button>
               <button
                 style={styles.cancelButton}
@@ -1065,7 +985,6 @@ export function MapEditorControls({
                   setShowMapInfoModal(false);
                   setAvatarFile(null);
                 }}
-                disabled={uploading}
               >
                 Cancel
               </button>

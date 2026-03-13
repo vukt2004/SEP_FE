@@ -1039,6 +1039,53 @@ export const MapsPage: React.FC = () => {
               </p>
             </div>
 
+            {/* Map Image */}
+            {selectedMap.avatarUrl && (
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Map Preview
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "400px",
+                    height: "300px",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    backgroundColor: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <img
+                    src={selectedMap.avatarUrl}
+                    alt={selectedMap.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<span style="font-size: 48px">🗺️</span>';
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Metadata Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
               <div>
@@ -1134,7 +1181,7 @@ export const MapsPage: React.FC = () => {
             )}
 
             {/* Hints */}
-            {selectedMap.hints.length > 0 && (
+            {selectedMap.hints && selectedMap.hints.length > 0 && (
               <div>
                 <div
                   style={{
@@ -1170,7 +1217,7 @@ export const MapsPage: React.FC = () => {
             )}
 
             {/* Constraints */}
-            {selectedMap.constraints.length > 0 && (
+            {selectedMap.constraints && selectedMap.constraints.length > 0 && (
               <div>
                 <div
                   style={{
@@ -1213,105 +1260,115 @@ export const MapsPage: React.FC = () => {
             )}
 
             {/* Active Spec */}
-            <div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  color: "var(--text)",
-                  marginBottom: "8px",
-                }}
-              >
-                Active Specification (v{selectedMap.activeSpec.version})
-              </div>
-              <div
-                style={{
-                  padding: "12px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                }}
-              >
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      Grid Spec
+            {selectedMap.activeSpec && (
+              <div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Active Specification (v{selectedMap.activeSpec.version})
+                </div>
+                <div
+                  style={{
+                    padding: "12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "12px" }}>
+                    <div>
+                      <div
+                        style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
+                      >
+                        Grid Spec
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          color: "var(--text)",
+                          maxHeight: "80px",
+                          overflow: "auto",
+                          padding: "8px",
+                          background: "var(--bg)",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        {selectedMap.activeSpec.gridSpec}
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontFamily: "monospace",
-                        color: "var(--text)",
-                        maxHeight: "80px",
-                        overflow: "auto",
-                        padding: "8px",
-                        background: "var(--bg)",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {selectedMap.activeSpec.gridSpec}
+                    <div>
+                      <div
+                        style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
+                      >
+                        Initial State
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          color: "var(--text)",
+                          maxHeight: "80px",
+                          overflow: "auto",
+                          padding: "8px",
+                          background: "var(--bg)",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        {selectedMap.activeSpec.initialStateSpec}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      Initial State
+                    <div>
+                      <div
+                        style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
+                      >
+                        Win Condition
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          color: "var(--text)",
+                          maxHeight: "80px",
+                          overflow: "auto",
+                          padding: "8px",
+                          background: "var(--bg)",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        {selectedMap.activeSpec.winConditionSpec}
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontFamily: "monospace",
-                        color: "var(--text)",
-                        maxHeight: "80px",
-                        overflow: "auto",
-                        padding: "8px",
-                        background: "var(--bg)",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {selectedMap.activeSpec.initialStateSpec}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      Win Condition
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontFamily: "monospace",
-                        color: "var(--text)",
-                        maxHeight: "80px",
-                        overflow: "auto",
-                        padding: "8px",
-                        background: "var(--bg)",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {selectedMap.activeSpec.winConditionSpec}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      Fail Condition
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontFamily: "monospace",
-                        color: "var(--text)",
-                        maxHeight: "80px",
-                        overflow: "auto",
-                        padding: "8px",
-                        background: "var(--bg)",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {selectedMap.activeSpec.failConditionSpec}
+                    <div>
+                      <div
+                        style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
+                      >
+                        Fail Condition
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          color: "var(--text)",
+                          maxHeight: "80px",
+                          overflow: "auto",
+                          padding: "8px",
+                          background: "var(--bg)",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        {selectedMap.activeSpec.failConditionSpec}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Tags and Concepts */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
@@ -1415,14 +1472,16 @@ export const MapsPage: React.FC = () => {
                   {selectedMap.createdByUserId}
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Spec Version
+              {selectedMap.activeSpec && (
+                <div>
+                  <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                    Spec Version
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text)" }}>
+                    v{selectedMap.activeSpec.version}
+                  </div>
                 </div>
-                <div style={{ fontSize: "11px", color: "var(--text)" }}>
-                  v{selectedMap.activeSpec.version}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}

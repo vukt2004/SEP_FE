@@ -18,6 +18,8 @@ import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
 import type { GameType } from "../../../shared/types/GameType";
+import { AudioSystem } from "../systems/audio/AudioSystem";
+import { SoundEffect } from "../systems/audio/types";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -55,6 +57,7 @@ export class GameEngine {
   private eventEmitter = new EventEmitter<EngineEvent>();
   private animationSystem: AnimationSystem;
   private collisionSystem: CollisionSystem;
+  private audioSystem: AudioSystem;
   private lastTimestamp: number = 0;
   private config: GameConfig;
   private controller: IPlayerController;
@@ -82,6 +85,7 @@ export class GameEngine {
     this.controller = PlayerControllerFactory.getController(config.levelType);
     this.animationSystem = new AnimationSystem();
     this.collisionSystem = new CollisionSystem();
+    this.audioSystem = new AudioSystem();
     this.collisionSystem.setEventEmitter((event) => this.emit(event));
     this.renderer = new Renderer(ctx, this.animationSystem, gameType);
 
@@ -111,6 +115,9 @@ export class GameEngine {
       stepCount: 0,
       hasPlayerWon: false,
       state: EngineState.Idle,
+      collectedFruits: new Set<string>(),
+      timeElapsed: 0,
+      startTime: null,
     };
   }
 
@@ -119,6 +126,12 @@ export class GameEngine {
     initializeAnimationSystem(this.gameType);
     await loadAnimations();
     await this.renderer.preloadTilesets(this.level);
+
+    // Initialize audio system
+    await this.audioSystem.initialize();
+
+    // Setup audio event listeners
+    this.setupAudioListeners();
   }
 
   /**
@@ -134,6 +147,11 @@ export class GameEngine {
     // Don't restart if game is won
     if (this.runtime.state === EngineState.Won) {
       return;
+    }
+
+    // Start timer if not already started
+    if (this.runtime.startTime === null) {
+      this.runtime.startTime = performance.now();
     }
 
     // Transition to Running state
@@ -167,6 +185,8 @@ export class GameEngine {
     }
     this.executionEnabled = false;
     this.runtime.state = EngineState.Stopped;
+    // Stop all playing audio
+    this.audioSystem.stopAll();
   }
 
   /**
@@ -190,7 +210,9 @@ export class GameEngine {
     this.runtime.player.targetPixelX = startPixelX;
     this.runtime.player.targetPixelY = startPixelY;
     this.runtime.player.facing = this.gameType === "topdown" ? "down" : "right";
-    this.runtime.player.direction = this.gameType === "topdown" ? "down" : "right";
+    this.runtime.player.direction = (this.gameType === "topdown" ? "down" : "right") as
+      | "left"
+      | "right";
     this.runtime.player.isMoving = false;
     this.runtime.player.isJumping = false;
     this.runtime.player.isGrounded = true;
@@ -201,12 +223,20 @@ export class GameEngine {
     this.runtime.stepCount = 0;
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
+    this.runtime.collectedFruits.clear();
+    this.runtime.timeElapsed = 0;
+    this.runtime.startTime = null;
 
     // Update player collider
     this.updatePlayerCollider();
 
     // Re-render the scene
-    this.renderer.render(this.level, this.tileSize, this.runtime.player);
+    this.renderer.render(
+      this.level,
+      this.tileSize,
+      this.runtime.player,
+      this.runtime.collectedFruits,
+    );
   }
 
   /**
@@ -217,6 +247,10 @@ export class GameEngine {
 
   private fail(): void {
     if (this.runtime.state === EngineState.Running) {
+      // Stop timer and save elapsed time
+      if (this.runtime.startTime !== null) {
+        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+      }
       this.runtime.state = EngineState.Failed;
       this.emit({ type: "engine:failed" });
     }
@@ -224,6 +258,10 @@ export class GameEngine {
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
+  }
+
+  getAudioSystem(): AudioSystem {
+    return this.audioSystem;
   }
 
   getPlayer(): Player {
@@ -254,6 +292,30 @@ export class GameEngine {
    */
   getStepCount(): number {
     return this.runtime.stepCount;
+  }
+
+  /**
+   * Get number of collected fruits
+   */
+  getCollectedFruitsCount(): number {
+    return this.runtime.collectedFruits.size;
+  }
+
+  /**
+   * Get elapsed time in seconds
+   */
+  getElapsedTime(): number {
+    if (this.runtime.startTime === null) {
+      return 0;
+    }
+
+    // If game is still running, calculate current elapsed time
+    if (this.runtime.state === EngineState.Running) {
+      return (performance.now() - this.runtime.startTime) / 1000;
+    }
+
+    // Otherwise return stored elapsed time
+    return this.runtime.timeElapsed / 1000;
   }
 
   /**
@@ -322,7 +384,12 @@ export class GameEngine {
   };
 
   private render(): void {
-    this.renderer.render(this.level, this.tileSize, this.runtime.player);
+    this.renderer.render(
+      this.level,
+      this.tileSize,
+      this.runtime.player,
+      this.runtime.collectedFruits,
+    );
   }
 
   private resolvePlayerAnimationState(player: Player): string {
@@ -379,7 +446,7 @@ export class GameEngine {
         // Update sprite direction for rendering
         if (this.gameType === "topdown") {
           // Topdown: use all four directions
-          this.runtime.player.direction = newDirection;
+          this.runtime.player.direction = newDirection as "left" | "right";
         } else {
           // Platformer: only update for left/right (for sprite flipping)
           if (newDirection === "left" || newDirection === "right") {
@@ -389,16 +456,14 @@ export class GameEngine {
         break;
       }
       case "jump":
-        // Handle jump
+        // Execute jump — moves player up by jumpPower tiles (if grounded)
         this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        // Play jump sound
+        this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
-        // Apply gravity after a short delay to show the jump animation
-        setTimeout(() => {
-          this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
-          this.updatePlayerCollider();
-          this.collisionSystem.update();
-        }, 200); // 200ms delay to show jump animation
+        // NOTE: gravity is NOT applied here — it will be applied on the next
+        // command step (move/moveForward) so the jump arc is visible across steps.
         break;
       case "interact":
         this.interact();
@@ -419,7 +484,7 @@ export class GameEngine {
     // Update sprite direction for rendering
     if (this.gameType === "topdown") {
       // Topdown: use all four directions
-      this.runtime.player.direction = direction;
+      this.runtime.player.direction = direction as "left" | "right";
     } else {
       // Platformer: only update for left/right (for sprite flipping)
       if (direction === "left" || direction === "right") {
@@ -513,13 +578,34 @@ export class GameEngine {
     this.eventEmitter.emit(event);
   }
 
+  /**
+   * Setup audio event listeners
+   * Connects game events to appropriate sound effects
+   */
+  private setupAudioListeners(): void {
+    // Play collect sound when fruit is collected
+    this.on("fruitCollected", () => {
+      this.audioSystem.play(SoundEffect.Collect);
+    });
+
+    // Play win sound when game is won
+    this.on("win", () => {
+      // You can add a win sound effect here if you have one
+      // For now, we'll use the Text sound as a placeholder
+      this.audioSystem.play(SoundEffect.Text);
+    });
+  }
+
   private moveForward(): void {
     // Delegate movement to controller
     const moved = this.controller.moveForward(this.runtime.player, this.level, this.tileSize);
 
     if (moved) {
+      // Play walk sound when player moves
+      this.audioSystem.play(SoundEffect.Walk);
       // Update player collider position if registered
       this.updatePlayerCollider();
+      this.checkFruitCollection();
       this.checkWinCondition();
     }
   }
@@ -528,7 +614,7 @@ export class GameEngine {
     this.runtime.player.facing = TURN_LEFT[this.runtime.player.facing];
     // Update sprite direction
     if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing;
+      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
     } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }
@@ -538,7 +624,7 @@ export class GameEngine {
     this.runtime.player.facing = TURN_RIGHT[this.runtime.player.facing];
     // Update sprite direction
     if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing;
+      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
     } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }
@@ -576,9 +662,44 @@ export class GameEngine {
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
     if (isWinConditionMet(this.level, playerPos)) {
+      // Stop timer and save elapsed time
+      if (this.runtime.startTime !== null) {
+        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+      }
       this.runtime.hasPlayerWon = true;
       this.runtime.state = EngineState.Won;
       this.emit({ type: "win" });
+    }
+  }
+
+  /**
+   * Check if player has collected any fruits at current position
+   * Automatically collects fruits when player reaches their grid coordinate
+   */
+  private checkFruitCollection(): void {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    // Check all fruits in the level
+    for (const obj of this.level.objects || []) {
+      // Only check fruit objects
+      if (obj.type !== "fruit") continue;
+
+      // Skip already collected fruits
+      if (this.runtime.collectedFruits.has(obj.id)) continue;
+
+      // Check if player is at the fruit's position
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        // Collect the fruit
+        this.runtime.collectedFruits.add(obj.id);
+
+        // Emit collection event
+        this.emit({
+          type: "fruitCollected",
+          fruitId: obj.id,
+          totalCollected: this.runtime.collectedFruits.size,
+        });
+      }
     }
   }
 

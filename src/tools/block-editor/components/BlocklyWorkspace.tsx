@@ -69,9 +69,18 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
             drag: true,
             wheel: true,
           },
+          sounds: false, // Disable audio to prevent AudioContext errors
         });
 
         setIsLoading(false);
+
+        // Force resize after initialization to fix display issues
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+          if (blocklyWorkspaceRef.current && mounted) {
+            Blockly.svgResize(blocklyWorkspaceRef.current);
+          }
+        }, 100);
 
         // Notify parent component that workspace is ready
         if (onWorkspaceReady && blocklyWorkspaceRef.current) {
@@ -99,6 +108,26 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
       }
     };
   }, [onWorkspaceReady]);
+
+  // Handle container resize
+  useEffect(() => {
+    const container = workspaceRef.current;
+    if (!container || !blocklyWorkspaceRef.current) return;
+
+    // Create ResizeObserver to watch container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      if (blocklyWorkspaceRef.current) {
+        Blockly.svgResize(blocklyWorkspaceRef.current);
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [isLoading]); // Re-setup after loading completes
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -159,4 +188,5 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
   );
 };
 
-export default BlocklyWorkspace;
+// Memoize to prevent unnecessary re-renders from parent component
+export default React.memo(BlocklyWorkspace);

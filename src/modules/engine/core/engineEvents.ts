@@ -10,4 +10,9 @@ export type EngineEvent =
       type: "collision:enter";
       entityAId: string;
       entityBId: string;
+    }
+  | {
+      type: "fruitCollected";
+      fruitId: string;
+      totalCollected: number;
     };

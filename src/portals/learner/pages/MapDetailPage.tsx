@@ -55,7 +55,8 @@ export default function MapDetailPage() {
 
   const handleStartChallenge = () => {
     if (map) {
-      navigate(ROUTES.GAME, {
+      const isPlatform = map.type === "Platform";
+      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
         state: {
           levelId: map.id,
         },
@@ -205,9 +206,6 @@ export default function MapDetailPage() {
                 overflow: "hidden",
                 backgroundColor: "var(--surface-2)",
                 border: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 marginBottom: "24px",
               }}
             >
@@ -217,7 +215,8 @@ export default function MapDetailPage() {
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
+                  objectFit: "contain",
+                  display: "block",
                 }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
