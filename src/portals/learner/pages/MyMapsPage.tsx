@@ -15,8 +15,670 @@ import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerCommunityApi } from "@/services/api/learner/community.api";
 import type { Map } from "@/types/api/learner/maps";
-import { Eye, Plus, Search, Edit, Star, Flag, Send } from "lucide-react";
+import {
+  Eye,
+  Plus,
+  Search,
+  Edit,
+  Star,
+  Flag,
+  Send,
+  Map as MapIcon,
+  Globe,
+  FileText,
+  Clock3,
+  CalendarDays,
+  ListFilter,
+  ArrowUpDown,
+} from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+
+type OwnershipMap = Record<string, { isAuthor: boolean }>;
+
+type StatCard = {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  accent: string;
+};
+
+type StatsCardsProps = {
+  cards: StatCard[];
+};
+
+type MapFiltersProps = {
+  searchTerm: string;
+  onSearchTermChange: (value: string) => void;
+  filterDifficulty: number | "";
+  onFilterDifficultyChange: (value: number | "") => void;
+  sortBy: "title" | "createdAt" | "difficulty" | "price";
+  onSortByChange: (value: "title" | "createdAt" | "difficulty" | "price") => void;
+  sortOrder: "asc" | "desc";
+  onSortOrderToggle: () => void;
+  onClearFilters: () => void;
+};
+
+type MapCardProps = {
+  map: Map;
+  isAuthor: boolean;
+  formatDate: (dateString: string | null) => string;
+  formatTime: (milliseconds: number) => string;
+  getMapStatusLabel: (status: number) => string;
+  getDifficultyLabel: (difficulty: number) => string;
+  onPreview: (mapId: string) => void;
+  onEdit: (mapId: string) => void;
+  onPublish: (mapId: string) => void;
+  onRate: (mapId: string) => void;
+  onReport: (mapId: string) => void;
+};
+
+type MapListProps = {
+  maps: Map[];
+  ownershipMap: OwnershipMap;
+  formatDate: (dateString: string | null) => string;
+  formatTime: (milliseconds: number) => string;
+  getMapStatusLabel: (status: number) => string;
+  getDifficultyLabel: (difficulty: number) => string;
+  onPreview: (mapId: string) => void;
+  onEdit: (mapId: string) => void;
+  onPublish: (mapId: string) => void;
+  onRate: (mapId: string) => void;
+  onReport: (mapId: string) => void;
+};
+
+const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
+  if (difficulty === 1) {
+    return {
+      background: "rgba(34, 197, 94, 0.14)",
+      color: "#166534",
+      border: "1px solid rgba(34, 197, 94, 0.35)",
+    };
+  }
+
+  if (difficulty === 2) {
+    return {
+      background: "rgba(245, 158, 11, 0.16)",
+      color: "#9a6700",
+      border: "1px solid rgba(245, 158, 11, 0.4)",
+    };
+  }
+
+  if (difficulty === 3) {
+    return {
+      background: "rgba(239, 68, 68, 0.14)",
+      color: "#991b1b",
+      border: "1px solid rgba(239, 68, 68, 0.38)",
+    };
+  }
+
+  return {
+    background: "var(--surface-2)",
+    color: "var(--text-2)",
+    border: "1px solid var(--border)",
+  };
+};
+
+const getStatusBadgeStyle = (status: number): React.CSSProperties => {
+  if (status === 0) {
+    return {
+      background: "rgba(107, 114, 128, 0.18)",
+      color: "#374151",
+      border: "1px solid rgba(107, 114, 128, 0.35)",
+    };
+  }
+
+  if (status === 1) {
+    return {
+      background: "rgba(249, 115, 22, 0.16)",
+      color: "#9a3412",
+      border: "1px solid rgba(249, 115, 22, 0.36)",
+    };
+  }
+
+  if (status === 4) {
+    return {
+      background: "rgba(34, 197, 94, 0.14)",
+      color: "#166534",
+      border: "1px solid rgba(34, 197, 94, 0.35)",
+    };
+  }
+
+  return {
+    background: "var(--surface-2)",
+    color: "var(--text-2)",
+    border: "1px solid var(--border)",
+  };
+};
+
+const actionBtnStyle = (tone: "neutral" | "primary" | "success" | "warning" | "danger") => {
+  const styles: Record<string, React.CSSProperties> = {
+    neutral: {
+      background: "var(--surface)",
+      color: "var(--text)",
+      border: "1px solid var(--border)",
+    },
+    primary: {
+      background: "rgba(59, 130, 246, 0.12)",
+      color: "#1d4ed8",
+      border: "1px solid rgba(59, 130, 246, 0.35)",
+    },
+    success: {
+      background: "rgba(34, 197, 94, 0.14)",
+      color: "#166534",
+      border: "1px solid rgba(34, 197, 94, 0.35)",
+    },
+    warning: {
+      background: "rgba(245, 158, 11, 0.16)",
+      color: "#9a6700",
+      border: "1px solid rgba(245, 158, 11, 0.4)",
+    },
+    danger: {
+      background: "rgba(239, 68, 68, 0.14)",
+      color: "#991b1b",
+      border: "1px solid rgba(239, 68, 68, 0.36)",
+    },
+  };
+
+  return {
+    ...styles[tone],
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    borderRadius: "10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    padding: "8px 10px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  } as React.CSSProperties;
+};
+
+const StatsCards: React.FC<StatsCardsProps> = ({ cards }) => {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+        gap: "16px",
+      }}
+    >
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          style={{
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, white), var(--surface))",
+            border: "1px solid var(--border)",
+            borderRadius: "16px",
+            padding: "18px 20px",
+            boxShadow: "0 8px 22px rgba(0, 0, 0, 0.08)",
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+          }}
+        >
+          <div
+            style={{
+              width: "44px",
+              height: "44px",
+              borderRadius: "12px",
+              background: card.accent,
+              color: "var(--text)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {card.icon}
+          </div>
+          <div>
+            <div style={{ color: "var(--text-2)", fontSize: "12px", marginBottom: "3px" }}>
+              {card.label}
+            </div>
+            <div style={{ color: "var(--text)", fontSize: "30px", lineHeight: 1, fontWeight: 800 }}>
+              {card.value}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const MapFilters: React.FC<MapFiltersProps> = ({
+  searchTerm,
+  onSearchTermChange,
+  filterDifficulty,
+  onFilterDifficultyChange,
+  sortBy,
+  onSortByChange,
+  sortOrder,
+  onSortOrderToggle,
+  onClearFilters,
+}) => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "12px",
+        alignItems: "center",
+        marginBottom: "18px",
+        padding: "14px",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "14px",
+      }}
+    >
+      <div style={{ position: "relative", flex: "1 1 260px", minWidth: "220px" }}>
+        <Search
+          size={16}
+          style={{
+            position: "absolute",
+            left: "10px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "var(--text-2)",
+          }}
+        />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => onSearchTermChange(e.target.value)}
+          placeholder="Search maps..."
+          style={{
+            width: "100%",
+            padding: "10px 12px 10px 34px",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            color: "var(--text)",
+            fontSize: "14px",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      <select
+        value={filterDifficulty}
+        onChange={(e) =>
+          onFilterDifficultyChange(e.target.value === "" ? "" : Number(e.target.value))
+        }
+        style={{
+          flex: "0 1 170px",
+          padding: "10px 12px",
+          background: "var(--surface-2)",
+          border: "1px solid var(--border)",
+          borderRadius: "10px",
+          color: "var(--text)",
+          fontSize: "14px",
+          cursor: "pointer",
+        }}
+      >
+        <option value="">All Difficulty</option>
+        <option value="1">Easy</option>
+        <option value="2">Medium</option>
+        <option value="3">Hard</option>
+      </select>
+
+      <div style={{ position: "relative", display: "inline-flex", flex: "0 1 190px" }}>
+        <ListFilter
+          size={14}
+          style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }}
+        />
+        <select
+          value={sortBy}
+          onChange={(e) =>
+            onSortByChange(e.target.value as "title" | "createdAt" | "difficulty" | "price")
+          }
+          style={{
+            padding: "10px 12px 10px 30px",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="createdAt">Sort by Created</option>
+          <option value="title">Sort by Title</option>
+          <option value="difficulty">Sort by Difficulty</option>
+          <option value="price">Sort by Price</option>
+        </select>
+      </div>
+
+      <button
+        onClick={onSortOrderToggle}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          padding: "10px 14px",
+          background: "var(--surface-2)",
+          border: "1px solid var(--border)",
+          borderRadius: "10px",
+          color: "var(--text)",
+          fontSize: "14px",
+          fontWeight: 600,
+          cursor: "pointer",
+          flex: "0 1 120px",
+        }}
+      >
+        <ArrowUpDown size={14} /> {sortOrder === "asc" ? "Asc" : "Desc"}
+      </button>
+
+      {(searchTerm || filterDifficulty !== "") && (
+        <button
+          onClick={onClearFilters}
+          style={{
+            flex: "0 1 90px",
+            padding: "10px 12px",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            color: "var(--text-2)",
+            fontSize: "13px",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+};
+
+const MapCard: React.FC<MapCardProps> = ({
+  map,
+  isAuthor,
+  formatDate,
+  formatTime,
+  getMapStatusLabel,
+  getDifficultyLabel,
+  onPreview,
+  onEdit,
+  onPublish,
+  onRate,
+  onReport,
+}) => {
+  const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
+  const statusStyle = getStatusBadgeStyle(map.mapStatus);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "16px",
+        alignItems: "center",
+        padding: "16px",
+        borderRadius: "16px",
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
+        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.06)",
+        transition: "all 0.25s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 10px 22px rgba(0, 0, 0, 0.12)";
+        e.currentTarget.style.background = "color-mix(in srgb, var(--surface) 87%, white)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 0, 0, 0.06)";
+        e.currentTarget.style.background = "var(--surface)";
+      }}
+    >
+      <div style={{ display: "flex", gap: "14px", minWidth: 0, flex: "1 1 360px" }}>
+        <div
+          style={{
+            width: "92px",
+            height: "92px",
+            minWidth: "92px",
+            borderRadius: "12px",
+            overflow: "hidden",
+            backgroundColor: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {map.avatarUrl ? (
+            <img
+              src={map.avatarUrl}
+              alt={map.title}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <MapIcon size={28} color="var(--text-2)" />
+          )}
+        </div>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+            <div
+              style={{
+                fontWeight: 700,
+                color: "var(--text)",
+                fontSize: "16px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {map.title}
+            </div>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                borderRadius: "6px",
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 700,
+                background: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
+                color: map.type === "Platform" ? "#1e40af" : "#92400e",
+              }}
+            >
+              {map.type}
+            </span>
+          </div>
+
+          <div
+            style={{
+              color: "var(--text-2)",
+              fontSize: "13px",
+              lineHeight: 1.5,
+              maxWidth: "520px",
+              minHeight: "20px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              marginBottom: "10px",
+            }}
+          >
+            {map.description || "No description provided"}
+          </div>
+
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {map.tagNames.slice(0, 4).map((tag, idx) => (
+              <span
+                key={idx}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "3px 9px",
+                  borderRadius: "999px",
+                  fontSize: "11px",
+                  background: "var(--surface-2)",
+                  color: "var(--text-2)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                #{tag}
+              </span>
+            ))}
+            {map.tagNames.length > 4 && (
+              <span style={{ fontSize: "11px", color: "var(--text-2)", alignSelf: "center" }}>
+                +{map.tagNames.length - 4}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: "9px", alignContent: "center", flex: "0 1 210px" }}>
+        <span
+          style={{
+            ...difficultyStyle,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "fit-content",
+            borderRadius: "999px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            fontWeight: 700,
+          }}
+        >
+          {getDifficultyLabel(map.difficulty)}
+        </span>
+
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            color: "var(--text-2)",
+            fontSize: "13px",
+          }}
+        >
+          <Clock3 size={14} /> {formatTime(map.timeLimitMs)}
+        </div>
+
+        <span
+          style={{
+            ...statusStyle,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "fit-content",
+            borderRadius: "999px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            fontWeight: 700,
+          }}
+        >
+          {getMapStatusLabel(map.mapStatus)}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gap: "10px",
+          justifyItems: "end",
+          flex: "1 1 260px",
+          marginLeft: "auto",
+        }}
+      >
+        <div style={{ textAlign: "right" }}>
+          <div
+            style={{
+              color: map.price > 0 ? "var(--primary)" : "var(--text-2)",
+              fontSize: "18px",
+              fontWeight: 800,
+            }}
+          >
+            {map.price > 0 ? `$${map.price}` : "Free"}
+          </div>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              color: "var(--text-2)",
+              fontSize: "12px",
+            }}
+          >
+            <CalendarDays size={13} /> {formatDate(map.createdAt)}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
+          <button onClick={() => onPreview(map.id)} style={actionBtnStyle("neutral")}>
+            <Eye size={14} /> Preview
+          </button>
+
+          {isAuthor && map.mapStatus === 0 && (
+            <>
+              <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
+                <Edit size={14} /> Edit
+              </button>
+              <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
+                <Send size={14} /> Publish
+              </button>
+            </>
+          )}
+
+          {!isAuthor && (
+            <>
+              <button onClick={() => onRate(map.id)} style={actionBtnStyle("warning")}>
+                <Star size={14} /> Rate
+              </button>
+              <button onClick={() => onReport(map.id)} style={actionBtnStyle("danger")}>
+                <Flag size={14} /> Report
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MapList: React.FC<MapListProps> = ({
+  maps,
+  ownershipMap,
+  formatDate,
+  formatTime,
+  getMapStatusLabel,
+  getDifficultyLabel,
+  onPreview,
+  onEdit,
+  onPublish,
+  onRate,
+  onReport,
+}) => {
+  return (
+    <div style={{ display: "grid", gap: "12px" }}>
+      {maps.map((map) => (
+        <MapCard
+          key={map.id}
+          map={map}
+          isAuthor={ownershipMap[map.id]?.isAuthor || false}
+          formatDate={formatDate}
+          formatTime={formatTime}
+          getMapStatusLabel={getMapStatusLabel}
+          getDifficultyLabel={getDifficultyLabel}
+          onPreview={onPreview}
+          onEdit={onEdit}
+          onPublish={onPublish}
+          onRate={onRate}
+          onReport={onReport}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -267,23 +929,6 @@ export const MyMapsPage: React.FC = () => {
     }
   };
 
-  const getMapStatusColor = (status: number) => {
-    switch (status) {
-      case 0:
-        return "var(--muted)";
-      case 1:
-        return "var(--warning)";
-      case 2:
-        return "var(--info)";
-      case 3:
-        return "var(--danger)";
-      case 4:
-        return "var(--success)";
-      default:
-        return "var(--text-2)";
-    }
-  };
-
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
       case 1:
@@ -294,19 +939,6 @@ export const MyMapsPage: React.FC = () => {
         return "Hard";
       default:
         return "Unknown";
-    }
-  };
-
-  const getDifficultyColor = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "var(--success)";
-      case 2:
-        return "var(--warning)";
-      case 3:
-        return "var(--danger)";
-      default:
-        return "var(--text-2)";
     }
   };
 
@@ -358,221 +990,116 @@ export const MyMapsPage: React.FC = () => {
     );
   }
 
+  const publishedCount = maps.filter((m) => m.isPublished || m.mapStatus === 4).length;
+  const draftCount = maps.filter((m) => m.mapStatus === 0).length;
+
   return (
-    <div style={{ padding: "24px", maxWidth: "1600px", margin: "0 auto" }}>
-      {/* Header */}
+    <div
+      style={{
+        padding: "24px",
+        maxWidth: "1400px",
+        margin: "0 auto",
+        display: "grid",
+        gap: "18px",
+      }}
+    >
       <div
         style={{
-          marginBottom: "24px",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "16px",
-          flexWrap: "wrap",
+          padding: "20px",
+          borderRadius: "18px",
+          border: "1px solid var(--border)",
+          background:
+            "radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 40%), var(--surface)",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
+          display: "grid",
+          gap: "18px",
         }}
       >
-        <div>
-          <h1
-            style={{
-              color: "var(--text)",
-              fontSize: "28px",
-              fontWeight: "bold",
-              marginBottom: "8px",
-            }}
-          >
-            My Maps
-          </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage your challenge maps</p>
-        </div>
-        <button
-          onClick={() => navigate(ROUTES.MAP_EDITOR)}
+        <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 20px",
-            background: "var(--primary)",
-            border: "none",
-            borderRadius: "8px",
-            color: "white",
-            fontSize: "14px",
-            fontWeight: "500",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "14px",
+            flexWrap: "wrap",
           }}
         >
-          <Plus size={16} /> Create Map
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div
-        style={{
-          display: "flex",
-          gap: "16px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Maps
+          <div>
+            <h1
+              style={{
+                color: "var(--text)",
+                fontSize: "34px",
+                letterSpacing: "0.3px",
+                fontWeight: 800,
+                marginBottom: "6px",
+              }}
+            >
+              My Maps
+            </h1>
+            <p style={{ color: "var(--text-2)", fontSize: "14px" }}>
+              Build, tune, and publish your best challenge maps.
+            </p>
           </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {totalItems}
-          </div>
-        </div>
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Published Maps
-          </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {maps.filter((m) => m.isPublished).length}
-          </div>
-        </div>
-      </div>
 
-      {/* Search, Filter & Sort */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        {/* Search */}
-        <div style={{ position: "relative", flex: "1", minWidth: "200px", maxWidth: "320px" }}>
-          <Search
-            size={15}
-            style={{
-              position: "absolute",
-              left: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--text-2)",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
-            placeholder="Search maps..."
-            style={{
-              width: "100%",
-              padding: "8px 12px 8px 32px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              color: "var(--text)",
-              fontSize: "14px",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {/* Difficulty Filter */}
-        <select
-          value={filterDifficulty}
-          onChange={(e) =>
-            handleFilterChange([
-              () => setFilterDifficulty(e.target.value === "" ? "" : Number(e.target.value)),
-            ])
-          }
-          style={{
-            padding: "8px 12px",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            color: "var(--text)",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          <option value="">All Difficulties</option>
-          <option value="1">Easy</option>
-          <option value="2">Medium</option>
-          <option value="3">Hard</option>
-        </select>
-
-        {/* Sort By */}
-        <select
-          value={sortBy}
-          onChange={(e) =>
-            setSortBy(e.target.value as "title" | "createdAt" | "difficulty" | "price")
-          }
-          style={{
-            padding: "8px 12px",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            color: "var(--text)",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
-          <option value="createdAt">Sort: Created</option>
-          <option value="title">Sort: Title</option>
-          <option value="difficulty">Sort: Difficulty</option>
-          <option value="price">Sort: Price</option>
-        </select>
-
-        {/* Sort Order */}
-        <button
-          onClick={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
-          style={{
-            padding: "8px 14px",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            color: "var(--text)",
-            fontSize: "14px",
-            cursor: "pointer",
-            fontWeight: "500",
-          }}
-          title={sortOrder === "asc" ? "Ascending" : "Descending"}
-        >
-          {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
-        </button>
-
-        {/* Clear Filters */}
-        {(searchTerm || filterDifficulty !== "") && (
           <button
-            onClick={() =>
-              handleFilterChange([() => setSearchTerm(""), () => setFilterDifficulty("")])
-            }
+            onClick={() => navigate(ROUTES.MAP_EDITOR)}
             style={{
-              padding: "8px 14px",
-              background: "transparent",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              color: "var(--text-2)",
-              fontSize: "13px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "11px 18px",
+              background: "var(--primary)",
+              border: "none",
+              borderRadius: "12px",
+              color: "white",
+              fontSize: "14px",
+              fontWeight: 700,
               cursor: "pointer",
+              boxShadow: "0 8px 18px color-mix(in srgb, var(--primary) 35%, transparent)",
+              whiteSpace: "nowrap",
             }}
           >
-            Clear Filters
+            <Plus size={16} /> Create Map
           </button>
-        )}
+        </div>
+
+        <StatsCards
+          cards={[
+            {
+              label: "Total Maps",
+              value: totalItems,
+              icon: <MapIcon size={20} />,
+              accent: "rgba(59, 130, 246, 0.16)",
+            },
+            {
+              label: "Published Maps",
+              value: publishedCount,
+              icon: <Globe size={20} />,
+              accent: "rgba(34, 197, 94, 0.16)",
+            },
+            {
+              label: "Draft Maps",
+              value: draftCount,
+              icon: <FileText size={20} />,
+              accent: "rgba(107, 114, 128, 0.18)",
+            },
+          ]}
+        />
       </div>
+
+      <MapFilters
+        searchTerm={searchTerm}
+        onSearchTermChange={(value) => handleFilterChange([() => setSearchTerm(value)])}
+        filterDifficulty={filterDifficulty}
+        onFilterDifficultyChange={(value) => handleFilterChange([() => setFilterDifficulty(value)])}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        sortOrder={sortOrder}
+        onSortOrderToggle={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+        onClearFilters={() =>
+          handleFilterChange([() => setSearchTerm(""), () => setFilterDifficulty("")])
+        }
+      />
 
       {error && (
         <div
@@ -624,458 +1151,30 @@ export const MyMapsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Maps Table */}
       {maps.length > 0 && (
         <div
           style={{
-            background: "var(--surface)",
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, white), var(--surface))",
             border: "1px solid var(--border)",
-            borderRadius: "12px",
-            overflow: "hidden",
+            borderRadius: "16px",
+            padding: "14px",
+            boxShadow: "0 8px 26px rgba(0, 0, 0, 0.08)",
           }}
         >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                color: "var(--text)",
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    background: "var(--surface-2)",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                      width: "120px",
-                    }}
-                  ></th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    TITLE
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    TYPE
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    DIFFICULTY
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    TIME LIMIT
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    STATUS
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    PRICE
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    TAGS
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    CREATED
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    ACTIONS
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {maps.map((map) => (
-                  <tr
-                    key={map.id}
-                    style={{
-                      borderBottom: "1px solid var(--border)",
-                      transition: "background 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "var(--surface-2)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                      <div
-                        style={{
-                          width: "80px",
-                          height: "80px",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                          backgroundColor: "var(--surface-2)",
-                          border: "1px solid var(--border)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {map.avatarUrl ? (
-                          <img
-                            src={map.avatarUrl}
-                            alt={map.title}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: "20px" }}>🗺️</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <div>
-                        <div
-                          style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}
-                        >
-                          {map.title}
-                        </div>
-                        {map.description && (
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "var(--text-2)",
-                              maxWidth: "300px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {map.description}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "4px 12px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
-                          color: map.type === "Platform" ? "#1e40af" : "#92400e",
-                        }}
-                      >
-                        {map.type}
-                      </span>
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "4px 12px",
-                          borderRadius: "999px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          background: `color-mix(in srgb, ${getDifficultyColor(map.difficulty)} 15%, transparent)`,
-                          color: getDifficultyColor(map.difficulty),
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: "6px",
-                            height: "6px",
-                            borderRadius: "50%",
-                            background: getDifficultyColor(map.difficulty),
-                          }}
-                        ></span>
-                        {getDifficultyLabel(map.difficulty)}
-                      </span>
-                    </td>
-                    <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
-                      {formatTime(map.timeLimitMs)}
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "4px 12px",
-                          borderRadius: "999px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          background: `color-mix(in srgb, ${getMapStatusColor(map.mapStatus)} 15%, transparent)`,
-                          color: getMapStatusColor(map.mapStatus),
-                          width: "fit-content",
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: "6px",
-                            height: "6px",
-                            borderRadius: "50%",
-                            background: getMapStatusColor(map.mapStatus),
-                          }}
-                        ></span>
-                        {getMapStatusLabel(map.mapStatus)}
-                      </span>
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <div
-                        style={{
-                          color: map.price > 0 ? "var(--primary)" : "var(--text-2)",
-                          fontSize: "14px",
-                          fontWeight: map.price > 0 ? "500" : "normal",
-                        }}
-                      >
-                        {map.price > 0 ? `$${map.price}` : "Free"}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                        {map.tagNames.slice(0, 3).map((tag, idx) => (
-                          <span
-                            key={idx}
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                              fontSize: "11px",
-                              background: "var(--surface-2)",
-                              color: "var(--text-2)",
-                              border: "1px solid var(--border)",
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {map.tagNames.length > 3 && (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              color: "var(--text-2)",
-                              padding: "2px 4px",
-                            }}
-                          >
-                            +{map.tagNames.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
-                      {formatDate(map.createdAt)}
-                    </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                        {ownershipMap[map.id]?.isAuthor && map.mapStatus === 0 ? (
-                          // Show update and submit buttons for draft maps owned by user
-                          <>
-                            <button
-                              onClick={() => handleViewDetails(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--info)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="View Map"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleUpdateMap(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--primary)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="Update Map"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleSubmitForReview(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--success)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="Submit for Review"
-                            >
-                              <Send size={16} />
-                            </button>
-                          </>
-                        ) : !ownershipMap[map.id]?.isAuthor ? (
-                          // Show rate and report buttons for maps not owned by user
-                          <>
-                            <button
-                              onClick={() => handleViewDetails(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--info)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="View Map"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleOpenRateModal(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--warning)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="Rate Map"
-                            >
-                              <Star size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleOpenReportModal(map.id)}
-                              style={{
-                                padding: "6px 12px",
-                                background: "transparent",
-                                border: "1px solid var(--border)",
-                                borderRadius: "6px",
-                                color: "var(--danger)",
-                                cursor: "pointer",
-                                fontSize: "12px",
-                                transition: "all 0.2s ease",
-                              }}
-                              title="Report Map"
-                            >
-                              <Flag size={16} />
-                            </button>
-                          </>
-                        ) : (
-                          // Show only view button for other cases
-                          <button
-                            onClick={() => handleViewDetails(map.id)}
-                            style={{
-                              padding: "6px 12px",
-                              background: "transparent",
-                              border: "1px solid var(--border)",
-                              borderRadius: "6px",
-                              color: "var(--info)",
-                              cursor: "pointer",
-                              fontSize: "12px",
-                              transition: "all 0.2s ease",
-                            }}
-                            title="View Map"
-                          >
-                            <Eye size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <MapList
+            maps={maps}
+            ownershipMap={ownershipMap}
+            formatDate={formatDate}
+            formatTime={formatTime}
+            getMapStatusLabel={getMapStatusLabel}
+            getDifficultyLabel={getDifficultyLabel}
+            onPreview={handleViewDetails}
+            onEdit={handleUpdateMap}
+            onPublish={handleSubmitForReview}
+            onRate={handleOpenRateModal}
+            onReport={handleOpenReportModal}
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -1100,7 +1199,7 @@ export const MyMapsPage: React.FC = () => {
                   disabled={currentPage === 1}
                   style={{
                     padding: "8px 16px",
-                    background: currentPage === 1 ? "var(--surface-2)" : "transparent",
+                    background: currentPage === 1 ? "var(--surface-2)" : "var(--surface)",
                     border: "1px solid var(--border)",
                     borderRadius: "8px",
                     color: currentPage === 1 ? "var(--muted)" : "var(--text)",
@@ -1117,7 +1216,7 @@ export const MyMapsPage: React.FC = () => {
                   disabled={currentPage === totalPages}
                   style={{
                     padding: "8px 16px",
-                    background: currentPage === totalPages ? "var(--surface-2)" : "transparent",
+                    background: currentPage === totalPages ? "var(--surface-2)" : "var(--surface)",
                     border: "1px solid var(--border)",
                     borderRadius: "8px",
                     color: currentPage === totalPages ? "var(--muted)" : "var(--text)",

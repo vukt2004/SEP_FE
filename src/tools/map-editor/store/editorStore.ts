@@ -515,12 +515,15 @@ export class EditorStore {
    * @param width - New width in tiles
    * @param height - New height in tiles
    */
-  resize(width: number, height: number): void {
+  resize(width: number, height: number, tileSize?: number): void {
     this.saveHistory();
 
     // Update config
     this.mapData.config.width = width;
     this.mapData.config.height = height;
+    if (tileSize !== undefined) {
+      this.mapData.config.tileSize = tileSize;
+    }
 
     // Regenerate all 4 layers
     this.mapData.layers.background = createEmptyLayer(width, height, 0);
@@ -621,6 +624,12 @@ export class EditorStore {
   setMapPrice(price: number): void {
     this.saveHistory();
     this.mapData.config.price = price;
+    this.notify();
+  }
+
+  setMapType(type: "platform" | "topdown"): void {
+    this.saveHistory();
+    this.mapData.config.type = type;
     this.notify();
   }
 

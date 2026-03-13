@@ -24,11 +24,10 @@ export class TileRenderer {
   private objectSpriteCache: ObjectSpriteCache;
   private currentStore: EditorStore | null = null;
   private objectDefinitions: Record<string, ObjectDefinition> | null = null;
+  private objectDefinitionsByName: Record<string, ObjectDefinition> | null = null;
   private objectSpritesLoaded: boolean = false;
-  private gameType: GameType;
 
   constructor(gameType: GameType) {
-    this.gameType = gameType;
     this.tilesetLoader = new TilesetLoader(gameType);
     this.tilesetCache = new TilesetCache();
     this.objectSpriteLoader = new ObjectSpriteLoader(gameType);
@@ -44,6 +43,13 @@ export class TileRenderer {
       // Load object definitions from JSON
       this.objectDefinitions = await this.objectSpriteLoader.loadObjectDefinitions("objects");
 
+      // Build fast lookup by logical object name (player, goal, fruit, enemy, ...)
+      const byName: Record<string, ObjectDefinition> = {};
+      for (const objDef of Object.values(this.objectDefinitions)) {
+        byName[objDef.name] = objDef;
+      }
+      this.objectDefinitionsByName = byName;
+
       // Preload all object sprite images
       const imagePathsSet = new Set<string>();
       for (const objDef of Object.values(this.objectDefinitions)) {
@@ -58,6 +64,7 @@ export class TileRenderer {
     } catch (error) {
       console.error("Failed to load object sprites:", error);
       this.objectSpritesLoaded = false;
+      this.objectDefinitionsByName = null;
     }
   }
 
@@ -383,12 +390,12 @@ export class TileRenderer {
     y: number,
     tileSize: number,
   ): void {
-    if (!this.objectDefinitions || !this.objectSpritesLoaded) {
+    if (!this.objectDefinitionsByName || !this.objectSpritesLoaded) {
       this.renderObjectFallback(ctx, objectType, x, y, tileSize);
       return;
     }
 
-    const objDef = this.objectDefinitions[objectType];
+    const objDef = this.objectDefinitionsByName[objectType];
     if (!objDef) {
       this.renderObjectFallback(ctx, objectType, x, y, tileSize);
       return;
