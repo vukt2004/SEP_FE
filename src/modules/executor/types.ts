@@ -35,6 +35,14 @@ export interface TurnNode {
 }
 
 /**
+ * Jump command - jump over an obstacle or gap
+ */
+export interface JumpNode {
+  type: "jump";
+  blockId: string;
+}
+
+/**
  * Repeat control flow block
  * Executes body blocks a specified number of times
  */
@@ -56,6 +64,15 @@ export type ConditionType = "wallAhead" | "pathAhead" | "obstacleAhead";
 export interface ConditionNode {
   type: "condition";
   conditionType: ConditionType;
+  blockId: string;
+}
+
+/**
+ * Boolean literal node - represents a hardcoded True or False value
+ */
+export interface BooleanLiteralNode {
+  type: "booleanLiteral";
+  value: boolean;
   blockId: string;
 }
 
@@ -98,8 +115,10 @@ export type ASTNode =
   | MoveNode
   | MoveForwardNode
   | TurnNode
+  | JumpNode
   | RepeatNode
   | ConditionNode
+  | BooleanLiteralNode
   | CustomIfNode
   | CustomWhileNode
   | CustomDoWhileNode;

@@ -210,7 +210,9 @@ export class GameEngine {
     this.runtime.player.targetPixelX = startPixelX;
     this.runtime.player.targetPixelY = startPixelY;
     this.runtime.player.facing = this.gameType === "topdown" ? "down" : "right";
-    this.runtime.player.direction = this.gameType === "topdown" ? "down" : "right";
+    this.runtime.player.direction = (this.gameType === "topdown" ? "down" : "right") as
+      | "left"
+      | "right";
     this.runtime.player.isMoving = false;
     this.runtime.player.isJumping = false;
     this.runtime.player.isGrounded = true;
@@ -444,7 +446,7 @@ export class GameEngine {
         // Update sprite direction for rendering
         if (this.gameType === "topdown") {
           // Topdown: use all four directions
-          this.runtime.player.direction = newDirection;
+          this.runtime.player.direction = newDirection as "left" | "right";
         } else {
           // Platformer: only update for left/right (for sprite flipping)
           if (newDirection === "left" || newDirection === "right") {
@@ -454,18 +456,14 @@ export class GameEngine {
         break;
       }
       case "jump":
-        // Handle jump
+        // Execute jump — moves player up by jumpPower tiles (if grounded)
         this.controller.jump(this.runtime.player, this.level, this.tileSize);
         // Play jump sound
         this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
-        // Apply gravity after a short delay to show the jump animation
-        setTimeout(() => {
-          this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
-          this.updatePlayerCollider();
-          this.collisionSystem.update();
-        }, 200); // 200ms delay to show jump animation
+        // NOTE: gravity is NOT applied here — it will be applied on the next
+        // command step (move/moveForward) so the jump arc is visible across steps.
         break;
       case "interact":
         this.interact();
@@ -486,7 +484,7 @@ export class GameEngine {
     // Update sprite direction for rendering
     if (this.gameType === "topdown") {
       // Topdown: use all four directions
-      this.runtime.player.direction = direction;
+      this.runtime.player.direction = direction as "left" | "right";
     } else {
       // Platformer: only update for left/right (for sprite flipping)
       if (direction === "left" || direction === "right") {
@@ -616,7 +614,7 @@ export class GameEngine {
     this.runtime.player.facing = TURN_LEFT[this.runtime.player.facing];
     // Update sprite direction
     if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing;
+      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
     } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }
@@ -626,7 +624,7 @@ export class GameEngine {
     this.runtime.player.facing = TURN_RIGHT[this.runtime.player.facing];
     // Update sprite direction
     if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing;
+      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
     } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
       this.runtime.player.direction = this.runtime.player.facing;
     }

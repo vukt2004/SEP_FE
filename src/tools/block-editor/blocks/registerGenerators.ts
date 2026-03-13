@@ -83,6 +83,12 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "jump":
+      return {
+        type: "jump",
+        blockId,
+      };
+
     case "repeat": {
       const timesValue = block.getFieldValue("TIMES");
       const times = Math.max(0, Number(timesValue) || 0);
@@ -114,6 +120,20 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       return {
         type: "condition",
         conditionType: "obstacleAhead",
+        blockId,
+      };
+
+    case "logic_true":
+      return {
+        type: "booleanLiteral",
+        value: true,
+        blockId,
+      };
+
+    case "logic_false":
+      return {
+        type: "booleanLiteral",
+        value: false,
         blockId,
       };
 

@@ -55,7 +55,8 @@ export default function MapDetailPage() {
 
   const handleStartChallenge = () => {
     if (map) {
-      navigate(ROUTES.GAME, {
+      const isPlatform = map.type === "Platform";
+      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
         state: {
           levelId: map.id,
         },

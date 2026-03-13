@@ -175,6 +175,14 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "jump":
+          return {
+            command: {
+              type: "jump",
+            },
+            blockId: node.blockId,
+          };
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
@@ -246,6 +254,12 @@ export class StepExecutor {
           // They should only be evaluated as part of if/while blocks
           console.warn("Condition block executed directly - this should not happen");
           continue;
+
+        case "booleanLiteral":
+          // Boolean literal blocks are value blocks, not statement blocks
+          // They should only be used as inputs to condition sockets
+          console.warn("BooleanLiteral block executed directly - this should not happen");
+          continue;
       }
     }
 
@@ -265,6 +279,10 @@ export class StepExecutor {
 
     if (conditionNode.type === "condition") {
       return this.conditionChecker(conditionNode.conditionType);
+    }
+
+    if (conditionNode.type === "booleanLiteral") {
+      return conditionNode.value;
     }
 
     // Unknown condition type

@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import * as Blockly from "blockly";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
+import type { BlockProgram, ConditionType } from "../../modules/executor/types";
+import { StepExecutor } from "../../modules/executor/StepExecutor";
 import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
+import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
+import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 import { ROUTES } from "@/lib/constants/routes";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { GameResultsModal } from "./GameResultsModal";
@@ -11,25 +16,27 @@ import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
 
 /**
- * PlatformGameView - Test view for platformer levels with gravity
+ * PlatformGameView - Platformer game view with block editor and gravity physics.
  *
- * Controls:
+ * Keyboard controls (manual):
  * - Arrow Left/Right: Move horizontally
  * - Space: Jump
- * - Arrow Up/Down: Face up/down (for future climb mechanics)
  *
- * Physics:
- * - Gravity automatically pulls player down
- * - Player falls tile-by-tile until reaching solid ground
- * - Player can jump when on solid ground
+ * Block editor controls:
+ * - Run Program: Execute the block program
+ * - Stop: Stop execution
+ * - Reset: Reset game and executor
  */
 export default function PlatformGameView() {
   const location = useLocation();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const executorRef = useRef<StepExecutor | null>(null);
+  const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExecutorRunning, setIsExecutorRunning] = useState(false);
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [audioSystem, setAudioSystem] = useState<
@@ -47,14 +54,8 @@ export default function PlatformGameView() {
   const levelFile = (location.state as { levelFile?: string })?.levelFile;
 
   useEffect(() => {
-    console.log("[useEffect] PlatformGameView useEffect triggered");
     const canvas = canvasRef.current;
-    console.log("[useEffect] Canvas ref:", canvas);
-
-    if (!canvas) {
-      console.error("[useEffect] Canvas not found! Aborting initialization.");
-      return;
-    }
+    if (!canvas) return;
 
     let cleanup: (() => void) | null = null;
 
@@ -77,26 +78,24 @@ export default function PlatformGameView() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        // Determine level type from map config, default to Platform
+        // Always use Platform level type for this view
         const mapType = levelResult.mapConfig?.type || "platform";
         const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
-        // Convert map type to GameType format
         const gameType = mapType === "platform" ? "platformer" : "topdown";
 
-        // Create game config based on map type
         const config = createGameConfig(levelType);
         const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
-        // Initialize and start
         await engine.initialize();
         engine.start();
 
-        // Expose AudioSystem via state so it can be safely used during render
         setAudioSystem(engine.getAudioSystem() ?? null);
 
-        // Event listener for win condition
+        // Win event
         const handleWin = () => {
+          if (executorRef.current) executorRef.current.stop();
+          setIsExecutorRunning(false);
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
@@ -107,8 +106,10 @@ export default function PlatformGameView() {
         };
         engine.on("win", handleWin);
 
-        // Event listener for failure
+        // Failed event
         const handleFailed = () => {
+          if (executorRef.current) executorRef.current.stop();
+          setIsExecutorRunning(false);
           setGameResult({
             isWin: false,
             stepCount: engine.getStepCount(),
@@ -119,19 +120,20 @@ export default function PlatformGameView() {
         };
         engine.on("engine:failed", handleFailed);
 
-        // Event listener for fruit collection
+        // Fruit collection event
         const handleFruitCollected = (event: EngineEvent) => {
           if (event.type === "fruitCollected") {
-            console.log("Fruit collected:", event);
             setCollectedFruits(event.totalCollected);
           }
         };
         engine.on("fruitCollected", handleFruitCollected);
 
-        // Keyboard controls
+        // Keyboard controls (manual play, secondary to block editor)
         const handleKeyDown = (e: KeyboardEvent) => {
-          let direction: Direction | null = null;
+          // If executor is running, ignore manual key input
+          if (executorRef.current?.getState().isRunning) return;
 
+          let direction: Direction | null = null;
           switch (e.key) {
             case "ArrowLeft":
               direction = "left";
@@ -152,22 +154,20 @@ export default function PlatformGameView() {
             default:
               return;
           }
-
           if (direction) {
             engine.executeCommand({ type: "move", direction });
           }
         };
 
         window.addEventListener("keydown", handleKeyDown);
-
         setIsLoading(false);
 
-        // Store cleanup function
         cleanup = () => {
           window.removeEventListener("keydown", handleKeyDown);
           engine.off("win", handleWin);
           engine.off("engine:failed", handleFailed);
           engine.off("fruitCollected", handleFruitCollected);
+          if (executorRef.current) executorRef.current.stop();
           engine.stop();
         };
       } catch (err) {
@@ -178,27 +178,95 @@ export default function PlatformGameView() {
     };
 
     initGame();
-
-    // Return cleanup function for useEffect
     return () => {
-      if (cleanup) {
-        cleanup();
-      }
+      if (cleanup) cleanup();
     };
   }, [levelId, levelFile]);
 
-  const handleReset = () => {
-    if (engineRef.current) {
-      engineRef.current.reset();
-      engineRef.current.start();
+  // Handle Blockly workspace ready
+  const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
+    workspaceRef.current = workspace;
+  }, []);
+
+  // Run blocks program
+  const handleRunProgram = () => {
+    if (!workspaceRef.current || !engineRef.current) {
+      alert("Game not ready yet!");
+      return;
     }
+
+    try {
+      const program: BlockProgram = generateAST(workspaceRef.current);
+      if (program.length === 0) {
+        alert("No blocks in workspace! Add some blocks first.");
+        return;
+      }
+
+      // Condition checker delegates to engine
+      const conditionChecker = (condition: ConditionType): boolean => {
+        const engine = engineRef.current;
+        if (!engine) return false;
+        switch (condition) {
+          case "pathAhead":
+            return !engine.isObstacleAhead();
+          case "wallAhead":
+            return engine.isObstacleAhead();
+          case "obstacleAhead":
+            return engine.isObstacleAhead();
+          default:
+            return false;
+        }
+      };
+
+      // Stop any running executor first
+      if (executorRef.current) executorRef.current.stop();
+
+      const executor = new StepExecutor(program, conditionChecker);
+      executorRef.current = executor;
+
+      setIsExecutorRunning(true);
+      executor.run((result) => {
+        const engine = engineRef.current;
+        if (engine) {
+          engine.executeCommand(result.command);
+        }
+      }, 500);
+    } catch (err) {
+      console.error("Failed to run program:", err);
+      alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleStopProgram = () => {
+    if (executorRef.current) {
+      executorRef.current.stop();
+      setIsExecutorRunning(false);
+    }
+  };
+
+  const handleReset = () => {
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current.reset();
+    }
+    if (engineRef.current) {
+      try {
+        engineRef.current.reset();
+        engineRef.current.start();
+      } catch (err) {
+        console.error("Error resetting engine:", err);
+        window.location.reload();
+      }
+    }
+    setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+    <div style={{ padding: "20px", height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Top toolbar */}
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
         <button
           onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
           style={{
@@ -212,6 +280,37 @@ export default function PlatformGameView() {
         >
           ← Back to Challenges
         </button>
+
+        <button
+          onClick={handleRunProgram}
+          disabled={isLoading || !!error || isExecutorRunning}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: isExecutorRunning ? "#9ca3af" : "#10b981",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isExecutorRunning ? "not-allowed" : "pointer",
+          }}
+        >
+          ▶ Run Program
+        </button>
+
+        <button
+          onClick={handleStopProgram}
+          disabled={!isExecutorRunning}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: isExecutorRunning ? "#ef4444" : "#9ca3af",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isExecutorRunning ? "pointer" : "not-allowed",
+          }}
+        >
+          ⏹ Stop
+        </button>
+
         <button
           onClick={handleReset}
           disabled={isLoading || !!error}
@@ -227,14 +326,23 @@ export default function PlatformGameView() {
           🔄 Reset
         </button>
       </div>
-      <h2>Platform Game View (with Gravity)</h2>
-      <p>
-        <strong>Controls:</strong> Arrow Left/Right to move, Space to jump. Player will fall with
-        gravity.
-      </p>
 
-      {!isLoading && !error && (
-        <div style={{ display: "flex", gap: "12px", marginTop: "10px", marginBottom: "10px" }}>
+      {/* Header row with stats */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "20px",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: "0 0 10px 0" }}>Platform Game — Block Programming</h2>
+          <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>
+            <strong>Manual:</strong> Arrow keys to move, Space to jump (disabled while program runs)
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "12px" }}>
           <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
           <div
             style={{
@@ -242,22 +350,23 @@ export default function PlatformGameView() {
               backgroundColor: "#fef3c7",
               borderRadius: "8px",
               border: "2px solid #fbbf24",
-              display: "inline-block",
             }}
           >
-            <div style={{ fontSize: "16px", fontWeight: "bold", color: "#92400e" }}>
+            <div style={{ fontSize: "14px", fontWeight: "bold", color: "#92400e" }}>
               🍎 Fruits Collected: {collectedFruits}
             </div>
           </div>
         </div>
-      )}
+      </div>
 
+      {/* Loading state */}
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center" }}>
           <p>Loading platform level...</p>
         </div>
       )}
 
+      {/* Error state */}
       {error && (
         <div style={{ padding: "20px", color: "red" }}>
           <h3>Error Loading Platform Game</h3>
@@ -274,16 +383,54 @@ export default function PlatformGameView() {
         </div>
       )}
 
-      <div style={{ position: "relative", display: "inline-block" }}>
-        <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
-        <canvas
-          ref={canvasRef}
+      {/* Main content: canvas + block editor side by side */}
+      <div
+        style={{
+          display: isLoading || error ? "none" : "flex",
+          gap: "20px",
+          flex: 1,
+          minHeight: 0,
+          position: "relative",
+        }}
+      >
+        {/* Game Canvas */}
+        <div style={{ flex: "0 0 auto", position: "relative" }}>
+          <h3 style={{ margin: "0 0 10px 0" }}>Game</h3>
+          <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+          <canvas
+            ref={canvasRef}
+            style={{
+              border: "2px solid #333",
+              display: "block",
+              marginTop: "10px",
+            }}
+          />
+        </div>
+
+        {/* Blockly Editor */}
+        <div
           style={{
-            border: "2px solid #333",
-            display: isLoading || error ? "none" : "block",
-            marginTop: "10px",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            position: "relative",
+            overflow: "hidden",
           }}
-        />
+        >
+          <h3 style={{ margin: "0 0 10px 0", flex: "0 0 auto" }}>Block Editor</h3>
+          <div
+            style={{
+              flex: 1,
+              border: "2px solid #333",
+              minHeight: 0,
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            <BlocklyWorkspace onWorkspaceReady={handleWorkspaceReady} />
+          </div>
+        </div>
       </div>
 
       {/* Game Results Modal */}
