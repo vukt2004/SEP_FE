@@ -13,6 +13,7 @@ import type { MapConfig } from "../../shared/types/MapSchema";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
 import GameTimer from "./GameTimer";
+import { AudioControls } from "./AudioControls";
 
 export default function GameView() {
   const location = useLocation();
@@ -27,6 +28,9 @@ export default function GameView() {
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [audioSystem, setAudioSystem] = useState<
+    import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
+  >(null);
   const [gameResult, setGameResult] = useState<{
     isWin: boolean;
     stepCount: number;
@@ -108,6 +112,9 @@ export default function GameView() {
         // Initialize and start engine
         await engine.initialize();
         engine.start();
+
+        // Expose AudioSystem via state so it can be safely used during render
+        setAudioSystem(engine.getAudioSystem() ?? null);
 
         // Event listeners
         const handleWin = () => {
@@ -480,8 +487,9 @@ export default function GameView() {
         }}
       >
         {/* Game Canvas */}
-        <div style={{ flex: "0 0 auto" }}>
+        <div style={{ flex: "0 0 auto", position: "relative" }}>
           <h3 style={{ margin: "0 0 10px 0" }}>Game</h3>
+          <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
           <canvas
             ref={canvasRef}
             style={{

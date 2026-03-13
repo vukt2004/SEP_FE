@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { GameResultsModal } from "./GameResultsModal";
 import GameTimer from "./GameTimer";
+import { AudioControls } from "./AudioControls";
 
 /**
  * PlatformGameView - Test view for platformer levels with gravity
@@ -31,6 +32,9 @@ export default function PlatformGameView() {
   const [error, setError] = useState<string | null>(null);
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [audioSystem, setAudioSystem] = useState<
+    import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
+  >(null);
   const [gameResult, setGameResult] = useState<{
     isWin: boolean;
     stepCount: number;
@@ -87,6 +91,9 @@ export default function PlatformGameView() {
         // Initialize and start
         await engine.initialize();
         engine.start();
+
+        // Expose AudioSystem via state so it can be safely used during render
+        setAudioSystem(engine.getAudioSystem() ?? null);
 
         // Event listener for win condition
         const handleWin = () => {
@@ -267,14 +274,17 @@ export default function PlatformGameView() {
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
-        style={{
-          border: "2px solid #333",
-          display: isLoading || error ? "none" : "block",
-          marginTop: "10px",
-        }}
-      />
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+        <canvas
+          ref={canvasRef}
+          style={{
+            border: "2px solid #333",
+            display: isLoading || error ? "none" : "block",
+            marginTop: "10px",
+          }}
+        />
+      </div>
 
       {/* Game Results Modal */}
       {gameResult && (

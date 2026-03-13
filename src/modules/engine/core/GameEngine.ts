@@ -18,6 +18,8 @@ import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
 import type { GameType } from "../../../shared/types/GameType";
+import { AudioSystem } from "../systems/audio/AudioSystem";
+import { SoundEffect } from "../systems/audio/types";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -55,6 +57,7 @@ export class GameEngine {
   private eventEmitter = new EventEmitter<EngineEvent>();
   private animationSystem: AnimationSystem;
   private collisionSystem: CollisionSystem;
+  private audioSystem: AudioSystem;
   private lastTimestamp: number = 0;
   private config: GameConfig;
   private controller: IPlayerController;
@@ -82,6 +85,7 @@ export class GameEngine {
     this.controller = PlayerControllerFactory.getController(config.levelType);
     this.animationSystem = new AnimationSystem();
     this.collisionSystem = new CollisionSystem();
+    this.audioSystem = new AudioSystem();
     this.collisionSystem.setEventEmitter((event) => this.emit(event));
     this.renderer = new Renderer(ctx, this.animationSystem, gameType);
 
@@ -122,6 +126,12 @@ export class GameEngine {
     initializeAnimationSystem(this.gameType);
     await loadAnimations();
     await this.renderer.preloadTilesets(this.level);
+
+    // Initialize audio system
+    await this.audioSystem.initialize();
+
+    // Setup audio event listeners
+    this.setupAudioListeners();
   }
 
   /**
@@ -175,6 +185,8 @@ export class GameEngine {
     }
     this.executionEnabled = false;
     this.runtime.state = EngineState.Stopped;
+    // Stop all playing audio
+    this.audioSystem.stopAll();
   }
 
   /**
@@ -244,6 +256,10 @@ export class GameEngine {
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
+  }
+
+  getAudioSystem(): AudioSystem {
+    return this.audioSystem;
   }
 
   getPlayer(): Player {
@@ -440,6 +456,8 @@ export class GameEngine {
       case "jump":
         // Handle jump
         this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        // Play jump sound
+        this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
         // Apply gravity after a short delay to show the jump animation
@@ -562,11 +580,31 @@ export class GameEngine {
     this.eventEmitter.emit(event);
   }
 
+  /**
+   * Setup audio event listeners
+   * Connects game events to appropriate sound effects
+   */
+  private setupAudioListeners(): void {
+    // Play collect sound when fruit is collected
+    this.on("fruitCollected", () => {
+      this.audioSystem.play(SoundEffect.Collect);
+    });
+
+    // Play win sound when game is won
+    this.on("win", () => {
+      // You can add a win sound effect here if you have one
+      // For now, we'll use the Text sound as a placeholder
+      this.audioSystem.play(SoundEffect.Text);
+    });
+  }
+
   private moveForward(): void {
     // Delegate movement to controller
     const moved = this.controller.moveForward(this.runtime.player, this.level, this.tileSize);
 
     if (moved) {
+      // Play walk sound when player moves
+      this.audioSystem.play(SoundEffect.Walk);
       // Update player collider position if registered
       this.updatePlayerCollider();
       this.checkFruitCollection();
