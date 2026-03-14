@@ -65,7 +65,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
   };
 
   const difficultyTag: MapTag = {
-    label: `Độ khó ${apiMap.difficulty}`,
+    label: `Difficulty ${apiMap.difficulty}`,
     color: apiMap.difficulty <= 2 ? "green" : apiMap.difficulty <= 5 ? "yellow" : "purple",
   };
 
@@ -116,7 +116,6 @@ export default function MarketplacePage() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
 
-  // Grid / danh sách chính (Trending + Random) - dùng chung API /api/learner/maps
   useEffect(() => {
     const loadMaps = async () => {
       try {
@@ -157,11 +156,11 @@ export default function MarketplacePage() {
           setTotalPages(apiTotalPages);
           setHasNext(apiHasNext && (currentPage + 1) * 20 < 100);
         } else {
-          setError(response.data.message || "Không thể tải danh sách map");
+          setError(response.data.message || "Cannot load map list");
         }
       } catch (err) {
         console.error("Failed to load marketplace maps:", err);
-        setError("Đã xảy ra lỗi khi tải danh sách map");
+        setError("An error occurred while loading map list");
       } finally {
         setLoading(false);
       }
@@ -210,9 +209,9 @@ export default function MarketplacePage() {
   }, [loading, hasNext]);
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "trending", label: "Thịnh Hành" },
-    { id: "favorites", label: "Yêu Thích" },
-    { id: "random", label: "Ngẫu Nhiên" },
+    { id: "trending", label: "Trending" },
+    { id: "favorites", label: "Favorites" },
+    { id: "random", label: "Random" },
   ];
 
   const listMaps = useMemo(() => {
@@ -240,11 +239,11 @@ export default function MarketplacePage() {
       if (res.data.isSuccess && res.data.data) {
         setSelectedMapInfo(res.data.data);
       } else {
-        setDetailError(res.data.message || "Không thể tải chi tiết map");
+        setDetailError(res.data.message || "Cannot load map details");
       }
     } catch (err) {
       console.error("Failed to load map info:", err);
-      setDetailError("Đã xảy ra lỗi khi tải chi tiết map");
+      setDetailError("An error occurred while loading map details");
     } finally {
       setDetailLoading(false);
     }
@@ -253,7 +252,7 @@ export default function MarketplacePage() {
   if (loading) {
     return (
       <div style={{ padding: 24 }}>
-        <div style={{ color: "var(--text-2)" }}>Đang tải danh sách map...</div>
+        <div style={{ color: "var(--text-2)" }}>Loading map list...</div>
       </div>
     );
   }
@@ -269,7 +268,7 @@ export default function MarketplacePage() {
   if (!loading && maps.length === 0) {
     return (
       <div style={{ padding: 24 }}>
-        <div style={{ color: "var(--text-2)" }}>Chưa có map nào được xuất bản.</div>
+        <div style={{ color: "var(--text-2)" }}>No maps have been published.</div>
       </div>
     );
   }
@@ -450,7 +449,7 @@ export default function MarketplacePage() {
         >
           <div style={{ display: "flex", gap: 4 }}>
             {tabs
-              .filter((tab) => tab.id !== "favorites") // Tạm ẩn nút tab Yêu Thích
+              .filter((tab) => tab.id !== "favorites") // Temporarily hide Favorites tab
               .map((tab) => (
                 <button
                   key={tab.id}
@@ -476,7 +475,7 @@ export default function MarketplacePage() {
             type="button"
             onClick={() => setShowSearch(!showSearch)}
             style={iconBtn}
-            aria-label="Tìm kiếm / Lọc"
+            aria-label="Search / Filter"
           >
             <Search size={20} />
           </button>
@@ -485,7 +484,7 @@ export default function MarketplacePage() {
           <div style={{ marginTop: 12 }}>
             <input
               type="search"
-              placeholder="Tìm map theo tên hoặc mô tả..."
+              placeholder="Search map by name or description..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -588,7 +587,7 @@ export default function MarketplacePage() {
                   height: 32,
                   borderRadius: 999,
                 }}
-                aria-label="Đóng"
+                aria-label="Close"
               >
                 ✕
               </button>
@@ -635,7 +634,7 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Loại map</span>
+                    <span style={{ fontWeight: 600 }}>Map type</span>
                     <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
                       {selectedMapInfo?.type ?? "—"}
                     </span>
@@ -648,7 +647,7 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Độ khó</span>
+                    <span style={{ fontWeight: 600 }}>Difficulty</span>
                     <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
                       {selectedMapInfo?.difficulty ?? "—"}
                     </span>
@@ -661,10 +660,10 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Thời lượng giới hạn</span>
+                    <span style={{ fontWeight: 600 }}>Time limit</span>
                     <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
                       {selectedMapInfo
-                        ? `${Math.floor(selectedMapInfo.timeLimitMs / 60000)} phút`
+                        ? `${Math.floor(selectedMapInfo.timeLimitMs / 60000)} mins`
                         : "—"}
                     </span>
                   </div>
@@ -676,12 +675,12 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Giá</span>
+                    <span style={{ fontWeight: 600 }}>Price</span>
                     <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
                       {selectedMapInfo
                         ? selectedMapInfo.price === 0
-                          ? "Miễn phí"
-                          : `${selectedMapInfo.price.toLocaleString("vi-VN")} VND`
+                          ? "Free"
+                          : `${selectedMapInfo.price} OC`
                         : "—"}
                     </span>
                   </div>
@@ -693,7 +692,7 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Nhà sáng tạo</span>
+                    <span style={{ fontWeight: 600 }}>Creator</span>
                     <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
                       {selectedMapInfo?.createdByUserName ?? "—"}
                     </span>
@@ -706,7 +705,7 @@ export default function MarketplacePage() {
                       gap: 12,
                     }}
                   >
-                    <span style={{ fontWeight: 600 }}>Ngày phát hành</span>
+                    <span style={{ fontWeight: 600 }}>Release date</span>
                     <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
                       {selectedMapInfo
                         ? new Date(selectedMapInfo.createdAt).toLocaleString("vi-VN")
@@ -745,7 +744,7 @@ export default function MarketplacePage() {
                 >
                   {detailLoading ? (
                     <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                      Đang tải chi tiết map...
+                      Loading map details...
                     </div>
                   ) : detailError ? (
                     <div style={{ fontSize: 12, color: "var(--danger)" }}>{detailError}</div>
@@ -759,10 +758,10 @@ export default function MarketplacePage() {
                           color: "var(--text)",
                         }}
                       >
-                        Giới thiệu map
+                        Map description
                       </div>
                       <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                        {selectedMapInfo?.description || "Chưa có mô tả cho map này."}
+                        {selectedMapInfo?.description || "No description for this map."}
                       </div>
                     </>
                   )}
@@ -812,7 +811,7 @@ export default function MarketplacePage() {
                 <span
                   style={{
                     fontSize: 12,
-                    color: purchaseMessage.startsWith("Lỗi") ? "var(--danger)" : "var(--success)",
+                    color: purchaseMessage.startsWith("Error") ? "var(--danger)" : "var(--success)",
                   }}
                 >
                   {purchaseMessage}
@@ -825,24 +824,33 @@ export default function MarketplacePage() {
                   try {
                     setPurchaseLoading(true);
                     setPurchaseMessage(null);
-                    const res = await learnerAxios.post(
-                      `/api/learner/marketplace/maps/${selectedRandomMap.id}/purchase`,
-                    );
+                    const isFree =
+                      selectedMapInfo != null &&
+                      (selectedMapInfo.price === 0 ||
+                        selectedMapInfo.price == null ||
+                        selectedMapInfo.price === undefined);
+                    const res = isFree
+                      ? await learnerMapsApi.addMapToMyMaps(selectedRandomMap.id)
+                      : await learnerAxios.post(
+                          `/api/learner/marketplace/maps/${selectedRandomMap.id}/purchase`,
+                        );
                     if (res.data?.isSuccess) {
-                      setPurchaseMessage("Đã sưu tập map vào bộ sưu tập của bạn.");
+                      setPurchaseMessage(
+                        res.data?.message ?? "Map has been added to your collection.",
+                      );
                     } else {
                       setPurchaseMessage(
-                        `Lỗi khi sưu tập map: ${res.data?.message ?? "Không rõ nguyên nhân"}`,
+                        `Error when collecting map: ${res.data?.message ?? "Unknown reason"}`,
                       );
                     }
                   } catch (err) {
-                    console.error("Purchase map error:", err);
-                    setPurchaseMessage("Lỗi khi sưu tập map. Vui lòng thử lại.");
+                    console.error("Collect map error:", err);
+                    setPurchaseMessage("Error when collecting map. Please try again.");
                   } finally {
                     setPurchaseLoading(false);
                   }
                 }}
-                disabled={purchaseLoading}
+                disabled={purchaseLoading || detailLoading}
                 style={{
                   padding: "8px 18px",
                   borderRadius: 999,
@@ -851,11 +859,11 @@ export default function MarketplacePage() {
                   color: "var(--on-primary, #0b1020)",
                   fontSize: 14,
                   fontWeight: 700,
-                  cursor: purchaseLoading ? "default" : "pointer",
-                  opacity: purchaseLoading ? 0.7 : 1,
+                  cursor: purchaseLoading || detailLoading ? "default" : "pointer",
+                  opacity: purchaseLoading || detailLoading ? 0.7 : 1,
                 }}
               >
-                {purchaseLoading ? "Đang sưu tập..." : "Sưu tập"}
+                {purchaseLoading ? "Collecting..." : detailLoading ? "Loading..." : "Collect"}
               </button>
             </div>
           </div>
@@ -929,7 +937,7 @@ function MapCard({
             ...iconBtn,
             color: isFavorited ? "#facc15" : "var(--muted)",
           }}
-          aria-label={isFavorited ? "Bỏ thích" : "Thích"}
+          aria-label={isFavorited ? "Remove favorite" : "Add favorite"}
         >
           <Star size={18} fill={isFavorited ? "currentColor" : "none"} />
         </button>

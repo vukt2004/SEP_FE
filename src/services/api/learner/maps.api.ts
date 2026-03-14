@@ -162,4 +162,15 @@ export const learnerMapsApi = {
   submitMapForReview(id: string) {
     return learnerAxios.post<ApiResult<null>>(`/api/learner/maps/${id}/submit`);
   },
+
+  /**
+   * Add free map to user's collection (published maps with price = 0 or null)
+   * POST /api/learner/maps/{id}/add-to-my-maps
+   *
+   * @param id - Map ID
+   * @returns Add result (success if already in collection)
+   */
+  addMapToMyMaps(id: string) {
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/maps/${id}/add-to-my-maps`);
+  },
 };
