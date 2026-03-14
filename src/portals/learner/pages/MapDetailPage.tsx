@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
@@ -19,12 +20,15 @@ export default function MapDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [heroImageFailed, setHeroImageFailed] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const loadMap = useCallback(async () => {
     if (!id) {
       setError("Map ID not found");
       return;
     }
+    const t = tRef.current;
 
     try {
       setLoading(true);
@@ -48,7 +52,7 @@ export default function MapDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id]);
 
   useEffect(() => {
     loadMap();
@@ -133,12 +137,28 @@ export default function MapDetailPage() {
   return (
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
-      <div className={styles.content}>
-        <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
+      <motion.div
+        className={styles.content}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <motion.button
+          type="button"
+          onClick={() => navigate(-1)}
+          className={styles.backBtn}
+          whileHover={{ x: -4 }}
+          whileTap={{ scale: 0.98 }}
+        >
           <ArrowLeft size={18} /> {t("back")}
-        </button>
+        </motion.button>
 
-        <div className={styles.steamRow}>
+        <motion.div
+          className={styles.steamRow}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+        >
           {/* Left: large media + carousel */}
           <div className={styles.steamMedia}>
             <div className={styles.steamPlayer}>
@@ -255,31 +275,63 @@ export default function MapDetailPage() {
               )}
             </section>
           </div>
-        </div>
+        </motion.div>
 
         {/* Bottom action bar (Steam-style) */}
-        <div className={styles.steamFooter}>
+        <motion.div
+          className={styles.steamFooter}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
           {canPlay ? (
-            <button type="button" onClick={handleStartMap} className={styles.steamFooterPrimary}>
+            <motion.button
+              type="button"
+              onClick={handleStartMap}
+              className={styles.steamFooterPrimary}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
               <Gamepad2 size={20} /> {t("play")}
-            </button>
+            </motion.button>
           ) : (
-            <button type="button" onClick={handleBuyMap} className={styles.steamFooterPrimary}>
+            <motion.button
+              type="button"
+              onClick={handleBuyMap}
+              className={styles.steamFooterPrimary}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
               <Lock size={18} /> {t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
-            </button>
+            </motion.button>
           )}
-          <button type="button" className={styles.steamFooterSecondary}>
+          <motion.button
+            type="button"
+            className={styles.steamFooterSecondary}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
             <Heart size={16} /> {t("addToWishlist")}
-          </button>
-          <button type="button" className={styles.steamFooterSecondary}>
+          </motion.button>
+          <motion.button
+            type="button"
+            className={styles.steamFooterSecondary}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
             <Bell size={16} /> {t("follow")}
-          </button>
-          <button type="button" className={styles.steamFooterSecondary}>
+          </motion.button>
+          <motion.button
+            type="button"
+            className={styles.steamFooterSecondary}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
             <Share2 size={16} /> {t("share")}
-          </button>
-        </div>
-      </div>
+          </motion.button>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

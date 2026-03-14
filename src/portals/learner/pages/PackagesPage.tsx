@@ -1,5 +1,6 @@
 // src/portals/learner/pages/PackagesPage.tsx
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -123,18 +124,37 @@ export default function PackagesPage() {
   const visiblePackages = packages.filter((p) => p.isActive);
   const defaultFeaturedIndex = visiblePackages.length >= 2 ? 1 : -1; // Pro (giữa) sáng mặc định
 
+  const containerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.08 } },
+  };
+  const cardVariants = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
-        <header className={styles.header}>
+        <motion.header
+          className={styles.header}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           <h1 className={styles.title}>{t("flexiblePlansTitle")}</h1>
-        </header>
+        </motion.header>
 
         {visiblePackages.length === 0 ? (
           <div className={styles.emptyWrap}>{t("noPackagesAvailable")}</div>
         ) : (
-          <div className={styles.grid}>
+          <motion.div
+            className={styles.grid}
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {visiblePackages.map((pkg, index) => {
               const featured =
                 hoveredIndex !== null ? hoveredIndex === index : index === defaultFeaturedIndex;
@@ -148,11 +168,14 @@ export default function PackagesPage() {
               }
 
               return (
-                <div
+                <motion.div
                   key={pkg.id}
                   className={`${styles.card} ${featured ? styles.cardFeatured : ""}`}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
+                  variants={cardVariants}
+                  whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                  whileTap={{ scale: 0.99 }}
                 >
                   <h3 className={styles.cardName}>{pkg.name}</h3>
                   <div className={styles.priceRow}>
@@ -173,18 +196,20 @@ export default function PackagesPage() {
                       </li>
                     ))}
                   </ul>
-                  <button
+                  <motion.button
                     type="button"
                     className={styles.btnChoose}
                     onClick={() => handleChoose(pkg)}
                     disabled={!pkg.isActive}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                   >
                     {t("choose")} {pkg.name}
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

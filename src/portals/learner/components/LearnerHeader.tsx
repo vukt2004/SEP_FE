@@ -1,6 +1,7 @@
 // src/portals/learner/components/layout/LearnerHeader.tsx
 import { useEffect, useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { User, Wallet, Package, LogOut, Store, Gamepad2, Map, Sun, Moon } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
@@ -106,45 +107,55 @@ export default function LearnerHeader() {
             </span>
           </NavLink>
           <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <HeaderNavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"} icon={Store}>
-              {t("marketplace")}
-            </HeaderNavLink>
-            <HeaderNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} icon={Gamepad2}>
-              {t("playgame")}
-            </HeaderNavLink>
-            <HeaderNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} icon={Package}>
-              {t("package")}
-            </HeaderNavLink>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"} icon={Store}>
+                {t("marketplace")}
+              </HeaderNavLink>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} icon={Gamepad2}>
+                {t("playgame")}
+              </HeaderNavLink>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} icon={Package}>
+                {t("package")}
+              </HeaderNavLink>
+            </motion.div>
           </nav>
         </div>
 
         {/* Right: theme, language, user menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
+          <motion.button
             type="button"
             onClick={() => toggleTheme()}
             aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
             style={iconBtnStyle}
             title={theme === "dark" ? t("themeLight") : t("themeDark")}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
           >
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={() => toggleLocale()}
             aria-label={t("language")}
             style={{ ...iconBtnStyle, fontSize: 12, fontWeight: 700 }}
             title={locale === "en" ? t("languageVi") : t("languageEn")}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
           >
             {locale === "en" ? "EN" : "VI"}
-          </button>
+          </motion.button>
           <div
             ref={menuRef}
             style={{ position: "relative", display: "inline-block" }}
             onMouseEnter={() => setMenuOpen(true)}
             onMouseLeave={() => setMenuOpen(false)}
           >
-            <button
+            <motion.button
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
               aria-label="Open menu"
@@ -161,69 +172,77 @@ export default function LearnerHeader() {
                 fontWeight: 700,
                 fontSize: 14,
               }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               {t("user")} • {balanceStr} OC
-            </button>
+            </motion.button>
 
-            {menuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  left: "auto",
-                  marginTop: 0,
-                  paddingTop: 4,
-                  minWidth: 180,
-                  width: "max-content",
-                  background: "var(--elevated, var(--surface))",
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-                  overflow: "hidden",
-                }}
-              >
-                <NavLink
-                  to={ROUTES.LEARNER_PROFILE ?? "/app/profile"}
-                  onClick={() => setMenuOpen(false)}
-                  style={menuLinkStyle}
-                >
-                  <User size={18} />
-                  <span>{t("profile")}</span>
-                </NavLink>
-                <NavLink
-                  to={ROUTES.LEARNER_WALLET ?? "/app/wallet"}
-                  onClick={() => setMenuOpen(false)}
-                  style={menuLinkStyle}
-                >
-                  <Wallet size={18} />
-                  <span>{t("wallet")}</span>
-                </NavLink>
-                <NavLink
-                  to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"}
-                  onClick={() => setMenuOpen(false)}
-                  style={menuLinkStyle}
-                >
-                  <Map size={18} />
-                  <span>{t("myMaps")}</span>
-                </NavLink>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onLogout();
-                  }}
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
                   style={{
-                    ...menuBtnStyle,
-                    color: "var(--danger)",
-                    borderTop: "1px solid var(--border)",
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    left: "auto",
+                    marginTop: 0,
+                    paddingTop: 4,
+                    minWidth: 180,
+                    width: "max-content",
+                    background: "var(--elevated, var(--surface))",
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+                    overflow: "hidden",
                   }}
                 >
-                  <LogOut size={18} />
-                  <span>{t("logout")}</span>
-                </button>
-              </div>
-            )}
+                  <NavLink
+                    to={ROUTES.LEARNER_PROFILE ?? "/app/profile"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <User size={18} />
+                    <span>{t("profile")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_WALLET ?? "/app/wallet"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <Wallet size={18} />
+                    <span>{t("wallet")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <Map size={18} />
+                    <span>{t("myMaps")}</span>
+                  </NavLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onLogout();
+                    }}
+                    style={{
+                      ...menuBtnStyle,
+                      color: "var(--danger)",
+                      borderTop: "1px solid var(--border)",
+                    }}
+                  >
+                    <LogOut size={18} />
+                    <span>{t("logout")}</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

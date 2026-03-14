@@ -1,6 +1,7 @@
 // src/portals/learner/pages/MarketplacePage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
@@ -278,7 +279,12 @@ export default function MarketplacePage() {
       <div className={styles.content}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Featured / Hero */}
-          <div style={card()}>
+          <motion.div
+            style={card()}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+          >
             <div
               style={{
                 display: "grid",
@@ -288,7 +294,7 @@ export default function MarketplacePage() {
                 minHeight: 320,
               }}
             >
-              <div
+              <motion.div
                 style={{
                   position: "relative",
                   borderRadius: 16,
@@ -299,6 +305,9 @@ export default function MarketplacePage() {
                 onClick={() => {
                   if (featuredMap) goToMapDetail(featuredMap.id);
                 }}
+                whileHover={featuredMap ? { scale: 1.01 } : undefined}
+                whileTap={featuredMap ? { scale: 0.99 } : undefined}
+                transition={{ duration: 0.2 }}
               >
                 <div
                   style={{
@@ -324,7 +333,7 @@ export default function MarketplacePage() {
                   }}
                 >
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button
+                    <motion.button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -332,9 +341,11 @@ export default function MarketplacePage() {
                       }}
                       style={navBtn}
                       aria-label={t("previousAria")}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                     >
                       <ChevronLeft size={20} />
-                    </button>
+                    </motion.button>
                     <div style={{ display: "flex", gap: 4 }}>
                       {[0, 1, 2].map((i) => (
                         <div
@@ -349,7 +360,7 @@ export default function MarketplacePage() {
                         />
                       ))}
                     </div>
-                    <button
+                    <motion.button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -357,12 +368,14 @@ export default function MarketplacePage() {
                       }}
                       style={navBtn}
                       aria-label={t("nextAria")}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                     >
                       <ChevronRight size={20} />
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               <div
                 style={{
@@ -440,10 +453,15 @@ export default function MarketplacePage() {
                 {/* Bottom-right hero action area currently unused (nút > đã xoá theo yêu cầu) */}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Tabs + Filter */}
-          <div style={card()}>
+          <motion.div
+            style={card()}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+          >
             <div
               style={{
                 display: "flex",
@@ -457,7 +475,7 @@ export default function MarketplacePage() {
                 {tabs
                   .filter((tab) => tab.id !== "favorites") // Temporarily hide Favorites tab
                   .map((tab) => (
-                    <button
+                    <motion.button
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
@@ -472,9 +490,11 @@ export default function MarketplacePage() {
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.97 }}
                     >
                       {t(tab.labelKey)}
-                    </button>
+                    </motion.button>
                   ))}
               </div>
               <button
@@ -508,14 +528,20 @@ export default function MarketplacePage() {
                 />
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Map grid */}
-          <div
+          <motion.div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
               gap: 16,
+            }}
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: { transition: { staggerChildren: 0.04 } },
+              hidden: {},
             }}
           >
             {listMaps.map((map) => (
@@ -526,12 +552,17 @@ export default function MarketplacePage() {
                 onClick={() => goToMapDetail(map.id)}
               />
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
   );
 }
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
 
 function MapCard({
   map,
@@ -543,9 +574,12 @@ function MapCard({
   onClick?: () => void;
 }) {
   return (
-    <div
+    <motion.div
+      variants={cardVariants}
       style={{ ...card(), padding: 0, overflow: "hidden", cursor: onClick ? "pointer" : "default" }}
       onClick={onClick}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
     >
       <div style={{ position: "relative" }}>
         <div
@@ -642,7 +676,7 @@ function MapCard({
         </div>
         */}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
