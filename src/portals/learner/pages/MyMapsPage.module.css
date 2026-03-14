@@ -4,6 +4,8 @@
   min-height: 100vh;
   margin: -24px -48px -40px;
   padding: 32px 24px 48px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
 .bg {
@@ -13,18 +15,24 @@
   background-color: var(--bg);
   background-image:
     radial-gradient(
-      ellipse 100% 60% at 50% -5%,
-      color-mix(in srgb, var(--primary) 16%, transparent) 0%,
+      ellipse 120% 70% at 50% -15%,
+      color-mix(in srgb, var(--primary) 20%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 6%, transparent) 40%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 100% 30%,
+      color-mix(in srgb, var(--accent) 10%, transparent) 0%,
       transparent 55%
     ),
     radial-gradient(
-      ellipse 70% 50% at 100% 50%,
-      color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+      ellipse 70% 50% at 0% 70%,
+      color-mix(in srgb, var(--primary) 8%, transparent) 0%,
       transparent 50%
     ),
     radial-gradient(
-      ellipse 60% 40% at 0% 60%,
-      color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+      circle at 50% 100%,
+      color-mix(in srgb, var(--surface-2) 40%, transparent) 0%,
       transparent 50%
     );
   pointer-events: none;
@@ -35,6 +43,7 @@
   z-index: 1;
   max-width: 1600px;
   margin: 0 auto;
+  padding: 0 24px;
 }
 
 /* Loading state */

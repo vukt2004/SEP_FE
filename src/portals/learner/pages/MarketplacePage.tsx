@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
 
@@ -238,146 +239,162 @@ export default function MarketplacePage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ color: "var(--text-2)" }}>Loading map list...</div>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.loadingWrap}>Loading map list...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ color: "var(--danger)" }}>{error}</div>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.errorWrap}>{error}</div>
+        </div>
       </div>
     );
   }
 
   if (!loading && maps.length === 0) {
     return (
-      <div style={{ padding: 24 }}>
-        <div style={{ color: "var(--text-2)" }}>No maps have been published.</div>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.emptyWrap}>No maps have been published.</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Featured / Hero */}
-      <div style={card()}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-            alignItems: "stretch",
-            minHeight: 320,
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              borderRadius: 16,
-              overflow: "hidden",
-              background: "var(--surface-2)",
-              cursor: featuredMap ? "pointer" : "default",
-            }}
-            onClick={() => {
-              if (featuredMap) goToMapDetail(featuredMap.id);
-            }}
-          >
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden />
+      <div className={styles.content}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Featured / Hero */}
+          <div style={card()}>
             <div
               style={{
-                width: "100%",
-                height: "100%",
-                minHeight: 280,
-                background: featuredMap?.thumbnail?.startsWith("linear")
-                  ? featuredMap.thumbnail
-                  : featuredMap?.thumbnail
-                    ? `url(${featuredMap.thumbnail}) center/cover`
-                    : "linear-gradient(135deg, #1e293b 0%, #111827 100%)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 12,
-                left: 12,
-                right: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 24,
+                alignItems: "stretch",
+                minHeight: 320,
               }}
             >
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFeaturedIndex((i) => Math.max(0, i - 1));
-                  }}
-                  style={navBtn}
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: featuredIndex % 3 === i ? "var(--primary)" : "var(--muted)",
-                        opacity: featuredIndex % 3 === i ? 1 : 0.4,
-                      }}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFeaturedIndex((i) => i + 1);
-                  }}
-                  style={navBtn}
-                  aria-label="Next"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}
-          >
-            <div>
-              <h2
+              <div
                 style={{
-                  fontSize: 28,
-                  fontWeight: 900,
-                  margin: "0 0 12px 0",
-                  color: "var(--text)",
-                  letterSpacing: "-0.02em",
+                  position: "relative",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  background: "var(--surface-2)",
+                  cursor: featuredMap ? "pointer" : "default",
+                }}
+                onClick={() => {
+                  if (featuredMap) goToMapDetail(featuredMap.id);
                 }}
               >
-                {featuredMap?.title ?? ""}
-              </h2>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                {featuredMap?.categoryTags.map((t) => (
-                  <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
-                    {t.label}
-                  </span>
-                ))}
-                {featuredMap?.modeTags.map((t) => (
-                  <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
-                    {t.label}
-                  </span>
-                ))}
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    minHeight: 280,
+                    background: featuredMap?.thumbnail?.startsWith("linear")
+                      ? featuredMap.thumbnail
+                      : featuredMap?.thumbnail
+                        ? `url(${featuredMap.thumbnail}) center/cover`
+                        : "linear-gradient(135deg, #1e293b 0%, #111827 100%)",
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFeaturedIndex((i) => Math.max(0, i - 1));
+                      }}
+                      style={navBtn}
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: featuredIndex % 3 === i ? "var(--primary)" : "var(--muted)",
+                            opacity: featuredIndex % 3 === i ? 1 : 0.4,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFeaturedIndex((i) => i + 1);
+                      }}
+                      style={navBtn}
+                      aria-label="Next"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              {/* Hidden: likes & views for featured map */}
-              {/*
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <h2
+                    style={{
+                      fontSize: 28,
+                      fontWeight: 900,
+                      margin: "0 0 12px 0",
+                      color: "var(--text)",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {featuredMap?.title ?? ""}
+                  </h2>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {featuredMap?.categoryTags.map((t) => (
+                      <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
+                        {t.label}
+                      </span>
+                    ))}
+                    {featuredMap?.modeTags.map((t) => (
+                      <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
+                        {t.label}
+                      </span>
+                    ))}
+                  </div>
+                  {/* Hidden: likes & views for featured map */}
+                  {/*
               <div
                 style={{
                   display: "flex",
@@ -401,112 +418,114 @@ export default function MarketplacePage() {
                 </span>
               </div>
               */}
-              {featuredMap?.previews && (
-                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  {featuredMap.previews.map((bg, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 80,
-                        height: 56,
-                        borderRadius: 10,
-                        background: bg,
-                        border: "1px solid var(--border)",
-                      }}
-                    />
-                  ))}
+                  {featuredMap?.previews && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                      {featuredMap.previews.map((bg, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            width: 80,
+                            height: 56,
+                            borderRadius: 10,
+                            background: bg,
+                            border: "1px solid var(--border)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+                {/* Bottom-right hero action area currently unused (nút > đã xoá theo yêu cầu) */}
+              </div>
             </div>
-            {/* Bottom-right hero action area currently unused (nút > đã xoá theo yêu cầu) */}
           </div>
-        </div>
-      </div>
 
-      {/* Tabs + Filter */}
-      <div style={card()}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <div style={{ display: "flex", gap: 4 }}>
-            {tabs
-              .filter((tab) => tab.id !== "favorites") // Temporarily hide Favorites tab
-              .map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    padding: "10px 18px",
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    background: activeTab === tab.id ? "var(--primary)" : "transparent",
-                    color: activeTab === tab.id ? "var(--on-primary, #0b1020)" : "var(--text)",
-                    fontWeight: 800,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowSearch(!showSearch)}
-            style={iconBtn}
-            aria-label="Search / Filter"
-          >
-            <Search size={20} />
-          </button>
-        </div>
-        {showSearch && (
-          <div style={{ marginTop: 12 }}>
-            <input
-              type="search"
-              placeholder="Search map by name or description..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+          {/* Tabs + Filter */}
+          <div style={card()}>
+            <div
               style={{
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                color: "var(--text)",
-                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 12,
               }}
-            />
+            >
+              <div style={{ display: "flex", gap: 4 }}>
+                {tabs
+                  .filter((tab) => tab.id !== "favorites") // Temporarily hide Favorites tab
+                  .map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: 12,
+                        border: "1px solid var(--border)",
+                        background: activeTab === tab.id ? "var(--primary)" : "transparent",
+                        color: activeTab === tab.id ? "var(--on-primary, #0b1020)" : "var(--text)",
+                        fontWeight: 800,
+                        fontSize: 14,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSearch(!showSearch)}
+                style={iconBtn}
+                aria-label="Search / Filter"
+              >
+                <Search size={20} />
+              </button>
+            </div>
+            {showSearch && (
+              <div style={{ marginTop: 12 }}>
+                <input
+                  type="search"
+                  placeholder="Search map by name or description..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Map grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {listMaps.map((map) => (
-          <MapCard
-            key={map.id}
-            map={map}
-            tagStyles={TAG_STYLES}
-            onClick={() => goToMapDetail(map.id)}
-          />
-        ))}
+          {/* Map grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {listMaps.map((map) => (
+              <MapCard
+                key={map.id}
+                map={map}
+                tagStyles={TAG_STYLES}
+                onClick={() => goToMapDetail(map.id)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/lib/constants/routes";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
 import Container from "../shared/Container";
@@ -7,7 +7,18 @@ import { palette } from "../landing.theme";
 import { chapterData } from "../data/landing.data";
 
 export default function LandingHeader() {
+  const navigate = useNavigate();
   const isLoggedIn = !!tokenStorage.getLearnerToken();
+
+  const handleMarketplaceClick = (e: React.MouseEvent) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      alert("Vui lòng đăng nhập để vào Marketplace.");
+      navigate(ROUTES.LEARNER_LOGIN);
+      return;
+    }
+    navigate(ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace");
+  };
 
   return (
     <header
@@ -59,20 +70,20 @@ export default function LandingHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <NavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}>
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="rounded-xl border px-5 py-2 text-sm font-semibold transition-all duration-200"
-              style={{
-                borderColor: isLoggedIn ? palette.primary : palette.border,
-                color: isLoggedIn ? palette.primary : palette.text2,
-                background: isLoggedIn ? `rgba(${palette.primary}, 0.1)` : "transparent",
-              }}
-            >
-              {isLoggedIn ? "Go to App" : "Marketplace"}
-            </motion.button>
-          </NavLink>
+          <motion.button
+            type="button"
+            onClick={handleMarketplaceClick}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="rounded-xl border px-5 py-2 text-sm font-semibold transition-all duration-200"
+            style={{
+              borderColor: isLoggedIn ? palette.primary : palette.border,
+              color: isLoggedIn ? palette.primary : palette.text2,
+              background: isLoggedIn ? `rgba(${palette.primary}, 0.1)` : "transparent",
+            }}
+          >
+            {isLoggedIn ? "Go to App" : "Marketplace"}
+          </motion.button>
           {!isLoggedIn && (
             <>
               <NavLink to="/login">
