@@ -10,8 +10,10 @@ import Ring from "../effects/Ring";
 import StarLayer from "../effects/StarLayer";
 import HeroMissionControl from "./HeroMissionControl";
 import HeroStats from "./HeroStats";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export default function HeroSection() {
+  const { t } = useTranslation();
   const heroRef = useRef<HTMLDivElement | null>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
 
@@ -39,9 +41,9 @@ export default function HeroSection() {
             transition={{ duration: 0.6, ease: landingEase }}
             className="mb-5 flex flex-wrap gap-3"
           >
-            <Pill tone="cyan">2D puzzle platform</Pill>
-            <Pill tone="primary">Block-based learning</Pill>
-            <Pill tone="accent">Solo & multiplayer</Pill>
+            <Pill tone="cyan">{t("pillPlatform")}</Pill>
+            <Pill tone="primary">{t("pillBlock")}</Pill>
+            <Pill tone="accent">{t("pillMulti")}</Pill>
           </motion.div>
 
           <motion.h1
@@ -51,8 +53,8 @@ export default function HeroSection() {
             className="text-5xl font-black leading-[1.02] md:text-7xl"
             style={{ color: palette.text }}
           >
-            Learn programming logic through
-            <span style={{ color: palette.accent }}> a 2D adventure.</span>
+            {t("heroTitle")}
+            <span style={{ color: palette.accent }}> {t("heroTitleAccent")}</span>
           </motion.h1>
 
           <motion.p
@@ -62,9 +64,7 @@ export default function HeroSection() {
             className="mt-6 max-w-2xl text-lg leading-8 md:text-xl"
             style={{ color: palette.text2 }}
           >
-            QuackOrbit helps beginners learn sequence, condition, and loop by dragging and dropping
-            blocks, solving puzzles, and observing the direct results of their decisions in the game
-            world.
+            {t("heroDesc")}
           </motion.p>
 
           <motion.div
@@ -75,7 +75,7 @@ export default function HeroSection() {
           >
             <PrimaryButton>
               <Play size={18} />
-              Play Demo
+              {t("playDemo")}
             </PrimaryButton>
           </motion.div>
 

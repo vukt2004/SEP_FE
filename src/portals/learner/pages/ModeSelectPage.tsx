@@ -2,20 +2,20 @@ import { useNavigate } from "react-router-dom";
 import { UserCircle2, Users, Map, Plus, LogIn } from "lucide-react";
 import styles from "../components/ModeSelectPage.module.css";
 import { ROUTES } from "@/lib/constants/routes";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export default function ModeSelectPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <main className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <section className={styles.container}>
         <header className={styles.header}>
-          <span className={styles.badge}>Choose your experience</span>
-          <h1 className={styles.title}>How do you want to play?</h1>
-          <p className={styles.subtitle}>
-            Practice alone or compete with others. Pick a mode below to get started.
-          </p>
+          <span className={styles.badge}>{t("chooseExperience")}</span>
+          <h1 className={styles.title}>{t("howToPlay")}</h1>
+          <p className={styles.subtitle}>{t("playSubtitle")}</p>
         </header>
 
         <div className={styles.grid}>
@@ -25,10 +25,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconWrap} aria-hidden>
                 <UserCircle2 className={styles.iconSvg} strokeWidth={1.75} />
               </div>
-              <h2 className={styles.cardTitle}>Single player</h2>
-              <p className={styles.cardLabel}>
-                Practice solving maps at your own pace. No time pressure—just you and the puzzle.
-              </p>
+              <h2 className={styles.cardTitle}>{t("singlePlayer")}</h2>
+              <p className={styles.cardLabel}>{t("singlePlayerDesc")}</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -37,7 +35,7 @@ export default function ModeSelectPage() {
                 onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
               >
                 <Map size={18} aria-hidden />
-                View maps
+                {t("viewMaps")}
               </button>
             </div>
           </article>
@@ -48,10 +46,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconWrap} aria-hidden>
                 <Users className={styles.iconSvg} strokeWidth={1.75} />
               </div>
-              <h2 className={styles.cardTitle}>Competitive</h2>
-              <p className={styles.cardLabel}>
-                Create or join a room and compete with other players to solve maps in real time.
-              </p>
+              <h2 className={styles.cardTitle}>{t("competitive")}</h2>
+              <p className={styles.cardLabel}>{t("competitiveDesc")}</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -60,7 +56,7 @@ export default function ModeSelectPage() {
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_CREATE)}
               >
                 <Plus size={18} aria-hidden />
-                Create room
+                {t("createRoom")}
               </button>
               <button
                 type="button"
@@ -68,7 +64,7 @@ export default function ModeSelectPage() {
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_JOIN)}
               >
                 <LogIn size={18} aria-hidden />
-                Join room
+                {t("joinRoom")}
               </button>
             </div>
           </article>

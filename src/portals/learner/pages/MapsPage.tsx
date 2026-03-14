@@ -5,23 +5,25 @@ import { Link } from "react-router-dom";
 import { Search, Clock, Gamepad2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
+import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
 
 type DifficultyFilter = "all" | 1 | 2 | 3;
 type MapTypeFilter = "all" | "Platform" | "Topdown";
 
 export default function MapsPage() {
+  const { t } = useTranslation();
   return (
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
         <header className={styles.header}>
-          <span className={styles.badge}>Play & learn</span>
+          <span className={styles.badge}>{t("playAndLearn")}</span>
           <h1 className={styles.title}>
             <Gamepad2 size={32} className={styles.titleIcon} aria-hidden />
-            Maps
+            {t("maps")}
           </h1>
-          <p className={styles.subtitle}>Pick a map, play the level, and sharpen your logic.</p>
+          <p className={styles.subtitle}>{t("pickMapSubtitle")}</p>
         </header>
 
         <AdminPuzzlesSection />
@@ -31,6 +33,7 @@ export default function MapsPage() {
 }
 
 function AdminPuzzlesSection() {
+  const { t } = useTranslation();
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +62,10 @@ function AdminPuzzlesSection() {
           setTotalPages(response.data.data.totalPages);
           if (overridePage != null) setCurrentPage(overridePage);
         } else {
-          setError(response.data.message || "Failed to load map list");
+          setError(response.data.message || t("failedLoadMapList"));
         }
       } catch (err) {
-        setError("An error occurred while loading the map list");
+        setError(t("errorLoadMapList"));
         console.error(err);
       } finally {
         setLoading(false);

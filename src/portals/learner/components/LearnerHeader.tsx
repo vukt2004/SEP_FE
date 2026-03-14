@@ -1,15 +1,36 @@
 // src/portals/learner/components/layout/LearnerHeader.tsx
 import { useEffect, useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { User, Wallet, Package, LogOut, Store, Gamepad2, Map } from "lucide-react";
+import { User, Wallet, Package, LogOut, Store, Gamepad2, Map, Sun, Moon } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
+import { useThemeStore } from "@/stores/theme.store";
+import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
+
+const iconBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 40,
+  height: 40,
+  borderRadius: 10,
+  border: "1px solid var(--border)",
+  background: "var(--surface)",
+  color: "var(--text)",
+  cursor: "pointer",
+};
 
 export default function LearnerHeader() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const locale = useLanguageStore((s) => s.locale);
+  const toggleLocale = useLanguageStore((s) => s.toggle);
+  const t = getT(locale);
 
   useEffect(() => {
     orbitCoinApi.getBalance().then((res) => {
@@ -30,7 +51,6 @@ export default function LearnerHeader() {
     navigate(ROUTES.LANDING ?? "/", { replace: true });
   };
 
-  const userName = "User";
   const balanceStr = balance != null ? balance.toLocaleString() : "—";
 
   return (
@@ -87,22 +107,37 @@ export default function LearnerHeader() {
           </NavLink>
           <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <HeaderNavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"} icon={Store}>
-              Marketplace
+              {t("marketplace")}
             </HeaderNavLink>
             <HeaderNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} icon={Gamepad2}>
-              Playgame
-            </HeaderNavLink>
-            <HeaderNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} icon={Map}>
-              My Maps
+              {t("playgame")}
             </HeaderNavLink>
             <HeaderNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} icon={Package}>
-              Package
+              {t("package")}
             </HeaderNavLink>
           </nav>
         </div>
 
-        {/* Right */}
+        {/* Right: theme, language, user menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => toggleTheme()}
+            aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+            style={iconBtnStyle}
+            title={theme === "dark" ? t("themeLight") : t("themeDark")}
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleLocale()}
+            aria-label={t("language")}
+            style={{ ...iconBtnStyle, fontSize: 12, fontWeight: 700 }}
+            title={locale === "en" ? t("languageVi") : t("languageEn")}
+          >
+            {locale === "en" ? "EN" : "VI"}
+          </button>
           <div
             ref={menuRef}
             style={{ position: "relative", display: "inline-block" }}
@@ -127,7 +162,7 @@ export default function LearnerHeader() {
                 fontSize: 14,
               }}
             >
-              {userName} • {balanceStr} OC
+              {t("user")} • {balanceStr} OC
             </button>
 
             {menuOpen && (
@@ -154,7 +189,7 @@ export default function LearnerHeader() {
                   style={menuLinkStyle}
                 >
                   <User size={18} />
-                  <span>Profile</span>
+                  <span>{t("profile")}</span>
                 </NavLink>
                 <NavLink
                   to={ROUTES.LEARNER_WALLET ?? "/app/wallet"}
@@ -162,7 +197,15 @@ export default function LearnerHeader() {
                   style={menuLinkStyle}
                 >
                   <Wallet size={18} />
-                  <span>Wallet</span>
+                  <span>{t("wallet")}</span>
+                </NavLink>
+                <NavLink
+                  to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"}
+                  onClick={() => setMenuOpen(false)}
+                  style={menuLinkStyle}
+                >
+                  <Map size={18} />
+                  <span>{t("myMaps")}</span>
                 </NavLink>
                 <button
                   type="button"
@@ -177,7 +220,7 @@ export default function LearnerHeader() {
                   }}
                 >
                   <LogOut size={18} />
-                  <span>Logout</span>
+                  <span>{t("logout")}</span>
                 </button>
               </div>
             )}

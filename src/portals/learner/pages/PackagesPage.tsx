@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
+import { useTranslation } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./PackagesPage.module.css";
 
 const CURRENCY = "OC"; // Orbit Coin – không dùng VND
 
 export default function PackagesPage() {
+  const { t } = useTranslation();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +26,11 @@ export default function PackagesPage() {
         if (response.data.isSuccess && response.data.data) {
           setPackages(response.data.data.items ?? []);
         } else {
-          setError(response.data.message || "Failed to load packages");
+          setError(response.data.message || t("failedLoadPackages"));
         }
       } catch (err) {
         if (!cancelled) {
-          setError("An error occurred while loading packages");
+          setError(t("errorLoadingPackages"));
           console.error(err);
         }
       } finally {
@@ -44,8 +46,8 @@ export default function PackagesPage() {
   const handleChoose = (pkg: Package) => {
     if (!pkg.isActive) return;
     // TODO: Implement purchase
-    const priceStr = pkg.price === 0 ? "Free" : `${formatPrice(pkg.price)} ${CURRENCY}`;
-    alert(`Choose package: ${pkg.name} — ${priceStr}`);
+    const priceStr = pkg.price === 0 ? t("free") : `${formatPrice(pkg.price)} ${CURRENCY}`;
+    alert(`${t("choosePackage")}: ${pkg.name} — ${priceStr}`);
   };
 
   const formatPrice = (price: number) => price.toLocaleString("en-US");
@@ -55,7 +57,7 @@ export default function PackagesPage() {
   const getDisplayPrice = (pkg: Package) => {
     const base = pkg.price;
     if (isFree(pkg)) {
-      return { display: "Free", unit: " · Lifetime", original: null as string | null };
+      return { display: t("free"), unit: ` · ${t("lifetime")}`, original: null as string | null };
     }
     if (pkg.durationDays >= 365) {
       const monthly = Math.round(base / 12);
@@ -92,11 +94,7 @@ export default function PackagesPage() {
       const first = pkg.featuresSpec.split(/\n|,|;/)[0]?.trim();
       if (first && first.length < 60) return first;
     }
-    const defaults = [
-      "For solo learners & casual play",
-      "For regular practice & progress",
-      "For teams & intensive learning",
-    ];
+    const defaults = [t("taglineSolo"), t("taglineRegular"), t("taglineTeams")];
     return defaults[index % defaults.length];
   };
 
@@ -105,7 +103,7 @@ export default function PackagesPage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
-          <div className={styles.loadingWrap}>Loading packages...</div>
+          <div className={styles.loadingWrap}>{t("loadingPackages")}</div>
         </div>
       </div>
     );
@@ -130,11 +128,11 @@ export default function PackagesPage() {
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
         <header className={styles.header}>
-          <h1 className={styles.title}>Flexible Plans Tailored to Fit Your Unique Needs!</h1>
+          <h1 className={styles.title}>{t("flexiblePlansTitle")}</h1>
         </header>
 
         {visiblePackages.length === 0 ? (
-          <div className={styles.emptyWrap}>No packages available at the moment.</div>
+          <div className={styles.emptyWrap}>{t("noPackagesAvailable")}</div>
         ) : (
           <div className={styles.grid}>
             {visiblePackages.map((pkg, index) => {
@@ -143,7 +141,9 @@ export default function PackagesPage() {
               const { display, unit, original } = getDisplayPrice(pkg);
               const features = parseFeatures(pkg.featuresSpec);
               if (features.length === 0) {
-                features.push(isFree(pkg) ? "Lifetime access" : `${pkg.durationDays} days access`);
+                features.push(
+                  isFree(pkg) ? `${t("lifetime")} access` : `${pkg.durationDays} days access`,
+                );
                 features.push(`${pkg.limit} courses included`);
               }
 
@@ -179,7 +179,7 @@ export default function PackagesPage() {
                     onClick={() => handleChoose(pkg)}
                     disabled={!pkg.isActive}
                   >
-                    Choose {pkg.name}
+                    {t("choose")} {pkg.name}
                   </button>
                 </div>
               );

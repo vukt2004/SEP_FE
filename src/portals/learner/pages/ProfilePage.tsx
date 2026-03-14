@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { learnerProfileApi, type ProfileResponse } from "@/services/api/learner/profile.api";
 import { ROUTES } from "@/lib/constants/routes";
+import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./ProfilePage.module.css";
 import {
   Camera,
@@ -28,6 +29,7 @@ type FormState = {
 };
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -98,7 +100,7 @@ export default function ProfilePage() {
         if (!alive) return;
 
         if (!res.isSuccess) {
-          setError(res.message ?? "Failed to load profile");
+          setError(res.message ?? t("failedLoadProfile"));
           return;
         }
 
@@ -142,14 +144,14 @@ export default function ProfilePage() {
       });
 
       if (!res.isSuccess) {
-        setError(res.message ?? "Update failed");
+        setError(res.message ?? t("updateFailed"));
         return;
       }
 
       const p = res.data ?? null;
       setProfile(p);
       setForm((s) => ({ ...s, avatarFile: null }));
-      setSuccessMsg("Saved");
+      setSuccessMsg(t("saved"));
       setIsEditMode(false);
     } catch (_err) {
       console.error(_err);
@@ -246,7 +248,7 @@ export default function ProfilePage() {
               {!isEditMode ? (
                 <button type="button" onClick={enterEditMode} className={styles.btnEditProfile}>
                   <Edit3 size={18} />
-                  Edit profile
+                  {t("editProfile")}
                 </button>
               ) : null}
             </div>
@@ -263,11 +265,11 @@ export default function ProfilePage() {
               {profile?.bio ? (
                 <p className={styles.introBio}>{profile.bio}</p>
               ) : (
-                <p className={styles.introPlaceholder}>No bio yet.</p>
+                <p className={styles.introPlaceholder}>{t("noBioYet")}</p>
               )}
               {profile?.position && (
                 <p className={styles.introLine}>
-                  <strong>Work</strong> — {profile.position}
+                  <strong>{t("work")}</strong> — {profile.position}
                 </p>
               )}
               {profile?.email && (
@@ -278,7 +280,7 @@ export default function ProfilePage() {
               )}
               {profile?.phoneNumber && (
                 <p className={styles.introLine}>
-                  <strong>Phone</strong> — {profile.phoneNumber}
+                  <strong>{t("phone")}</strong> — {profile.phoneNumber}
                 </p>
               )}
               {profile?.gender && (
@@ -291,7 +293,7 @@ export default function ProfilePage() {
                 <p className={styles.introLine}>
                   <Calendar size={14} className={styles.introIcon} />
                   <span>
-                    Born{" "}
+                    {t("born")}{" "}
                     {new Date(profile.dateOfBirth).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
@@ -305,7 +307,7 @@ export default function ProfilePage() {
                   {profile?.learnerCode && (
                     <span className={styles.introBadge}>
                       <Hash size={12} />
-                      Learner: {profile.learnerCode}
+                      {t("learner")}: {profile.learnerCode}
                     </span>
                   )}
                   {profile?.teacherCode && (
@@ -321,7 +323,7 @@ export default function ProfilePage() {
 
           <section className={styles.cardFb}>
             <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>Quick links</h2>
+              <h2 className={styles.cardTitleFb}>{t("quickLinks")}</h2>
             </div>
             <nav className={styles.quickLinks}>
               <Link to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} className={styles.quickLink}>
@@ -345,7 +347,7 @@ export default function ProfilePage() {
           <aside className={styles.sidebar}>
             <section className={styles.cardFb}>
               <div className={styles.cardHead}>
-                <h2 className={styles.cardTitleFb}>Contact & details</h2>
+                <h2 className={styles.cardTitleFb}>{t("contactDetails")}</h2>
                 {isEditMode ? (
                   <div className={styles.cardHeadActions}>
                     <button
@@ -355,7 +357,7 @@ export default function ProfilePage() {
                       className={styles.btnSecondary}
                     >
                       <X size={14} />
-                      Cancel
+                      {t("cancel")}
                     </button>
                     <button
                       type="button"
@@ -364,13 +366,13 @@ export default function ProfilePage() {
                       className={styles.btnSave}
                     >
                       <Save size={14} />
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? t("saving") : t("save")}
                     </button>
                   </div>
                 ) : (
                   <button type="button" onClick={enterEditMode} className={styles.btnEditSmall}>
                     <Edit3 size={14} />
-                    Edit
+                    {t("edit")}
                   </button>
                 )}
               </div>
@@ -378,26 +380,26 @@ export default function ProfilePage() {
               {isEditMode ? (
                 <div className={styles.detailsForm}>
                   <Field
-                    label="First name"
+                    label={t("firstName")}
                     value={form.firstName}
                     onChange={(v) => setForm((s) => ({ ...s, firstName: v }))}
-                    placeholder="First name"
+                    placeholder={t("firstNamePlaceholder")}
                   />
                   <Field
-                    label="Last name"
+                    label={t("lastName")}
                     value={form.lastName}
                     onChange={(v) => setForm((s) => ({ ...s, lastName: v }))}
-                    placeholder="Last name"
+                    placeholder={t("lastNamePlaceholder")}
                   />
                   <div className={styles.label}>
                     <span className={styles.labelText}>Email</span>
                     <span className={styles.inputReadOnly}>{profile?.email ?? "—"}</span>
                   </div>
                   <Field
-                    label="Phone"
+                    label={t("phone")}
                     value={form.phoneNumber}
                     onChange={(v) => setForm((s) => ({ ...s, phoneNumber: v }))}
-                    placeholder="Phone number"
+                    placeholder={t("phone")}
                   />
                 </div>
               ) : (
@@ -415,7 +417,7 @@ export default function ProfilePage() {
                     <span className={styles.detailValue}>{profile?.email ?? "—"}</span>
                   </div>
                   <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Phone</span>
+                    <span className={styles.detailLabel}>{t("phone")}</span>
                     <span className={styles.detailValue}>{profile?.phoneNumber ?? "—"}</span>
                   </div>
                 </div>

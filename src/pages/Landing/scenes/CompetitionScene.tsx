@@ -3,8 +3,10 @@ import { Swords } from "lucide-react";
 import { palette } from "../landing.theme";
 import { PanelCard } from "../shared/SurfaceCard";
 import ChapterSceneShell from "../sections/ChapterSceneShell";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export default function CompetitionScene() {
+  const { t } = useTranslation();
   return (
     <ChapterSceneShell>
       <div className="grid gap-4 lg:grid-cols-[1fr_0.92fr]">
@@ -12,10 +14,10 @@ export default function CompetitionScene() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Multiplayer arena
+                {t("multiplayerArena")}
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                Solve together, compete fairly, improve faster
+                {t("multiplayerArenaDesc")}
               </div>
             </div>
             <Swords size={18} style={{ color: palette.accent }} />
@@ -51,21 +53,21 @@ export default function CompetitionScene() {
         <div className="space-y-4">
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Match scoring
+              {t("matchScoring")}
             </div>
             <div className="space-y-3 text-sm">
               {[
-                ["Correctness", "90%"],
-                ["Speed", "01:03"],
-                ["Efficiency", "9 blocks"],
-                ["Replay value", "High"],
-              ].map(([key, value]) => (
+                { labelKey: "correctness" as const, value: "90%" },
+                { labelKey: "speed" as const, value: "01:03" },
+                { labelKey: "efficiency" as const, value: `9 ${t("blocksUnit")}` },
+                { labelKey: "replayValue" as const, value: t("high") },
+              ].map(({ labelKey, value }) => (
                 <div
-                  key={key}
+                  key={labelKey}
                   className="flex items-center justify-between rounded-2xl px-4 py-3"
                   style={{ background: palette.surface2 }}
                 >
-                  <span style={{ color: palette.text2 }}>{key}</span>
+                  <span style={{ color: palette.text2 }}>{t(labelKey)}</span>
                   <span className="font-semibold" style={{ color: palette.text }}>
                     {value}
                   </span>
@@ -76,11 +78,10 @@ export default function CompetitionScene() {
 
           <PanelCard className="p-5">
             <div className="mb-2 text-sm font-semibold" style={{ color: palette.text }}>
-              Why multiplayer helps
+              {t("whyMultiplayerHelps")}
             </div>
             <p className="text-sm leading-7" style={{ color: palette.text2 }}>
-              Multiplayer mode increases motivation by transforming a logic puzzle into a more
-              paced, ranked challenge with a clear sense of accomplishment.
+              {t("whyMultiplayerHelpsDesc")}
             </p>
           </PanelCard>
         </div>

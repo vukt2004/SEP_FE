@@ -30,6 +30,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
@@ -255,6 +256,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
   onSortOrderToggle,
   onClearFilters,
 }) => {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -284,7 +286,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
           type="text"
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}
-          placeholder="Search maps..."
+          placeholder={t("searchMapsPlaceholder")}
           style={{
             width: "100%",
             padding: "10px 12px 10px 34px",
@@ -315,9 +317,9 @@ const MapFilters: React.FC<MapFiltersProps> = ({
         }}
       >
         <option value="">All Difficulty</option>
-        <option value="1">Easy</option>
-        <option value="2">Medium</option>
-        <option value="3">Hard</option>
+        <option value="1">{t("easy")}</option>
+        <option value="2">{t("medium")}</option>
+        <option value="3">{t("hard")}</option>
       </select>
 
       <div style={{ position: "relative", display: "inline-flex", flex: "0 1 190px" }}>
@@ -340,7 +342,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
             cursor: "pointer",
           }}
         >
-          <option value="createdAt">Sort by Created</option>
+          <option value="createdAt">{t("sortByCreated")}</option>
           <option value="title">Sort by Title</option>
           <option value="difficulty">Sort by Difficulty</option>
           <option value="timeLimitMs">Sort by Time Limit</option>
@@ -383,7 +385,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
             fontWeight: 600,
           }}
         >
-          Clear
+          {t("clearFilters")}
         </button>
       )}
     </div>
@@ -403,6 +405,7 @@ const MapCard: React.FC<MapCardProps> = ({
   onRate,
   onReport,
 }) => {
+  const { t } = useTranslation();
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
 
@@ -503,7 +506,7 @@ const MapCard: React.FC<MapCardProps> = ({
               marginBottom: "10px",
             }}
           >
-            {map.description || "No description provided"}
+            {map.description || t("noDescription")}
           </div>
 
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -597,7 +600,7 @@ const MapCard: React.FC<MapCardProps> = ({
               fontWeight: 800,
             }}
           >
-            {map.price > 0 ? `${map.price.toLocaleString("en-US")} OC` : "Free"}
+            {map.price > 0 ? `${map.price.toLocaleString("en-US")} OC` : t("free")}
           </div>
           <div
             style={{
@@ -614,16 +617,16 @@ const MapCard: React.FC<MapCardProps> = ({
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
           <button onClick={() => onPreview(map.id)} style={actionBtnStyle("neutral")}>
-            <Eye size={14} /> Preview
+            <Eye size={14} /> {t("view")}
           </button>
 
           {isAuthor && map.mapStatus === 0 && (
             <>
               <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
-                <Edit size={14} /> Edit
+                <Edit size={14} /> {t("edit")}
               </button>
               <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
-                <Send size={14} /> Publish
+                <Send size={14} /> {t("publish")}
               </button>
             </>
           )}
@@ -631,10 +634,10 @@ const MapCard: React.FC<MapCardProps> = ({
           {!isAuthor && (
             <>
               <button onClick={() => onRate(map.id)} style={actionBtnStyle("warning")}>
-                <Star size={14} /> Rate
+                <Star size={14} /> {t("rate")}
               </button>
               <button onClick={() => onReport(map.id)} style={actionBtnStyle("danger")}>
-                <Flag size={14} /> Report
+                <Flag size={14} /> {t("report")}
               </button>
             </>
           )}
@@ -681,6 +684,7 @@ export const MapList: React.FC<MapListProps> = ({
 
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -752,10 +756,10 @@ export const MyMapsPage: React.FC = () => {
         setTotalPages(response.data.data.totalPages);
         setTotalItems(response.data.data.totalItems);
       } else {
-        setError(response.data.message || "Failed to load maps");
+        setError(response.data.message || t("failedLoadMaps"));
       }
     } catch (err) {
-      setError("Failed to load maps");
+      setError(t("failedLoadMaps"));
       console.error("Maps fetch error:", err);
     } finally {
       setLoading(false);
@@ -796,10 +800,10 @@ export const MyMapsPage: React.FC = () => {
         // Refresh the maps list
         fetchMaps();
       } else {
-        setError(response.data.message || "Failed to submit map for review");
+        setError(response.data.message || t("failedSubmitReview"));
       }
     } catch (err) {
-      setError("Failed to submit map for review");
+      setError(t("failedSubmitReview"));
       console.error("Submit error:", err);
     } finally {
       setLoading(false);
@@ -834,10 +838,10 @@ export const MyMapsPage: React.FC = () => {
         alert("Rating submitted successfully!");
         handleCloseRateModal();
       } else {
-        setError(response.data.message || "Failed to submit rating");
+        setError(response.data.message || t("failedSubmitRating"));
       }
     } catch (err) {
-      setError("Failed to submit rating");
+      setError(t("failedSubmitRating"));
       console.error("Rating error:", err);
     } finally {
       setRatingLoading(false);
@@ -858,7 +862,7 @@ export const MyMapsPage: React.FC = () => {
 
   const handleSubmitReport = async () => {
     if (!reportModal.mapId || !reportReason) {
-      setError("Please provide a reason for the report");
+      setError(t("pleaseProvideReason"));
       return;
     }
 
@@ -875,10 +879,10 @@ export const MyMapsPage: React.FC = () => {
         alert("Report submitted successfully!");
         handleCloseReportModal();
       } else {
-        setError(response.data.message || "Failed to submit report");
+        setError(response.data.message || t("failedSubmitReport"));
       }
     } catch (err) {
-      setError("Failed to submit report");
+      setError(t("failedSubmitReport"));
       console.error("Report error:", err);
     } finally {
       setReportLoading(false);
@@ -893,30 +897,30 @@ export const MyMapsPage: React.FC = () => {
   const getMapStatusLabel = (status: number) => {
     switch (status) {
       case 0:
-        return "Draft";
+        return t("draft");
       case 1:
-        return "Pending Review";
+        return t("pendingReview");
       case 2:
-        return "Approved";
+        return t("approved");
       case 3:
-        return "Rejected";
+        return t("rejected");
       case 4:
-        return "Published";
+        return t("published");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
       case 1:
-        return "Easy";
+        return t("easy");
       case 2:
-        return "Medium";
+        return t("medium");
       case 3:
-        return "Hard";
+        return t("hard");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
@@ -956,7 +960,7 @@ export const MyMapsPage: React.FC = () => {
           <div className={styles.loadingWrap}>
             <div className={styles.loadingInner}>
               <div className={styles.spinner} />
-              <p className={styles.loadingText}>Loading maps...</p>
+              <p className={styles.loadingText}>{t("loadingMaps")}</p>
             </div>
           </div>
         </div>
@@ -999,10 +1003,10 @@ export const MyMapsPage: React.FC = () => {
                   marginBottom: "8px",
                 }}
               >
-                My Maps
+                {t("myMapsTitle")}
               </h1>
               <p style={{ color: "var(--text-2)" }}>
-                {activeTab === "author" ? "Màn chơi do bạn tạo" : "Màn chơi bạn đã sưu tầm"}
+                {activeTab === "author" ? t("myMapsSubtitleAuthor") : t("myMapsSubtitleCollected")}
               </p>
             </div>
             <button
@@ -1023,26 +1027,26 @@ export const MyMapsPage: React.FC = () => {
                 whiteSpace: "nowrap",
               }}
             >
-              <Plus size={16} /> Create Map
+              <Plus size={16} /> {t("createMap")}
             </button>
           </div>
 
           <StatsCards
             cards={[
               {
-                label: "Total Maps",
+                label: t("totalMaps"),
                 value: totalItems,
                 icon: <MapIcon size={20} />,
                 accent: "rgba(59, 130, 246, 0.16)",
               },
               {
-                label: "Published Maps",
+                label: t("publishedMaps"),
                 value: publishedCount,
                 icon: <Send size={20} />,
                 accent: "rgba(34, 197, 94, 0.16)",
               },
               {
-                label: "Draft Maps",
+                label: t("draftMaps"),
                 value: draftCount,
                 icon: <Edit size={20} />,
                 accent: "rgba(107, 114, 128, 0.18)",
@@ -1133,7 +1137,7 @@ export const MyMapsPage: React.FC = () => {
             }}
           >
             <div style={{ color: "var(--text-2)", fontSize: "16px", marginBottom: "16px" }}>
-              No maps found
+              {t("noMapsFound")}
             </div>
             {activeTab === "author" ? (
               <button
@@ -1152,7 +1156,7 @@ export const MyMapsPage: React.FC = () => {
                   cursor: "pointer",
                 }}
               >
-                <Plus size={16} /> Create Your First Map
+                <Plus size={16} /> {t("createYourFirstMap")}
               </button>
             ) : null}
           </div>
@@ -1197,7 +1201,7 @@ export const MyMapsPage: React.FC = () => {
                 }}
               >
                 <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-                  Showing page {currentPage} of {totalPages}
+                  {t("showingPage")} {currentPage} {t("of")} {totalPages}
                 </div>
 
                 <div style={{ display: "flex", gap: "8px" }}>
@@ -1215,7 +1219,7 @@ export const MyMapsPage: React.FC = () => {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    Previous
+                    {t("previous")}
                   </button>
 
                   <button
@@ -1233,7 +1237,7 @@ export const MyMapsPage: React.FC = () => {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    Next
+                    {t("next")}
                   </button>
                 </div>
               </div>
@@ -1352,7 +1356,7 @@ export const MyMapsPage: React.FC = () => {
                     opacity: ratingLoading ? 0.5 : 1,
                   }}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleSubmitRating}
@@ -1369,7 +1373,7 @@ export const MyMapsPage: React.FC = () => {
                     opacity: ratingLoading ? 0.5 : 1,
                   }}
                 >
-                  {ratingLoading ? "Submitting..." : "Submit Rating"}
+                  {ratingLoading ? t("submitting") : t("submitRating")}
                 </button>
               </div>
             </div>
@@ -1505,7 +1509,7 @@ export const MyMapsPage: React.FC = () => {
                     opacity: reportLoading || !reportReason ? 0.5 : 1,
                   }}
                 >
-                  {reportLoading ? "Submitting..." : "Submit Report"}
+                  {reportLoading ? t("submitting") : t("submitReport")}
                 </button>
               </div>
             </div>

@@ -5,12 +5,14 @@ import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { ROUTES } from "@/lib/constants/routes";
+import { useTranslation } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
 
 export default function MapDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [map, setMap] = useState<Map | null>(null);
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export default function MapDetailPage() {
       if (mapResponse.data.isSuccess && mapResponse.data.data) {
         setMap(mapResponse.data.data as unknown as Map);
       } else {
-        setError(mapResponse.data.message || "Failed to load map details");
+        setError(mapResponse.data.message || t("failedLoadMapDetails"));
         return;
       }
 
@@ -41,12 +43,12 @@ export default function MapDetailPage() {
         setOwnership(ownershipResponse.data.data);
       }
     } catch (err) {
-      setError("An error occurred while loading map details");
+      setError(t("errorLoadMapDetails"));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadMap();
@@ -86,18 +88,18 @@ export default function MapDetailPage() {
   const getWinConditionLabel = (winCondition: number) => {
     switch (winCondition) {
       case 1:
-        return "Reach Goal";
+        return t("reachGoal");
       case 2:
-        return "Collect All Fruits";
+        return t("collectAllFruits");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
   const getCreatorLabel = () => {
     if (map?.createdByUserName?.trim()) return map.createdByUserName.trim();
     if (map?.createdByUserId) return map.createdByUserId.slice(0, 8);
-    return "Admin Team";
+    return t("adminTeam");
   };
 
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
@@ -108,7 +110,7 @@ export default function MapDetailPage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.loadingWrap}>
-          <p className={styles.loadingText}>Loading map details...</p>
+          <p className={styles.loadingText}>{t("loadingMapDetails")}</p>
         </div>
       </div>
     );
@@ -120,9 +122,9 @@ export default function MapDetailPage() {
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
           <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
-            <ArrowLeft size={18} /> Back
+            <ArrowLeft size={18} /> {t("back")}
           </button>
-          <div className={styles.errorCard}>{error || "Map not found"}</div>
+          <div className={styles.errorCard}>{error || t("mapNotFound")}</div>
         </div>
       </div>
     );
@@ -133,7 +135,7 @@ export default function MapDetailPage() {
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
         <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
-          <ArrowLeft size={18} /> Back
+          <ArrowLeft size={18} /> {t("back")}
         </button>
 
         <div className={styles.steamRow}>
@@ -152,7 +154,9 @@ export default function MapDetailPage() {
                   <span role="img" aria-label="Map">
                     🗺️
                   </span>
-                  <span className={styles.steamPlayerPlaceholderText}>Preview not available</span>
+                  <span className={styles.steamPlayerPlaceholderText}>
+                    {t("previewNotAvailable")}
+                  </span>
                 </div>
               )}
             </div>
@@ -190,14 +194,14 @@ export default function MapDetailPage() {
                 <p className={styles.steamDesc}>{map.description}</p>
               ) : (
                 <p className={`${styles.steamDesc} ${styles.steamDescEmpty}`}>
-                  No description provided.
+                  {t("noDescriptionProvided")}
                 </p>
               )}
             </section>
 
             <section className={styles.steamSidebarSection}>
               <div className={styles.steamWinCondition}>
-                <span className={styles.steamWinLabel}>Win condition</span>
+                <span className={styles.steamWinLabel}>{t("winCondition")}</span>
                 <span className={styles.steamWinValue}>
                   {getWinConditionLabel(map.winCondition)}
                 </span>
@@ -205,35 +209,39 @@ export default function MapDetailPage() {
             </section>
 
             <section className={styles.steamSidebarSection}>
-              <h2 className={styles.steamSectionTitle}>Product details</h2>
+              <h2 className={styles.steamSectionTitle}>{t("productDetails")}</h2>
               <div className={styles.steamMetaGrid}>
                 <div className={styles.steamMetaRow}>
-                  <span className={styles.steamMetaLabel}>Release date</span>
+                  <span className={styles.steamMetaLabel}>{t("releaseDate")}</span>
                   <span className={styles.steamMetaValue}>
                     {map.createdAt ? formatCreatedAt(map.createdAt) : "—"}
                   </span>
                 </div>
                 <div className={styles.steamMetaRow}>
-                  <span className={styles.steamMetaLabel}>Developer</span>
+                  <span className={styles.steamMetaLabel}>{t("developer")}</span>
                   <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
                 </div>
                 <div className={styles.steamMetaRow}>
-                  <span className={styles.steamMetaLabel}>Type</span>
+                  <span className={styles.steamMetaLabel}>{t("type")}</span>
                   <span className={styles.steamMetaValue}>
-                    {map.type === "Platform" ? "Platformer" : "Puzzle / Logic"}
+                    {map.type === "Platform" ? t("platformer") : t("puzzleLogic")}
                   </span>
                 </div>
                 <div className={styles.steamMetaRow}>
-                  <span className={styles.steamMetaLabel}>Difficulty</span>
+                  <span className={styles.steamMetaLabel}>{t("difficulty")}</span>
                   <span className={styles.steamMetaValue}>
-                    {map.difficulty === 1 ? "Easy" : map.difficulty === 2 ? "Medium" : "Hard"}
+                    {map.difficulty === 1
+                      ? t("easy")
+                      : map.difficulty === 2
+                        ? t("medium")
+                        : t("hard")}
                   </span>
                 </div>
               </div>
             </section>
 
             <section className={styles.steamSidebarSection}>
-              <h2 className={styles.steamSectionTitle}>Tags</h2>
+              <h2 className={styles.steamSectionTitle}>{t("tags")}</h2>
               {map.tagNames && map.tagNames.length > 0 ? (
                 <div className={styles.steamTagsList}>
                   {map.tagNames.map((tag, idx) => (
@@ -243,7 +251,7 @@ export default function MapDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className={styles.steamDescEmpty}>No tags</p>
+                <p className={styles.steamDescEmpty}>{t("noTags")}</p>
               )}
             </section>
           </div>
@@ -253,22 +261,22 @@ export default function MapDetailPage() {
         <div className={styles.steamFooter}>
           {canPlay ? (
             <button type="button" onClick={handleStartMap} className={styles.steamFooterPrimary}>
-              <Gamepad2 size={20} /> Play
+              <Gamepad2 size={20} /> {t("play")}
             </button>
           ) : (
             <button type="button" onClick={handleBuyMap} className={styles.steamFooterPrimary}>
-              <Lock size={18} /> Buy with Orbit Coin
+              <Lock size={18} /> {t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
             </button>
           )}
           <button type="button" className={styles.steamFooterSecondary}>
-            <Heart size={16} /> Add to your wishlist
+            <Heart size={16} /> {t("addToWishlist")}
           </button>
           <button type="button" className={styles.steamFooterSecondary}>
-            <Bell size={16} /> Follow
+            <Bell size={16} /> {t("follow")}
           </button>
           <button type="button" className={styles.steamFooterSecondary}>
-            <Share2 size={16} /> Share
+            <Share2 size={16} /> {t("share")}
           </button>
         </div>
       </div>

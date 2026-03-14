@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
@@ -105,6 +106,7 @@ type TabId = "trending" | "random" | "favorites";
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [heroMaps, setHeroMaps] = useState<MapItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("trending");
@@ -212,10 +214,10 @@ export default function MarketplacePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasNext]);
 
-  const tabs: { id: TabId; label: string }[] = [
-    { id: "trending", label: "Trending" },
-    { id: "favorites", label: "Favorites" },
-    { id: "random", label: "Random" },
+  const tabs: { id: TabId; labelKey: string }[] = [
+    { id: "trending", labelKey: "trending" },
+    { id: "favorites", labelKey: "favorites" },
+    { id: "random", labelKey: "random" },
   ];
 
   const listMaps = useMemo(() => {
@@ -242,7 +244,7 @@ export default function MarketplacePage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
-          <div className={styles.loadingWrap}>Loading map list...</div>
+          <div className={styles.loadingWrap}>{t("loadingMapList")}</div>
         </div>
       </div>
     );
@@ -264,7 +266,7 @@ export default function MarketplacePage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
-          <div className={styles.emptyWrap}>No maps have been published.</div>
+          <div className={styles.emptyWrap}>{t("noMapsPublished")}</div>
         </div>
       </div>
     );
@@ -329,7 +331,7 @@ export default function MarketplacePage() {
                         setFeaturedIndex((i) => Math.max(0, i - 1));
                       }}
                       style={navBtn}
-                      aria-label="Previous"
+                      aria-label={t("previousAria")}
                     >
                       <ChevronLeft size={20} />
                     </button>
@@ -354,7 +356,7 @@ export default function MarketplacePage() {
                         setFeaturedIndex((i) => i + 1);
                       }}
                       style={navBtn}
-                      aria-label="Next"
+                      aria-label={t("nextAria")}
                     >
                       <ChevronRight size={20} />
                     </button>
@@ -471,7 +473,7 @@ export default function MarketplacePage() {
                         transition: "all 0.2s ease",
                       }}
                     >
-                      {tab.label}
+                      {t(tab.labelKey)}
                     </button>
                   ))}
               </div>
@@ -479,7 +481,7 @@ export default function MarketplacePage() {
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 style={iconBtn}
-                aria-label="Search / Filter"
+                aria-label={t("searchFilter")}
               >
                 <Search size={20} />
               </button>
@@ -488,7 +490,7 @@ export default function MarketplacePage() {
               <div style={{ marginTop: 12 }}>
                 <input
                   type="search"
-                  placeholder="Search map by name or description..."
+                  placeholder={t("searchMapPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);

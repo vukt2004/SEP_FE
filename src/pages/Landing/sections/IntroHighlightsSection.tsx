@@ -4,6 +4,8 @@ import SectionHeading from "../shared/SectionHeading";
 import { SurfaceCard } from "../shared/SurfaceCard";
 import { highlightCards } from "../data/landing.data";
 import { landingEase, palette } from "../landing.theme";
+import { useTranslation } from "@/lib/i18n/translations";
+import GridVeil from "../effects/GridVeil";
 
 type IconComponent = React.ComponentType<{ size?: number }>;
 
@@ -26,7 +28,10 @@ function HighlightCard({ title, desc, tone, icon: Icon, index }: HighlightCardPr
       <SurfaceCard className="p-6 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div
           className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ background: `${tone}20`, color: tone }}
+          style={{
+            background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+            color: tone,
+          }}
         >
           <Icon size={24} />
         </div>
@@ -41,20 +46,38 @@ function HighlightCard({ title, desc, tone, icon: Icon, index }: HighlightCardPr
   );
 }
 
-export default function IntroHighlightsSection() {
-  return (
-    <section className="px-6 py-24">
-      <SectionHeading
-        eyebrow="Why QuackOrbit"
-        title="A more accessible way to learn programming logic for beginners."
-        desc="QuackOrbit combines 2D games, block-based interaction, and visual feedback to transform basic logic concepts into a dynamic and easy-to-understand learning experience."
-      />
+const highlightKeys = [
+  { titleKey: "highlight1Title", descKey: "highlight1Desc" },
+  { titleKey: "highlight2Title", descKey: "highlight2Desc" },
+  { titleKey: "highlight3Title", descKey: "highlight3Desc" },
+  { titleKey: "highlight4Title", descKey: "highlight4Desc" },
+] as const;
 
-      <Container className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {highlightCards.map((card, index) => (
-          <HighlightCard key={card.title} {...card} index={index} />
-        ))}
-      </Container>
+export default function IntroHighlightsSection() {
+  const { t } = useTranslation();
+  return (
+    <section className="relative overflow-hidden px-6 py-24">
+      <GridVeil />
+      <div className="relative z-10">
+        <SectionHeading
+          eyebrow={t("whyQuackOrbit")}
+          title={t("introHighlightsTitle")}
+          desc={t("introHighlightsDesc")}
+        />
+
+        <Container className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {highlightCards.map((card, index) => (
+            <HighlightCard
+              key={card.title}
+              title={t(highlightKeys[index].titleKey)}
+              desc={t(highlightKeys[index].descKey)}
+              tone={card.tone}
+              icon={card.icon}
+              index={index}
+            />
+          ))}
+        </Container>
+      </div>
     </section>
   );
 }

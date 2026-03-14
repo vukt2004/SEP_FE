@@ -4,8 +4,16 @@ import Ring from "../effects/Ring";
 import { palette } from "../landing.theme";
 import { PanelCard } from "../shared/SurfaceCard";
 import ChapterSceneShell from "../sections/ChapterSceneShell";
+import { useTranslation } from "@/lib/i18n/translations";
+
+const arrivalBulletKeys = [
+  "clearMissionGoal",
+  "visibleRouteObstacles",
+  "puzzleInvitesPlanning",
+] as const;
 
 export default function ArrivalScene() {
+  const { t } = useTranslation();
   return (
     <ChapterSceneShell>
       <div className="relative grid gap-4 lg:grid-cols-[1fr_0.9fr]">
@@ -16,10 +24,10 @@ export default function ArrivalScene() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Explore the mission map
+                {t("exploreMissionMap")}
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                See the goal, obstacles and collectibles first
+                {t("exploreMissionMapDesc")}
               </div>
             </div>
             <Flag size={18} style={{ color: palette.accent }} />
@@ -55,17 +63,13 @@ export default function ArrivalScene() {
         <div className="space-y-4">
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              What learners see first
+              {t("whatLearnersSeeFirst")}
             </div>
 
             <div className="space-y-3">
-              {[
-                "A clear mission goal",
-                "A visible route with obstacles",
-                "A puzzle that invites planning",
-              ].map((item, index) => (
+              {arrivalBulletKeys.map((key, index) => (
                 <motion.div
-                  key={item}
+                  key={key}
                   initial={{ opacity: 0, x: 16 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -77,7 +81,7 @@ export default function ArrivalScene() {
                     color: index === 1 ? palette.accent : palette.text2,
                   }}
                 >
-                  {item}
+                  {t(key)}
                 </motion.div>
               ))}
             </div>
@@ -85,11 +89,10 @@ export default function ArrivalScene() {
 
           <PanelCard className="p-5">
             <div className="mb-2 text-sm font-semibold" style={{ color: palette.text }}>
-              Why this matters
+              {t("whyThisMatters")}
             </div>
             <p className="text-sm leading-7" style={{ color: palette.text2 }}>
-              Before learning how to solve the puzzle, players understand what they are trying to
-              achieve. This makes learning logic clearer and less abstract from the start.
+              {t("whyThisMattersDesc")}
             </p>
           </PanelCard>
         </div>

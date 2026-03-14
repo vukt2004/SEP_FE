@@ -5,8 +5,10 @@ import {
   type OrbitCoinTransaction,
   CoinTransactionTypeEnum,
 } from "@/services/api/learner/orbitcoin.api";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export default function WalletPage() {
+  const { t } = useTranslation();
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<OrbitCoinTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function WalletPage() {
         }
 
         if (!transactionsRes.isSuccess) {
-          setError(transactionsRes.message ?? "Failed to load transactions");
+          setError(transactionsRes.message ?? t("failedLoadTransactions"));
           return;
         }
 
@@ -68,7 +70,7 @@ export default function WalletPage() {
       const res = await orbitCoinApi.getTransactionHistory({ pageNumber: page, pageSize });
 
       if (!res.isSuccess) {
-        setError(res.message ?? "Failed to load transactions");
+        setError(res.message ?? t("failedLoadTransactions"));
         return;
       }
 
@@ -107,9 +109,9 @@ export default function WalletPage() {
     <div style={{ display: "grid", gap: 14 }}>
       {/* Header Card */}
       <div style={card()}>
-        <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.2 }}>Wallet</div>
+        <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 0.2 }}>{t("wallet")}</div>
         <div style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>
-          View your OrbitCoin balance and transaction history
+          {t("viewYourBalance")}
         </div>
       </div>
 
@@ -118,7 +120,7 @@ export default function WalletPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 14, color: "var(--muted)", fontWeight: 800 }}>
-              Current Balance
+              {t("currentBalance")}
             </div>
             <div style={{ fontSize: 40, fontWeight: 900, marginTop: 8, letterSpacing: -1 }}>
               {balance?.toLocaleString() ?? 0}
@@ -152,7 +154,7 @@ export default function WalletPage() {
             marginBottom: 16,
           }}
         >
-          <div style={{ fontWeight: 900, fontSize: 16 }}>Transaction History</div>
+          <div style={{ fontWeight: 900, fontSize: 16 }}>{t("transactionHistory")}</div>
           {error && <span style={pill("var(--danger-weak)", "var(--danger)")}>{error}</span>}
         </div>
 
@@ -197,7 +199,7 @@ export default function WalletPage() {
                   Previous
                 </button>
                 <span style={{ color: "var(--muted)", fontSize: 13, fontWeight: 800 }}>
-                  Page {pageNumber} of {totalPages}
+                  {t("page")} {pageNumber} {t("of")} {totalPages}
                 </span>
                 <button
                   type="button"
@@ -205,7 +207,7 @@ export default function WalletPage() {
                   disabled={pageNumber === totalPages || loadingTransactions}
                   style={paginationBtn(pageNumber === totalPages || loadingTransactions)}
                 >
-                  Next
+                  {t("next")}
                 </button>
               </div>
             )}

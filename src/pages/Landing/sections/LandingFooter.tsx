@@ -1,7 +1,9 @@
 import Container from "../shared/Container";
 import { palette } from "../landing.theme";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export default function LandingFooter() {
+  const { t } = useTranslation();
   return (
     <footer
       className="border-t px-6 py-8"
@@ -13,15 +15,15 @@ export default function LandingFooter() {
             QuackOrbit
           </div>
           <div className="mt-1 text-sm" style={{ color: palette.muted }}>
-            A 2D game-based platform for learning programming logic.
+            {t("footerTagline")}
           </div>
         </div>
 
         <div className="flex gap-6 text-sm" style={{ color: palette.text2 }}>
-          <a href="#arrival">Discover</a>
-          <a href="#learning">Learn</a>
-          <a href="#competition">Compete</a>
-          <a href="#finale">Start</a>
+          <a href="#arrival">{t("discover")}</a>
+          <a href="#learning">{t("learn")}</a>
+          <a href="#competition">{t("compete")}</a>
+          <a href="#finale">{t("startJourney")}</a>
         </div>
       </Container>
     </footer>

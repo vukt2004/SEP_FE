@@ -3,34 +3,43 @@ import { Waypoints } from "lucide-react";
 import { palette } from "../landing.theme";
 import { PanelCard } from "../shared/SurfaceCard";
 import ChapterSceneShell from "../sections/ChapterSceneShell";
+import { useTranslation } from "@/lib/i18n/translations";
+
+const logicStepKeys = [
+  "lookAtTheMap",
+  "buildTheLoop",
+  "testTheCondition",
+  "adjustTheRoute",
+] as const;
+const logicStepColors = [palette.cyan, palette.primary, palette.accent, palette.yellow];
 
 export default function LearningScene() {
+  const { t } = useTranslation();
   return (
     <ChapterSceneShell>
       <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-4">
           <PanelCard className="p-5">
             <div className="mb-3 text-sm font-semibold" style={{ color: palette.text }}>
-              Build the logic
+              {t("buildTheLogic")}
             </div>
 
             <div className="space-y-2">
-              {[
-                ["Look at the map", palette.cyan],
-                ["Build the loop", palette.primary],
-                ["Test the condition", palette.accent],
-                ["Adjust the route", palette.yellow],
-              ].map(([label, color], index) => (
+              {logicStepKeys.map((key, index) => (
                 <motion.div
-                  key={label}
+                  key={key}
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08, duration: 0.35 }}
                   className="rounded-2xl border px-4 py-3 text-sm font-medium"
-                  style={{ background: palette.surface2, borderColor: palette.border, color }}
+                  style={{
+                    background: palette.surface2,
+                    borderColor: palette.border,
+                    color: logicStepColors[index],
+                  }}
                 >
-                  {label}
+                  {t(key)}
                 </motion.div>
               ))}
             </div>
@@ -52,10 +61,10 @@ export default function LearningScene() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold" style={{ color: palette.text }}>
-                Simulation stage
+                {t("simulationStage")}
               </div>
               <div className="text-xs" style={{ color: palette.muted }}>
-                See how your strategy works inside the world
+                {t("simulationStageDesc")}
               </div>
             </div>
             <Waypoints size={18} style={{ color: palette.primary }} />
