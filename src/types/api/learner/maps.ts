@@ -79,6 +79,12 @@ export interface GetMapsParams {
   pageSize?: number;
   publishedOnly?: boolean;
   difficulty?: number;
+  mapStatus?: number;
+  type?: number;
+  tagId?: string;
+  createdByUserId?: string;
+  minPrice?: number;
+  maxPrice?: number;
   search?: string;
   /**
    * Backend supports: CreatedAt, Title, Difficulty, TimeLimitMs
@@ -165,6 +171,30 @@ export interface MapDetail {
   winCondition: number;
   mapDetailJson?: unknown;
 }
+
+/**
+ * Lightweight map info for marketplace modal
+ * GET /api/learner/maps/{id}/info
+ */
+export interface MapInfo {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: number;
+  type: "Topdown" | "Platform";
+  timeLimitMs: number;
+  isPublished: boolean;
+  mapStatus: string;
+  price: number;
+  createdByUserId: string;
+  createdByUserName: string;
+  createdAt: string;
+  tagNames: string[];
+  winCondition: number;
+  avatarUrl: string | null;
+}
+
+export type MapInfoResult = ApiResult<MapInfo>;
 
 /**
  * Map detail API response

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Eye, EyeOff, Layers } from "lucide-react";
 import type { EditorStore } from "../store/editorStore";
 
 interface LayerPanelProps {
@@ -26,6 +27,7 @@ export function LayerPanel({ store }: LayerPanelProps) {
   }, [store]);
 
   const layerVisibility = store.getLayerVisibility();
+  const activeLayer = store.getActiveLayer();
 
   // Define layers in render order
   const layers: Array<{
@@ -42,22 +44,49 @@ export function LayerPanel({ store }: LayerPanelProps) {
     store.toggleLayerVisibility(layer);
   };
 
+  const layerIndicatorColor = (layer: "background" | "ground" | "foreground" | "collision") => {
+    if (layer === "background") return "#6366f1";
+    if (layer === "ground") return "#22c55e";
+    if (layer === "foreground") return "#f59e0b";
+    return "#ef4444";
+  };
+
   return (
     <div style={styles.container}>
-      <h3 style={styles.title}>Layer Visibility</h3>
+      <h3 style={styles.title}>
+        <Layers size={16} /> Layer Visibility
+      </h3>
       <div style={styles.layerList}>
         {layers.map(({ key, label }) => (
-          <div key={key} style={styles.layerRow}>
-            <span style={styles.layerName}>{label}</span>
+          <div
+            key={key}
+            style={{
+              ...styles.layerRow,
+              ...(activeLayer === key ? styles.layerRowActive : {}),
+            }}
+            onClick={() => store.setActiveLayer(key)}
+          >
+            <span style={styles.layerNameWrap}>
+              <span
+                style={{
+                  ...styles.layerIndicator,
+                  backgroundColor: layerIndicatorColor(key),
+                }}
+              />
+              <span style={styles.layerName}>{label}</span>
+            </span>
             <button
               style={{
                 ...styles.toggleButton,
                 ...(layerVisibility[key] ? styles.toggleButtonVisible : styles.toggleButtonHidden),
               }}
-              onClick={() => handleToggle(key)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggle(key);
+              }}
               title={layerVisibility[key] ? "Click to hide" : "Click to show"}
             >
-              {layerVisibility[key] ? "👁️ Visible" : "🚫 Hidden"}
+              {layerVisibility[key] ? <Eye size={14} /> : <EyeOff size={14} />}
             </button>
           </div>
         ))}
@@ -69,16 +98,21 @@ export function LayerPanel({ store }: LayerPanelProps) {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: "100%",
-    padding: "16px",
-    backgroundColor: "#f9f9f9",
-    borderRadius: "8px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    padding: "14px",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    border: "1px solid #e2e8f0",
+    borderRadius: "14px",
+    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.08)",
   },
   title: {
     margin: "0 0 12px 0",
-    fontSize: "16px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "#333",
+    color: "#0f172a",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    letterSpacing: "0.3px",
   },
   layerList: {
     display: "flex",
@@ -89,34 +123,52 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "8px 12px",
-    backgroundColor: "white",
-    borderRadius: "6px",
-    border: "1px solid #e0e0e0",
+    padding: "10px 12px",
+    backgroundColor: "#ffffff",
+    borderRadius: "10px",
+    border: "1px solid #e2e8f0",
+    transition: "all 0.2s ease",
+    cursor: "pointer",
+  },
+  layerRowActive: {
+    border: "1px solid #93c5fd",
+    boxShadow: "inset 0 0 0 1px rgba(59, 130, 246, 0.25)",
+    background: "linear-gradient(180deg, rgba(219, 234, 254, 0.4), #ffffff)",
+  },
+  layerNameWrap: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  layerIndicator: {
+    width: "9px",
+    height: "9px",
+    borderRadius: "50%",
   },
   layerName: {
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: "500",
-    color: "#555",
+    color: "#334155",
   },
   toggleButton: {
-    padding: "6px 12px",
-    fontSize: "12px",
-    fontWeight: "500",
-    border: "2px solid",
-    borderRadius: "4px",
+    width: "34px",
+    height: "30px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid",
+    borderRadius: "8px",
     cursor: "pointer",
     transition: "all 0.2s",
-    minWidth: "100px",
   },
   toggleButtonVisible: {
-    borderColor: "#4CAF50",
-    backgroundColor: "#e8f5e9",
-    color: "#2e7d32",
+    borderColor: "#86efac",
+    backgroundColor: "#dcfce7",
+    color: "#15803d",
   },
   toggleButtonHidden: {
-    borderColor: "#f44336",
-    backgroundColor: "#ffebee",
-    color: "#c62828",
+    borderColor: "#fecaca",
+    backgroundColor: "#fee2e2",
+    color: "#b91c1c",
   },
 };
