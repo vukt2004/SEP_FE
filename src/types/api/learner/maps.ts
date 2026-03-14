@@ -96,6 +96,8 @@ export interface GetMapsParams {
    * false/undefined = include created + purchased
    */
   isAuthorOnly?: boolean;
+  /** Backend query param (PascalCase) */
+  IsAuthorOnly?: boolean;
 }
 
 /**
