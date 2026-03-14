@@ -14,6 +14,8 @@ import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { GameResultsModal } from "./GameResultsModal";
 import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
+import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser } from "lucide-react";
+import type { MapConfig } from "../../shared/types/MapSchema";
 
 /**
  * PlatformGameView - Platformer game view with block editor and gravity physics.
@@ -38,6 +40,7 @@ export default function PlatformGameView() {
   const [error, setError] = useState<string | null>(null);
   const [isExecutorRunning, setIsExecutorRunning] = useState(false);
   const [collectedFruits, setCollectedFruits] = useState(0);
+  const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [audioSystem, setAudioSystem] = useState<
     import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
@@ -48,6 +51,8 @@ export default function PlatformGameView() {
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
+  const [hoveredControl, setHoveredControl] = useState<string | null>(null);
+  const [isCompactLayout, setIsCompactLayout] = useState(false);
 
   // Get level ID from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -67,6 +72,10 @@ export default function PlatformGameView() {
         const levelResult = levelId
           ? await loadLevelFromAPI(levelId)
           : await loadLevelFromMockData(levelFile || "level-platform-01");
+
+        if (levelResult.mapConfig) {
+          setMapConfig(levelResult.mapConfig as MapConfig);
+        }
 
         const levelDefinition = levelResult.level;
 
@@ -263,112 +272,162 @@ export default function PlatformGameView() {
     setShowResultsModal(false);
   };
 
+  const handleStepExecution = () => {
+    const executor = executorRef.current;
+    const engine = engineRef.current;
+
+    if (!executor || !engine) {
+      alert("Run Program first, then use Step Execution.");
+      return;
+    }
+
+    if (executor.hasNext()) {
+      const result = executor.next();
+      if (result) {
+        engine.executeCommand(result.command);
+      }
+    } else {
+      setIsExecutorRunning(false);
+    }
+  };
+
+  const handleClearBlocks = () => {
+    if (!workspaceRef.current) return;
+    if (!confirm("Clear all blocks in the workspace?")) return;
+    workspaceRef.current.clear();
+  };
+
+  useEffect(() => {
+    const updateLayout = () => setIsCompactLayout(window.innerWidth < 1280);
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
+  }, []);
+
+  const controlButtonStyle = (
+    variant: "neutral" | "primary" | "danger" | "warning",
+    disabled: boolean,
+    hovered: boolean,
+  ): React.CSSProperties => {
+    const palette = {
+      neutral: { bg: "var(--surface-2)", text: "var(--text)", border: "var(--border)" },
+      primary: { bg: "var(--primary)", text: "#ffffff", border: "var(--primary)" },
+      danger: { bg: "var(--danger)", text: "#ffffff", border: "var(--danger)" },
+      warning: { bg: "var(--warning)", text: "#ffffff", border: "var(--warning)" },
+    }[variant];
+
+    return {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      padding: "10px 14px",
+      borderRadius: "12px",
+      border: `1px solid ${palette.border}`,
+      backgroundColor: disabled ? "var(--muted)" : palette.bg,
+      color: disabled ? "var(--text-2)" : palette.text,
+      cursor: disabled ? "not-allowed" : "pointer",
+      fontSize: "13px",
+      fontWeight: 700,
+      transition: "transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease",
+      boxShadow: hovered && !disabled ? "0 10px 20px rgba(15, 23, 42, 0.2)" : "none",
+      transform: hovered && !disabled ? "translateY(-1px)" : "translateY(0)",
+      filter: hovered && !disabled ? "brightness(1.03)" : "none",
+    };
+  };
+
   return (
-    <div style={{ padding: "20px", height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Top toolbar */}
-      <div style={{ marginBottom: "20px", display: "flex", gap: "10px", alignItems: "center" }}>
+    <div
+      style={{
+        padding: "16px",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px",
+          alignItems: "center",
+          padding: "12px",
+          borderRadius: "16px",
+          border: "1px solid var(--border)",
+          background: "color-mix(in srgb, var(--surface) 90%, transparent)",
+          backdropFilter: "blur(4px)",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+        }}
+      >
         <button
           onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#4a5568",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
+          style={controlButtonStyle("neutral", false, hoveredControl === "back")}
+          onMouseEnter={() => setHoveredControl("back")}
+          onMouseLeave={() => setHoveredControl(null)}
         >
-          ← Back to Challenges
+          <ArrowLeft size={15} /> Back to Challenges
         </button>
 
         <button
           onClick={handleRunProgram}
           disabled={isLoading || !!error || isExecutorRunning}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: isExecutorRunning ? "#9ca3af" : "#10b981",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isExecutorRunning ? "not-allowed" : "pointer",
-          }}
+          style={controlButtonStyle(
+            "primary",
+            isLoading || !!error || isExecutorRunning,
+            hoveredControl === "run",
+          )}
+          onMouseEnter={() => setHoveredControl("run")}
+          onMouseLeave={() => setHoveredControl(null)}
         >
-          ▶ Run Program
+          <Play size={15} /> Run Program
+        </button>
+
+        <button
+          onClick={handleStepExecution}
+          disabled={isLoading || !!error || isExecutorRunning}
+          style={controlButtonStyle(
+            "primary",
+            isLoading || !!error || isExecutorRunning,
+            hoveredControl === "step",
+          )}
+          onMouseEnter={() => setHoveredControl("step")}
+          onMouseLeave={() => setHoveredControl(null)}
+        >
+          <SkipForward size={15} /> Step Execution
         </button>
 
         <button
           onClick={handleStopProgram}
           disabled={!isExecutorRunning}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: isExecutorRunning ? "#ef4444" : "#9ca3af",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isExecutorRunning ? "pointer" : "not-allowed",
-          }}
+          style={controlButtonStyle("danger", !isExecutorRunning, hoveredControl === "stop")}
+          onMouseEnter={() => setHoveredControl("stop")}
+          onMouseLeave={() => setHoveredControl(null)}
         >
-          ⏹ Stop
+          <Pause size={15} /> Stop
         </button>
 
         <button
           onClick={handleReset}
           disabled={isLoading || !!error}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#f59e0b",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
+          style={controlButtonStyle("warning", isLoading || !!error, hoveredControl === "reset")}
+          onMouseEnter={() => setHoveredControl("reset")}
+          onMouseLeave={() => setHoveredControl(null)}
         >
-          🔄 Reset
+          <RotateCcw size={15} /> Reset
         </button>
-      </div>
-
-      {/* Header row with stats */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "20px",
-        }}
-      >
-        <div>
-          <h2 style={{ margin: "0 0 10px 0" }}>Platform Game — Block Programming</h2>
-          <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>
-            <strong>Manual:</strong> Arrow keys to move, Space to jump (disabled while program runs)
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
-          <div
-            style={{
-              padding: "12px 20px",
-              backgroundColor: "#fef3c7",
-              borderRadius: "8px",
-              border: "2px solid #fbbf24",
-            }}
-          >
-            <div style={{ fontSize: "14px", fontWeight: "bold", color: "#92400e" }}>
-              🍎 Fruits Collected: {collectedFruits}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Loading state */}
       {isLoading && (
-        <div style={{ padding: "20px", textAlign: "center" }}>
+        <div style={{ padding: "20px", textAlign: "center", color: "var(--text)" }}>
           <p>Loading platform level...</p>
         </div>
       )}
 
       {/* Error state */}
       {error && (
-        <div style={{ padding: "20px", color: "red" }}>
+        <div style={{ padding: "20px", color: "var(--danger)" }}>
           <h3>Error Loading Platform Game</h3>
           <p>{error}</p>
           <p style={{ fontSize: "12px", marginTop: "10px" }}>
@@ -376,7 +435,14 @@ export default function PlatformGameView() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            style={{ marginTop: "10px", padding: "8px 16px" }}
+            style={{
+              marginTop: "10px",
+              padding: "8px 16px",
+              border: "1px solid var(--danger)",
+              background: "transparent",
+              color: "var(--text)",
+              borderRadius: "10px",
+            }}
           >
             Retry
           </button>
@@ -387,45 +453,227 @@ export default function PlatformGameView() {
       <div
         style={{
           display: isLoading || error ? "none" : "flex",
-          gap: "20px",
+          flexDirection: isCompactLayout ? "column" : "row",
+          gap: "14px",
           flex: 1,
           minHeight: 0,
           position: "relative",
         }}
       >
-        {/* Game Canvas */}
-        <div style={{ flex: "0 0 auto", position: "relative" }}>
-          <h3 style={{ margin: "0 0 10px 0" }}>Game</h3>
-          <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
-          <canvas
-            ref={canvasRef}
-            style={{
-              border: "2px solid #333",
-              display: "block",
-              marginTop: "10px",
-            }}
-          />
-        </div>
-
-        {/* Blockly Editor */}
         <div
           style={{
-            flex: 1,
+            flex: isCompactLayout ? "1 1 auto" : "7 1 0",
+            minHeight: 0,
+            borderRadius: "18px",
+            border: "1px solid var(--border)",
+            background: "color-mix(in srgb, var(--surface) 92%, transparent)",
+            boxShadow: "0 14px 30px rgba(15, 23, 42, 0.12)",
             display: "flex",
             flexDirection: "column",
-            minWidth: 0,
-            position: "relative",
             overflow: "hidden",
           }}
         >
-          <h3 style={{ margin: "0 0 10px 0", flex: "0 0 auto" }}>Block Editor</h3>
+          <div
+            style={{
+              padding: "12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--surface-2)",
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: "12px",
+                background: "color-mix(in srgb, var(--info) 18%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--info) 50%, var(--border))",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "var(--text)",
+              }}
+            >
+              ⏱ Time
+            </div>
+            <div style={{ minWidth: "120px" }}>
+              <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
+            </div>
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: "12px",
+                background: "color-mix(in srgb, var(--warning) 18%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--warning) 45%, var(--border))",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "var(--text)",
+              }}
+            >
+              🍎 Fruits: {collectedFruits}
+            </div>
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: "12px",
+                background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--primary) 45%, var(--border))",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "var(--text)",
+              }}
+            >
+              🎯 {mapConfig?.winCondition === 1 ? "Reach Goal" : "Collect All Fruits"}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "12px 16px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
+                Platform Game - Block Programming
+              </h2>
+              <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                borderRadius: "16px",
+                border: "1px solid var(--border)",
+                boxShadow:
+                  "inset 0 0 0 1px rgba(255,255,255,0.5), 0 10px 24px rgba(15, 23, 42, 0.14)",
+                background: "linear-gradient(180deg, var(--surface-2), var(--surface))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+                overflow: "auto",
+                transition: "box-shadow 0.2s ease, transform 0.2s ease",
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  display: "block",
+                  background: "var(--surface)",
+                  boxShadow: "0 12px 24px rgba(15, 23, 42, 0.22)",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            flex: isCompactLayout ? "1 1 auto" : "3 1 0",
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            minHeight: 0,
+            borderRadius: "18px",
+            border: "1px solid var(--border)",
+            background: "color-mix(in srgb, var(--surface) 92%, transparent)",
+            boxShadow: "0 14px 30px rgba(15, 23, 42, 0.12)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--surface-2)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <div>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>Block Editor</h3>
+              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-2)" }}>
+                Palette is on the left, workspace is on the right.
+              </p>
+            </div>
+            <button
+              onClick={handleClearBlocks}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid color-mix(in srgb, var(--danger) 50%, var(--border))",
+                background: "color-mix(in srgb, var(--danger) 16%, var(--surface))",
+                color: "var(--text)",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              title="Clear all blocks"
+            >
+              <Eraser size={14} /> Clear Blocks
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+              padding: "10px 12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--surface-2)",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--text)",
+                background: "color-mix(in srgb, var(--primary) 20%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+                borderRadius: "999px",
+                padding: "4px 10px",
+              }}
+            >
+              Movement
+            </span>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--text)",
+                background: "color-mix(in srgb, var(--accent) 20%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
+                borderRadius: "999px",
+                padding: "4px 10px",
+              }}
+            >
+              Control
+            </span>
+          </div>
+
           <div
             style={{
               flex: 1,
-              border: "2px solid #333",
               minHeight: 0,
               overflow: "hidden",
               position: "relative",
+              background: "var(--surface)",
             }}
           >
             <BlocklyWorkspace onWorkspaceReady={handleWorkspaceReady} />

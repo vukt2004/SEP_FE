@@ -7,6 +7,31 @@ import { registerBlocks } from "../blocks/registerBlocks";
 import { generateToolbox } from "../utils/generateToolbox";
 import type { BlockConfig } from "../types/blockDefinition";
 
+const cssVar = (name: string, fallback: string) => {
+  if (typeof window === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+};
+
+const createEduWorkspaceTheme = () =>
+  Blockly.Theme.defineTheme("eduWorkspace", {
+    base: Blockly.Themes.Classic,
+    componentStyles: {
+      workspaceBackgroundColour: cssVar("--surface", "#0f1b2d"),
+      toolboxBackgroundColour: cssVar("--surface-2", "#14233a"),
+      toolboxForegroundColour: cssVar("--text", "#e5e7eb"),
+      flyoutBackgroundColour: cssVar("--surface", "#0f1b2d"),
+      flyoutForegroundColour: cssVar("--text", "#e5e7eb"),
+      flyoutOpacity: 1,
+      scrollbarColour: cssVar("--muted", "#7c879c"),
+      scrollbarOpacity: 0.35,
+      insertionMarkerColour: cssVar("--accent", "#f97316"),
+      insertionMarkerOpacity: 0.35,
+      markerColour: cssVar("--primary", "#2563eb"),
+      cursorColour: cssVar("--primary", "#2563eb"),
+    },
+  });
+
 interface BlocklyWorkspaceProps {
   workspaceId?: string;
   onWorkspaceReady?: (workspace: Blockly.WorkspaceSvg) => void;
@@ -23,6 +48,35 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 
   useEffect(() => {
     let mounted = true;
+
+    const styleId = "blockly-edu-theme-overrides";
+    if (!document.getElementById(styleId)) {
+      const styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      styleEl.textContent = `
+        .blocklyToolboxDiv {
+          border-right: 1px solid var(--border);
+          box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.03);
+        }
+        .blocklyTreeRow {
+          margin: 6px 8px;
+          border-radius: 10px;
+          padding: 8px 10px;
+          transition: background-color 0.2s ease;
+          color: var(--text);
+        }
+        .blocklyTreeRow:hover {
+          background: color-mix(in srgb, var(--primary) 18%, var(--surface));
+        }
+        .blocklyFlyout {
+          border-left: 1px solid var(--border);
+        }
+        .blocklyMainBackground {
+          stroke: var(--border);
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
 
     const initializeWorkspace = () => {
       if (!workspaceRef.current) return;
@@ -47,8 +101,8 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           toolbox,
           grid: {
             spacing: 20,
-            length: 3,
-            colour: "#ccc",
+            length: 2,
+            colour: cssVar("--border", "#22324c"),
             snap: true,
           },
           zoom: {
@@ -60,7 +114,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
             scaleSpeed: 1.2,
           },
           trashcan: true,
-          theme: Blockly.Themes.Classic,
+          theme: createEduWorkspaceTheme(),
           move: {
             scrollbars: {
               horizontal: true,

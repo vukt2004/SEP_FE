@@ -1,15 +1,17 @@
 // src/portals/learner/pages/ChallengesPage.tsx
-// Trang Câu đố: 2 phần (Câu đố của quản trị viên | Ải sưu tầm)
-// Phần quản trị viên có tab Test, dùng API getMaps như cũ
+// Challenges page: 2 sections (Admin Challenges | Collection)
+// Admin section has Test tab, uses getMaps API
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, BookMarked } from "lucide-react";
+import { Shield, BookMarked, Search } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
 import "@/shared/styles/tokens.css";
 import "@/shared/styles/challenges.css";
 
 type MainSection = "admin" | "collection";
+type DifficultyFilter = "all" | 1 | 2 | 3;
+type MapTypeFilter = "all" | "Platform" | "Topdown";
 
 export default function ChallengesPage() {
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ export default function ChallengesPage() {
           <h1 className="challenges-title">Maps</h1>
         </div>
 
-        {/* 2 phần chính */}
+        {/* 2 main sections */}
         <div className="challenges-main-tabs">
           <button
             type="button"
@@ -56,6 +58,9 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all");
+  const [mapTypeFilter, setMapTypeFilter] = useState<MapTypeFilter>("all");
 
   const loadMaps = useCallback(
     async (overridePage?: number) => {
@@ -67,6 +72,8 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
           pageNumber: page,
           pageSize: 20,
           publishedOnly: true,
+          search: searchTerm.trim() || undefined,
+          difficulty: difficultyFilter === "all" ? undefined : difficultyFilter,
         });
 
         if (response.data.isSuccess && response.data.data) {
@@ -83,12 +90,16 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
         setLoading(false);
       }
     },
-    [currentPage],
+    [currentPage, searchTerm, difficultyFilter],
   );
 
   useEffect(() => {
     loadMaps();
   }, [loadMaps]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, difficultyFilter, mapTypeFilter]);
 
   const handleSelectMap = (map: Map) => {
     navigate(`/app/map/${map.id}`);
@@ -129,6 +140,27 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
     return `${minutes}p ${seconds}s`;
   };
 
+  const getTypeLabel = (type: Map["type"]) => {
+    switch (type) {
+      case "Platform":
+        return "Platformer";
+      case "Topdown":
+        return "Puzzle / Logic";
+      default:
+        return type;
+    }
+  };
+
+  const getCreatorLabel = (map: Map) => {
+    if (!map.createdByUserId) return "Admin Team";
+    return `Created by ${map.createdByUserId.slice(0, 8)}`;
+  };
+
+  const filteredMaps = maps.filter((map) => {
+    if (mapTypeFilter !== "all" && map.type !== mapTypeFilter) return false;
+    return true;
+  });
+
   return (
     <div className="admin-puzzles-section">
       <div className="admin-sub-tabs">
@@ -157,32 +189,49 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                   List of maps belonging to the Test category. Please select a map to start.
                 </p>
               </div>
-              <div className="challenges-grid">
-                {maps.map((map) => (
-                  <div key={map.id} className="card challenge-card">
-                    <div className="challenge-header">
-                      <h3 className="challenge-title">{map.title}</h3>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                        <span
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                            fontWeight: "600",
-                            backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
-                            color: map.type === "Platform" ? "#1e40af" : "#92400e",
-                          }}
-                        >
-                          {map.type}
-                        </span>
-                        <span
-                          className={`challenge-difficulty ${getDifficultyColor(map.difficulty)}`}
-                        >
-                          {getDifficultyLabel(map.difficulty)}
-                        </span>
-                      </div>
-                    </div>
 
+              <div className="challenges-toolbar">
+                <label className="search-bar" htmlFor="map-search">
+                  <Search size={18} />
+                  <input
+                    id="map-search"
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search maps by name..."
+                  />
+                </label>
+
+                <div className="filters-row">
+                  <select
+                    className="filter-select"
+                    value={difficultyFilter}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setDifficultyFilter(value === "all" ? "all" : (Number(value) as 1 | 2 | 3));
+                    }}
+                  >
+                    <option value="all">Difficulty: All</option>
+                    <option value={1}>Easy</option>
+                    <option value={2}>Medium</option>
+                    <option value={3}>Hard</option>
+                  </select>
+
+                  <select
+                    className="filter-select"
+                    value={mapTypeFilter}
+                    onChange={(e) => setMapTypeFilter(e.target.value as MapTypeFilter)}
+                  >
+                    <option value="all">Type: All</option>
+                    <option value="Platform">Platformer</option>
+                    <option value="Topdown">Puzzle / Logic</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="challenges-grid">
+                {filteredMaps.map((map) => (
+                  <div key={map.id} className="card challenge-card">
                     {map.avatarUrl && (
                       <div className="challenge-thumb">
                         <img
@@ -194,6 +243,26 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                         />
                       </div>
                     )}
+
+                    {!map.avatarUrl && (
+                      <div className="challenge-thumb challenge-thumb-placeholder">
+                        <span>NO PREVIEW</span>
+                      </div>
+                    )}
+
+                    <div className="challenge-header">
+                      <h3 className="challenge-title">{map.title}</h3>
+                      <div className="challenge-badges">
+                        <span
+                          className={`challenge-difficulty ${getDifficultyColor(map.difficulty)}`}
+                        >
+                          {getDifficultyLabel(map.difficulty)}
+                        </span>
+                        <span className="challenge-type-badge">{getTypeLabel(map.type)}</span>
+                      </div>
+                    </div>
+
+                    <p className="challenge-creator">{getCreatorLabel(map)}</p>
 
                     <p className="challenge-description">{map.description}</p>
 
@@ -235,7 +304,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                 ))}
               </div>
 
-              {maps.length === 0 && (
+              {filteredMaps.length === 0 && (
                 <div className="challenges-empty">
                   <p>No matching maps found.</p>
                 </div>
