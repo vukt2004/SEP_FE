@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle2, Users, Map, Plus, LogIn, Loader2 } from "lucide-react";
+import { UserCircle2, Users, Map, Plus, LogIn, Loader2, X } from "lucide-react";
 import styles from "../components/ModeSelectPage.module.css";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import type { LobbyRoomListItem } from "@/types/api/learner/lobby";
+import type { Map as ApiMap } from "@/types/api/learner/maps";
 
 function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
   return {
@@ -25,12 +28,20 @@ function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
   };
 }
 
+const MAX_PLAYER_OPTIONS = [2, 4, 6, 8] as const;
+
 export default function ModeSelectPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [rooms, setRooms] = useState<LobbyRoomListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createMaxPlayers, setCreateMaxPlayers] = useState(4);
+  const [createMapId, setCreateMapId] = useState<string | null>(null);
+  const [maps, setMaps] = useState<ApiMap[]>([]);
+  const [mapsLoading, setMapsLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const fetchRooms = useCallback(async () => {
     setLoading(true);
@@ -49,16 +60,139 @@ export default function ModeSelectPage() {
     }
   }, []);
 
+  // SignalR: connect and listen LobbyRoomList, AlreadyInRoom
+  useEffect(() => {
+    let unsubList: (() => void) | undefined;
+    let unsubAlready: (() => void) | undefined;
+    gameLobbyHub
+      .connect()
+      .then(() => {
+        gameLobbyHub.getLobbyRooms();
+        unsubList = gameLobbyHub.on("LobbyRoomList", (list: unknown) => {
+          const arr = Array.isArray(list) ? list : [];
+          setRooms(arr.map((r: Record<string, unknown>) => normalizeRoom(r)));
+          setLoading(false);
+        });
+        unsubAlready = gameLobbyHub.on("AlreadyInRoom", (data: unknown) => {
+          const d = data as { roomId?: string };
+          if (d?.roomId) navigate(ROUTES.LEARNER_ROOM_DETAIL(d.roomId));
+        });
+      })
+      .catch(() => setLoading(false));
+    return () => {
+      unsubList?.();
+      unsubAlready?.();
+    };
+  }, [navigate]);
+
+  // Initial fetch (fallback if SignalR not ready)
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  // Load maps when create modal opens
+  useEffect(() => {
+    if (!createModalOpen) return;
+    setMapsLoading(true);
+    learnerMapsApi
+      .getMaps({ pageSize: 50, publishedOnly: true })
+      .then((res) => {
+        if (res.data?.data?.items) setMaps(res.data.data.items);
+      })
+      .finally(() => setMapsLoading(false));
+  }, [createModalOpen]);
+
+  const handleCreateRoom = async () => {
+    setCreating(true);
+    try {
+      const res = await learnerLobbyApi.createRoom({
+        maxPlayers: createMaxPlayers,
+        selectedMapId: createMapId,
+      });
+      const payload = res.data?.data ?? (res.data as unknown as { Data?: unknown })?.Data;
+      const roomId =
+        payload &&
+        typeof payload === "object" &&
+        (payload as Record<string, unknown>).roomId != null
+          ? String((payload as Record<string, unknown>).roomId)
+          : payload &&
+              typeof payload === "object" &&
+              (payload as Record<string, unknown>).RoomId != null
+            ? String((payload as Record<string, unknown>).RoomId)
+            : null;
+      if (res.data?.isSuccess && roomId) {
+        setCreateModalOpen(false);
+        const roomCode =
+          (payload as Record<string, unknown>).roomCode ??
+          (payload as Record<string, unknown>).RoomCode;
+        const maxPlayers =
+          (payload as Record<string, unknown>).maxPlayers ??
+          (payload as Record<string, unknown>).MaxPlayers;
+        navigate(ROUTES.LEARNER_ROOM_DETAIL(roomId), {
+          state: {
+            roomId,
+            roomCode: roomCode != null ? String(roomCode) : "",
+            hostId: "", // will be filled by GET
+            currentPlayerCount: 1,
+            maxPlayers: typeof maxPlayers === "number" ? maxPlayers : 8,
+            status: "Waiting",
+            isLocked: false,
+            selectedMapId: createMapId,
+            players: [],
+          },
+        });
+        return;
+      }
+      window.alert(res.data?.message ?? "Could not create room.");
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : "Could not create room.";
+      window.alert(msg ?? "Could not create room.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleJoinRoom = async (roomId: string) => {
     setJoiningId(roomId);
     try {
       const res = await learnerLobbyApi.joinRoom({ roomId });
-      if (res.data?.isSuccess && res.data?.data?.roomId) {
-        navigate(ROUTES.LEARNER_ROOM_DETAIL(res.data.data.roomId));
+      const payload = res.data?.data ?? (res.data as unknown as { Data?: unknown })?.Data;
+      const joinedRoomId =
+        payload &&
+        typeof payload === "object" &&
+        (payload as Record<string, unknown>).roomId != null
+          ? String((payload as Record<string, unknown>).roomId)
+          : payload &&
+              typeof payload === "object" &&
+              (payload as Record<string, unknown>).RoomId != null
+            ? String((payload as Record<string, unknown>).RoomId)
+            : null;
+      if (res.data?.isSuccess && joinedRoomId) {
+        const roomCode =
+          (payload as Record<string, unknown>).roomCode ??
+          (payload as Record<string, unknown>).RoomCode;
+        const maxPlayers =
+          (payload as Record<string, unknown>).maxPlayers ??
+          (payload as Record<string, unknown>).MaxPlayers;
+        const currentPlayerCount =
+          (payload as Record<string, unknown>).currentPlayerCount ??
+          (payload as Record<string, unknown>).CurrentPlayerCount;
+        navigate(ROUTES.LEARNER_ROOM_DETAIL(joinedRoomId), {
+          state: {
+            roomId: joinedRoomId,
+            roomCode: roomCode != null ? String(roomCode) : "",
+            hostId: "",
+            currentPlayerCount: typeof currentPlayerCount === "number" ? currentPlayerCount : 1,
+            maxPlayers: typeof maxPlayers === "number" ? maxPlayers : 8,
+            status: "Waiting",
+            isLocked: false,
+            selectedMapId: null,
+            players: [],
+          },
+        });
         return;
       }
       const msg = res.data?.message ?? "Could not join room.";
@@ -123,7 +257,7 @@ export default function ModeSelectPage() {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnAccent}`}
-                onClick={() => navigate(ROUTES.LEARNER_ROOM_CREATE)}
+                onClick={() => setCreateModalOpen(true)}
               >
                 <Plus size={18} aria-hidden />
                 {t("createRoom")}
@@ -175,6 +309,76 @@ export default function ModeSelectPage() {
           )}
         </section>
       </section>
+
+      {/* Create room modal */}
+      {createModalOpen && (
+        <div className={styles.modalOverlay} onClick={() => !creating && setCreateModalOpen(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>{t("createRoom")}</h2>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => !creating && setCreateModalOpen(false)}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <label className={styles.modalLabel}>{t("maxPlayers", "Max players")}</label>
+              <div className={styles.slots}>
+                {MAX_PLAYER_OPTIONS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`${styles.slot} ${createMaxPlayers === n ? styles.slotActive : ""}`}
+                    onClick={() => setCreateMaxPlayers(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <label className={styles.modalLabel}>{t("selectMap", "Select map (optional)")}</label>
+              <select
+                className={styles.modalSelect}
+                value={createMapId ?? ""}
+                onChange={(e) => setCreateMapId(e.target.value || null)}
+                disabled={mapsLoading}
+              >
+                <option value="">{t("noMap", "— No map (choose later) —")}</option>
+                {maps.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title} ({m.type})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => !creating && setCreateModalOpen(false)}
+                disabled={creating}
+              >
+                {t("cancel", "Cancel")}
+              </button>
+              <button
+                type="button"
+                className={styles.btnAccent}
+                onClick={handleCreateRoom}
+                disabled={creating}
+              >
+                {creating ? (
+                  <Loader2 size={18} className={styles.spinner} aria-hidden />
+                ) : (
+                  t("createRoom")
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

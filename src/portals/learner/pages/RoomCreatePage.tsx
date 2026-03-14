@@ -20,8 +20,37 @@ export default function RoomCreatePage() {
     setCreating(true);
     try {
       const res = await learnerLobbyApi.createRoom({ maxPlayers });
-      if (res.data?.isSuccess && res.data?.data?.roomId) {
-        navigate(ROUTES.LEARNER_ROOM_DETAIL(res.data.data.roomId));
+      const payload = res.data?.data ?? (res.data as unknown as { Data?: unknown })?.Data;
+      const roomId =
+        payload &&
+        typeof payload === "object" &&
+        (payload as Record<string, unknown>).roomId != null
+          ? String((payload as Record<string, unknown>).roomId)
+          : payload &&
+              typeof payload === "object" &&
+              (payload as Record<string, unknown>).RoomId != null
+            ? String((payload as Record<string, unknown>).RoomId)
+            : null;
+      if (res.data?.isSuccess && roomId) {
+        const roomCode =
+          (payload as Record<string, unknown>).roomCode ??
+          (payload as Record<string, unknown>).RoomCode;
+        const maxPlayersVal =
+          (payload as Record<string, unknown>).maxPlayers ??
+          (payload as Record<string, unknown>).MaxPlayers;
+        navigate(ROUTES.LEARNER_ROOM_DETAIL(roomId), {
+          state: {
+            roomId,
+            roomCode: roomCode != null ? String(roomCode) : "",
+            hostId: "",
+            currentPlayerCount: 1,
+            maxPlayers: typeof maxPlayersVal === "number" ? maxPlayersVal : maxPlayers,
+            status: "Waiting",
+            isLocked: false,
+            selectedMapId: null,
+            players: [],
+          },
+        });
         return;
       }
       window.alert(res.data?.message ?? "Could not create room.");
@@ -48,7 +77,7 @@ export default function RoomCreatePage() {
             aria-label="Back"
           >
             <ChevronLeft size={20} />
-            {t("back", "Back")}
+            {t("back")}
           </button>
           <h1 className={styles.title}>{t("createRoom")}</h1>
           <p className={styles.subtitle}>

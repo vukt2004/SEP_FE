@@ -17,23 +17,55 @@ export default function RoomJoinPage() {
   const handleJoin = async () => {
     const code = roomCode.trim().toUpperCase();
     if (!code) {
-      window.alert(t("enterRoomCode", "Enter room code"));
+      window.alert(t("enterRoomCode"));
       return;
     }
     setJoining(true);
     try {
       const res = await learnerLobbyApi.joinRoom({ roomCode: code });
-      if (res.data?.isSuccess && res.data?.data?.roomId) {
-        navigate(ROUTES.LEARNER_ROOM_DETAIL(res.data.data.roomId));
+      const payload = res.data?.data ?? (res.data as unknown as { Data?: unknown })?.Data;
+      const joinedRoomId =
+        payload &&
+        typeof payload === "object" &&
+        (payload as Record<string, unknown>).roomId != null
+          ? String((payload as Record<string, unknown>).roomId)
+          : payload &&
+              typeof payload === "object" &&
+              (payload as Record<string, unknown>).RoomId != null
+            ? String((payload as Record<string, unknown>).RoomId)
+            : null;
+      if (res.data?.isSuccess && joinedRoomId) {
+        const roomCode =
+          (payload as Record<string, unknown>).roomCode ??
+          (payload as Record<string, unknown>).RoomCode;
+        const maxPlayersVal =
+          (payload as Record<string, unknown>).maxPlayers ??
+          (payload as Record<string, unknown>).MaxPlayers;
+        const currentPlayerCount =
+          (payload as Record<string, unknown>).currentPlayerCount ??
+          (payload as Record<string, unknown>).CurrentPlayerCount;
+        navigate(ROUTES.LEARNER_ROOM_DETAIL(joinedRoomId), {
+          state: {
+            roomId: joinedRoomId,
+            roomCode: roomCode != null ? String(roomCode) : code,
+            hostId: "",
+            currentPlayerCount: typeof currentPlayerCount === "number" ? currentPlayerCount : 1,
+            maxPlayers: typeof maxPlayersVal === "number" ? maxPlayersVal : 8,
+            status: "Waiting",
+            isLocked: false,
+            selectedMapId: null,
+            players: [],
+          },
+        });
         return;
       }
-      window.alert(res.data?.message ?? t("couldNotJoinRoom", "Could not join room."));
+      window.alert(res.data?.message ?? t("couldNotJoinRoom"));
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          : t("couldNotJoinRoom", "Could not join room.");
-      window.alert(msg ?? t("couldNotJoinRoom", "Could not join room."));
+          : t("couldNotJoinRoom");
+      window.alert(msg ?? t("couldNotJoinRoom"));
     } finally {
       setJoining(false);
     }
@@ -51,17 +83,15 @@ export default function RoomJoinPage() {
             aria-label="Back"
           >
             <ChevronLeft size={20} />
-            {t("back", "Back")}
+            {t("back")}
           </button>
           <h1 className={styles.title}>{t("joinRoom")}</h1>
-          <p className={styles.subtitle}>
-            {t("joinRoomSubtitle", "Enter the room code from your host.")}
-          </p>
+          <p className={styles.subtitle}>{t("joinRoomSubtitle")}</p>
         </header>
 
         <section className={styles.form}>
           <label className={styles.label} htmlFor="room-code">
-            {t("roomCode", "Room code")}
+            {t("roomCode")}
           </label>
           <input
             id="room-code"

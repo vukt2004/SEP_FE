@@ -27,6 +27,7 @@ const LearnerModeSelectPage = React.lazy(() => import("@/portals/learner/pages/M
 const LearnerRoomCreatePage = React.lazy(() => import("@/portals/learner/pages/RoomCreatePage"));
 const LearnerRoomJoinPage = React.lazy(() => import("@/portals/learner/pages/RoomJoinPage"));
 const LearnerRoomDetailPage = React.lazy(() => import("@/portals/learner/pages/RoomDetailPage"));
+const LearnerRoomResultPage = React.lazy(() => import("@/portals/learner/pages/RoomResultPage"));
 
 /**
  * Public learner routes:
@@ -69,6 +70,7 @@ export const learnerRoutes: RouteObject = {
     { path: "map/:id", element: <LearnerMapDetailPage /> },
     { path: "room/create", element: <LearnerRoomCreatePage /> },
     { path: "room/join", element: <LearnerRoomJoinPage /> },
+    { path: "room/result", element: <LearnerRoomResultPage /> },
     { path: "room/:roomId", element: <LearnerRoomDetailPage /> },
   ],
 };

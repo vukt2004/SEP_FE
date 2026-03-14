@@ -72,8 +72,32 @@ export interface SetRoomMapRequest {
   mapId: string;
 }
 
+/** Request body for submitting solution in lobby game */
+export interface LobbySubmitSolutionRequest {
+  language?: string;
+  astSpec?: string | null;
+  bytecodeSpec?: string | null;
+}
+
+/** One row in ranking after all submitted */
+export interface PlayerRankingDto {
+  playerId: string;
+  score: number;
+  rank: number;
+  status: string;
+}
+
+/** Response after submitting solution */
+export interface SubmitGameResponse {
+  score: number;
+  status: string;
+  submissionId: string;
+  rankingIfAllSubmitted?: PlayerRankingDto[] | null;
+}
+
 /** API result types */
 export type LobbyRoomsListResult = ApiResult<LobbyRoomListItem[]>;
 export type CreateLobbyRoomResult = ApiResult<CreateLobbyRoomResponse>;
 export type JoinLobbyRoomResult = ApiResult<JoinLobbyRoomResponse>;
 export type LobbyRoomDetailResult = ApiResult<LobbyRoomDetailResponse>;
+export type SubmitGameResult = ApiResult<SubmitGameResponse>;
