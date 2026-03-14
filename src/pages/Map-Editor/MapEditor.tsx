@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
 import { EditorCanvas } from "../../tools/map-editor/components/EditorCanvas";
 import { LayerPanel } from "../../tools/map-editor/components/LayerPanel";
 import { createEmptyMap } from "../../tools/map-editor/utils/createEmptyMap";
-import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
 import { MapEditorControls } from "./MapEditorControls";
 import type { MapData } from "../../shared/types/MapSchema";
 
@@ -19,6 +20,8 @@ interface EditorState {
 }
 
 export default function MapEditor() {
+  const navigate = useNavigate();
+  const [zoom, setZoom] = useState(1);
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const initialMap = createEmptyMap("platform", 20, 15, 32);
@@ -77,26 +80,12 @@ export default function MapEditor() {
     store?.setSelectedTool(tool);
   };
 
-  const handleResize = (width: number, height: number) => {
-    store?.resize(width, height);
+  const handleResize = (width: number, height: number, tileSize: number) => {
+    store?.resize(width, height, tileSize);
   };
 
-  const handleReset = (
-    type: "platform" | "topdown",
-    width: number,
-    height: number,
-    tileSize: number,
-    name?: string,
-    description?: string,
-  ) => {
-    store?.resetMap(type, width, height, tileSize);
-    // Update name and description if provided
-    if (name !== undefined && store) {
-      store.setMapName(name);
-    }
-    if (description !== undefined && store) {
-      store.setMapDescription(description);
-    }
+  const handleTypeChange = (type: "platform" | "topdown") => {
+    store?.setMapType(type);
   };
 
   const handleNameChange = (name: string) => {
@@ -131,90 +120,115 @@ export default function MapEditor() {
     store?.redo();
   };
 
-  const handleExport = () => {
-    const mapData = store?.getState();
-    if (!mapData) return;
-
-    // Convert to game level format
-    const gameLevelFormat = exportMapToGameFormat(mapData);
-
-    const json = JSON.stringify(gameLevelFormat, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${gameLevelFormat.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const mapData = JSON.parse(event.target?.result as string) as MapData;
-        store?.loadMap(mapData);
-      } catch (error) {
-        console.error("Failed to load map:", error);
-        alert("Failed to load map file. Please check the format.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
   const { mapData, activeLayer, selectedTile, selectedObjectId, selectedTool, canUndo, canRedo } =
     editorState;
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>Map Editor</h1>
-        <p style={styles.subtitle}>Create and edit tile-based maps for your game</p>
+        <button style={styles.backButton} onClick={() => navigate(-1)}>
+          <ArrowLeft size={15} /> Back
+        </button>
+        <div>
+          <h1 style={styles.title}>Map Editor</h1>
+        </div>
       </div>
 
       {mapData && store && (
-        <>
-          <div style={styles.mainContent}>
-            <div style={styles.sidebar}>
-              <LayerPanel store={store} />
+        <div style={styles.mainContent}>
+          <aside style={styles.leftSidebar}>
+            <MapEditorControls
+              sectionMode="left"
+              mapData={mapData}
+              activeLayer={activeLayer}
+              selectedTile={selectedTile}
+              selectedObjectId={selectedObjectId}
+              selectedTool={selectedTool}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onLayerChange={handleLayerChange}
+              onTileSelect={handleTileSelect}
+              onObjectSelect={handleObjectSelect}
+              onToolSelect={handleToolSelect}
+              onResize={handleResize}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onTypeChange={handleTypeChange}
+              onNameChange={handleNameChange}
+              onDescriptionChange={handleDescriptionChange}
+              onDifficultyChange={handleDifficultyChange}
+              onTimeLimitChange={handleTimeLimitChange}
+              onWinConditionChange={handleWinConditionChange}
+              onPriceChange={handlePriceChange}
+            />
+          </aside>
 
-              <div style={{ marginTop: "20px" }}>
-                <MapEditorControls
-                  mapData={mapData}
-                  activeLayer={activeLayer}
-                  selectedTile={selectedTile}
-                  selectedObjectId={selectedObjectId}
-                  selectedTool={selectedTool}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onLayerChange={handleLayerChange}
-                  onTileSelect={handleTileSelect}
-                  onObjectSelect={handleObjectSelect}
-                  onToolSelect={handleToolSelect}
-                  onResize={handleResize}
-                  onReset={handleReset}
-                  onExport={handleExport}
-                  onImport={handleImport}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  onNameChange={handleNameChange}
-                  onDescriptionChange={handleDescriptionChange}
-                  onDifficultyChange={handleDifficultyChange}
-                  onTimeLimitChange={handleTimeLimitChange}
-                  onWinConditionChange={handleWinConditionChange}
-                  onPriceChange={handlePriceChange}
-                />
+          <section style={styles.canvasPanel}>
+            <div style={styles.canvasToolbar}>
+              <div style={styles.zoomGroup}>
+                <button
+                  style={styles.zoomButton}
+                  onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <span style={styles.zoomText}>{Math.round(zoom * 100)}%</span>
+                <button
+                  style={styles.zoomButton}
+                  onClick={() => setZoom((z) => Math.min(2.5, z + 0.1))}
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <button style={styles.zoomButton} onClick={() => setZoom(1)} title="Reset Zoom">
+                  <Scan size={14} />
+                </button>
               </div>
             </div>
 
             <div style={styles.canvasContainer}>
-              <EditorCanvas store={store} />
+              <div style={styles.canvasGridBackdrop}>
+                <div
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: "center center",
+                    transition: "transform 0.2s ease",
+                    display: "inline-block",
+                  }}
+                >
+                  <EditorCanvas store={store} />
+                </div>
+              </div>
             </div>
-          </div>
-        </>
+          </section>
+
+          <aside style={styles.rightSidebar}>
+            <LayerPanel store={store} />
+            <MapEditorControls
+              sectionMode="right"
+              mapData={mapData}
+              activeLayer={activeLayer}
+              selectedTile={selectedTile}
+              selectedObjectId={selectedObjectId}
+              selectedTool={selectedTool}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onLayerChange={handleLayerChange}
+              onTileSelect={handleTileSelect}
+              onObjectSelect={handleObjectSelect}
+              onToolSelect={handleToolSelect}
+              onResize={handleResize}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onTypeChange={handleTypeChange}
+              onNameChange={handleNameChange}
+              onDescriptionChange={handleDescriptionChange}
+              onDifficultyChange={handleDifficultyChange}
+              onTimeLimitChange={handleTimeLimitChange}
+              onWinConditionChange={handleWinConditionChange}
+              onPriceChange={handlePriceChange}
+            />
+          </aside>
+        </div>
       )}
     </div>
   );
@@ -224,46 +238,137 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    padding: "20px",
+    padding: "18px",
+    gap: "14px",
     minHeight: "100vh",
-    backgroundColor: "#f5f5f5",
+    background:
+      "radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.12), transparent 30%), #eef2f7",
   },
   header: {
-    textAlign: "center",
-    marginBottom: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    maxWidth: "1800px",
+    position: "relative",
+    padding: "14px 16px",
+    borderRadius: "16px",
+    border: "1px solid #dbe3ef",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
   },
   title: {
-    fontSize: "32px",
-    fontWeight: "bold",
-    margin: "0 0 10px 0",
-    color: "#333",
+    fontSize: "30px",
+    fontWeight: "800",
+    margin: 0,
+    color: "#0f172a",
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: "16px",
-    color: "#666",
+    fontSize: "14px",
+    color: "#64748b",
     margin: 0,
   },
-  mainContent: {
-    display: "flex",
-    gap: "20px",
-    width: "100%",
-    maxWidth: "1600px",
+  backButton: {
+    position: "absolute",
+    left: "16px",
+    padding: "8px 14px",
+    fontSize: "13px",
+    fontWeight: "600",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    backgroundColor: "white",
+    color: "#0f172a",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "7px",
   },
-  sidebar: {
+  mainContent: {
+    display: "grid",
+    gridTemplateColumns: "320px minmax(0, 1fr) 320px",
+    gap: "14px",
+    width: "100%",
+    maxWidth: "1800px",
+  },
+  leftSidebar: {
     display: "flex",
     flexDirection: "column",
-    width: "320px",
-    flexShrink: 0,
+    gap: "12px",
     maxHeight: "calc(100vh - 140px)",
     overflowY: "auto",
     overflowX: "hidden",
   },
+  rightSidebar: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+    maxHeight: "calc(100vh - 140px)",
+    overflowY: "auto",
+    overflowX: "hidden",
+  },
+  canvasPanel: {
+    minHeight: "calc(100vh - 140px)",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: "18px",
+    border: "1px solid #dbe3ef",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.1)",
+    overflow: "hidden",
+  },
+  canvasToolbar: {
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    padding: "10px 12px",
+    borderBottom: "1px solid #e2e8f0",
+    background: "#f8fafc",
+  },
+  zoomGroup: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    background: "white",
+    border: "1px solid #d1d5db",
+    borderRadius: "10px",
+    padding: "4px",
+  },
+  zoomButton: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#334155",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomText: {
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#334155",
+    minWidth: "46px",
+    textAlign: "center",
+  },
   canvasContainer: {
     flex: 1,
-    padding: "20px",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    padding: "14px",
+    overflow: "auto",
+  },
+  canvasGridBackdrop: {
+    minHeight: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "24px",
+    borderRadius: "12px",
+    border: "1px solid #dbe3ef",
+    background:
+      "linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%)",
+    backgroundSize: "24px 24px",
+    backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0px",
   },
 };

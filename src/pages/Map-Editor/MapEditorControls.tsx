@@ -1,4 +1,16 @@
 import { useState, useEffect, useRef } from "react";
+import {
+  Brush,
+  Eraser,
+  PaintBucket,
+  History,
+  Layers,
+  Settings2,
+  Save,
+  Maximize2,
+  FolderTree,
+  Shapes,
+} from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
 import { TilePalette } from "./TilePalette";
@@ -32,25 +44,17 @@ interface MapEditorControlsProps {
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
   onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
-  onResize: (width: number, height: number) => void;
-  onReset: (
-    type: "platform" | "topdown",
-    width: number,
-    height: number,
-    tileSize: number,
-    name?: string,
-    description?: string,
-  ) => void;
-  onExport: () => void;
-  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onTypeChange?: (type: "platform" | "topdown") => void;
   onNameChange?: (name: string) => void;
   onDescriptionChange?: (description: string) => void;
   onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
   onTimeLimitChange?: (seconds: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onPriceChange?: (price: number) => void;
+  sectionMode?: "left" | "right";
 }
 
 interface ObjectSelectionButtonProps {
@@ -171,33 +175,26 @@ export function MapEditorControls({
   onObjectSelect,
   onToolSelect,
   onResize,
-  onReset,
-  onExport,
-  onImport,
   onUndo,
   onRedo,
+  onTypeChange,
   onNameChange,
   onDescriptionChange,
   onDifficultyChange,
   onTimeLimitChange,
   onWinConditionChange,
   onPriceChange,
+  sectionMode = "right",
 }: MapEditorControlsProps) {
   const [showResizeDialog, setShowResizeDialog] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
-  const [resetType, setResetType] = useState<"platform" | "topdown">(mapData.config.type);
-  const [resetWidth, setResetWidth] = useState(20);
-  const [resetHeight, setResetHeight] = useState(15);
-  const [resetTileSize, setResetTileSize] = useState(32);
-  const [resetName, setResetName] = useState("");
-  const [resetDescription, setResetDescription] = useState("");
+  const [resizeTileSize, setResizeTileSize] = useState(mapData.config.tileSize);
   const [hints, setHints] = useState<string[]>([""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
@@ -213,10 +210,22 @@ export function MapEditorControls({
     ObjectDefinition
   > | null>(null);
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
+  const showLeftPanel = sectionMode === "left";
+  const showRightPanel = sectionMode === "right";
 
   // Load object sprites on mount or when game type changes
   useEffect(() => {
+    if (!showLeftPanel) {
+      setObjectSpritesLoaded(false);
+      setObjectDefinitions(null);
+      return;
+    }
+
     let cancelled = false;
+
+    // Reset immediately so UI shows loading state during transition
+    setObjectSpritesLoaded(false);
+    setObjectDefinitions(null);
 
     async function loadObjects() {
       try {
@@ -250,7 +259,7 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache]);
+  }, [gameType, objectCache, showLeftPanel]);
 
   const handleResizeConfirm = () => {
     // Validate map size (10-30)
@@ -261,51 +270,35 @@ export function MapEditorControls({
       alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
     }
 
-    onResize(validWidth, validHeight);
+    onResize(validWidth, validHeight, resizeTileSize);
     setShowResizeDialog(false);
   };
 
-  const handleResetConfirm = () => {
-    // Validate map size (10-30)
-    const validWidth = Math.max(10, Math.min(30, resetWidth));
-    const validHeight = Math.max(10, Math.min(30, resetHeight));
-
-    if (validWidth !== resetWidth || validHeight !== resetHeight) {
-      alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
-    }
-
-    if (confirm("This will clear all map data. Are you sure?")) {
-      onReset(resetType, validWidth, validHeight, resetTileSize, resetName, resetDescription);
-      setShowResetDialog(false);
-    }
-  };
-
-  const handleUploadConfirm = async () => {
+  const handleSaveMapFromModal = async () => {
     const mapName = mapData.config.name?.trim();
     if (!mapName) {
-      alert("Please set a map name before uploading");
+      alert("Please set a map name before saving");
       return;
     }
 
     if (userType === "unknown") {
-      alert("You must be logged in as a learner or CMS user to upload maps");
+      alert("You must be logged in as a learner or CMS user to save maps");
       return;
     }
+
+    if (!confirm("Do you want to save the map?")) return;
 
     try {
       setUploading(true);
 
-      // Convert map to game format
       const gameLevelFormat = exportMapToGameFormat(mapData);
       const json = JSON.stringify(gameLevelFormat, null, 2);
       const blob = new Blob([json], { type: "application/json" });
       const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
 
-      // Convert map type from internal format to API format
       const mapType: "Topdown" | "Platform" =
         mapData.config.type === "platform" ? "Platform" : "Topdown";
 
-      // Use the appropriate API based on user type
       const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
 
       const response = await mapsApi.uploadMapFromJson({
@@ -313,13 +306,10 @@ export function MapEditorControls({
         Description: mapData.config.description || "Map created with Map Editor",
         Type: mapType,
         Difficulty: mapData.config.difficulty,
-        TimeLimitMs: mapData.config.timeLimitSeconds * 1000, // Convert seconds to milliseconds
+        TimeLimitMs: mapData.config.timeLimitSeconds * 1000,
         WinCondition: mapData.config.winCondition,
         Price: mapData.config.price,
         MapDetailFile: file,
-        // Optional fields can be added:
-        // HintsJson: JSON.stringify([]),
-        // TagIdsCsv: "",
       });
 
       if (response.data.isSuccess) {
@@ -327,14 +317,15 @@ export function MapEditorControls({
           response.data.data && typeof response.data.data === "object" && "id" in response.data.data
             ? String(response.data.data.id)
             : "";
-        alert(`Map uploaded successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
-        setShowUploadDialog(false);
+        alert(`Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
+        setShowMapInfoModal(false);
+        setAvatarFile(null);
       } else {
-        alert(`Upload failed: ${response.data.message || "Unknown error"}`);
+        alert(`Save failed: ${response.data.message || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      alert(`Failed to upload map: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Save error:", error);
+      alert(`Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setUploading(false);
     }
@@ -342,234 +333,264 @@ export function MapEditorControls({
 
   return (
     <div style={styles.container}>
-      {/* Undo/Redo */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>History</h3>
-        <div style={styles.buttonGroup}>
-          <button
-            style={{
-              ...styles.button,
-              ...(canUndo ? {} : styles.buttonDisabled),
-            }}
-            onClick={onUndo}
-            disabled={!canUndo}
-          >
-            ↶ Undo
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(canRedo ? {} : styles.buttonDisabled),
-            }}
-            onClick={onRedo}
-            disabled={!canRedo}
-          >
-            ↷ Redo
-          </button>
-        </div>
-      </div>
-
-      {/* Layer Selection */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Active Layer</h3>
-        <div style={styles.buttonGroup}>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "background" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("background")}
-          >
-            Background
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "ground" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("ground")}
-          >
-            Ground
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "foreground" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("foreground")}
-          >
-            Foreground
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "collision" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("collision")}
-          >
-            Collision
-          </button>
-        </div>
-        {activeLayer === "collision" && (
-          <p style={styles.helpText}>
-            ⚠️ Collision layer: Paint = solid (blocks movement), Erase = empty (passable)
-          </p>
-        )}
-        {activeLayer === "foreground" && (
-          <p style={styles.helpText}>
-            ℹ️ Foreground layer: Rendered above objects (for trees, bridges, etc.)
-          </p>
-        )}
-      </div>
-
-      {/* Tool Selection - Show on visual layers only */}
-      {(activeLayer === "background" ||
-        activeLayer === "ground" ||
-        activeLayer === "foreground") && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Tile Tools</h3>
-          <p style={styles.helpText}>Select a tile below, then choose a tool</p>
-          <div style={styles.buttonGroup}>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "paint" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
-              title="Paint tiles (click again to deselect)"
-            >
-              🖌️ Paint
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "erase" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
-              title="Erase tiles (click again to deselect)"
-            >
-              🧹 Erase
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "fill" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
-              title="Fill area (click again to deselect)"
-            >
-              🪣 Fill
-            </button>
+      {showRightPanel && (
+        <>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <History size={16} /> History
+            </h3>
+            <div style={styles.buttonGroup}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(canUndo ? {} : styles.buttonDisabled),
+                }}
+                onClick={onUndo}
+                disabled={!canUndo}
+              >
+                ↶ Undo
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(canRedo ? {} : styles.buttonDisabled),
+                }}
+                onClick={onRedo}
+                disabled={!canRedo}
+              >
+                ↷ Redo
+              </button>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Collision Layer Tools */}
-      {activeLayer === "collision" && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Collision Tools</h3>
-          <p style={styles.helpText}>Draw solid areas or erase to make passable</p>
-          <div style={styles.buttonGroup}>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "paint" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
-              title="Paint collision (solid/blocking)"
-            >
-              🟦 Paint Solid
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "erase" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
-              title="Erase collision (passable)"
-            >
-              ⬜ Erase
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "fill" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
-              title="Fill collision area (click again to deselect)"
-            >
-              🪣 Fill
-            </button>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Layers size={16} /> Active Layer
+            </h3>
+            <div style={styles.buttonGroup}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "background" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("background")}
+              >
+                Background
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "ground" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("ground")}
+              >
+                Ground
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "foreground" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("foreground")}
+              >
+                Foreground
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "collision" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("collision")}
+              >
+                Collision
+              </button>
+            </div>
+            {activeLayer === "collision" && (
+              <p style={styles.helpText}>
+                Collision layer: paint blocks movement, erase makes paths passable.
+              </p>
+            )}
+            {activeLayer === "foreground" && (
+              <p style={styles.helpText}>Foreground renders above objects and player.</p>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Object Palette - Only show on background layer */}
-      {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Objects</h3>
-          <p style={styles.helpText}>Select an object, then use paint tool to place it</p>
-          <div style={styles.objectToolGrid}>
-            {/* Dynamically render ALL objects from definitions */}
-            {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
-              const objectId = parseInt(idStr, 10);
-              const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
-              return (
-                <ObjectSelectionButton
-                  key={objectId}
-                  objectId={objectId}
-                  label={label}
-                  objectDef={objDef}
-                  cache={objectCache}
-                  selectedObjectId={selectedObjectId}
-                  onObjectSelect={onObjectSelect}
-                />
-              );
-            })}
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Settings2 size={16} /> Map Settings
+            </h3>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Map Type</label>
+              <select
+                value={mapData.config.type}
+                onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown")}
+                style={styles.select}
+              >
+                <option value="platform">Platform</option>
+                <option value="topdown">Top Down</option>
+              </select>
+            </div>
+            <div style={styles.actionButtons}>
+              <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
+                <Maximize2 size={14} /> Resize Map
+              </button>
+              <button
+                style={{ ...styles.actionButton, ...styles.saveButton }}
+                onClick={() => setShowMapInfoModal(true)}
+                disabled={userType === "unknown"}
+                title={userType === "unknown" ? "Please login to save maps" : "Save map to server"}
+              >
+                <Save size={14} /> Save Map
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Tile Selection - Show on visual layers only */}
-      {(activeLayer === "background" ||
-        activeLayer === "ground" ||
-        activeLayer === "foreground") && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Select Tile</h3>
-          <TilePalette selectedTile={selectedTile} onTileSelect={onTileSelect} mapData={mapData} />
-        </div>
-      )}
+      {showLeftPanel && (
+        <>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <FolderTree size={16} /> Tile Categories
+            </h3>
+            <div style={styles.categoryRow}>
+              {[
+                { key: "all", label: "All" },
+                { key: "terrain", label: "Terrain" },
+                { key: "decor", label: "Decor" },
+              ].map((category) => (
+                <button
+                  key={category.key}
+                  onClick={() => setTileCategory(category.key as "all" | "terrain" | "decor")}
+                  style={{
+                    ...styles.categoryChip,
+                    ...(tileCategory === category.key ? styles.categoryChipActive : {}),
+                  }}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Actions */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Actions</h3>
-        <div style={styles.actionButtons}>
-          <button style={styles.actionButton} onClick={() => setShowMapInfoModal(true)}>
-            Edit Map Info
-          </button>
-          <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
-            Resize Map
-          </button>
-          <button style={styles.actionButton} onClick={() => setShowResetDialog(true)}>
-            New Map
-          </button>
-          <button style={styles.actionButton} onClick={onExport}>
-            Export JSON
-          </button>
-          <button
-            style={styles.actionButton}
-            onClick={() => setShowMapInfoModal(true)}
-            disabled={userType === "unknown"}
-            title={userType === "unknown" ? "Please login to save maps" : "Save map to server"}
-          >
-            Save Map
-          </button>
-          <label style={styles.importLabel}>
-            Import JSON
-            <input type="file" accept=".json" onChange={onImport} style={styles.fileInput} />
-          </label>
-        </div>
-      </div>
+          {(activeLayer === "background" ||
+            activeLayer === "ground" ||
+            activeLayer === "foreground") && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Shapes size={16} /> Tile Tools
+              </h3>
+              <div style={styles.buttonGroup}>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "paint" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
+                  title="Paint tiles"
+                >
+                  <Brush size={14} /> Paint
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "erase" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
+                  title="Erase tiles"
+                >
+                  <Eraser size={14} /> Erase
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "fill" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
+                  title="Fill area"
+                >
+                  <PaintBucket size={14} /> Fill
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeLayer === "collision" && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Shapes size={16} /> Collision Tools
+              </h3>
+              <p style={styles.helpText}>Draw solid tiles or erase them to make walkable spaces.</p>
+              <div style={styles.buttonGroup}>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "paint" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
+                >
+                  <Brush size={14} /> Paint Solid
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "erase" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
+                >
+                  <Eraser size={14} /> Erase
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "fill" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
+                >
+                  <PaintBucket size={14} /> Fill
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(activeLayer === "background" ||
+            activeLayer === "ground" ||
+            activeLayer === "foreground") && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Tile Selection</h3>
+              <TilePalette
+                selectedTile={selectedTile}
+                onTileSelect={onTileSelect}
+                mapData={mapData}
+              />
+            </div>
+          )}
+
+          {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Object Palette</h3>
+              <p style={styles.helpText}>Pick an object and paint it into the map.</p>
+              <div style={styles.objectToolGrid}>
+                {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
+                  const objectId = parseInt(idStr, 10);
+                  const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+                  return (
+                    <ObjectSelectionButton
+                      key={objectId}
+                      objectId={objectId}
+                      label={label}
+                      objectDef={objDef}
+                      cache={objectCache}
+                      selectedObjectId={selectedObjectId}
+                      onObjectSelect={onObjectSelect}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Resize Dialog */}
       {showResizeDialog && (
@@ -600,153 +621,22 @@ export function MapEditorControls({
                 style={styles.input}
               />
             </div>
-            <div style={styles.modalButtons}>
-              <button style={styles.confirmButton} onClick={handleResizeConfirm}>
-                Confirm
-              </button>
-              <button style={styles.cancelButton} onClick={() => setShowResizeDialog(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Dialog */}
-      {showResetDialog && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Create New Map</h3>
-            <p style={styles.helpText}>Map size must be between 10x10 and 30x30</p>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Map Name:</label>
-              <input
-                type="text"
-                value={resetName}
-                onChange={(e) => setResetName(e.target.value)}
-                placeholder="Enter map name"
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Description:</label>
-              <textarea
-                value={resetDescription}
-                onChange={(e) => setResetDescription(e.target.value)}
-                placeholder="Enter map description"
-                style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
-                rows={3}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Type:</label>
-              <select
-                value={resetType}
-                onChange={(e) => setResetType(e.target.value as "platform" | "topdown")}
-                style={styles.select}
-              >
-                <option value="platform">Platform</option>
-                <option value="topdown">Top Down</option>
-              </select>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Width (tiles):</label>
-              <input
-                type="number"
-                min="10"
-                max="30"
-                value={resetWidth}
-                onChange={(e) => setResetWidth(Number(e.target.value))}
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Height (tiles):</label>
-              <input
-                type="number"
-                min="10"
-                max="30"
-                value={resetHeight}
-                onChange={(e) => setResetHeight(Number(e.target.value))}
-                style={styles.input}
-              />
-            </div>
             <div style={styles.formGroup}>
               <label style={styles.label}>Tile Size (px):</label>
               <input
                 type="number"
                 min="8"
                 max="64"
-                value={resetTileSize}
-                onChange={(e) => setResetTileSize(Number(e.target.value))}
+                value={resizeTileSize}
+                onChange={(e) => setResizeTileSize(Number(e.target.value))}
                 style={styles.input}
               />
             </div>
             <div style={styles.modalButtons}>
-              <button style={styles.confirmButton} onClick={handleResetConfirm}>
-                Create
+              <button style={styles.confirmButton} onClick={handleResizeConfirm}>
+                Confirm
               </button>
-              <button style={styles.cancelButton} onClick={() => setShowResetDialog(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Upload Dialog */}
-      {showUploadDialog && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>
-              Upload Map{userType !== "unknown" ? ` (${userType.toUpperCase()})` : ""}
-            </h3>
-            <p style={styles.helpText}>
-              This will upload the map using the current map information below
-            </p>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Map Name:</label>
-              <div style={styles.infoBox}>{mapData.config.name || "(No name set)"}</div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Description:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.description || "(No description set)"}
-              </div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Type:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.type === "platform" ? "Platform" : "Top Down"}
-              </div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Dimensions:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.width} × {mapData.config.height} tiles
-              </div>
-            </div>
-            {(!mapData.config.name || !mapData.config.description) && (
-              <p style={styles.warningText}>
-                ⚠️ Set map name and description in the Map Info section before uploading
-              </p>
-            )}
-            <div style={styles.modalButtons}>
-              <button
-                style={{
-                  ...styles.confirmButton,
-                  ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
-                }}
-                onClick={handleUploadConfirm}
-                disabled={uploading}
-              >
-                {uploading ? "Uploading..." : "Upload"}
-              </button>
-              <button
-                style={styles.cancelButton}
-                onClick={() => setShowUploadDialog(false)}
-                disabled={uploading}
-              >
+              <button style={styles.cancelButton} onClick={() => setShowResizeDialog(false)}>
                 Cancel
               </button>
             </div>
@@ -976,8 +866,15 @@ export function MapEditorControls({
             </div>
 
             <div style={styles.modalButtons}>
-              <button style={styles.confirmButton} onClick={() => setShowMapInfoModal(false)}>
-                Save Map Info
+              <button
+                style={{
+                  ...styles.confirmButton,
+                  ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
+                }}
+                onClick={handleSaveMapFromModal}
+                disabled={uploading}
+              >
+                {uploading ? "Saving..." : "Save Map"}
               </button>
               <button
                 style={styles.cancelButton}
@@ -985,6 +882,7 @@ export function MapEditorControls({
                   setShowMapInfoModal(false);
                   setAvatarFile(null);
                 }}
+                disabled={uploading}
               >
                 Cancel
               </button>
@@ -999,28 +897,31 @@ export function MapEditorControls({
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: "100%",
-    maxWidth: "1200px",
-    padding: "20px",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
   },
   section: {
-    marginBottom: "20px",
-    paddingBottom: "20px",
-    borderBottom: "1px solid #e0e0e0",
+    padding: "14px",
+    borderRadius: "14px",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
   },
   sectionTitle: {
-    fontSize: "18px",
+    fontSize: "14px",
     fontWeight: "600",
     margin: "0 0 12px 0",
-    color: "#333",
+    color: "#0f172a",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    letterSpacing: "0.2px",
   },
   helpText: {
     fontSize: "12px",
-    color: "#888",
+    color: "#64748b",
     marginBottom: "10px",
-    fontStyle: "italic",
   },
   buttonGroup: {
     display: "flex",
@@ -1028,95 +929,59 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   button: {
-    padding: "8px 12px",
+    padding: "9px 12px",
     fontSize: "13px",
     fontWeight: "500",
-    border: "2px solid #ddd",
-    borderRadius: "6px",
-    backgroundColor: "white",
+    border: "1px solid #d1d5db",
+    borderRadius: "10px",
+    backgroundColor: "#ffffff",
     cursor: "pointer",
     transition: "all 0.2s",
-    flex: "1 1 auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "7px",
+    flex: "1 1 120px",
     minWidth: "0",
     whiteSpace: "nowrap",
   },
   buttonActive: {
-    backgroundColor: "#0066ff",
+    backgroundColor: "#1d4ed8",
     color: "white",
-    borderColor: "#0066ff",
+    borderColor: "#1d4ed8",
+    boxShadow: "0 6px 14px rgba(29, 78, 216, 0.25)",
   },
   buttonDisabled: {
     opacity: 0.5,
     cursor: "not-allowed",
   },
-  tileGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 60px)",
-    gap: "10px",
-  },
-  tileButton: {
-    width: "60px",
-    height: "60px",
-    fontSize: "16px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    borderRadius: "4px",
+  categoryRow: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.1s",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  categoryChip: {
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#334155",
+    borderRadius: "999px",
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  categoryChipActive: {
+    border: "1px solid #93c5fd",
+    background: "#dbeafe",
+    color: "#1e40af",
   },
   objectToolGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(76px, 1fr))",
     gap: "8px",
-    maxHeight: "300px",
+    maxHeight: "280px",
     overflowY: "auto",
-    padding: "8px",
-  },
-  objectButton: {
-    padding: "8px",
-    fontSize: "12px",
-    fontWeight: "500",
-    border: "2px solid #ddd",
-    borderRadius: "6px",
-    backgroundColor: "white",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "6px",
-  },
-  objectPreview: {
-    width: "48px",
-    height: "48px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "4px",
-    backgroundColor: "#f5f5f5",
-    overflow: "hidden",
-  },
-  objectImage: {
-    width: "32px",
-    height: "32px",
-    objectFit: "contain",
-    imageRendering: "pixelated",
-  },
-  objectText: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  objectLabel: {
-    fontSize: "11px",
-    color: "#555",
-  },
-  info: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
+    padding: "4px",
   },
   infoText: {
     margin: 0,
@@ -1129,15 +994,24 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "10px",
   },
   actionButton: {
-    padding: "10px 20px",
-    fontSize: "14px",
+    padding: "10px 14px",
+    fontSize: "13px",
     fontWeight: "500",
-    border: "2px solid #0066ff",
-    borderRadius: "6px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
     backgroundColor: "white",
-    color: "#0066ff",
+    color: "#1e293b",
     cursor: "pointer",
     transition: "all 0.2s",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  saveButton: {
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    border: "1px solid #2563eb",
+    boxShadow: "0 8px 16px rgba(37, 99, 235, 0.22)",
   },
   importLabel: {
     padding: "10px 20px",
@@ -1168,8 +1042,8 @@ const styles: Record<string, React.CSSProperties> = {
   modalContent: {
     backgroundColor: "white",
     padding: "30px",
-    borderRadius: "8px",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+    borderRadius: "14px",
+    boxShadow: "0 18px 38px rgba(0,0,0,0.25)",
     minWidth: "400px",
   },
   modalTitle: {
@@ -1197,30 +1071,17 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "2px solid #ddd",
-    borderRadius: "4px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
     boxSizing: "border-box",
     color: "black",
-  },
-  infoBox: {
-    width: "100%",
-    padding: "8px 12px",
-    fontSize: "14px",
-    border: "2px solid #e0e0e0",
-    borderRadius: "4px",
-    backgroundColor: "#f5f5f5",
-    color: "#333",
-    minHeight: "38px",
-    display: "flex",
-    alignItems: "center",
-    boxSizing: "border-box",
   },
   select: {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "2px solid #ddd",
-    borderRadius: "4px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
     boxSizing: "border-box",
     color: "black",
   },

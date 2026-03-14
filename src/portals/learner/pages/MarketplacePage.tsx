@@ -1,6 +1,9 @@
 // src/portals/learner/pages/MarketplacePage.tsx
-import { useState, useMemo } from "react";
-import { ThumbsUp, Play, Star, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerAxios } from "@/services/http/axios.learner";
+import type { Map as ApiMap, MapInfo } from "@/types/api/learner/maps";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
 
@@ -10,6 +13,7 @@ type MapItem = {
   thumbnail: string; // url or placeholder
   categoryTags: MapTag[];
   modeTags: MapTag[];
+  description?: string;
   views: number; // e.g. 37900
   likesPercentage: number; // e.g. 63.3
   isFavorited: boolean;
@@ -44,209 +48,231 @@ const TAG_STYLES: Record<MapTag["color"], React.CSSProperties> = {
   },
 };
 
-// Mock: famous, trending, random (we shuffle for "random")
-const MOCK_MAPS: MapItem[] = [
-  {
-    id: "feat-1",
-    title: "ODD ONE OUT!",
-    thumbnail: "linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1a2f4a 100%)",
-    categoryTags: [{ label: "Hành Động Phiêu Lưu", color: "orange" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 125000,
-    likesPercentage: 87.5,
-    isFavorited: false,
-    previews: ["#2d5a87", "#3d6a97", "#1a2f4a"],
-  },
-  {
-    id: "1",
-    title: "Combat Challenge",
-    thumbnail: "linear-gradient(135deg, #374151 0%, #4b5563 100%)",
-    categoryTags: [{ label: "Thi Đấu Sinh Tồn", color: "blue" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 37900,
-    likesPercentage: 63.3,
-    isFavorited: false,
-  },
-  {
-    id: "2",
-    title: "Misty Mountains",
-    thumbnail: "linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)",
-    categoryTags: [{ label: "Hành Động Phiêu Lưu", color: "orange" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 30200,
-    likesPercentage: 93.7,
-    isFavorited: true,
-  },
-  {
-    id: "3",
-    title: "Mô Phỏng Lốc Xoáy",
-    thumbnail: "linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)",
-    categoryTags: [{ label: "Vui Chơi Hội Nhóm", color: "purple" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 73100,
-    likesPercentage: 90.3,
-    isFavorited: false,
-  },
-  {
-    id: "4",
-    title: "Blade Soccer",
-    thumbnail: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
-    categoryTags: [{ label: "Thi Đấu Nhiều Người", color: "blue" }],
-    modeTags: [],
-    views: 27900,
-    likesPercentage: 71.9,
-    isFavorited: false,
-  },
-  {
-    id: "5",
-    title: "Escape The Killer HOSPITAL UPDATE",
-    thumbnail: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
-    categoryTags: [{ label: "Thi Đấu Không Đối Xứng", color: "purple" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 20700,
-    likesPercentage: 81.2,
-    isFavorited: false,
-  },
-  {
-    id: "6",
-    title: "FALLING FLOORS",
-    thumbnail: "linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)",
-    categoryTags: [{ label: "Vui Chơi Hội Nhóm", color: "purple" }],
-    modeTags: [],
-    views: 22200,
-    likesPercentage: 89.1,
-    isFavorited: false,
-  },
-  {
-    id: "7",
-    title: "Mô Phỏng Kinh Doanh",
-    thumbnail: "linear-gradient(135deg, #422006 0%, #713f12 100%)",
-    categoryTags: [{ label: "Mô Phỏng Kinh Doanh", color: "green" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 7606,
-    likesPercentage: 85.1,
-    isFavorited: false,
-  },
-  {
-    id: "8",
-    title: "Rebuild Fairytown",
-    thumbnail: "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)",
-    categoryTags: [{ label: "Mô Phỏng Kinh Doanh", color: "green" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 18500,
-    likesPercentage: 96.6,
-    isFavorited: true,
-  },
-  {
-    id: "9",
-    title: "Abyss Corridor",
-    thumbnail: "linear-gradient(135deg, #312e81 0%, #4338ca 100%)",
-    categoryTags: [{ label: "Roguelike", color: "purple" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 42100,
-    likesPercentage: 88.2,
-    isFavorited: false,
-  },
-  {
-    id: "10",
-    title: "Merge Tower Defense",
-    thumbnail: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
-    categoryTags: [{ label: "Kinh Điển", color: "blue" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 33800,
-    likesPercentage: 91.4,
-    isFavorited: false,
-  },
-  {
-    id: "11",
-    title: "Wave Warriors",
-    thumbnail: "linear-gradient(135deg, #581c87 0%, #7e22ce 100%)",
-    categoryTags: [{ label: "Thi Đấu Sinh Tồn", color: "blue" }],
-    modeTags: [],
-    views: 25600,
-    likesPercentage: 78.5,
-    isFavorited: false,
-  },
-  {
-    id: "12",
-    title: "Ghost Castle",
-    thumbnail: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-    categoryTags: [{ label: "Hành Động Phiêu Lưu", color: "orange" }],
-    modeTags: [{ label: "Hỗ Trợ Chơi Đơn", color: "yellow" }],
-    views: 19200,
-    likesPercentage: 82.0,
-    isFavorited: false,
-  },
-  {
-    id: "13",
-    title: "Fire Beat Sword",
-    thumbnail: "linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)",
-    categoryTags: [{ label: "Thi Đấu Nhiều Người", color: "blue" }],
-    modeTags: [{ label: "Hợp Tác", color: "green" }],
-    views: 44500,
-    likesPercentage: 86.3,
-    isFavorited: true,
-  },
-];
+function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
+  const paletteIndex = index % 5;
 
-// Thứ tự xáo trộn cố định cho tab "Ngẫu Nhiên" (mock)
-const MOCK_MAPS_RANDOM: MapItem[] = [
-  MOCK_MAPS[5],
-  MOCK_MAPS[2],
-  MOCK_MAPS[8],
-  MOCK_MAPS[0],
-  MOCK_MAPS[11],
-  MOCK_MAPS[3],
-  MOCK_MAPS[12],
-  MOCK_MAPS[6],
-  MOCK_MAPS[4],
-  MOCK_MAPS[9],
-  MOCK_MAPS[1],
-  MOCK_MAPS[7],
-];
+  const thumbnailPalettes: string[] = [
+    "linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1a2f4a 100%)",
+    "linear-gradient(135deg, #374151 0%, #4b5563 100%)",
+    "linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%)",
+    "linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)",
+    "linear-gradient(135deg, #14532d 0%, #166534 100%)",
+  ];
 
-type TabId = "famous" | "trending" | "random";
+  const typeTag: MapTag = {
+    label: apiMap.type === "Platform" ? "Platform" : "Topdown",
+    color: apiMap.type === "Platform" ? "blue" : "orange",
+  };
+
+  const difficultyTag: MapTag = {
+    label: `Độ khó ${apiMap.difficulty}`,
+    color: apiMap.difficulty <= 2 ? "green" : apiMap.difficulty <= 5 ? "yellow" : "purple",
+  };
+
+  const categoryTags: MapTag[] = [typeTag, difficultyTag];
+
+  const modeTags: MapTag[] = apiMap.tagNames.slice(0, 2).map((tag) => ({
+    label: tag,
+    color: "yellow",
+  }));
+
+  const baseViews = 1200 + index * 530;
+  const likes = 70 + ((index * 7) % 25);
+
+  return {
+    id: apiMap.id,
+    title: apiMap.title,
+    thumbnail: thumbnailPalettes[paletteIndex],
+    description: apiMap.description,
+    categoryTags,
+    modeTags,
+    views: baseViews,
+    likesPercentage: Math.min(likes, 99),
+    isFavorited: false,
+  };
+}
+
+type TabId = "trending" | "random" | "favorites";
 
 export default function MarketplacePage() {
+  const [maps, setMaps] = useState<MapItem[]>([]);
+  const [heroMaps, setHeroMaps] = useState<MapItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("trending");
   const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [favorites, setFavorites] = useState<Set<string>>(
-    () => new Set(MOCK_MAPS.filter((m) => m.isFavorited).map((m) => m.id)),
-  );
+  const [favorites] = useState<Set<string>>(() => new Set());
   const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [difficultyFilter] = useState<number | undefined>(undefined);
+  const [typeFilter] = useState<number | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [, setTotalPages] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRandomMap, setSelectedRandomMap] = useState<MapItem | null>(null);
+  const [selectedMapInfo, setSelectedMapInfo] = useState<MapInfo | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+
+  // Grid / danh sách chính (Trending + Random) - dùng chung API /api/learner/maps
+  useEffect(() => {
+    const loadMaps = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await learnerMapsApi.getMaps({
+          pageNumber: currentPage,
+          pageSize: 20,
+          mapStatus: 4, // chỉ lấy map Published cho catalog
+          difficulty: difficultyFilter,
+          type: typeFilter,
+          search: searchTerm || undefined,
+          sortBy: "CreatedAt",
+          sortAscending: false,
+        });
+
+        if (response.data.isSuccess && response.data.data) {
+          const { items, totalPages: apiTotalPages, hasNext: apiHasNext } = response.data.data;
+
+          // Bỏ qua các map do chính user tạo (isAuthor = true) nếu backend có field này
+          const visibleItems = (items as (ApiMap & { isAuthor?: boolean })[]).filter(
+            (m) => !m.isAuthor,
+          );
+
+          setMaps((prev) => {
+            const baseIndex = currentPage === 1 ? 0 : prev.length;
+            const mapped = visibleItems.map((apiMap, idx) =>
+              mapApiMapToUiMap(apiMap as ApiMap, baseIndex + idx),
+            );
+            if (currentPage === 1) {
+              return mapped.slice(0, 100);
+            }
+            const combined = [...prev, ...mapped];
+            return combined.slice(0, 100);
+          });
+
+          setTotalPages(apiTotalPages);
+          setHasNext(apiHasNext && (currentPage + 1) * 20 < 100);
+        } else {
+          setError(response.data.message || "Không thể tải danh sách map");
+        }
+      } catch (err) {
+        console.error("Failed to load marketplace maps:", err);
+        setError("Đã xảy ra lỗi khi tải danh sách map");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMaps();
+  }, [currentPage, difficultyFilter, typeFilter, searchTerm]);
+
+  useEffect(() => {
+    const loadHeroMaps = async () => {
+      try {
+        const response = await learnerMapsApi.getMaps({
+          pageNumber: 1,
+          pageSize: 10,
+          mapStatus: 4,
+          sortBy: "CreatedAt",
+          sortAscending: false,
+        });
+
+        if (response.data.isSuccess && response.data.data) {
+          const items = response.data.data.items as ApiMap[];
+          const mapped = items.map((apiMap, idx) => mapApiMapToUiMap(apiMap, idx));
+          setHeroMaps(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load hero maps:", err);
+      }
+    };
+
+    loadHeroMaps();
+  }, []);
+
+  // Infinite scroll: khi kéo xuống cuối trang sẽ tự load thêm map (tối đa 100 bản ghi)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || !hasNext) return;
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 200;
+      if (scrollPosition >= threshold) {
+        setCurrentPage((prev) => prev + 1);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasNext]);
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "famous", label: "Kiệt Tác Nổi Bật" },
-    { id: "trending", label: "Thịnh Hành Trong Tháng" },
+    { id: "trending", label: "Thịnh Hành" },
+    { id: "favorites", label: "Yêu Thích" },
     { id: "random", label: "Ngẫu Nhiên" },
   ];
 
   const listMaps = useMemo(() => {
-    if (activeTab === "famous") {
-      return [...MOCK_MAPS].sort((a, b) => b.likesPercentage - a.likesPercentage).slice(0, 12);
-    }
     if (activeTab === "trending") {
-      return [...MOCK_MAPS].sort((a, b) => b.views - a.views).slice(0, 12);
+      return [...maps].sort((a, b) => b.views - a.views).slice(0, 12);
     }
-    return [...MOCK_MAPS_RANDOM].slice(0, 12);
-  }, [activeTab]);
+    if (activeTab === "favorites") {
+      return maps.filter((m) => favorites.has(m.id)).slice(0, 12);
+    }
+    return [...maps].sort(() => Math.random() - 0.5).slice(0, 12);
+  }, [activeTab, favorites, maps]);
 
-  const featuredMap = MOCK_MAPS[featuredIndex % MOCK_MAPS.length];
-  const isFeaturedFav = favorites.has(featuredMap.id);
+  // Hero hiển thị tối đa 10 map, lấy từ nguồn hero riêng; nếu lỗi thì fallback slice từ maps
+  const heroSource = heroMaps.length > 0 ? heroMaps : maps.slice(0, 10);
+  const featuredMap =
+    heroSource.length > 0 ? heroSource[featuredIndex % heroSource.length] : undefined;
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const openMapModal = async (map: MapItem) => {
+    setSelectedRandomMap(map);
+    setDetailLoading(true);
+    setDetailError(null);
+    setSelectedMapInfo(null);
+    try {
+      const res = await learnerMapsApi.getMapInfo(map.id);
+      if (res.data.isSuccess && res.data.data) {
+        setSelectedMapInfo(res.data.data);
+      } else {
+        setDetailError(res.data.message || "Không thể tải chi tiết map");
+      }
+    } catch (err) {
+      console.error("Failed to load map info:", err);
+      setDetailError("Đã xảy ra lỗi khi tải chi tiết map");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
-  const formatViews = (v: number) => {
-    if (v >= 1000) return `${(v / 1000).toFixed(1).replace(".", ",")}k`;
-    return v.toLocaleString();
-  };
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ color: "var(--text-2)" }}>Đang tải danh sách map...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ color: "var(--danger)" }}>{error}</div>
+      </div>
+    );
+  }
+
+  if (!loading && maps.length === 0) {
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ color: "var(--text-2)" }}>Chưa có map nào được xuất bản.</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -267,6 +293,10 @@ export default function MarketplacePage() {
               borderRadius: 16,
               overflow: "hidden",
               background: "var(--surface-2)",
+              cursor: featuredMap ? "pointer" : "default",
+            }}
+            onClick={() => {
+              if (featuredMap) void openMapModal(featuredMap);
             }}
           >
             <div
@@ -274,9 +304,11 @@ export default function MarketplacePage() {
                 width: "100%",
                 height: "100%",
                 minHeight: 280,
-                background: featuredMap.thumbnail.startsWith("linear")
+                background: featuredMap?.thumbnail?.startsWith("linear")
                   ? featuredMap.thumbnail
-                  : `url(${featuredMap.thumbnail}) center/cover`,
+                  : featuredMap?.thumbnail
+                    ? `url(${featuredMap.thumbnail}) center/cover`
+                    : "linear-gradient(135deg, #1e293b 0%, #111827 100%)",
               }}
             />
             <div
@@ -293,13 +325,15 @@ export default function MarketplacePage() {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <button
                   type="button"
-                  onClick={() => setFeaturedIndex((i) => Math.max(0, i - 1))}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFeaturedIndex((i) => Math.max(0, i - 1));
+                  }}
                   style={navBtn}
                   aria-label="Previous"
                 >
                   <ChevronLeft size={20} />
                 </button>
-                <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>A</span>
                 <div style={{ display: "flex", gap: 4 }}>
                   {[0, 1, 2].map((i) => (
                     <div
@@ -314,10 +348,12 @@ export default function MarketplacePage() {
                     />
                   ))}
                 </div>
-                <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>D</span>
                 <button
                   type="button"
-                  onClick={() => setFeaturedIndex((i) => i + 1)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFeaturedIndex((i) => i + 1);
+                  }}
                   style={navBtn}
                   aria-label="Next"
                 >
@@ -340,20 +376,22 @@ export default function MarketplacePage() {
                   letterSpacing: "-0.02em",
                 }}
               >
-                {featuredMap.title}
+                {featuredMap?.title ?? ""}
               </h2>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                {featuredMap.categoryTags.map((t) => (
+                {featuredMap?.categoryTags.map((t) => (
                   <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
                     {t.label}
                   </span>
                 ))}
-                {featuredMap.modeTags.map((t) => (
+                {featuredMap?.modeTags.map((t) => (
                   <span key={t.label} style={{ ...pillTag(), ...TAG_STYLES[t.color] }}>
                     {t.label}
                   </span>
                 ))}
               </div>
+              {/* Hidden: likes & views for featured map */}
+              {/*
               <div
                 style={{
                   display: "flex",
@@ -365,14 +403,19 @@ export default function MarketplacePage() {
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <ThumbsUp size={16} />
-                  <span style={{ fontWeight: 800 }}>{featuredMap.likesPercentage}%</span>
+                  <span style={{ fontWeight: 800 }}>
+                    {featuredMap?.likesPercentage ?? 0}%
+                  </span>
                 </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <Play size={16} />
-                  <span style={{ fontWeight: 800 }}>{formatViews(featuredMap.views)}</span>
+                  <span style={{ fontWeight: 800 }}>
+                    {formatViews(featuredMap?.views ?? 0)}
+                  </span>
                 </span>
               </div>
-              {featuredMap.previews && (
+              */}
+              {featuredMap?.previews && (
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                   {featuredMap.previews.map((bg, i) => (
                     <div
@@ -389,30 +432,7 @@ export default function MarketplacePage() {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <button
-                type="button"
-                onClick={() => toggleFavorite(featuredMap.id)}
-                style={{ ...iconBtn, color: isFeaturedFav ? "#facc15" : "var(--muted)" }}
-                aria-label={isFeaturedFav ? "Bỏ thích" : "Thích"}
-              >
-                <Star size={22} fill={isFeaturedFav ? "currentColor" : "none"} />
-              </button>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "var(--primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--on-primary, #0b1020)",
-                }}
-              >
-                <ChevronRight size={24} />
-              </div>
-            </div>
+            {/* Bottom-right hero action area currently unused (nút > đã xoá theo yêu cầu) */}
           </div>
         </div>
       </div>
@@ -429,26 +449,28 @@ export default function MarketplacePage() {
           }}
         >
           <div style={{ display: "flex", gap: 4 }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 12,
-                  border: "1px solid var(--border)",
-                  background: activeTab === tab.id ? "var(--primary)" : "transparent",
-                  color: activeTab === tab.id ? "var(--on-primary, #0b1020)" : "var(--text)",
-                  fontWeight: 800,
-                  fontSize: 14,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {tabs
+              .filter((tab) => tab.id !== "favorites") // Tạm ẩn nút tab Yêu Thích
+              .map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    background: activeTab === tab.id ? "var(--primary)" : "transparent",
+                    color: activeTab === tab.id ? "var(--on-primary, #0b1020)" : "var(--text)",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
           </div>
           <button
             type="button"
@@ -463,7 +485,12 @@ export default function MarketplacePage() {
           <div style={{ marginTop: 12 }}>
             <input
               type="search"
-              placeholder="Tìm map..."
+              placeholder="Tìm map theo tên hoặc mô tả..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               style={{
                 width: "100%",
                 padding: "10px 14px",
@@ -490,32 +517,368 @@ export default function MarketplacePage() {
           <MapCard
             key={map.id}
             map={map}
-            isFavorited={favorites.has(map.id)}
-            onToggleFavorite={() => toggleFavorite(map.id)}
-            formatViews={formatViews}
             tagStyles={TAG_STYLES}
+            onClick={() => {
+              void openMapModal(map);
+            }}
           />
         ))}
       </div>
+      {/* Map detail modal */}
+      {selectedRandomMap && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={() => {
+            setSelectedRandomMap(null);
+            setSelectedMapInfo(null);
+            setDetailError(null);
+          }}
+        >
+          <div
+            style={{
+              ...card(),
+              width: "75vw",
+              maxWidth: 1280,
+              maxHeight: "75vh",
+              padding: 18,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: 20,
+                  fontWeight: 900,
+                  margin: 0,
+                  color: "var(--text)",
+                }}
+              >
+                {selectedRandomMap.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRandomMap(null);
+                  setSelectedMapInfo(null);
+                  setDetailError(null);
+                  setPurchaseMessage(null);
+                }}
+                style={{
+                  ...iconBtn,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 999,
+                }}
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.3fr 2fr",
+                gap: 16,
+                alignItems: "stretch",
+                minHeight: 260,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    minHeight: 220,
+                    background: selectedRandomMap.thumbnail,
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    fontSize: 13,
+                    color: "var(--text-2)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Loại map</span>
+                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
+                      {selectedMapInfo?.type ?? "—"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Độ khó</span>
+                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
+                      {selectedMapInfo?.difficulty ?? "—"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Thời lượng giới hạn</span>
+                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
+                      {selectedMapInfo
+                        ? `${Math.floor(selectedMapInfo.timeLimitMs / 60000)} phút`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Giá</span>
+                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
+                      {selectedMapInfo
+                        ? selectedMapInfo.price === 0
+                          ? "Miễn phí"
+                          : `${selectedMapInfo.price.toLocaleString("vi-VN")} VND`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Nhà sáng tạo</span>
+                    <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
+                      {selectedMapInfo?.createdByUserName ?? "—"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>Ngày phát hành</span>
+                    <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
+                      {selectedMapInfo
+                        ? new Date(selectedMapInfo.createdAt).toLocaleString("vi-VN")
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                ></div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  fontSize: 13,
+                  color: "var(--text-2)",
+                  maxHeight: "calc(75vh - 120px)",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    padding: 10,
+                    borderRadius: 10,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface-2)",
+                    overflow: "auto",
+                  }}
+                >
+                  {detailLoading ? (
+                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      Đang tải chi tiết map...
+                    </div>
+                  ) : detailError ? (
+                    <div style={{ fontSize: 12, color: "var(--danger)" }}>{detailError}</div>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          marginBottom: 6,
+                          color: "var(--text)",
+                        }}
+                      >
+                        Giới thiệu map
+                      </div>
+                      <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                        {selectedMapInfo?.description || "Chưa có mô tả cho map này."}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    padding: 8,
+                    borderRadius: 10,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  {selectedRandomMap.categoryTags.map((t) => (
+                    <span
+                      key={t.label}
+                      style={{ ...pillTag(), ...TAG_STYLES[t.color], fontSize: 11 }}
+                    >
+                      {t.label}
+                    </span>
+                  ))}
+                  {selectedRandomMap.modeTags.map((t) => (
+                    <span
+                      key={t.label}
+                      style={{ ...pillTag(), ...TAG_STYLES[t.color], fontSize: 11 }}
+                    >
+                      {t.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              {purchaseMessage && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: purchaseMessage.startsWith("Lỗi") ? "var(--danger)" : "var(--success)",
+                  }}
+                >
+                  {purchaseMessage}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!selectedRandomMap) return;
+                  try {
+                    setPurchaseLoading(true);
+                    setPurchaseMessage(null);
+                    const res = await learnerAxios.post(
+                      `/api/learner/marketplace/maps/${selectedRandomMap.id}/purchase`,
+                    );
+                    if (res.data?.isSuccess) {
+                      setPurchaseMessage("Đã sưu tập map vào bộ sưu tập của bạn.");
+                    } else {
+                      setPurchaseMessage(
+                        `Lỗi khi sưu tập map: ${res.data?.message ?? "Không rõ nguyên nhân"}`,
+                      );
+                    }
+                  } catch (err) {
+                    console.error("Purchase map error:", err);
+                    setPurchaseMessage("Lỗi khi sưu tập map. Vui lòng thử lại.");
+                  } finally {
+                    setPurchaseLoading(false);
+                  }
+                }}
+                disabled={purchaseLoading}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: "var(--primary)",
+                  color: "var(--on-primary, #0b1020)",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: purchaseLoading ? "default" : "pointer",
+                  opacity: purchaseLoading ? 0.7 : 1,
+                }}
+              >
+                {purchaseLoading ? "Đang sưu tập..." : "Sưu tập"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function MapCard({
   map,
-  isFavorited,
-  onToggleFavorite,
-  formatViews,
   tagStyles,
+  onClick,
 }: {
   map: MapItem;
-  isFavorited: boolean;
-  onToggleFavorite: () => void;
-  formatViews: (v: number) => string;
   tagStyles: Record<MapTag["color"], React.CSSProperties>;
+  onClick?: () => void;
 }) {
   return (
-    <div style={{ ...card(), padding: 0, overflow: "hidden" }}>
+    <div
+      style={{ ...card(), padding: 0, overflow: "hidden", cursor: onClick ? "pointer" : "default" }}
+      onClick={onClick}
+    >
       <div style={{ position: "relative" }}>
         <div
           style={{
@@ -554,6 +917,8 @@ function MapCard({
             </span>
           ))}
         </div>
+        {/* Hidden: card favorite button */}
+        {/*
         <button
           type="button"
           onClick={onToggleFavorite}
@@ -568,6 +933,7 @@ function MapCard({
         >
           <Star size={18} fill={isFavorited ? "currentColor" : "none"} />
         </button>
+        */}
       </div>
       <div style={{ padding: 12 }}>
         <h3
@@ -585,6 +951,8 @@ function MapCard({
         >
           {map.title}
         </h3>
+        {/* Hidden: card views & likes */}
+        {/*
         <div
           style={{
             display: "flex",
@@ -604,6 +972,7 @@ function MapCard({
             {map.likesPercentage}%
           </span>
         </div>
+        */}
       </div>
     </div>
   );

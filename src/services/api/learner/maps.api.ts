@@ -7,6 +7,7 @@ import type {
   MapsListResult,
   MapDetailResult,
   MapOwnershipResult,
+  MapInfoResult,
 } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -53,6 +54,14 @@ export const learnerMapsApi = {
     return learnerAxios.get<MapDetailResult>(`/api/learner/maps/${id}`, {
       params: { includeEditorialForUser },
     });
+  },
+
+  /**
+   * Get lightweight map info for marketplace modal
+   * GET /api/learner/maps/{id}/info
+   */
+  getMapInfo(id: string) {
+    return learnerAxios.get<MapInfoResult>(`/api/learner/maps/${id}/info`);
   },
 
   /**
