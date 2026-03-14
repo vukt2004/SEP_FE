@@ -95,6 +95,9 @@ export default function LearnerHeader() {
             <HeaderNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} icon={Map}>
               My Maps
             </HeaderNavLink>
+            <HeaderNavLink to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"} icon={Package}>
+              Package
+            </HeaderNavLink>
           </nav>
         </div>
 
@@ -134,7 +137,8 @@ export default function LearnerHeader() {
                   top: "100%",
                   right: 0,
                   left: "auto",
-                  marginTop: 8,
+                  marginTop: 0,
+                  paddingTop: 4,
                   minWidth: 180,
                   width: "max-content",
                   background: "var(--elevated, var(--surface))",
@@ -159,14 +163,6 @@ export default function LearnerHeader() {
                 >
                   <Wallet size={18} />
                   <span>Wallet</span>
-                </NavLink>
-                <NavLink
-                  to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"}
-                  onClick={() => setMenuOpen(false)}
-                  style={menuLinkStyle}
-                >
-                  <Package size={18} />
-                  <span>Package</span>
                 </NavLink>
                 <button
                   type="button"

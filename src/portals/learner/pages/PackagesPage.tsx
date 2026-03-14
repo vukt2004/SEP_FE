@@ -3,63 +3,109 @@ import { useEffect, useState } from "react";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
 import "@/shared/styles/tokens.css";
-import "@/shared/styles/packages.css";
+import styles from "./PackagesPage.module.css";
+
+const CURRENCY = "OC"; // Orbit Coin – không dùng VND
 
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    loadPackages(currentPage);
-  }, [currentPage]);
-
-  const loadPackages = async (page: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await learnerPackagesApi.getAll(page, 20);
-
-      if (response.data.isSuccess && response.data.data) {
-        setPackages(response.data.data.items);
-        setTotalPages(response.data.data.totalPages);
-      } else {
-        setError(response.data.message || "Failed to load packages");
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await learnerPackagesApi.getAll(1, 20);
+        if (cancelled) return;
+        if (response.data.isSuccess && response.data.data) {
+          setPackages(response.data.data.items ?? []);
+        } else {
+          setError(response.data.message || "Failed to load packages");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError("An error occurred while loading packages");
+          console.error(err);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (err) {
-      setError("An error occurred while loading packages");
-      console.error(err);
-    } finally {
-      setLoading(false);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleChoose = (pkg: Package) => {
+    if (!pkg.isActive) return;
+    // TODO: Implement purchase
+    const priceStr = pkg.price === 0 ? "Free" : `${formatPrice(pkg.price)} ${CURRENCY}`;
+    alert(`Choose package: ${pkg.name} — ${priceStr}`);
+  };
+
+  const formatPrice = (price: number) => price.toLocaleString("en-US");
+
+  const isFree = (pkg: Package) => pkg.price === 0;
+
+  const getDisplayPrice = (pkg: Package) => {
+    const base = pkg.price;
+    if (isFree(pkg)) {
+      return { display: "Free", unit: " · Lifetime", original: null as string | null };
     }
+    if (pkg.durationDays >= 365) {
+      const monthly = Math.round(base / 12);
+      return {
+        display: formatPrice(monthly),
+        unit: ` ${CURRENCY}/month`,
+        original: formatPrice(base),
+      };
+    }
+    if (pkg.durationDays <= 31) {
+      return {
+        display: formatPrice(base),
+        unit: ` ${CURRENCY}/month`,
+        original: null as string | null,
+      };
+    }
+    return {
+      display: formatPrice(base),
+      unit: ` ${CURRENCY} / ${pkg.durationDays} days`,
+      original: null as string | null,
+    };
   };
 
-  const handlePurchase = (pkg: Package) => {
-    // TODO: Implement purchase logic
-    alert(`Purchase package: ${pkg.name} for ${formatPrice(pkg.price)} VND`);
+  const parseFeatures = (spec: string): string[] => {
+    if (!spec || !spec.trim()) return [];
+    return spec
+      .split(/\n|,|;/)
+      .map((s) => s.trim())
+      .filter(Boolean);
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString("vi-VN");
-  };
-
-  const formatDuration = (days: number) => {
-    if (days === 1) return "1 day";
-    if (days < 30) return `${days} days`;
-    if (days === 30) return "1 month";
-    const months = Math.floor(days / 30);
-    const remainingDays = days % 30;
-    if (remainingDays === 0) return `${months} month${months > 1 ? "s" : ""}`;
-    return `${months} month${months > 1 ? "s" : ""} ${remainingDays} day${remainingDays > 1 ? "s" : ""}`;
+  const getTagline = (pkg: Package, index: number) => {
+    if (pkg.featuresSpec) {
+      const first = pkg.featuresSpec.split(/\n|,|;/)[0]?.trim();
+      if (first && first.length < 60) return first;
+    }
+    const defaults = [
+      "For solo learners & casual play",
+      "For regular practice & progress",
+      "For teams & intensive learning",
+    ];
+    return defaults[index % defaults.length];
   };
 
   if (loading) {
     return (
-      <div className="packages-page">
-        <div className="container">
-          <div className="packages-loading">Loading packages...</div>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.loadingWrap}>Loading packages...</div>
         </div>
       </div>
     );
@@ -67,94 +113,77 @@ export default function PackagesPage() {
 
   if (error) {
     return (
-      <div className="packages-page">
-        <div className="container">
-          <div className="packages-error">{error}</div>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.errorWrap}>{error}</div>
         </div>
       </div>
     );
   }
 
+  const visiblePackages = packages.filter((p) => p.isActive);
+  const defaultFeaturedIndex = visiblePackages.length >= 2 ? 1 : -1; // Pro (giữa) sáng mặc định
+
   return (
-    <div className="packages-page">
-      <div className="container">
-        <div className="packages-header">
-          <h1 className="packages-title">Available Packages</h1>
-          <p className="packages-subtitle">Choose the perfect package for your learning journey</p>
-        </div>
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden />
+      <div className={styles.content}>
+        <header className={styles.header}>
+          <h1 className={styles.title}>Flexible Plans Tailored to Fit Your Unique Needs!</h1>
+        </header>
 
-        <div className="packages-grid">
-          {packages.map((pkg) => (
-            <div key={pkg.id} className="card package-card">
-              <div className="package-header">
-                <h3 className="package-name">{pkg.name}</h3>
-                <span className={`package-status ${pkg.isActive ? "active" : "inactive"}`}>
-                  {pkg.isActive ? "Available" : "Unavailable"}
-                </span>
-              </div>
+        {visiblePackages.length === 0 ? (
+          <div className={styles.emptyWrap}>No packages available at the moment.</div>
+        ) : (
+          <div className={styles.grid}>
+            {visiblePackages.map((pkg, index) => {
+              const featured =
+                hoveredIndex !== null ? hoveredIndex === index : index === defaultFeaturedIndex;
+              const { display, unit, original } = getDisplayPrice(pkg);
+              const features = parseFeatures(pkg.featuresSpec);
+              if (features.length === 0) {
+                features.push(isFree(pkg) ? "Lifetime access" : `${pkg.durationDays} days access`);
+                features.push(`${pkg.limit} courses included`);
+              }
 
-              <div className="package-price">
-                <span className="price-amount">{formatPrice(pkg.price)}</span>
-                <span className="price-currency">VND</span>
-              </div>
-
-              <div className="package-details">
-                <div className="package-detail-item">
-                  <span className="detail-label">Duration:</span>
-                  <span className="detail-value">{formatDuration(pkg.durationDays)}</span>
-                </div>
-
-                <div className="package-detail-item">
-                  <span className="detail-label">Course Limit:</span>
-                  <span className="detail-value">{pkg.limit} courses</span>
-                </div>
-              </div>
-
-              {pkg.featuresSpec && (
-                <div className="package-features">
-                  <span className="detail-label">Features:</span>
-                  <p>{pkg.featuresSpec}</p>
-                </div>
-              )}
-
-              <div className="package-actions">
-                <button
-                  className="btn btnPrimary"
-                  onClick={() => handlePurchase(pkg)}
-                  disabled={!pkg.isActive}
+              return (
+                <div
+                  key={pkg.id}
+                  className={`${styles.card} ${featured ? styles.cardFeatured : ""}`}
+                  onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseLeave={() => setHoveredIndex(null)}
                 >
-                  Purchase
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {packages.length === 0 && !loading && (
-          <div className="packages-empty">
-            <p>No packages available at the moment.</p>
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="packages-pagination">
-            <button
-              className="btn btnSecondary"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            <span className="pagination-info">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              className="btn btnSecondary"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </button>
+                  <h3 className={styles.cardName}>{pkg.name}</h3>
+                  <div className={styles.priceRow}>
+                    <span className={styles.cardPrice}>{display}</span>
+                    <span className={styles.cardPriceUnit}>{unit}</span>
+                    {original && (
+                      <span className={styles.cardOriginal}>
+                        {original} {CURRENCY}
+                      </span>
+                    )}
+                  </div>
+                  <p className={styles.cardTagline}>{getTagline(pkg, index)}</p>
+                  <div className={styles.cardDivider} />
+                  <ul className={styles.featureList}>
+                    {features.map((text, i) => (
+                      <li key={i} className={styles.featureItem}>
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className={styles.btnChoose}
+                    onClick={() => handleChoose(pkg)}
+                    disabled={!pkg.isActive}
+                  >
+                    Choose {pkg.name}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
