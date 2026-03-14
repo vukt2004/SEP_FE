@@ -60,6 +60,8 @@ export interface Map {
   mapStatus: number;
   price: number;
   createdByUserId: string;
+  /** Display name of the map creator (when returned by API) */
+  createdByUserName?: string | null;
   createdAt: string;
   tagNames: string[];
   winCondition: number;

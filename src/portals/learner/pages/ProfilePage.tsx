@@ -1,18 +1,23 @@
 // src/portals/learner/pages/ProfilePage.tsx
 import { useEffect, useMemo, useState } from "react";
-import "@/shared/styles/profile.css";
+import { Link } from "react-router-dom";
 import { learnerProfileApi, type ProfileResponse } from "@/services/api/learner/profile.api";
+import { ROUTES } from "@/lib/constants/routes";
+import styles from "./ProfilePage.module.css";
 import {
-  User,
-  Mail,
   Camera,
   Save,
   Edit3,
   X,
   CheckCircle,
   AlertCircle,
+  Map,
+  Gamepad2,
+  Store,
+  Mail,
   Calendar,
   VenusAndMars,
+  Hash,
 } from "lucide-react";
 
 type FormState = {
@@ -156,18 +161,17 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={styles.page}>
-        <div style={styles.loadingCard}>
-          <div style={styles.loadingHeader}>
-            <div style={styles.loadingTitle} />
-            <div style={styles.loadingSubtitle} />
-          </div>
-          <div style={styles.loadingContent}>
-            <div style={styles.loadingAvatar} />
-            <div style={{ flex: 1 }}>
-              <div style={styles.loadingLine} />
-              <div style={{ ...styles.loadingLine, width: "70%", marginTop: 12 }} />
-              <div style={{ ...styles.loadingLine, width: "50%", marginTop: 12 }} />
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.loadingCard}>
+            <div className={styles.loadingCardTitle} />
+            <div className={styles.loadingContent}>
+              <div className={styles.loadingAvatar} />
+              <div className={styles.loadingMeta}>
+                <div className={styles.loadingLine} />
+                <div className={styles.loadingLine} style={{ width: "70%", marginTop: 12 }} />
+              </div>
             </div>
           </div>
         </div>
@@ -176,188 +180,249 @@ export default function ProfilePage() {
   }
 
   return (
-    <div style={styles.page}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerContent}>
-          <div style={styles.headerIcon}>
-            <User size={28} strokeWidth={2} />
-          </div>
-          <div>
-            <h1 style={styles.title}>Profile</h1>
-            <p style={styles.subtitle}>Manage your personal information and avatar</p>
-          </div>
-        </div>
-        <div style={styles.headerActions}>
-          {successMsg && (
-            <span style={styles.pillSuccess}>
-              <CheckCircle size={14} /> {successMsg}
-            </span>
-          )}
-          {error && (
-            <span style={styles.pillError}>
-              <AlertCircle size={14} /> {error}
-            </span>
-          )}
-          {isEditMode ? (
-            <>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                disabled={saving}
-                style={btnSecondary(saving)}
-              >
-                <X size={16} />
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={saving || !hasChanges}
-                style={btnSave(saving || !hasChanges)}
-              >
-                <Save size={16} />
-                {saving ? "Saving..." : "Save changes"}
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={enterEditMode} style={btnPrimary()}>
-              <Edit3 size={16} />
-              Edit
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div style={styles.grid} className="profile-grid">
-        {/* Left: Avatar card */}
-        <section style={styles.card}>
-          <div style={styles.avatarSection}>
-            {isEditMode ? (
-              <label style={styles.avatarWrapper} className="profile-avatar-wrapper">
-                <img
-                  src={avatarPreviewUrl ?? profile?.avatarPath ?? "/brand/avatar-fallback.png"}
-                  alt="Avatar"
-                  style={styles.avatarImg}
-                  onError={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    if (img.src !== "/brand/avatar-fallback.png") {
-                      img.src = "/brand/avatar-fallback.png";
-                    }
-                  }}
-                />
-                <div style={styles.avatarOverlay} className="profile-avatar-overlay">
-                  <Camera size={24} />
-                  <span style={styles.avatarOverlayText}>Change photo</span>
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden />
+      <div className={styles.content}>
+        {/* Facebook-style: cover + identity bar */}
+        <div className={styles.profileHero}>
+          <div className={styles.cover} aria-hidden />
+          <div className={styles.identityBar}>
+            <div className={styles.avatarWrap}>
+              {isEditMode ? (
+                <label className={styles.avatarWrapperFb}>
+                  <img
+                    src={avatarPreviewUrl ?? profile?.avatarPath ?? "/brand/avatar-fallback.png"}
+                    alt="Avatar"
+                    className={styles.avatarImg}
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      if (img.src !== "/brand/avatar-fallback.png") {
+                        img.src = "/brand/avatar-fallback.png";
+                      }
+                    }}
+                  />
+                  <div className={styles.avatarOverlay}>
+                    <Camera size={24} />
+                    <span className={styles.avatarOverlayText}>Change photo</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => onPickAvatar(e.currentTarget.files?.[0] ?? null)}
+                    className={styles.avatarInput}
+                  />
+                </label>
+              ) : (
+                <div className={`${styles.avatarWrapperFb} ${styles.avatarWrapperStatic}`}>
+                  <img
+                    src={profile?.avatarPath ?? "/brand/avatar-fallback.png"}
+                    alt="Avatar"
+                    className={styles.avatarImg}
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      if (img.src !== "/brand/avatar-fallback.png") {
+                        img.src = "/brand/avatar-fallback.png";
+                      }
+                    }}
+                  />
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => onPickAvatar(e.currentTarget.files?.[0] ?? null)}
-                  style={styles.avatarInput}
-                />
-              </label>
-            ) : (
-              <div style={{ ...styles.avatarWrapper, cursor: "default" }}>
-                <img
-                  src={profile?.avatarPath ?? "/brand/avatar-fallback.png"}
-                  alt="Avatar"
-                  style={styles.avatarImg}
-                  onError={(e) => {
-                    const img = e.currentTarget as HTMLImageElement;
-                    if (img.src !== "/brand/avatar-fallback.png") {
-                      img.src = "/brand/avatar-fallback.png";
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            <div style={styles.profileInfo}>
-              <h2 style={styles.profileName}>{fullName}</h2>
-              <div style={styles.emailRow}>
-                <Mail size={14} />
-                <span>{profile?.email ?? "—"}</span>
-              </div>
+              )}
+            </div>
+            <div className={styles.identityMeta}>
+              <h1 className={styles.identityName}>{fullName}</h1>
+              <p className={styles.identitySubtitle}>{profile?.email ?? "—"}</p>
+            </div>
+            <div className={styles.identityActions}>
+              {successMsg && (
+                <span className={styles.pillSuccess}>
+                  <CheckCircle size={14} /> {successMsg}
+                </span>
+              )}
+              {error && (
+                <span className={styles.pillError}>
+                  <AlertCircle size={14} /> {error}
+                </span>
+              )}
+              {!isEditMode ? (
+                <button type="button" onClick={enterEditMode} className={styles.btnEditProfile}>
+                  <Edit3 size={18} />
+                  Edit profile
+                </button>
+              ) : null}
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Right: Edit form */}
-        <section style={styles.card}>
-          <h3 style={styles.sectionTitle}>Basic info</h3>
-
-          {isEditMode ? (
-            <>
-              <div style={styles.formGrid} className="profile-form-grid">
-                <Field
-                  label="First name"
-                  value={form.firstName}
-                  onChange={(v) => setForm((s) => ({ ...s, firstName: v }))}
-                  placeholder="Enter your first name"
-                />
-                <Field
-                  label="Last name"
-                  value={form.lastName}
-                  onChange={(v) => setForm((s) => ({ ...s, lastName: v }))}
-                  placeholder="Enter your last name"
-                />
-              </div>
-
-              <div style={styles.formField}>
-                <Field
-                  label="Phone number"
-                  value={form.phoneNumber}
-                  onChange={(v) => setForm((s) => ({ ...s, phoneNumber: v }))}
-                  placeholder="e.g. 09xxxxxxxx"
-                />
-              </div>
-            </>
-          ) : (
-            <div style={styles.kvSection}>
-              <div style={styles.kvItem}>
-                <span style={styles.kvKey}>First name</span>
-                <span style={styles.kvVal}>{profile?.firstName ?? "—"}</span>
-              </div>
-              <div style={styles.kvItem}>
-                <span style={styles.kvKey}>Last name</span>
-                <span style={styles.kvVal}>{profile?.lastName ?? "—"}</span>
-              </div>
-              <div style={styles.kvItem}>
-                <span style={styles.kvKey}>Phone number</span>
-                <span style={styles.kvVal}>{profile?.phoneNumber ?? "—"}</span>
-              </div>
+        {/* Two-column: Intro (left) + Contact/About (right) */}
+        <div className={styles.profileBody}>
+          <section className={styles.cardFb}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitleFb}>Intro</h2>
             </div>
-          )}
+            <div className={styles.introContent}>
+              {profile?.bio ? (
+                <p className={styles.introBio}>{profile.bio}</p>
+              ) : (
+                <p className={styles.introPlaceholder}>No bio yet.</p>
+              )}
+              {profile?.position && (
+                <p className={styles.introLine}>
+                  <strong>Work</strong> — {profile.position}
+                </p>
+              )}
+              {profile?.email && (
+                <p className={styles.introLine}>
+                  <Mail size={14} className={styles.introIcon} />
+                  <span>{profile.email}</span>
+                </p>
+              )}
+              {profile?.phoneNumber && (
+                <p className={styles.introLine}>
+                  <strong>Phone</strong> — {profile.phoneNumber}
+                </p>
+              )}
+              {profile?.gender && (
+                <p className={styles.introLine}>
+                  <VenusAndMars size={14} className={styles.introIcon} />
+                  <span>{profile.gender}</span>
+                </p>
+              )}
+              {profile?.dateOfBirth && (
+                <p className={styles.introLine}>
+                  <Calendar size={14} className={styles.introIcon} />
+                  <span>
+                    Born{" "}
+                    {new Date(profile.dateOfBirth).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </p>
+              )}
+              {(profile?.learnerCode || profile?.teacherCode) && (
+                <div className={styles.introBadges}>
+                  {profile?.learnerCode && (
+                    <span className={styles.introBadge}>
+                      <Hash size={12} />
+                      Learner: {profile.learnerCode}
+                    </span>
+                  )}
+                  {profile?.teacherCode && (
+                    <span className={styles.introBadge}>
+                      <Hash size={12} />
+                      Teacher: {profile.teacherCode}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
 
-          <div style={styles.divider} />
+          <section className={styles.cardFb}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitleFb}>Quick links</h2>
+            </div>
+            <nav className={styles.quickLinks}>
+              <Link to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} className={styles.quickLink}>
+                <Map size={18} />
+                <span>My Maps</span>
+              </Link>
+              <Link to={ROUTES.LEARNER_LEARN ?? "/app/browse"} className={styles.quickLink}>
+                <Gamepad2 size={18} />
+                <span>Browse games</span>
+              </Link>
+              <Link
+                to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
+                className={styles.quickLink}
+              >
+                <Store size={18} />
+                <span>Marketplace</span>
+              </Link>
+            </nav>
+          </section>
 
-          <div style={styles.kvSection}>
-            <div style={styles.kvItem}>
-              <span style={styles.kvKey}>
-                <Mail size={14} /> Email
-              </span>
-              <span style={styles.kvVal}>{profile?.email ?? "—"}</span>
-            </div>
-            <div style={styles.kvItem}>
-              <span style={styles.kvKey}>
-                <VenusAndMars size={14} /> Gender
-              </span>
-              <span style={styles.kvVal}>{profile?.gender ?? "—"}</span>
-            </div>
-            <div style={styles.kvItem}>
-              <span style={styles.kvKey}>
-                <Calendar size={14} /> Date of birth
-              </span>
-              <span style={styles.kvVal}>
-                {profile?.dateOfBirth
-                  ? new Date(profile.dateOfBirth).toLocaleDateString("en-US")
-                  : "—"}
-              </span>
-            </div>
-          </div>
-        </section>
+          <aside className={styles.sidebar}>
+            <section className={styles.cardFb}>
+              <div className={styles.cardHead}>
+                <h2 className={styles.cardTitleFb}>Contact & details</h2>
+                {isEditMode ? (
+                  <div className={styles.cardHeadActions}>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={saving}
+                      className={styles.btnSecondary}
+                    >
+                      <X size={14} />
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onSave}
+                      disabled={saving || !hasChanges}
+                      className={styles.btnSave}
+                    >
+                      <Save size={14} />
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={enterEditMode} className={styles.btnEditSmall}>
+                    <Edit3 size={14} />
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              {isEditMode ? (
+                <div className={styles.detailsForm}>
+                  <Field
+                    label="First name"
+                    value={form.firstName}
+                    onChange={(v) => setForm((s) => ({ ...s, firstName: v }))}
+                    placeholder="First name"
+                  />
+                  <Field
+                    label="Last name"
+                    value={form.lastName}
+                    onChange={(v) => setForm((s) => ({ ...s, lastName: v }))}
+                    placeholder="Last name"
+                  />
+                  <div className={styles.label}>
+                    <span className={styles.labelText}>Email</span>
+                    <span className={styles.inputReadOnly}>{profile?.email ?? "—"}</span>
+                  </div>
+                  <Field
+                    label="Phone"
+                    value={form.phoneNumber}
+                    onChange={(v) => setForm((s) => ({ ...s, phoneNumber: v }))}
+                    placeholder="Phone number"
+                  />
+                </div>
+              ) : (
+                <div className={styles.detailsList}>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>First name</span>
+                    <span className={styles.detailValue}>{profile?.firstName ?? "—"}</span>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>Last name</span>
+                    <span className={styles.detailValue}>{profile?.lastName ?? "—"}</span>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>Email</span>
+                    <span className={styles.detailValue}>{profile?.email ?? "—"}</span>
+                  </div>
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>Phone</span>
+                    <span className={styles.detailValue}>{profile?.phoneNumber ?? "—"}</span>
+                  </div>
+                </div>
+              )}
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );
@@ -370,345 +435,14 @@ function Field(props: {
   onChange: (v: string) => void;
 }) {
   return (
-    <label style={styles.label}>
-      <span style={styles.labelText}>{props.label}</span>
+    <label className={styles.label}>
+      <span className={styles.labelText}>{props.label}</span>
       <input
         value={props.value}
         onChange={(e) => props.onChange(e.currentTarget.value)}
         placeholder={props.placeholder}
-        style={styles.input}
-        className="profile-input"
+        className={styles.input}
       />
     </label>
   );
 }
-
-const btnPrimary = (): React.CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "12px 20px",
-  borderRadius: 12,
-  border: "none",
-  background: "var(--primary)",
-  color: "white",
-  fontWeight: 700,
-  fontSize: 14,
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent)",
-});
-
-const btnSecondary = (disabled: boolean): React.CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "12px 20px",
-  borderRadius: 12,
-  border: "1px solid var(--border)",
-  background: "transparent",
-  color: "var(--text)",
-  fontWeight: 700,
-  fontSize: 14,
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.7 : 1,
-  transition: "all 0.2s ease",
-});
-
-const btnSave = (disabled: boolean): React.CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "12px 20px",
-  borderRadius: 12,
-  border: "none",
-  background: "var(--primary)",
-  color: "white",
-  fontWeight: 700,
-  fontSize: 14,
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.7 : 1,
-  transition: "all 0.2s ease",
-  boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent)",
-});
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    maxWidth: 960,
-    margin: "0 auto",
-    padding: "24px 20px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 24,
-  },
-
-  loadingCard: {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 20,
-    padding: 32,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-  },
-  loadingHeader: {
-    marginBottom: 24,
-  },
-  loadingTitle: {
-    height: 28,
-    width: 160,
-    background:
-      "linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s infinite",
-    borderRadius: 8,
-  },
-  loadingSubtitle: {
-    height: 16,
-    width: 240,
-    background: "var(--surface-2)",
-    borderRadius: 6,
-    marginTop: 12,
-  },
-  loadingContent: {
-    display: "flex",
-    gap: 20,
-    alignItems: "center",
-  },
-  loadingAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: "50%",
-    background: "var(--surface-2)",
-    flexShrink: 0,
-  },
-  loadingLine: {
-    height: 14,
-    background: "var(--surface-2)",
-    borderRadius: 6,
-  },
-
-  header: {
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 20,
-    padding: "24px 28px",
-    background:
-      "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--surface)), var(--surface))",
-    border: "1px solid var(--border)",
-    borderRadius: 20,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-  },
-  headerContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
-  },
-  headerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    background: "color-mix(in srgb, var(--primary) 25%, transparent)",
-    border: "1px solid color-mix(in srgb, var(--primary) 40%, transparent)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "var(--primary)",
-  },
-  title: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 800,
-    letterSpacing: "-0.02em",
-    color: "var(--text)",
-  },
-  subtitle: {
-    margin: "4px 0 0",
-    fontSize: 14,
-    color: "var(--text-2)",
-    fontWeight: 500,
-  },
-  headerActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  pillSuccess: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "8px 14px",
-    borderRadius: 10,
-    background: "color-mix(in srgb, var(--success) 18%, transparent)",
-    color: "var(--success)",
-    fontWeight: 600,
-    fontSize: 13,
-  },
-  pillError: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "8px 14px",
-    borderRadius: 10,
-    background: "color-mix(in srgb, var(--danger) 18%, transparent)",
-    color: "var(--danger)",
-    fontWeight: 600,
-    fontSize: 13,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(280px, 360px) 1fr",
-    gap: 24,
-  },
-
-  card: {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 20,
-    padding: 28,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-  },
-
-  avatarSection: {
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
-  },
-  avatarWrapper: {
-    position: "relative",
-    width: 96,
-    height: 96,
-    borderRadius: "50%",
-    overflow: "hidden",
-    border: "3px solid color-mix(in srgb, var(--primary) 35%, transparent)",
-    flexShrink: 0,
-    cursor: "pointer",
-    display: "block",
-    transition: "border-color 0.2s ease",
-  },
-  avatarImg: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-  avatarOverlay: {
-    position: "absolute",
-    inset: 0,
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    color: "white",
-    opacity: 0,
-    transition: "opacity 0.2s ease",
-  },
-  avatarOverlayText: {
-    fontSize: 11,
-    fontWeight: 600,
-  },
-  avatarInput: {
-    position: "absolute",
-    inset: 0,
-    opacity: 0,
-    cursor: "pointer",
-  },
-
-  profileInfo: {
-    minWidth: 0,
-    flex: 1,
-  },
-  profileName: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 800,
-    color: "var(--text)",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  emailRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    color: "var(--text-2)",
-    fontSize: 14,
-    marginTop: 6,
-  },
-
-  divider: {
-    height: 1,
-    background: "var(--border)",
-    margin: "24px 0",
-  },
-
-  kvSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 14,
-  },
-  kvItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    padding: "10px 14px",
-    background: "var(--surface-2)",
-    borderRadius: 12,
-    border: "1px solid transparent",
-  },
-  kvKey: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    color: "var(--text-2)",
-    fontSize: 13,
-    fontWeight: 600,
-  },
-  kvVal: {
-    color: "var(--text)",
-    fontSize: 13,
-    fontWeight: 600,
-    textAlign: "right",
-  },
-
-  sectionTitle: {
-    margin: "0 0 20px",
-    fontSize: 18,
-    fontWeight: 800,
-    color: "var(--text)",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 16,
-  },
-  formField: {
-    marginTop: 16,
-  },
-
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  labelText: {
-    fontSize: 13,
-    color: "var(--text-2)",
-    fontWeight: 600,
-  },
-  input: {
-    height: 44,
-    padding: "0 14px",
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface-2)",
-    color: "var(--text)",
-    fontSize: 14,
-    outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-  },
-};

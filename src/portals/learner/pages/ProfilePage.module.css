@@ -1,0 +1,937 @@
+/* Full-page layout & background (match browse / my-maps) */
+.page {
+  position: relative;
+  min-height: 100vh;
+  margin: -24px -48px -40px;
+  padding: 32px 24px 48px;
+  overflow: hidden;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(
+      ellipse 100% 60% at 50% -5%,
+      color-mix(in srgb, var(--primary) 16%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 100% 50%,
+      color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 0% 60%,
+      color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 16px;
+}
+
+/* ----- Facebook-style: cover + identity ----- */
+.profileHero {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.cover {
+  width: 100%;
+  height: 340px;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 45%, var(--bg)) 0%,
+    color-mix(in srgb, var(--primary) 25%, var(--bg)) 50%,
+    color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%
+  );
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.identityBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 0 24px 20px;
+  margin-top: -84px;
+  position: relative;
+  z-index: 1;
+}
+
+.avatarWrap {
+  flex-shrink: 0;
+}
+
+.avatarWrapperFb {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid var(--surface);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: block;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.avatarWrapperFb:hover {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--surface));
+}
+
+.avatarWrapperFb.avatarWrapperStatic {
+  cursor: default;
+}
+
+.identityMeta {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.identityName {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.identitySubtitle {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.identityActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+}
+
+.btnEditProfile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: color-mix(in srgb, var(--primary) 90%, var(--surface));
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.btnEditProfile:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* ----- Two-column body ----- */
+.profileBody {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  padding: 24px 0 48px;
+  align-items: start;
+}
+
+.cardFb {
+  background: color-mix(in srgb, var(--surface) 98%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cardTitleFb {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cardHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.introContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.introBio {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.introPlaceholder {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.introLine {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.introIcon {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+
+.introBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.introBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.introLine strong {
+  color: var(--text);
+}
+
+/* Quick links card */
+.quickLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.quickLink:hover {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+}
+
+.quickLink svg {
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.quickLink:hover svg {
+  color: var(--primary);
+}
+
+.sidebar {
+  min-width: 0;
+}
+
+.btnEditSmall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnEditSmall:hover {
+  background: var(--surface-2);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.detailsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detailsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailLabel {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detailValue {
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .profileBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .cover {
+    height: 240px;
+  }
+
+  .identityBar {
+    margin-top: -64px;
+    padding: 0 16px 16px;
+  }
+
+  .avatarWrapperFb {
+    width: 128px;
+    height: 128px;
+    border-width: 3px;
+  }
+
+  .identityName {
+    font-size: 24px;
+  }
+
+  .identitySubtitle {
+    font-size: 14px;
+  }
+}
+
+/* Loading */
+.loadingCard {
+  background: color-mix(in srgb, var(--surface) 97%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.loadingCardTitle {
+  height: 28px;
+  width: 100px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: profileShimmer 1.5s infinite;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.loadingMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.loadingTitle {
+  height: 28px;
+  width: 160px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: profileShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+.loadingSubtitle {
+  height: 16px;
+  width: 240px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.loadingContent {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.loadingAvatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+.loadingLine {
+  height: 14px;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+@keyframes profileShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Header card */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 28px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headerIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pillSuccess {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.pillError {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cards */
+.card {
+  background: color-mix(in srgb, var(--surface) 97%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+}
+
+.cardTitle {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* Card 1: profile row = avatar | name + subtitle | actions */
+.profileRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+
+.avatarBlock {
+  flex-shrink: 0;
+}
+
+.profileMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.profileSubtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.socialIcons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.socialIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.socialIcon:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.profileActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.btnEdit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnEdit:hover {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  color: var(--primary);
+}
+
+/* Card 2: section head = title + edit */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Two-column info grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+}
+
+.infoGridFull {
+  grid-column: 1 / -1;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.infoLabel {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.infoValue {
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.inputReadOnly {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.avatarSection {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatarWrapper {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  flex-shrink: 0;
+  cursor: pointer;
+  display: block;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.avatarWrapper:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+.avatarWrapperStatic {
+  cursor: default;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.avatarWrapper:hover .avatarOverlay {
+  opacity: 1;
+}
+
+.avatarOverlayText {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.avatarInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.profileInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.profileName {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 24px 0;
+}
+
+.kvSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kvItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+
+.kvItem:hover {
+  background: color-mix(in srgb, var(--surface-2) 95%, var(--border));
+}
+
+.kvKey {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kvVal {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sectionTitle {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formField {
+  margin-top: 16px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.labelText {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.input {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.input:focus {
+  border-color: color-mix(in srgb, var(--primary) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* Buttons */
+.btnPrimary,
+.btnSecondary,
+.btnSave {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnPrimary {
+  border: none;
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
+}
+
+.btnSecondary {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btnSave {
+  border: none;
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.btnSave:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btnSave:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

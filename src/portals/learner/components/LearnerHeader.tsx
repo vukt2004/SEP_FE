@@ -60,7 +60,7 @@ export default function LearnerHeader() {
         {/* Left: Logo + Nav tabs */}
         <div style={{ display: "flex", alignItems: "center", gap: 56, minWidth: 0 }}>
           <NavLink
-            to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
+            to={ROUTES.LANDING ?? "/"}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -100,11 +100,16 @@ export default function LearnerHeader() {
 
         {/* Right */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div ref={menuRef} style={{ position: "relative" }}>
+          <div
+            ref={menuRef}
+            style={{ position: "relative", display: "inline-block" }}
+            onMouseEnter={() => setMenuOpen(true)}
+            onMouseLeave={() => setMenuOpen(false)}
+          >
             <button
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Mở menu"
+              aria-label="Open menu"
               aria-expanded={menuOpen}
               style={{
                 display: "flex",
@@ -128,8 +133,10 @@ export default function LearnerHeader() {
                   position: "absolute",
                   top: "100%",
                   right: 0,
+                  left: "auto",
                   marginTop: 8,
                   minWidth: 180,
+                  width: "max-content",
                   background: "var(--elevated, var(--surface))",
                   border: "1px solid var(--border)",
                   borderRadius: 12,

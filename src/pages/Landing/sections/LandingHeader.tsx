@@ -1,10 +1,14 @@
 import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
+import { ROUTES } from "@/lib/constants/routes";
+import { tokenStorage } from "@/lib/storage/tokenStorage";
 import Container from "../shared/Container";
 import { palette } from "../landing.theme";
 import { chapterData } from "../data/landing.data";
 
 export default function LandingHeader() {
+  const isLoggedIn = !!tokenStorage.getLearnerToken();
+
   return (
     <header
       className="sticky top-0 z-50 border-b backdrop-blur-xl"
@@ -55,34 +59,51 @@ export default function LandingHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <NavLink to="/login">
+          <NavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}>
             <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
-              className="rounded-xl border px-5 py-2 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+              className="rounded-xl border px-5 py-2 text-sm font-semibold transition-all duration-200"
               style={{
-                borderColor: palette.primary,
-                color: palette.primary,
-                background: `rgba(${palette.primary}, 0.1)`,
+                borderColor: isLoggedIn ? palette.primary : palette.border,
+                color: isLoggedIn ? palette.primary : palette.text2,
+                background: isLoggedIn ? `rgba(${palette.primary}, 0.1)` : "transparent",
               }}
             >
-              Login
+              {isLoggedIn ? "Go to App" : "Marketplace"}
             </motion.button>
           </NavLink>
-
-          <NavLink to="/register">
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
-              style={{
-                background: palette.primary,
-                color: "#fff",
-              }}
-            >
-              Register
-            </motion.button>
-          </NavLink>
+          {!isLoggedIn && (
+            <>
+              <NavLink to="/login">
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="rounded-xl border px-5 py-2 text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                  style={{
+                    borderColor: palette.primary,
+                    color: palette.primary,
+                    background: `rgba(${palette.primary}, 0.1)`,
+                  }}
+                >
+                  Login
+                </motion.button>
+              </NavLink>
+              <NavLink to="/register">
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                  style={{
+                    background: palette.primary,
+                    color: "#fff",
+                  }}
+                >
+                  Register
+                </motion.button>
+              </NavLink>
+            </>
+          )}
         </div>
       </Container>
     </header>
