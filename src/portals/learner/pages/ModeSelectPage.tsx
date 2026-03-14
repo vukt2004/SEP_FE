@@ -58,7 +58,7 @@ export default function ModeSelectPage() {
       <section className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>Play Game</h1>
-          <p className={styles.subtitle}>Select the game mode</p>
+          <p className={styles.subtitle}>Choose the game mode that fits you</p>
         </header>
 
         <div className={styles.grid}>
