@@ -67,8 +67,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconSingle} aria-hidden>
                 <SinglePersonIcon className={styles.iconSvg} />
               </div>
-              <h2 className={styles.cardTitle}>Single Player</h2>
-              <p className={styles.cardLabel}>Practice and solve solo challenges</p>
+              <h2 className={styles.cardTitle}>Single player</h2>
+              <p className={styles.cardLabel}>Practice solving maps in single player mode</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -76,7 +76,7 @@ export default function ModeSelectPage() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
               >
-                Browse Challenges
+                View maps
               </button>
             </div>
           </article>
@@ -86,8 +86,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconMulti} aria-hidden>
                 <ThreePeopleIcon className={styles.iconSvg} />
               </div>
-              <h2 className={styles.cardTitle}>Multiplayer</h2>
-              <p className={styles.cardLabel}>Compete with others to solve challenges</p>
+              <h2 className={styles.cardTitle}>Competitive</h2>
+              <p className={styles.cardLabel}>Compete with other players to solve maps</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -95,14 +95,14 @@ export default function ModeSelectPage() {
                 className={`${styles.btn} ${styles.btnAccent}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_CREATE)}
               >
-                Create Room
+                Create room
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_JOIN)}
               >
-                Join Room
+                Join room
               </button>
             </div>
           </article>

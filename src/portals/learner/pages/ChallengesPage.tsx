@@ -21,7 +21,7 @@ export default function ChallengesPage() {
     <div className="challenges-page">
       <div className="container">
         <div className="challenges-header">
-          <h1 className="challenges-title">Challenges</h1>
+          <h1 className="challenges-title">Maps</h1>
         </div>
 
         {/* 2 main sections */}
@@ -32,7 +32,7 @@ export default function ChallengesPage() {
             onClick={() => setMainSection("admin")}
           >
             <Shield size={20} />
-            <span>Admin Challenges</span>
+            <span>Admin maps</span>
           </button>
           <button
             type="button"
@@ -40,7 +40,7 @@ export default function ChallengesPage() {
             onClick={() => setMainSection("collection")}
           >
             <BookMarked size={20} />
-            <span>Collection</span>
+            <span>Collected maps</span>
           </button>
         </div>
 
@@ -81,10 +81,10 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
           setTotalPages(response.data.data.totalPages);
           if (overridePage != null) setCurrentPage(overridePage);
         } else {
-          setError(response.data.message || "Unable to load challenge list");
+          setError(response.data.message || "Failed to load map list");
         }
       } catch (err) {
-        setError("An error occurred while loading challenges");
+        setError("An error occurred while loading the map list");
         console.error(err);
       } finally {
         setLoading(false);
@@ -114,7 +114,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
       case 3:
         return "Hard";
       default:
-        return "—";
+        return "-";
     }
   };
 
@@ -176,17 +176,17 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
       {activeTab === "test" && (
         <>
           {loading ? (
-            <div className="challenges-loading">Loading challenges...</div>
+            <div className="challenges-loading">Loading maps...</div>
           ) : error ? (
             <div className="challenges-error">{error}</div>
           ) : (
             <>
               <div style={{ marginBottom: "16px" }}>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text)" }}>
-                  Test Lesson
+                  Test maps
                 </h2>
                 <p style={{ margin: "4px 0 0", color: "var(--text-2)", fontSize: 14 }}>
-                  Browse levels in the Test lesson and choose one to start playing.
+                  List of maps belonging to the Test category. Please select a map to start.
                 </p>
               </div>
 
@@ -297,7 +297,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                         onClick={() => handleSelectMap(map)}
                         disabled={!map.isPublished}
                       >
-                        {map.isPublished ? "Play Map" : "Sắp ra mắt"}
+                        {map.isPublished ? "View details" : "Coming soon"}
                       </button>
                     </div>
                   </div>
@@ -306,7 +306,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
 
               {filteredMaps.length === 0 && (
                 <div className="challenges-empty">
-                  <p>No matching challenges found.</p>
+                  <p>No matching maps found.</p>
                 </div>
               )}
 
@@ -344,7 +344,7 @@ function CollectionPlaceholder() {
     <div className="collection-placeholder">
       <BookMarked size={64} style={{ color: "var(--muted)", marginBottom: 16 }} />
       <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>
-        Collection
+        Collected maps
       </h3>
     </div>
   );
