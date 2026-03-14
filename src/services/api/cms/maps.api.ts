@@ -113,6 +113,56 @@ export const cmsMapsApi = {
     });
   },
 
+  /**
+   * Update an existing map from JSON file (draft only)
+   * PUT /api/cms/maps/{id}/upload-json
+   */
+  updateMapFromJson(
+    id: string,
+    params: {
+      Title: string;
+      Description: string;
+      Type: "Topdown" | "Platform";
+      Difficulty: number;
+      TimeLimitMs: number;
+      WinCondition: number;
+      Price: number;
+      MapDetailFile: File;
+      HintsJson?: string;
+      TagIdsCsv?: string;
+      AvatarFile?: File | null;
+    },
+  ) {
+    const formData = new FormData();
+    formData.append("Title", params.Title);
+    formData.append("Description", params.Description);
+    formData.append("Type", params.Type);
+    formData.append("Difficulty", params.Difficulty.toString());
+    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
+    formData.append("WinCondition", params.WinCondition.toString());
+    formData.append("Price", params.Price.toString());
+
+    if (params.HintsJson) {
+      formData.append("HintsJson", params.HintsJson);
+    }
+
+    if (params.TagIdsCsv) {
+      formData.append("TagIdsCsv", params.TagIdsCsv);
+    }
+
+    formData.append("MapDetailFile", params.MapDetailFile);
+
+    if (params.AvatarFile) {
+      formData.append("AvatarFile", params.AvatarFile);
+    }
+
+    return cmsAxios.put<ApiResult>(`/api/cms/maps/${id}/upload-json`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   // Note: /api/cms/level-maps endpoints have been deprecated.
   // Map upload and management now use /api/cms/maps endpoints.
 };

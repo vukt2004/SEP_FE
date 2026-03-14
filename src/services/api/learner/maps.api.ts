@@ -153,6 +153,24 @@ export const learnerMapsApi = {
   },
 
   /**
+   * Upload/replace map avatar image
+   * POST /api/learner/maps/{id}/avatar
+   *
+   * @param id - Map ID
+   * @param avatar - Image file
+   */
+  uploadMapAvatar(id: string, avatar: File) {
+    const formData = new FormData();
+    formData.append("avatar", avatar);
+
+    return learnerAxios.post<ApiResult>(`/api/learner/maps/${id}/avatar`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
    * Submit a draft map for review (author only)
    * POST /api/learner/maps/{id}/submit
    *
