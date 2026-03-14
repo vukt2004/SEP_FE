@@ -24,6 +24,10 @@ export const ROUTES = {
   LEARNER_MAP_DETAIL: "/app/map/:id",
   LEARNER_ROOM_CREATE: "/app/room/create",
   LEARNER_ROOM_JOIN: "/app/room/join",
+  /** Room detail/waiting – use with /app/room/:roomId (roomId must be single segment, no slashes) */
+  LEARNER_ROOM_DETAIL: (roomId: string) => `/app/room/${String(roomId).replace(/\//g, "").trim()}`,
+  /** Kết quả xếp hạng sau khi tất cả đã submit – truyền state: { ranking, roomId } */
+  LEARNER_ROOM_RESULT: "/app/room/result",
 
   // CMS
   CMS_LOGIN: "/cms/login",

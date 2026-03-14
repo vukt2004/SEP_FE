@@ -14,7 +14,9 @@ import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
 import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
-import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser } from "lucide-react";
+import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send, Flag } from "lucide-react";
+import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
+import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 
 export default function GameView() {
   const location = useLocation();
@@ -45,9 +47,13 @@ export default function GameView() {
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
 
-  // Get level ID from location state
+  // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
   const levelFile = (location.state as { levelFile?: string })?.levelFile;
+  const multiplayerRoomId = (location.state as { multiplayerRoomId?: string })?.multiplayerRoomId;
+
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     console.log("[useEffect] GameView useEffect triggered");
@@ -364,6 +370,77 @@ export default function GameView() {
     workspaceRef.current.clear();
   };
 
+  // Multiplayer: listen RankingUpdated, GameEnded
+  useEffect(() => {
+    if (!multiplayerRoomId) return;
+    let unsubRank: (() => void) | undefined;
+    let unsubEnd: (() => void) | undefined;
+    gameLobbyHub.connect().then(() => {
+      unsubRank = gameLobbyHub.on("RankingUpdated", (ranking: unknown) => {
+        const arr = Array.isArray(ranking) ? ranking : [];
+        if (arr.length === 0 || !multiplayerRoomId) return;
+        const normalized = arr.map((r: Record<string, unknown>) => ({
+          playerId: String(r.playerId ?? r.PlayerId ?? ""),
+          score: Number(r.score ?? r.Score ?? 0),
+          rank: Number(r.rank ?? r.Rank ?? 0),
+          status: String(r.status ?? r.Status ?? ""),
+        }));
+        navigate(ROUTES.LEARNER_ROOM_RESULT, {
+          state: { ranking: normalized, roomId: multiplayerRoomId },
+        });
+      });
+      unsubEnd = gameLobbyHub.on("GameEnded", () => {
+        navigate(ROUTES.LEARNER_LEARN);
+      });
+    });
+    return () => {
+      unsubRank?.();
+      unsubEnd?.();
+    };
+  }, [multiplayerRoomId, navigate]);
+
+  const handleMultiplayerSubmit = async () => {
+    if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
+    setSubmitLoading(true);
+    try {
+      const program = generateAST(workspaceRef.current);
+      const astSpec = JSON.stringify(program);
+      const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+        language: "Blockly",
+        astSpec,
+      });
+      if (res.data?.isSuccess) {
+        setSubmitted(true);
+        if (res.data?.data?.rankingIfAllSubmitted?.length && multiplayerRoomId) {
+          const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+            playerId: r.playerId,
+            score: r.score,
+            rank: r.rank,
+            status: r.status,
+          }));
+          navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
+          return;
+        }
+      } else {
+        window.alert(res.data?.message ?? "Submit failed.");
+      }
+    } catch {
+      window.alert("Submit failed.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleEndMultiplayerGame = async () => {
+    if (!multiplayerRoomId) return;
+    try {
+      await learnerLobbyApi.endGame(multiplayerRoomId);
+      navigate(ROUTES.LEARNER_LEARN);
+    } catch {
+      window.alert("Could not end game.");
+    }
+  };
+
   useEffect(() => {
     const updateLayout = () => setIsCompactLayout(window.innerWidth < 1280);
     updateLayout();
@@ -460,13 +537,41 @@ export default function GameView() {
         }}
       >
         <button
-          onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
+          onClick={() =>
+            navigate(multiplayerRoomId ? ROUTES.LEARNER_LEARN : ROUTES.LEARNER_MAPS_BROWSE)
+          }
           style={controlButtonStyle("neutral", false, hoveredControl === "back")}
           onMouseEnter={() => setHoveredControl("back")}
           onMouseLeave={() => setHoveredControl(null)}
         >
-          <ArrowLeft size={15} /> Back to Maps
+          <ArrowLeft size={15} /> {multiplayerRoomId ? "Leave" : "Back to Maps"}
         </button>
+
+        {multiplayerRoomId && (
+          <>
+            <button
+              onClick={handleMultiplayerSubmit}
+              disabled={isLoading || !!error || submitLoading || submitted}
+              style={controlButtonStyle(
+                "primary",
+                isLoading || !!error || submitLoading || submitted,
+                hoveredControl === "submit",
+              )}
+              onMouseEnter={() => setHoveredControl("submit")}
+              onMouseLeave={() => setHoveredControl(null)}
+            >
+              <Send size={15} /> {submitted ? "Submitted" : "Submit solution"}
+            </button>
+            <button
+              onClick={handleEndMultiplayerGame}
+              style={controlButtonStyle("warning", false, hoveredControl === "end")}
+              onMouseEnter={() => setHoveredControl("end")}
+              onMouseLeave={() => setHoveredControl(null)}
+            >
+              <Flag size={15} /> End game
+            </button>
+          </>
+        )}
 
         <button
           onClick={handleRunProgram}
