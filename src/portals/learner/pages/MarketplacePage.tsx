@@ -1,9 +1,9 @@
 // src/portals/learner/pages/MarketplacePage.tsx
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import { learnerAxios } from "@/services/http/axios.learner";
-import type { Map as ApiMap, MapInfo } from "@/types/api/learner/maps";
+import type { Map as ApiMap } from "@/types/api/learner/maps";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
 
@@ -79,10 +79,18 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
   const baseViews = 1200 + index * 530;
   const likes = 70 + ((index * 7) % 25);
 
+  const avatarUrl =
+    (apiMap as ApiMap & { AvatarUrl?: string | null }).avatarUrl ??
+    (apiMap as ApiMap & { AvatarUrl?: string | null }).AvatarUrl;
+  const thumbnail =
+    avatarUrl && typeof avatarUrl === "string" && avatarUrl.trim() !== ""
+      ? avatarUrl.trim()
+      : thumbnailPalettes[paletteIndex];
+
   return {
     id: apiMap.id,
     title: apiMap.title,
-    thumbnail: thumbnailPalettes[paletteIndex],
+    thumbnail,
     description: apiMap.description,
     categoryTags,
     modeTags,
@@ -95,6 +103,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
 type TabId = "trending" | "random" | "favorites";
 
 export default function MarketplacePage() {
+  const navigate = useNavigate();
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [heroMaps, setHeroMaps] = useState<MapItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("trending");
@@ -109,12 +118,6 @@ export default function MarketplacePage() {
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRandomMap, setSelectedRandomMap] = useState<MapItem | null>(null);
-  const [selectedMapInfo, setSelectedMapInfo] = useState<MapInfo | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [purchaseLoading, setPurchaseLoading] = useState(false);
-  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadMaps = async () => {
@@ -229,24 +232,8 @@ export default function MarketplacePage() {
   const featuredMap =
     heroSource.length > 0 ? heroSource[featuredIndex % heroSource.length] : undefined;
 
-  const openMapModal = async (map: MapItem) => {
-    setSelectedRandomMap(map);
-    setDetailLoading(true);
-    setDetailError(null);
-    setSelectedMapInfo(null);
-    try {
-      const res = await learnerMapsApi.getMapInfo(map.id);
-      if (res.data.isSuccess && res.data.data) {
-        setSelectedMapInfo(res.data.data);
-      } else {
-        setDetailError(res.data.message || "Cannot load map details");
-      }
-    } catch (err) {
-      console.error("Failed to load map info:", err);
-      setDetailError("An error occurred while loading map details");
-    } finally {
-      setDetailLoading(false);
-    }
+  const goToMapDetail = (mapId: string) => {
+    navigate(`/app/map/${mapId}`);
   };
 
   if (loading) {
@@ -295,7 +282,7 @@ export default function MarketplacePage() {
               cursor: featuredMap ? "pointer" : "default",
             }}
             onClick={() => {
-              if (featuredMap) void openMapModal(featuredMap);
+              if (featuredMap) goToMapDetail(featuredMap.id);
             }}
           >
             <div
@@ -517,358 +504,10 @@ export default function MarketplacePage() {
             key={map.id}
             map={map}
             tagStyles={TAG_STYLES}
-            onClick={() => {
-              void openMapModal(map);
-            }}
+            onClick={() => goToMapDetail(map.id)}
           />
         ))}
       </div>
-      {/* Map detail modal */}
-      {selectedRandomMap && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 50,
-          }}
-          onClick={() => {
-            setSelectedRandomMap(null);
-            setSelectedMapInfo(null);
-            setDetailError(null);
-          }}
-        >
-          <div
-            style={{
-              ...card(),
-              width: "75vw",
-              maxWidth: 1280,
-              maxHeight: "75vh",
-              padding: 18,
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              overflow: "hidden",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: 20,
-                  fontWeight: 900,
-                  margin: 0,
-                  color: "var(--text)",
-                }}
-              >
-                {selectedRandomMap.title}
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRandomMap(null);
-                  setSelectedMapInfo(null);
-                  setDetailError(null);
-                  setPurchaseMessage(null);
-                }}
-                style={{
-                  ...iconBtn,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 999,
-                }}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1.3fr 2fr",
-                gap: 16,
-                alignItems: "stretch",
-                minHeight: 260,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
-                <div
-                  style={{
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    minHeight: 220,
-                    background: selectedRandomMap.thumbnail,
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    fontSize: 13,
-                    color: "var(--text-2)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Map type</span>
-                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
-                      {selectedMapInfo?.type ?? "—"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Difficulty</span>
-                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
-                      {selectedMapInfo?.difficulty ?? "—"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Time limit</span>
-                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
-                      {selectedMapInfo
-                        ? `${Math.floor(selectedMapInfo.timeLimitMs / 60000)} mins`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Price</span>
-                    <span style={{ fontWeight: 900, fontSize: 16, textAlign: "right" }}>
-                      {selectedMapInfo
-                        ? selectedMapInfo.price === 0
-                          ? "Free"
-                          : `${selectedMapInfo.price} OC`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Creator</span>
-                    <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
-                      {selectedMapInfo?.createdByUserName ?? "—"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>Release date</span>
-                    <span style={{ fontWeight: 900, fontSize: 14, textAlign: "right" }}>
-                      {selectedMapInfo
-                        ? new Date(selectedMapInfo.createdAt).toLocaleString("vi-VN")
-                        : "—"}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                ></div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                  fontSize: 13,
-                  color: "var(--text-2)",
-                  maxHeight: "calc(75vh - 120px)",
-                  overflowY: "auto",
-                }}
-              >
-                <div
-                  style={{
-                    padding: 10,
-                    borderRadius: 10,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface-2)",
-                    overflow: "auto",
-                  }}
-                >
-                  {detailLoading ? (
-                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                      Loading map details...
-                    </div>
-                  ) : detailError ? (
-                    <div style={{ fontSize: 12, color: "var(--danger)" }}>{detailError}</div>
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          marginBottom: 6,
-                          color: "var(--text)",
-                        }}
-                      >
-                        Map description
-                      </div>
-                      <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                        {selectedMapInfo?.description || "No description for this map."}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    padding: 8,
-                    borderRadius: 10,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                >
-                  {selectedRandomMap.categoryTags.map((t) => (
-                    <span
-                      key={t.label}
-                      style={{ ...pillTag(), ...TAG_STYLES[t.color], fontSize: 11 }}
-                    >
-                      {t.label}
-                    </span>
-                  ))}
-                  {selectedRandomMap.modeTags.map((t) => (
-                    <span
-                      key={t.label}
-                      style={{ ...pillTag(), ...TAG_STYLES[t.color], fontSize: 11 }}
-                    >
-                      {t.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                justifyContent: "flex-end",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              {purchaseMessage && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: purchaseMessage.startsWith("Error") ? "var(--danger)" : "var(--success)",
-                  }}
-                >
-                  {purchaseMessage}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!selectedRandomMap) return;
-                  try {
-                    setPurchaseLoading(true);
-                    setPurchaseMessage(null);
-                    const isFree =
-                      selectedMapInfo != null &&
-                      (selectedMapInfo.price === 0 ||
-                        selectedMapInfo.price == null ||
-                        selectedMapInfo.price === undefined);
-                    const res = isFree
-                      ? await learnerMapsApi.addMapToMyMaps(selectedRandomMap.id)
-                      : await learnerAxios.post(
-                          `/api/learner/marketplace/maps/${selectedRandomMap.id}/purchase`,
-                        );
-                    if (res.data?.isSuccess) {
-                      setPurchaseMessage(
-                        res.data?.message ?? "Map has been added to your collection.",
-                      );
-                    } else {
-                      setPurchaseMessage(
-                        `Error when collecting map: ${res.data?.message ?? "Unknown reason"}`,
-                      );
-                    }
-                  } catch (err) {
-                    console.error("Collect map error:", err);
-                    setPurchaseMessage("Error when collecting map. Please try again.");
-                  } finally {
-                    setPurchaseLoading(false);
-                  }
-                }}
-                disabled={purchaseLoading || detailLoading}
-                style={{
-                  padding: "8px 18px",
-                  borderRadius: 999,
-                  border: "none",
-                  background: "var(--primary)",
-                  color: "var(--on-primary, #0b1020)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: purchaseLoading || detailLoading ? "default" : "pointer",
-                  opacity: purchaseLoading || detailLoading ? 0.7 : 1,
-                }}
-              >
-                {purchaseLoading ? "Collecting..." : detailLoading ? "Loading..." : "Collect"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

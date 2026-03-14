@@ -11,7 +11,7 @@ import type { ApiResult } from "@/types/api/common";
 
 /**
  * CMS Maps API
- * Handles CRUD operations for challenge maps
+ * Handles CRUD operations for maps
  */
 export const cmsMapsApi = {
   /**

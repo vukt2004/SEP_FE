@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { ROUTES } from "@/lib/constants/routes";
 import "@/shared/styles/tokens.css";
+import styles from "./MapDetailPage.module.css";
 
 export default function MapDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,8 @@ export default function MapDetailPage() {
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [heroImageFailed, setHeroImageFailed] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const loadMap = useCallback(async () => {
     if (!id) {
@@ -25,7 +28,6 @@ export default function MapDetailPage() {
       setLoading(true);
       setError(null);
 
-      // Load map details
       const mapResponse = await learnerMapsApi.getMapById(id, true);
       if (mapResponse.data.isSuccess && mapResponse.data.data) {
         setMap(mapResponse.data.data as unknown as Map);
@@ -34,12 +36,9 @@ export default function MapDetailPage() {
         return;
       }
 
-      // Check ownership
       const ownershipResponse = await learnerMapsApi.checkMapOwnership(id);
       if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
         setOwnership(ownershipResponse.data.data);
-      } else {
-        console.warn("Failed to check map ownership:", ownershipResponse.data.message);
       }
     } catch (err) {
       setError("An error occurred while loading map details");
@@ -53,60 +52,35 @@ export default function MapDetailPage() {
     loadMap();
   }, [loadMap]);
 
-  const handleStartChallenge = () => {
+  useEffect(() => {
+    setHeroImageFailed(false);
+  }, [id]);
+
+  const handleStartMap = () => {
     if (map) {
       const isPlatform = map.type === "Platform";
       navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
-        state: {
-          levelId: map.id,
-        },
+        state: { levelId: map.id },
       });
     }
   };
 
   const handleBuyMap = () => {
-    // TODO: Implement purchase flow with OrbitCoin
     console.log("Buy map with OrbitCoin:", map?.id);
   };
 
-  const getDifficultyLabel = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "Easy";
-      case 2:
-        return "Medium";
-      case 3:
-        return "Hard";
-      default:
-        return "Unknown";
+  const formatCreatedAt = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return dateStr;
     }
-  };
-
-  const getDifficultyColor = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "#10b981";
-      case 2:
-        return "#f59e0b";
-      case 3:
-        return "#ef4444";
-      default:
-        return "#6b7280";
-    }
-  };
-
-  const formatTimeLimit = (timeLimitMs: number) => {
-    if (timeLimitMs === 0) return "No limit";
-    const minutes = Math.floor(timeLimitMs / 60000);
-    const seconds = Math.floor((timeLimitMs % 60000) / 1000);
-    if (minutes === 0) return `${seconds}s`;
-    if (seconds === 0) return `${minutes}m`;
-    return `${minutes}m ${seconds}s`;
-  };
-
-  const formatPrice = (price: number) => {
-    if (price === 0) return "Free";
-    return `${price.toLocaleString("vi-VN")} VND`;
   };
 
   const getWinConditionLabel = (winCondition: number) => {
@@ -120,351 +94,182 @@ export default function MapDetailPage() {
     }
   };
 
+  const getCreatorLabel = () => {
+    if (map?.createdByUserName?.trim()) return map.createdByUserName.trim();
+    if (map?.createdByUserId) return map.createdByUserId.slice(0, 8);
+    return "Admin Team";
+  };
+
+  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
+  const previews = map?.avatarUrl && !heroImageFailed ? [map.avatarUrl] : [];
+
   if (loading) {
     return (
-      <div style={{ padding: "40px 24px", textAlign: "center" }}>
-        <p style={{ color: "var(--text-2)", fontSize: "16px" }}>Loading map details...</p>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.loadingWrap}>
+          <p className={styles.loadingText}>Loading map details...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !map) {
     return (
-      <div style={{ padding: "40px 24px" }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 16px",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            color: "var(--text)",
-            cursor: "pointer",
-            marginBottom: "20px",
-            fontSize: "14px",
-          }}
-        >
-          <ArrowLeft size={18} /> Back
-        </button>
-        <div
-          style={{
-            padding: "24px",
-            background: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid var(--danger)",
-            borderRadius: "12px",
-            color: "var(--danger)",
-          }}
-        >
-          {error || "Map not found"}
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
+            <ArrowLeft size={18} /> Back
+          </button>
+          <div className={styles.errorCard}>{error || "Map not found"}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "8px 16px",
-          background: "transparent",
-          border: "1px solid var(--border)",
-          borderRadius: "8px",
-          color: "var(--text)",
-          cursor: "pointer",
-          marginBottom: "24px",
-          fontSize: "14px",
-        }}
-      >
-        <ArrowLeft size={18} /> Back
-      </button>
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden />
+      <div className={styles.content}>
+        <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
+          <ArrowLeft size={18} /> Back
+        </button>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "32px",
-          alignItems: "start",
-        }}
-      >
-        {/* Left: Image and Quick Info */}
-        <div>
-          {/* Avatar Image */}
-          {map.avatarUrl ? (
-            <div
-              style={{
-                width: "100%",
-                height: "300px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                backgroundColor: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                marginBottom: "24px",
-              }}
-            >
-              <img
-                src={map.avatarUrl}
-                alt={map.title}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              style={{
-                width: "100%",
-                height: "300px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                backgroundColor: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "24px",
-                fontSize: "80px",
-              }}
-            >
-              🗺️
-            </div>
-          )}
-
-          {/* Quick Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div
-              style={{
-                padding: "16px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              <div style={{ color: "var(--text-2)", fontSize: "12px", marginBottom: "4px" }}>
-                Difficulty
-              </div>
-              <div
-                style={{
-                  color: getDifficultyColor(map.difficulty),
-                  fontSize: "18px",
-                  fontWeight: "600",
-                }}
-              >
-                {getDifficultyLabel(map.difficulty)}
-              </div>
+        <div className={styles.steamRow}>
+          {/* Left: large media + carousel */}
+          <div className={styles.steamMedia}>
+            <div className={styles.steamPlayer}>
+              {map.avatarUrl && !heroImageFailed ? (
+                <img
+                  src={previews[carouselIndex] ?? map.avatarUrl}
+                  alt=""
+                  className={styles.steamPlayerImg}
+                  onError={() => setHeroImageFailed(true)}
+                />
+              ) : (
+                <div className={styles.steamPlayerPlaceholder}>
+                  <span role="img" aria-label="Map">
+                    🗺️
+                  </span>
+                  <span className={styles.steamPlayerPlaceholderText}>Preview not available</span>
+                </div>
+              )}
             </div>
 
-            <div
-              style={{
-                padding: "16px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              <div style={{ color: "var(--text-2)", fontSize: "12px", marginBottom: "4px" }}>
-                Time Limit
+            {previews.length > 0 && (
+              <div className={styles.steamCarousel}>
+                {previews.map((url, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`${styles.steamThumb} ${
+                      carouselIndex === idx ? styles.steamThumbActive : ""
+                    }`}
+                    onClick={() => setCarouselIndex(idx)}
+                  >
+                    <img src={url} alt="" />
+                  </button>
+                ))}
               </div>
-              <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "600" }}>
-                {formatTimeLimit(map.timeLimitMs)}
+            )}
+            {previews.length === 0 && map.avatarUrl && !heroImageFailed && (
+              <div className={styles.steamCarousel}>
+                <div className={`${styles.steamThumb} ${styles.steamThumbActive}`}>
+                  <img src={map.avatarUrl} alt="" />
+                </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            <div
-              style={{
-                padding: "16px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              <div style={{ color: "var(--text-2)", fontSize: "12px", marginBottom: "4px" }}>
-                Type
-              </div>
-              <div
-                style={{
-                  color: map.type === "Platform" ? "#1e40af" : "#92400e",
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  display: "inline-block",
-                }}
-              >
-                {map.type}
-              </div>
-            </div>
+          {/* Right: sidebar – nhóm thông tin rõ ràng */}
+          <div className={styles.steamSidebar}>
+            <section className={styles.steamSidebarSection}>
+              <h1 className={styles.steamTitle}>{map.title}</h1>
+              {map.description ? (
+                <p className={styles.steamDesc}>{map.description}</p>
+              ) : (
+                <p className={`${styles.steamDesc} ${styles.steamDescEmpty}`}>
+                  No description provided.
+                </p>
+              )}
+            </section>
 
-            <div
-              style={{
-                padding: "16px",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-              }}
-            >
-              <div style={{ color: "var(--text-2)", fontSize: "12px", marginBottom: "4px" }}>
-                Price
+            <section className={styles.steamSidebarSection}>
+              <div className={styles.steamWinCondition}>
+                <span className={styles.steamWinLabel}>Win condition</span>
+                <span className={styles.steamWinValue}>
+                  {getWinConditionLabel(map.winCondition)}
+                </span>
               </div>
-              <div style={{ color: "var(--primary)", fontSize: "18px", fontWeight: "600" }}>
-                {formatPrice(map.price)}
+            </section>
+
+            <section className={styles.steamSidebarSection}>
+              <h2 className={styles.steamSectionTitle}>Product details</h2>
+              <div className={styles.steamMetaGrid}>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>Release date</span>
+                  <span className={styles.steamMetaValue}>
+                    {map.createdAt ? formatCreatedAt(map.createdAt) : "—"}
+                  </span>
+                </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>Developer</span>
+                  <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
+                </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>Type</span>
+                  <span className={styles.steamMetaValue}>
+                    {map.type === "Platform" ? "Platformer" : "Puzzle / Logic"}
+                  </span>
+                </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>Difficulty</span>
+                  <span className={styles.steamMetaValue}>
+                    {map.difficulty === 1 ? "Easy" : map.difficulty === 2 ? "Medium" : "Hard"}
+                  </span>
+                </div>
               </div>
-            </div>
+            </section>
+
+            <section className={styles.steamSidebarSection}>
+              <h2 className={styles.steamSectionTitle}>Tags</h2>
+              {map.tagNames && map.tagNames.length > 0 ? (
+                <div className={styles.steamTagsList}>
+                  {map.tagNames.map((tag, idx) => (
+                    <span key={idx} className={styles.steamTag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.steamDescEmpty}>No tags</p>
+              )}
+            </section>
           </div>
         </div>
 
-        {/* Right: Detailed Information */}
-        <div>
-          {/* Title */}
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              color: "var(--text)",
-              marginBottom: "8px",
-            }}
-          >
-            {map.title}
-          </h1>
-
-          {/* Description */}
-          <p
-            style={{
-              color: "var(--text-2)",
-              fontSize: "16px",
-              lineHeight: "1.6",
-              marginBottom: "24px",
-            }}
-          >
-            {map.description}
-          </p>
-
-          {/* Win Condition */}
-          <div
-            style={{
-              padding: "16px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              marginBottom: "16px",
-            }}
-          >
-            <div
-              style={{
-                color: "var(--text-2)",
-                fontSize: "12px",
-                fontWeight: "600",
-                marginBottom: "4px",
-              }}
-            >
-              Win Condition
-            </div>
-            <div style={{ color: "var(--text)", fontSize: "16px" }}>
-              {getWinConditionLabel(map.winCondition)}
-            </div>
-          </div>
-
-          {/* Tags */}
-          {map.tagNames && map.tagNames.length > 0 && (
-            <div style={{ marginBottom: "24px" }}>
-              <h3
-                style={{
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  marginBottom: "8px",
-                }}
-              >
-                Tags
-              </h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {map.tagNames.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: "6px 12px",
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "6px",
-                      fontSize: "13px",
-                      color: "var(--text-2)",
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action Button - Conditional based on ownership or free published map */}
-          {ownership?.isOwned || (map?.isPublished && map?.price === 0) ? (
-            <button
-              onClick={handleStartChallenge}
-              style={{
-                width: "100%",
-                padding: "14px 24px",
-                background: "var(--primary)",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-            >
-              Start Challenge
+        {/* Bottom action bar (Steam-style) */}
+        <div className={styles.steamFooter}>
+          {canPlay ? (
+            <button type="button" onClick={handleStartMap} className={styles.steamFooterPrimary}>
+              <Gamepad2 size={20} /> Play
             </button>
           ) : (
-            <button
-              onClick={handleBuyMap}
-              style={{
-                width: "100%",
-                padding: "14px 24px",
-                background: "var(--primary)",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "16px",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = "0.9";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = "1";
-              }}
-            >
-              <Lock size={18} /> Buy this Map with Orbit Coin
+            <button type="button" onClick={handleBuyMap} className={styles.steamFooterPrimary}>
+              <Lock size={18} /> Buy with Orbit Coin
+              {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
             </button>
           )}
+          <button type="button" className={styles.steamFooterSecondary}>
+            <Heart size={16} /> Add to your wishlist
+          </button>
+          <button type="button" className={styles.steamFooterSecondary}>
+            <Bell size={16} /> Follow
+          </button>
+          <button type="button" className={styles.steamFooterSecondary}>
+            <Share2 size={16} /> Share
+          </button>
         </div>
       </div>
     </div>

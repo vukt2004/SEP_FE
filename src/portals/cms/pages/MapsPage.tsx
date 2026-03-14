@@ -1,7 +1,7 @@
 /**
  * CMS Maps Page
  *
- * Displays paginated list of all challenge maps with:
+ * Displays paginated list of all maps with:
  * - Status indicators (Draft/Published/Archived)
  * - Difficulty levels
  * - Publishing status
@@ -313,9 +313,9 @@ export const MapsPage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            Challenge Maps
+            Maps
           </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage all challenge maps</p>
+          <p style={{ color: "var(--text-2)" }}>View and manage all maps</p>
         </div>
         <button
           onClick={() => navigate(ROUTES.MAP_EDITOR)}

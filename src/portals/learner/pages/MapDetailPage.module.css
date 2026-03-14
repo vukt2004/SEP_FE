@@ -1,0 +1,408 @@
+/* Map detail page – Steam-style layout, wide content */
+.page {
+  position: relative;
+  min-height: 100vh;
+  margin: -24px -48px -40px;
+  padding: 0;
+  overflow-x: hidden;
+  background: #1b2838;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, #1b2838 0%, #171a21 100%);
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #c7d5e0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Steam main row: media (left) + sidebar (right) – wide layout */
+.steamRow {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 0;
+  align-items: start;
+  margin-bottom: 0;
+  min-height: 420px;
+  background: linear-gradient(90deg, #1b2838 0%, #1b2838 70%, #171a21 100%);
+}
+
+/* Left: large media block */
+.steamMedia {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.steamPlayer {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 480px;
+  min-height: 280px;
+  background: #0e1621;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.steamPlayerImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #0e1621;
+}
+
+.steamPlayerPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #1b2838 0%, #0e1621 100%);
+  color: #5a6c7d;
+  font-size: 48px;
+}
+
+.steamPlayerPlaceholderText {
+  font-size: 13px;
+  color: #5a6c7d;
+}
+
+/* Thumbnail carousel strip (Steam-style) */
+.steamCarousel {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.steamCarousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.steamCarousel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.steamCarousel::-webkit-scrollbar-thumb {
+  background: #5a6c7d;
+  border-radius: 3px;
+}
+
+.steamThumb {
+  flex-shrink: 0;
+  width: 120px;
+  height: 68px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #0e1621;
+  border: 2px solid transparent;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.2s ease;
+}
+
+.steamThumb:hover,
+.steamThumbActive {
+  border-color: #66c0f4;
+}
+
+.steamThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.steamThumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1b2838;
+  color: #5a6c7d;
+  font-size: 24px;
+}
+
+/* Right: sidebar – từng section rõ ràng */
+.steamSidebar {
+  padding: 0 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.steamSidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.steamSectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5a6c7d;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.steamTitle {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 300;
+  color: #fff;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.steamDesc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #c7d5e0;
+  margin: 0;
+}
+
+.steamDescEmpty {
+  color: #5a6c7d;
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* Win condition – cùng style với Product details (label + value) */
+.steamWinCondition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.steamWinLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a6c7d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.steamWinValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #c7d5e0;
+}
+
+/* Product details – lưới 2 cột, label + value trên 1 dòng */
+.steamMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+
+.steamMetaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.steamMetaLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a6c7d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.steamMetaValue {
+  font-size: 13px;
+  color: #c7d5e0;
+  font-weight: 500;
+}
+
+.steamTagsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.steamTag {
+  padding: 4px 10px;
+  background: rgba(102, 192, 244, 0.2);
+  border: 1px solid rgba(102, 192, 244, 0.3);
+  border-radius: 2px;
+  font-size: 12px;
+  color: #66c0f4;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.steamTag:hover {
+  background: rgba(102, 192, 244, 0.3);
+}
+
+/* Bottom action bar (Steam-style) – full width of content */
+.steamFooter {
+  margin-top: 28px;
+  padding: 20px 0 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.steamFooterPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #75b022 0%, #588a1b 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.steamFooterPrimary:hover {
+  filter: brightness(1.1);
+}
+
+.steamFooterSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c7d5e0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.steamFooterSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+/* Loading & error */
+.loadingWrap,
+.errorWrap {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.loadingText {
+  color: #c7d5e0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.errorCard {
+  padding: 24px;
+  background: rgba(164, 53, 53, 0.2);
+  border: 1px solid #a43535;
+  border-radius: 4px;
+  color: #ff6b6b;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .content {
+    padding: 20px 16px 0;
+  }
+
+  .steamRow {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .steamSidebar {
+    padding: 20px 0 0 0;
+  }
+
+  .steamMetaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .steamPlayer {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 520px) {
+  .content {
+    padding: 16px 12px 0;
+  }
+
+  .steamTitle {
+    font-size: 22px;
+  }
+
+  .steamFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .steamFooterPrimary,
+  .steamFooterSecondary {
+    width: 100%;
+  }
+}

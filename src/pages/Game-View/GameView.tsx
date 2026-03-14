@@ -423,12 +423,12 @@ export default function GameView() {
         }}
       >
         <button
-          onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
+          onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
           style={controlButtonStyle("neutral", false, hoveredControl === "back")}
           onMouseEnter={() => setHoveredControl("back")}
           onMouseLeave={() => setHoveredControl(null)}
         >
-          <ArrowLeft size={15} /> Back to Challenges
+          <ArrowLeft size={15} /> Back to Maps
         </button>
 
         <button
@@ -753,7 +753,7 @@ export default function GameView() {
             setShowResultsModal(false);
             handleReset();
           }}
-          onBackToMenu={() => navigate(ROUTES.LEARNER_CHALLENGES)}
+          onBackToMenu={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
         />
       )}
     </div>

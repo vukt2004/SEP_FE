@@ -34,7 +34,7 @@ export default function ModeSelectPage() {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
+                onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
               >
                 <Map size={18} aria-hidden />
                 View maps

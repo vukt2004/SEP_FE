@@ -1,16 +1,16 @@
-// src/portals/learner/pages/ChallengesPage.tsx
-// Challenges page: 2 sections (Admin maps | Collected maps)
+// src/portals/learner/pages/MapsPage.tsx
+// Browse / play maps page (ex-challenges)
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Search, Clock, Gamepad2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
-import styles from "./ChallengesPage.module.css";
+import styles from "./MapsPage.module.css";
 
 type DifficultyFilter = "all" | 1 | 2 | 3;
 type MapTypeFilter = "all" | "Platform" | "Topdown";
 
-export default function ChallengesPage() {
+export default function MapsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
@@ -19,7 +19,7 @@ export default function ChallengesPage() {
           <span className={styles.badge}>Play & learn</span>
           <h1 className={styles.title}>
             <Gamepad2 size={32} className={styles.titleIcon} aria-hidden />
-            Challenges
+            Maps
           </h1>
           <p className={styles.subtitle}>Pick a map, play the level, and sharpen your logic.</p>
         </header>

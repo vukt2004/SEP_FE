@@ -10,7 +10,7 @@ export type UserHud = {
 };
 
 export type Planet = {
-  id: "challenge" | "arena" | "community";
+  id: "map" | "arena" | "community";
   title: string;
   subtitle: string;
   state: PlanetState;

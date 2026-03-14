@@ -11,7 +11,8 @@ export const ROUTES = {
   LEARNER_APP: "/app",
   // Default learner landing (currently Marketplace)
   LEARNER_HOME: "/app/marketplace",
-  LEARNER_CHALLENGES: "/app/challenges",
+  /** Browse / play maps (ex-challenges) */
+  LEARNER_MAPS_BROWSE: "/app/maps",
   LEARNER_PACKAGES: "/app/packages",
   LEARNER_VERIFY_OTP: "/verify-otp",
   LEARNER_REGISTER: "/register",

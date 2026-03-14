@@ -51,8 +51,8 @@ const PlayerCard: React.FC<{ player: Player; index: number }> = ({ player, index
   </div>
 );
 
-// Sub-component: Challenge Tag
-const ChallengeTag: React.FC<{ tag: string }> = ({ tag }) => {
+// Sub-component: Map Tag
+const MapTag: React.FC<{ tag: string }> = ({ tag }) => {
   const getTagStyles = (tag: string): string => {
     switch (tag) {
       case "Loops":
@@ -113,7 +113,7 @@ const MultiplayerRoomCreation: React.FC = () => {
     { name: "Open Slot", status: "Waiting", active: false },
   ];
 
-  const challengeTags = ["Loops", "Conditions", "Beginner", "Ice World"];
+  const mapTags = ["Loops", "Conditions", "Beginner", "Ice World"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0B1220] via-[#0F1B2D] to-[#0B1220] text-[#E5E7EB]">
@@ -208,9 +208,9 @@ const MultiplayerRoomCreation: React.FC = () => {
                 </div>
               </div>
 
-              {/* Challenge Selection */}
+              {/* Map Selection */}
               <div className="md:col-span-2">
-                <label className="mb-3 block text-sm font-semibold text-[#E5E7EB]">Challenge</label>
+                <label className="mb-3 block text-sm font-semibold text-[#E5E7EB]">Map</label>
                 <div className="rounded-lg border border-[#22324C]/50 bg-[#14233A]/50 p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex-1">
@@ -224,13 +224,13 @@ const MultiplayerRoomCreation: React.FC = () => {
                       </p>
                     </div>
                     <button className="mt-4 rounded-lg border border-[#22324C]/50 bg-[#0F1B2D]/50 px-4 py-2 text-sm font-semibold text-[#E5E7EB] transition hover:bg-[#22324C]/30 lg:mt-0 lg:whitespace-nowrap">
-                      Change Challenge
+                      Change Map
                     </button>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {challengeTags.map((tag) => (
-                      <ChallengeTag key={tag} tag={tag} />
+                    {mapTags.map((tag) => (
+                      <MapTag key={tag} tag={tag} />
                     ))}
                   </div>
                 </div>
