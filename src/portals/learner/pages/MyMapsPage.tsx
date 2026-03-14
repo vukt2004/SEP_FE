@@ -30,6 +30,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
 
@@ -59,6 +60,7 @@ type MapFiltersProps = {
 type MapCardProps = {
   map: Map;
   isAuthor: boolean;
+  showImageColumn: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: number) => string;
@@ -73,6 +75,7 @@ type MapCardProps = {
 type MapListProps = {
   maps: Map[];
   ownershipMap: OwnershipMap;
+  showImageColumn: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: number) => string;
@@ -392,6 +395,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
 const MapCard: React.FC<MapCardProps> = ({
   map,
   isAuthor,
+  showImageColumn,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -406,246 +410,136 @@ const MapCard: React.FC<MapCardProps> = ({
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "16px",
-        alignItems: "center",
-        padding: "16px",
-        borderRadius: "16px",
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-        boxShadow: "0 4px 14px rgba(0, 0, 0, 0.06)",
-        transition: "all 0.25s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 10px 22px rgba(0, 0, 0, 0.12)";
-        e.currentTarget.style.background = "color-mix(in srgb, var(--surface) 87%, white)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 4px 14px rgba(0, 0, 0, 0.06)";
-        e.currentTarget.style.background = "var(--surface)";
-      }}
-    >
-      <div style={{ display: "flex", gap: "14px", minWidth: 0, flex: "1 1 360px" }}>
-        <div
-          style={{
-            width: "92px",
-            height: "92px",
-            minWidth: "92px",
-            borderRadius: "12px",
-            overflow: "hidden",
-            backgroundColor: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {map.avatarUrl ? (
-            <img
-              src={map.avatarUrl}
-              alt={map.title}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
-          ) : (
-            <MapIcon size={28} color="var(--text-2)" />
-          )}
-        </div>
-
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-            <div
-              style={{
-                fontWeight: 700,
-                color: "var(--text)",
-                fontSize: "16px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {map.title}
+    <>
+      <div className={styles.mapTableRow}>
+        {showImageColumn && (
+          <div className={styles.mapTableCell}>
+            <div className={styles.mapTableThumb}>
+              {map.avatarUrl ? (
+                <img
+                  src={map.avatarUrl}
+                  alt=""
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                <MapIcon size={24} style={{ color: "var(--text-2)" }} />
+              )}
             </div>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                borderRadius: "6px",
-                padding: "3px 8px",
-                fontSize: "11px",
-                fontWeight: 700,
-                background: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
-                color: map.type === "Platform" ? "#1e40af" : "#92400e",
-              }}
-            >
-              {map.type}
-            </span>
           </div>
+        )}
 
-          <div
+        <div className={styles.mapTableCell}>
+          <div className={styles.mapTableTitle} title={map.title}>
+            {map.title}
+          </div>
+          <span
+            className={styles.mapTableTypeTag}
             style={{
-              color: "var(--text-2)",
-              fontSize: "13px",
-              lineHeight: 1.5,
-              maxWidth: "520px",
-              minHeight: "20px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              marginBottom: "10px",
+              background: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
+              color: map.type === "Platform" ? "#1e40af" : "#92400e",
             }}
           >
-            {map.description || "No description provided"}
+            {map.type}
+          </span>
+          <div className={styles.mapTableMeta} title={map.description || undefined}>
+            {map.description || "—"}
           </div>
+        </div>
 
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            {map.tagNames.slice(0, 4).map((tag, idx) => (
-              <span
-                key={idx}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "3px 9px",
-                  borderRadius: "999px",
-                  fontSize: "11px",
-                  background: "var(--surface-2)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                #{tag}
-              </span>
-            ))}
-            {map.tagNames.length > 4 && (
-              <span style={{ fontSize: "11px", color: "var(--text-2)", alignSelf: "center" }}>
-                +{map.tagNames.length - 4}
-              </span>
+        <div className={styles.mapTableCell}>
+          <span className={styles.mapTableBadge} style={difficultyStyle}>
+            {getDifficultyLabel(map.difficulty)}
+          </span>
+        </div>
+
+        <div className={styles.mapTableCell}>
+          <span
+            className={styles.mapTableSingleLine}
+            style={{ color: "var(--text-2)", fontSize: "13px" }}
+          >
+            <Clock3 size={14} /> {formatTime(map.timeLimitMs)}
+          </span>
+        </div>
+
+        <div className={styles.mapTableCell}>
+          <span className={styles.mapTableBadge} style={statusStyle}>
+            {getMapStatusLabel(map.mapStatus)}
+          </span>
+        </div>
+
+        <div className={styles.mapTableCell}>
+          <span
+            className={styles.mapTableSingleLine}
+            style={{ color: "var(--text-2)", fontSize: "13px" }}
+          >
+            <CalendarDays size={14} /> {formatDate(map.createdAt)}
+          </span>
+        </div>
+
+        <div className={styles.mapTableCell}>
+          <span className={map.price > 0 ? styles.mapTablePrice : styles.mapTablePriceFree}>
+            {map.price > 0 ? `$${map.price}` : "Free"}
+          </span>
+        </div>
+
+        <div className={styles.mapTableCell}>
+          <div className={styles.mapTableActions}>
+            <button
+              type="button"
+              onClick={() => onPreview(map.id)}
+              style={actionBtnStyle("neutral")}
+            >
+              <Eye size={14} /> Preview
+            </button>
+            {isAuthor && map.mapStatus === 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onEdit(map.id)}
+                  style={actionBtnStyle("primary")}
+                >
+                  <Edit size={14} /> Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPublish(map.id)}
+                  style={actionBtnStyle("success")}
+                >
+                  <Send size={14} /> Publish
+                </button>
+              </>
+            )}
+            {!isAuthor && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onRate(map.id)}
+                  style={actionBtnStyle("warning")}
+                >
+                  <Star size={14} /> Rate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReport(map.id)}
+                  style={actionBtnStyle("danger")}
+                >
+                  <Flag size={14} /> Report
+                </button>
+              </>
             )}
           </div>
         </div>
       </div>
-
-      <div style={{ display: "grid", gap: "9px", alignContent: "center", flex: "0 1 210px" }}>
-        <span
-          style={{
-            ...difficultyStyle,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "fit-content",
-            borderRadius: "999px",
-            padding: "6px 12px",
-            fontSize: "12px",
-            fontWeight: 700,
-          }}
-        >
-          {getDifficultyLabel(map.difficulty)}
-        </span>
-
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            color: "var(--text-2)",
-            fontSize: "13px",
-          }}
-        >
-          <Clock3 size={14} /> {formatTime(map.timeLimitMs)}
-        </div>
-
-        <span
-          style={{
-            ...statusStyle,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "fit-content",
-            borderRadius: "999px",
-            padding: "6px 12px",
-            fontSize: "12px",
-            fontWeight: 700,
-          }}
-        >
-          {getMapStatusLabel(map.mapStatus)}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gap: "10px",
-          justifyItems: "end",
-          flex: "1 1 260px",
-          marginLeft: "auto",
-        }}
-      >
-        <div style={{ textAlign: "right" }}>
-          <div
-            style={{
-              color: map.price > 0 ? "var(--primary)" : "var(--text-2)",
-              fontSize: "18px",
-              fontWeight: 800,
-            }}
-          >
-            {map.price > 0 ? `$${map.price}` : "Free"}
-          </div>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              color: "var(--text-2)",
-              fontSize: "12px",
-            }}
-          >
-            <CalendarDays size={13} /> {formatDate(map.createdAt)}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
-          <button onClick={() => onPreview(map.id)} style={actionBtnStyle("neutral")}>
-            <Eye size={14} /> Preview
-          </button>
-
-          {isAuthor && map.mapStatus === 0 && (
-            <>
-              <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
-                <Edit size={14} /> Edit
-              </button>
-              <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
-                <Send size={14} /> Publish
-              </button>
-            </>
-          )}
-
-          {!isAuthor && (
-            <>
-              <button onClick={() => onRate(map.id)} style={actionBtnStyle("warning")}>
-                <Star size={14} /> Rate
-              </button>
-              <button onClick={() => onReport(map.id)} style={actionBtnStyle("danger")}>
-                <Flag size={14} /> Report
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 
 export const MapList: React.FC<MapListProps> = ({
   maps,
   ownershipMap,
+  showImageColumn,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -657,12 +551,45 @@ export const MapList: React.FC<MapListProps> = ({
   onReport,
 }) => {
   return (
-    <div style={{ display: "grid", gap: "12px" }}>
+    <div
+      className={showImageColumn ? styles.mapTable : styles.mapTableNoImage}
+      role="table"
+      aria-label="Map list"
+    >
+      <div className={styles.mapTableHeader} role="row">
+        {showImageColumn && (
+          <div className={styles.mapTableHeaderCell} role="columnheader">
+            Image
+          </div>
+        )}
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Map
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Difficulty
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Time Limit
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Status
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Created
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Price
+        </div>
+        <div className={styles.mapTableHeaderCell} role="columnheader">
+          Actions
+        </div>
+      </div>
       {maps.map((map) => (
         <MapCard
           key={map.id}
           map={map}
           isAuthor={ownershipMap[map.id]?.isAuthor || false}
+          showImageColumn={showImageColumn}
           formatDate={formatDate}
           formatTime={formatTime}
           getMapStatusLabel={getMapStatusLabel}
@@ -709,7 +636,6 @@ export const MyMapsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   // Search, filter & sort state
   const [searchTerm, setSearchTerm] = useState("");
@@ -727,7 +653,7 @@ export const MyMapsPage: React.FC = () => {
       const response = await learnerMapsApi.getMyMaps({
         pageNumber: currentPage,
         pageSize,
-        publishedOnly: false, // Show all maps (draft, pending, approved, published)
+        publishedOnly: false,
         difficulty: filterDifficulty !== "" ? (filterDifficulty as number) : undefined,
         search: searchTerm || undefined,
         sortBy:
@@ -739,7 +665,7 @@ export const MyMapsPage: React.FC = () => {
                 ? "Difficulty"
                 : "TimeLimitMs",
         sortAscending: sortOrder === "asc",
-        isAuthorOnly: activeTab === "author" ? true : false,
+        IsAuthorOnly: activeTab === "author",
       });
 
       if (response.data.isSuccess && response.data.data) {
@@ -749,7 +675,6 @@ export const MyMapsPage: React.FC = () => {
             : [...response.data.data.items];
         setMaps(items);
         setTotalPages(response.data.data.totalPages);
-        setTotalItems(response.data.data.totalItems);
       } else {
         setError(response.data.message || "Failed to load maps");
       }
@@ -890,6 +815,7 @@ export const MyMapsPage: React.FC = () => {
   };
 
   const getMapStatusLabel = (status: number) => {
+    if (status == null || !Number.isFinite(status)) return "—";
     switch (status) {
       case 0:
         return "Draft";
@@ -902,7 +828,7 @@ export const MyMapsPage: React.FC = () => {
       case 4:
         return "Published";
       default:
-        return "Unknown";
+        return `Unknown (${status})`;
     }
   };
 
@@ -944,579 +870,410 @@ export const MyMapsPage: React.FC = () => {
     return acc;
   }, {} as OwnershipMap);
 
-  const publishedCount = maps.filter((m) => m.isPublished || m.mapStatus === 4).length;
-  const draftCount = maps.filter((m) => m.mapStatus === 0).length;
-
   if (loading && maps.length === 0) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              display: "inline-block",
-              width: "48px",
-              height: "48px",
-              border: "4px solid var(--border)",
-              borderTop: "4px solid var(--primary)",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-            }}
-          ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading maps...</p>
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden />
+        <div className={styles.content}>
+          <div className={styles.loadingWrap}>
+            <div className={styles.loadingInner}>
+              <div className={styles.spinner} />
+              <p className={styles.loadingText}>Loading maps...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", maxWidth: "1600px", margin: "0 auto" }}>
-      <div
-        style={{
-          marginBottom: "24px",
-          display: "grid",
-          gap: "16px",
-          padding: "20px",
-          borderRadius: "18px",
-          border: "1px solid var(--border)",
-          background:
-            "radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 40%), var(--surface)",
-          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: "16px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                color: "var(--text)",
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginBottom: "8px",
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden />
+      <div className={styles.content}>
+        <div className={styles.tabs}>
+          <div className={styles.tabsGroup}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("author");
+                setCurrentPage(1);
               }}
+              className={`${styles.tab} ${activeTab === "author" ? styles.tabActive : styles.tabInactive}`}
             >
               My Maps
-            </h1>
-            <p style={{ color: "var(--text-2)" }}>
-              {activeTab === "author" ? "Màn chơi do bạn tạo" : "Màn chơi bạn đã sưu tầm"}
-            </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("collected");
+                setCurrentPage(1);
+              }}
+              className={`${styles.tab} ${activeTab === "collected" ? styles.tabActive : styles.tabInactive}`}
+            >
+              Collection
+            </button>
           </div>
           <button
+            type="button"
             onClick={() => navigate(ROUTES.MAP_EDITOR)}
             disabled={activeTab !== "author"}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              background: activeTab === "author" ? "var(--primary)" : "var(--surface-2)",
-              border: "none",
-              borderRadius: "8px",
-              color: activeTab === "author" ? "white" : "var(--muted)",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: activeTab === "author" ? "pointer" : "not-allowed",
-              whiteSpace: "nowrap",
-            }}
+            className={`${styles.createBtn} ${activeTab === "author" ? styles.createBtnPrimary : styles.createBtnDisabled}`}
           >
-            <Plus size={16} /> Create Map
+            <Plus size={18} /> Create Map
           </button>
         </div>
 
-        <StatsCards
-          cards={[
-            {
-              label: "Total Maps",
-              value: totalItems,
-              icon: <MapIcon size={20} />,
-              accent: "rgba(59, 130, 246, 0.16)",
-            },
-            {
-              label: "Published Maps",
-              value: publishedCount,
-              icon: <Send size={20} />,
-              accent: "rgba(34, 197, 94, 0.16)",
-            },
-            {
-              label: "Draft Maps",
-              value: draftCount,
-              icon: <Edit size={20} />,
-              accent: "rgba(107, 114, 128, 0.18)",
-            },
-          ]}
-        />
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("author");
-            setCurrentPage(1);
-          }}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid var(--border)",
-            background: activeTab === "author" ? "var(--primary)" : "transparent",
-            color: activeTab === "author" ? "var(--on-primary, #0b1020)" : "var(--text)",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          Bản đồ của tôi
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("collected");
-            setCurrentPage(1);
-          }}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid var(--border)",
-            background: activeTab === "collected" ? "var(--primary)" : "transparent",
-            color: activeTab === "collected" ? "var(--on-primary, #0b1020)" : "var(--text)",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          Sưu tầm
-        </button>
-      </div>
-
-      <MapFilters
-        searchTerm={searchTerm}
-        onSearchTermChange={(value) => handleFilterChange([() => setSearchTerm(value)])}
-        filterDifficulty={filterDifficulty}
-        onFilterDifficultyChange={(value) => handleFilterChange([() => setFilterDifficulty(value)])}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        sortOrder={sortOrder}
-        onSortOrderToggle={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
-        onClearFilters={() =>
-          handleFilterChange([() => setSearchTerm(""), () => setFilterDifficulty("")])
-        }
-      />
-
-      {error && (
-        <div
-          style={{
-            padding: "16px",
-            background: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid var(--danger)",
-            borderRadius: "12px",
-            color: "var(--danger)",
-            marginBottom: "24px",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && maps.length === 0 && (
-        <div
-          style={{
-            padding: "60px 24px",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "16px", marginBottom: "16px" }}>
-            No maps found
-          </div>
-          {activeTab === "author" ? (
-            <button
-              onClick={() => navigate(ROUTES.MAP_EDITOR)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 20px",
-                background: "var(--primary)",
-                border: "none",
-                borderRadius: "8px",
-                color: "white",
-                fontSize: "14px",
-                fontWeight: "500",
-                cursor: "pointer",
-              }}
-            >
-              <Plus size={16} /> Create Your First Map
-            </button>
-          ) : null}
-        </div>
-      )}
-
-      {maps.length > 0 && (
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, white), var(--surface))",
-            border: "1px solid var(--border)",
-            borderRadius: "16px",
-            padding: "14px",
-            boxShadow: "0 8px 26px rgba(0, 0, 0, 0.08)",
-          }}
-        >
-          <MapList
-            maps={maps}
-            ownershipMap={ownershipMap}
-            formatDate={formatDate}
-            formatTime={formatTime}
-            getMapStatusLabel={getMapStatusLabel}
-            getDifficultyLabel={getDifficultyLabel}
-            onPreview={handleViewDetails}
-            onEdit={handleUpdateMap}
-            onPublish={handleSubmitForReview}
-            onRate={handleOpenRateModal}
-            onReport={handleOpenReportModal}
+        <div className={styles.filtersBar}>
+          <MapFilters
+            searchTerm={searchTerm}
+            onSearchTermChange={(value) => handleFilterChange([() => setSearchTerm(value)])}
+            filterDifficulty={filterDifficulty}
+            onFilterDifficultyChange={(value) =>
+              handleFilterChange([() => setFilterDifficulty(value)])
+            }
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            sortOrder={sortOrder}
+            onSortOrderToggle={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+            onClearFilters={() =>
+              handleFilterChange([() => setSearchTerm(""), () => setFilterDifficulty("")])
+            }
           />
+        </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
+        {error && <div className={styles.errorBanner}>{error}</div>}
+
+        {!loading && maps.length === 0 && (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyText}>No maps found</p>
+            {activeTab === "author" ? (
+              <button
+                type="button"
+                onClick={() => navigate(ROUTES.MAP_EDITOR)}
+                className={styles.emptyBtn}
+              >
+                <Plus size={18} /> Create Your First Map
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {maps.length > 0 && (
+          <div className={styles.listCard}>
+            <MapList
+              maps={maps}
+              ownershipMap={ownershipMap}
+              showImageColumn={true}
+              formatDate={formatDate}
+              formatTime={formatTime}
+              getMapStatusLabel={getMapStatusLabel}
+              getDifficultyLabel={getDifficultyLabel}
+              onPreview={handleViewDetails}
+              onEdit={handleUpdateMap}
+              onPublish={handleSubmitForReview}
+              onRate={handleOpenRateModal}
+              onReport={handleOpenReportModal}
+            />
+
+            {totalPages > 1 && (
+              <div className={styles.pagination}>
+                <span className={styles.paginationInfo}>
+                  Showing page {currentPage} of {totalPages}
+                </span>
+                <div className={styles.paginationBtns}>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={`${styles.paginationBtn} ${currentPage === 1 ? styles.paginationBtnDisabled : styles.paginationBtnActive}`}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className={`${styles.paginationBtn} ${currentPage === totalPages ? styles.paginationBtnDisabled : styles.paginationBtnActive}`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Rating Modal */}
+        {ratingModal.open && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={handleCloseRateModal}
+          >
             <div
               style={{
-                padding: "16px 24px",
-                borderTop: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "16px",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "12px",
+                padding: "24px",
+                maxWidth: "500px",
+                width: "90%",
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-                Showing page {currentPage} of {totalPages}
-              </div>
+              <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
+                Rate This Map
+              </h2>
 
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+              <div style={{ marginBottom: "16px" }}>
+                <label
                   style={{
-                    padding: "8px 16px",
-                    background: currentPage === 1 ? "var(--surface-2)" : "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: currentPage === 1 ? "var(--muted)" : "var(--text)",
-                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                    display: "block",
+                    color: "var(--text-2)",
                     fontSize: "14px",
-                    transition: "all 0.2s ease",
+                    marginBottom: "8px",
                   }}
                 >
-                  Previous
-                </button>
+                  Rating (1-5)
+                </label>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setRating(value)}
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        background: rating >= value ? "var(--warning)" : "var(--surface-2)",
+                        color: rating >= value ? "white" : "var(--text-2)",
+                        cursor: "pointer",
+                        fontSize: "20px",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+              <div style={{ marginBottom: "16px" }}>
+                <label
                   style={{
-                    padding: "8px 16px",
-                    background: currentPage === totalPages ? "var(--surface-2)" : "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: currentPage === totalPages ? "var(--muted)" : "var(--text)",
-                    cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                    display: "block",
+                    color: "var(--text-2)",
                     fontSize: "14px",
-                    transition: "all 0.2s ease",
+                    marginBottom: "8px",
                   }}
                 >
-                  Next
+                  Comment (optional)
+                </label>
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Share your thoughts about this map..."
+                  style={{
+                    width: "100%",
+                    minHeight: "100px",
+                    padding: "12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text)",
+                    fontSize: "14px",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={handleCloseRateModal}
+                  disabled={ratingLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    cursor: ratingLoading ? "not-allowed" : "pointer",
+                    opacity: ratingLoading ? 0.5 : 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={ratingLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "var(--primary)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: ratingLoading ? "not-allowed" : "pointer",
+                    opacity: ratingLoading ? 0.5 : 1,
+                  }}
+                >
+                  {ratingLoading ? "Submitting..." : "Submit Rating"}
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Rating Modal */}
-      {ratingModal.open && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={handleCloseRateModal}
-        >
+        {/* Report Modal */}
+        {reportModal.open && (
           <div
             style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "500px",
-              width: "90%",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={handleCloseReportModal}
           >
-            <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
-              Rate This Map
-            </h2>
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "12px",
+                padding: "24px",
+                maxWidth: "500px",
+                width: "90%",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
+                Report This Map
+              </h2>
 
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  marginBottom: "8px",
-                }}
-              >
-                Rating (1-5)
-              </label>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => setRating(value)}
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      background: rating >= value ? "var(--warning)" : "var(--surface-2)",
-                      color: rating >= value ? "white" : "var(--text-2)",
-                      cursor: "pointer",
-                      fontSize: "20px",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    ★
-                  </button>
-                ))}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Reason *
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text)",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="inappropriate">Inappropriate Content</option>
+                  <option value="spam">Spam or Misleading</option>
+                  <option value="broken">Broken or Unplayable</option>
+                  <option value="copyright">Copyright Violation</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Additional Details (optional)
+                </label>
+                <textarea
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="Provide more information about why you're reporting this map..."
+                  style={{
+                    width: "100%",
+                    minHeight: "100px",
+                    padding: "12px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text)",
+                    fontSize: "14px",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={handleCloseReportModal}
+                  disabled={reportLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    cursor: reportLoading ? "not-allowed" : "pointer",
+                    opacity: reportLoading ? 0.5 : 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitReport}
+                  disabled={reportLoading || !reportReason}
+                  style={{
+                    padding: "10px 20px",
+                    background: "var(--danger)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: reportLoading || !reportReason ? "not-allowed" : "pointer",
+                    opacity: reportLoading || !reportReason ? 0.5 : 1,
+                  }}
+                >
+                  {reportLoading ? "Submitting..." : "Submit Report"}
+                </button>
               </div>
             </div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  marginBottom: "8px",
-                }}
-              >
-                Comment (optional)
-              </label>
-              <textarea
-                value={ratingComment}
-                onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="Share your thoughts about this map..."
-                style={{
-                  width: "100%",
-                  minHeight: "100px",
-                  padding: "12px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-              <button
-                onClick={handleCloseRateModal}
-                disabled={ratingLoading}
-                style={{
-                  padding: "10px 20px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  cursor: ratingLoading ? "not-allowed" : "pointer",
-                  opacity: ratingLoading ? 0.5 : 1,
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitRating}
-                disabled={ratingLoading}
-                style={{
-                  padding: "10px 20px",
-                  background: "var(--primary)",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: ratingLoading ? "not-allowed" : "pointer",
-                  opacity: ratingLoading ? 0.5 : 1,
-                }}
-              >
-                {ratingLoading ? "Submitting..." : "Submit Rating"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Report Modal */}
-      {reportModal.open && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={handleCloseReportModal}
-        >
-          <div
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "500px",
-              width: "90%",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
-              Report This Map
-            </h2>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  marginBottom: "8px",
-                }}
-              >
-                Reason *
-              </label>
-              <select
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  boxSizing: "border-box",
-                }}
-              >
-                <option value="">Select a reason...</option>
-                <option value="inappropriate">Inappropriate Content</option>
-                <option value="spam">Spam or Misleading</option>
-                <option value="broken">Broken or Unplayable</option>
-                <option value="copyright">Copyright Violation</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  marginBottom: "8px",
-                }}
-              >
-                Additional Details (optional)
-              </label>
-              <textarea
-                value={reportDetails}
-                onChange={(e) => setReportDetails(e.target.value)}
-                placeholder="Provide more information about why you're reporting this map..."
-                style={{
-                  width: "100%",
-                  minHeight: "100px",
-                  padding: "12px",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-              <button
-                onClick={handleCloseReportModal}
-                disabled={reportLoading}
-                style={{
-                  padding: "10px 20px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text-2)",
-                  fontSize: "14px",
-                  cursor: reportLoading ? "not-allowed" : "pointer",
-                  opacity: reportLoading ? 0.5 : 1,
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitReport}
-                disabled={reportLoading || !reportReason}
-                style={{
-                  padding: "10px 20px",
-                  background: "var(--danger)",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: reportLoading || !reportReason ? "not-allowed" : "pointer",
-                  opacity: reportLoading || !reportReason ? 0.5 : 1,
-                }}
-              >
-                {reportLoading ? "Submitting..." : "Submit Report"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
