@@ -19,7 +19,7 @@ export default function ChallengesPage() {
     <div className="challenges-page">
       <div className="container">
         <div className="challenges-header">
-          <h1 className="challenges-title">Câu đố</h1>
+          <h1 className="challenges-title">Maps</h1>
         </div>
 
         {/* 2 phần chính */}
@@ -30,7 +30,7 @@ export default function ChallengesPage() {
             onClick={() => setMainSection("admin")}
           >
             <Shield size={20} />
-            <span>Câu đố của quản trị viên</span>
+            <span>Admin maps</span>
           </button>
           <button
             type="button"
@@ -38,7 +38,7 @@ export default function ChallengesPage() {
             onClick={() => setMainSection("collection")}
           >
             <BookMarked size={20} />
-            <span>Ải sưu tầm</span>
+            <span>Collected maps</span>
           </button>
         </div>
 
@@ -74,10 +74,10 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
           setTotalPages(response.data.data.totalPages);
           if (overridePage != null) setCurrentPage(overridePage);
         } else {
-          setError(response.data.message || "Không thể tải danh sách");
+          setError(response.data.message || "Failed to load map list");
         }
       } catch (err) {
-        setError("Có lỗi xảy ra khi tải câu đố");
+        setError("An error occurred while loading the map list");
         console.error(err);
       } finally {
         setLoading(false);
@@ -97,13 +97,13 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
       case 1:
-        return "Dễ";
+        return "Easy";
       case 2:
-        return "Trung bình";
+        return "Medium";
       case 3:
-        return "Khó";
+        return "Hard";
       default:
-        return "—";
+        return "-";
     }
   };
 
@@ -121,7 +121,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
   };
 
   const formatTimeLimit = (timeLimitMs: number) => {
-    if (timeLimitMs === 0) return "Không giới hạn";
+    if (timeLimitMs === 0) return "No limit";
     const minutes = Math.floor(timeLimitMs / 60000);
     const seconds = Math.floor((timeLimitMs % 60000) / 1000);
     if (minutes === 0) return `${seconds}s`;
@@ -144,17 +144,17 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
       {activeTab === "test" && (
         <>
           {loading ? (
-            <div className="challenges-loading">Đang tải câu đố...</div>
+            <div className="challenges-loading">Loading maps...</div>
           ) : error ? (
             <div className="challenges-error">{error}</div>
           ) : (
             <>
               <div style={{ marginBottom: "16px" }}>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text)" }}>
-                  Bài học Test
+                  Test maps
                 </h2>
                 <p style={{ margin: "4px 0 0", color: "var(--text-2)", fontSize: 14 }}>
-                  Danh sách các ải thuộc bài học Test. Hãy chọn một ải để bắt đầu.
+                  List of maps belonging to the Test category. Please select a map to start.
                 </p>
               </div>
               <div className="challenges-grid">
@@ -228,7 +228,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                         onClick={() => handleSelectMap(map)}
                         disabled={!map.isPublished}
                       >
-                        {map.isPublished ? "Xem chi tiết" : "Sắp ra mắt"}
+                        {map.isPublished ? "View details" : "Coming soon"}
                       </button>
                     </div>
                   </div>
@@ -237,7 +237,7 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
 
               {maps.length === 0 && (
                 <div className="challenges-empty">
-                  <p>Không tìm thấy câu đố phù hợp.</p>
+                  <p>No matching maps found.</p>
                 </div>
               )}
 
@@ -248,17 +248,17 @@ function AdminPuzzlesSection({ navigate }: { navigate: (path: string) => void })
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    Trước
+                    Previous
                   </button>
                   <span className="pagination-info">
-                    Trang {currentPage} / {totalPages}
+                    Page {currentPage} / {totalPages}
                   </span>
                   <button
                     className="btn btnSecondary"
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >
-                    Sau
+                    Next
                   </button>
                 </div>
               )}
@@ -275,7 +275,7 @@ function CollectionPlaceholder() {
     <div className="collection-placeholder">
       <BookMarked size={64} style={{ color: "var(--muted)", marginBottom: 16 }} />
       <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>
-        Ải sưu tầm
+        Collected maps
       </h3>
     </div>
   );

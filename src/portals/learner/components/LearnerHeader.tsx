@@ -151,7 +151,7 @@ export default function LearnerHeader() {
                   style={menuLinkStyle}
                 >
                   <Wallet size={18} />
-                  <span>Ví tiền</span>
+                  <span>Wallet</span>
                 </NavLink>
                 <NavLink
                   to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"}
