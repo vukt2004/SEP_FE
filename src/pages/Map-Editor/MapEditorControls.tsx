@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Brush,
   Eraser,
@@ -24,6 +25,7 @@ import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
 import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
+import { ROUTES } from "../../lib/constants/routes";
 
 /**
  * Convert MapData config type to GameType
@@ -55,6 +57,8 @@ interface MapEditorControlsProps {
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onPriceChange?: (price: number) => void;
   sectionMode?: "left" | "right";
+  editingMapId?: string;
+  editorMode?: "edit" | "view";
 }
 
 interface ObjectSelectionButtonProps {
@@ -185,7 +189,10 @@ export function MapEditorControls({
   onWinConditionChange,
   onPriceChange,
   sectionMode = "right",
+  editingMapId,
+  editorMode,
 }: MapEditorControlsProps) {
+  const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
@@ -300,8 +307,9 @@ export function MapEditorControls({
         mapData.config.type === "platform" ? "Platform" : "Topdown";
 
       const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
+      const isEditingExistingMap = Boolean(editingMapId && editorMode === "edit");
 
-      const response = await mapsApi.uploadMapFromJson({
+      const payload = {
         Title: mapData.config.name,
         Description: mapData.config.description || "Map created with Map Editor",
         Type: mapType,
@@ -310,16 +318,52 @@ export function MapEditorControls({
         WinCondition: mapData.config.winCondition,
         Price: mapData.config.price,
         MapDetailFile: file,
-      });
+        AvatarFile: avatarFile ?? undefined,
+      };
+
+      const updatePayload = {
+        Title: payload.Title,
+        Description: payload.Description,
+        Type: payload.Type,
+        Difficulty: payload.Difficulty,
+        TimeLimitMs: payload.TimeLimitMs,
+        WinCondition: payload.WinCondition,
+        Price: payload.Price,
+        MapDetailFile: payload.MapDetailFile,
+      };
+
+      const response = isEditingExistingMap
+        ? await mapsApi.updateMapFromJson(editingMapId!, updatePayload)
+        : await mapsApi.uploadMapFromJson(payload);
 
       if (response.data.isSuccess) {
+        if (isEditingExistingMap && isLearner && editingMapId && avatarFile) {
+          const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
+          if (!avatarResponse.data.isSuccess) {
+            alert(
+              `Map updated but avatar upload failed: ${avatarResponse.data.message || "Unknown error"}`,
+            );
+            return;
+          }
+        }
+
         const mapId =
           response.data.data && typeof response.data.data === "object" && "id" in response.data.data
             ? String(response.data.data.id)
             : "";
-        alert(`Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`);
+        alert(
+          isEditingExistingMap
+            ? "Map updated successfully!"
+            : `Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`,
+        );
         setShowMapInfoModal(false);
         setAvatarFile(null);
+
+        if (isLearner) {
+          navigate(ROUTES.LEARNER_MAPS);
+        } else {
+          navigate(-1);
+        }
       } else {
         alert(`Save failed: ${response.data.message || "Unknown error"}`);
       }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
 import { EditorCanvas } from "../../tools/map-editor/components/EditorCanvas";
@@ -7,6 +7,239 @@ import { LayerPanel } from "../../tools/map-editor/components/LayerPanel";
 import { createEmptyMap } from "../../tools/map-editor/utils/createEmptyMap";
 import { MapEditorControls } from "./MapEditorControls";
 import type { MapData } from "../../shared/types/MapSchema";
+import { learnerMapsApi } from "../../services/api/learner/maps.api";
+import { cmsMapsApi } from "../../services/api/cms/maps.api";
+import { tokenStorage } from "../../lib/storage/tokenStorage";
+
+type MapEditorRouteState = {
+  mapId?: string;
+  mode?: "edit" | "view";
+};
+
+type MapDetailLike = {
+  title: string;
+  description: string;
+  type: "Topdown" | "Platform";
+  difficulty: number;
+  timeLimitMs: number;
+  winCondition: number;
+  price: number;
+  mapDetailJson?: unknown;
+  activeSpec?: {
+    gridSpec?: string;
+  };
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const toNumber = (value: unknown, fallback: number): number => {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+};
+
+const clampDifficulty = (value: number): 1 | 2 | 3 => {
+  if (value <= 1) return 1;
+  if (value >= 3) return 3;
+  return value as 1 | 2 | 3;
+};
+
+const clampWinCondition = (value: number): 1 | 2 => {
+  return value === 2 ? 2 : 1;
+};
+
+const normalizeNumberLayer = (
+  layer: unknown,
+  width: number,
+  height: number,
+  fallbackValue: number = 0,
+): number[][] => {
+  if (!Array.isArray(layer)) {
+    return Array.from({ length: height }, () => Array(width).fill(fallbackValue));
+  }
+
+  return Array.from({ length: height }, (_, rowIndex) => {
+    const row = Array.isArray(layer[rowIndex]) ? (layer[rowIndex] as unknown[]) : [];
+    return Array.from({ length: width }, (_, colIndex) => {
+      const cell = row[colIndex];
+      if (typeof cell === "boolean") return cell ? 1 : 0;
+      return toNumber(cell, fallbackValue);
+    });
+  });
+};
+
+const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
+  let sourceJson: unknown = detail.mapDetailJson;
+
+  if (!sourceJson && detail.activeSpec?.gridSpec) {
+    try {
+      sourceJson = JSON.parse(detail.activeSpec.gridSpec);
+    } catch {
+      sourceJson = null;
+    }
+  }
+
+  const fallbackType = detail.type === "Platform" ? "platform" : "topdown";
+
+  if (
+    isRecord(sourceJson) &&
+    isRecord(sourceJson.config) &&
+    isRecord(sourceJson.layers) &&
+    isRecord(sourceJson.objects)
+  ) {
+    const configRaw = sourceJson.config;
+    const layersRaw = sourceJson.layers;
+    const objectsRaw = sourceJson.objects;
+
+    const width = Math.max(1, toNumber(configRaw.width, 20));
+    const height = Math.max(1, toNumber(configRaw.height, 15));
+    const tileSize = Math.max(8, toNumber(configRaw.tileSize, 32));
+
+    const fruitsRaw = Array.isArray(objectsRaw.fruits) ? objectsRaw.fruits : [];
+    const enemiesRaw = Array.isArray(objectsRaw.enemies) ? objectsRaw.enemies : [];
+    const decoRaw = Array.isArray(objectsRaw.decorativeObjects) ? objectsRaw.decorativeObjects : [];
+
+    return {
+      config: {
+        type: configRaw.type === "topdown" ? "topdown" : "platform",
+        width,
+        height,
+        tileSize,
+        name:
+          detail.title || (typeof configRaw.name === "string" ? configRaw.name : "Untitled Map"),
+        description:
+          detail.description ||
+          (typeof configRaw.description === "string" ? configRaw.description : ""),
+        difficulty: clampDifficulty(toNumber(detail.difficulty, toNumber(configRaw.difficulty, 1))),
+        timeLimitSeconds: Math.max(
+          1,
+          Math.floor(
+            toNumber(detail.timeLimitMs, toNumber(configRaw.timeLimitSeconds, 60) * 1000) / 1000,
+          ),
+        ),
+        winCondition: clampWinCondition(
+          toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
+        ),
+        price: Math.max(0, toNumber(detail.price, toNumber(configRaw.price, 0))),
+      },
+      layers: {
+        background: normalizeNumberLayer(layersRaw.background, width, height),
+        ground: normalizeNumberLayer(layersRaw.ground, width, height),
+        foreground: normalizeNumberLayer(layersRaw.foreground, width, height),
+        collision: normalizeNumberLayer(layersRaw.collision, width, height),
+      },
+      objects: {
+        playerSpawn:
+          isRecord(objectsRaw.playerSpawn) &&
+          typeof objectsRaw.playerSpawn.x === "number" &&
+          typeof objectsRaw.playerSpawn.y === "number"
+            ? { x: objectsRaw.playerSpawn.x, y: objectsRaw.playerSpawn.y }
+            : null,
+        goal:
+          isRecord(objectsRaw.goal) &&
+          typeof objectsRaw.goal.x === "number" &&
+          typeof objectsRaw.goal.y === "number"
+            ? { x: objectsRaw.goal.x, y: objectsRaw.goal.y }
+            : null,
+        fruits: fruitsRaw
+          .filter(
+            (item): item is { x: number; y: number } =>
+              isRecord(item) && typeof item.x === "number" && typeof item.y === "number",
+          )
+          .map((item) => ({ x: item.x, y: item.y })),
+        enemies: enemiesRaw
+          .filter(
+            (item): item is { x: number; y: number; type: string } =>
+              isRecord(item) &&
+              typeof item.x === "number" &&
+              typeof item.y === "number" &&
+              typeof item.type === "string",
+          )
+          .map((item) => ({ x: item.x, y: item.y, type: item.type })),
+        decorativeObjects: decoRaw
+          .filter(
+            (item): item is { id: number; x: number; y: number } =>
+              isRecord(item) &&
+              typeof item.id === "number" &&
+              typeof item.x === "number" &&
+              typeof item.y === "number",
+          )
+          .map((item) => ({ id: item.id, x: item.x, y: item.y })),
+      },
+    };
+  }
+
+  if (isRecord(sourceJson) && isRecord(sourceJson.layers)) {
+    const width = Math.max(1, toNumber(sourceJson.width, 20));
+    const height = Math.max(1, toNumber(sourceJson.height, 15));
+    const layersRaw = sourceJson.layers;
+
+    const objectsRaw = Array.isArray(sourceJson.objects) ? sourceJson.objects : [];
+
+    const fruits = objectsRaw
+      .filter(
+        (obj): obj is { type: string; position: { col: number; row: number } } =>
+          isRecord(obj) &&
+          obj.type === "fruit" &&
+          isRecord(obj.position) &&
+          typeof obj.position.col === "number" &&
+          typeof obj.position.row === "number",
+      )
+      .map((obj) => ({ x: obj.position.col, y: obj.position.row }));
+
+    const enemies = objectsRaw
+      .filter(
+        (obj): obj is { type: string; position: { col: number; row: number } } =>
+          isRecord(obj) &&
+          obj.type !== "fruit" &&
+          isRecord(obj.position) &&
+          typeof obj.position.col === "number" &&
+          typeof obj.position.row === "number",
+      )
+      .map((obj) => ({ x: obj.position.col, y: obj.position.row, type: obj.type }));
+
+    return {
+      config: {
+        type: fallbackType,
+        width,
+        height,
+        tileSize: 32,
+        name:
+          detail.title || (typeof sourceJson.name === "string" ? sourceJson.name : "Untitled Map"),
+        description: detail.description || "",
+        difficulty: clampDifficulty(detail.difficulty),
+        timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
+        winCondition: clampWinCondition(detail.winCondition),
+        price: Math.max(0, detail.price),
+      },
+      layers: {
+        background: normalizeNumberLayer(layersRaw.background, width, height),
+        ground: normalizeNumberLayer(layersRaw.ground, width, height),
+        foreground: normalizeNumberLayer(layersRaw.foreground, width, height),
+        collision: normalizeNumberLayer(layersRaw.collision, width, height),
+      },
+      objects: {
+        playerSpawn:
+          isRecord(sourceJson.startPosition) &&
+          typeof sourceJson.startPosition.col === "number" &&
+          typeof sourceJson.startPosition.row === "number"
+            ? { x: sourceJson.startPosition.col, y: sourceJson.startPosition.row }
+            : null,
+        goal:
+          isRecord(sourceJson.goalPosition) &&
+          typeof sourceJson.goalPosition.col === "number" &&
+          typeof sourceJson.goalPosition.row === "number"
+            ? { x: sourceJson.goalPosition.col, y: sourceJson.goalPosition.row }
+            : null,
+        fruits,
+        enemies,
+        decorativeObjects: [],
+      },
+    };
+  }
+
+  return createEmptyMap(fallbackType, 20, 15, 32);
+};
 
 interface EditorState {
   store: EditorStore | null;
@@ -21,7 +254,12 @@ interface EditorState {
 
 export default function MapEditor() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = (location.state ?? null) as MapEditorRouteState | null;
+  const mapId = routeState?.mapId;
   const [zoom, setZoom] = useState(1);
+  const [loadingMap, setLoadingMap] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const initialMap = createEmptyMap("platform", 20, 15, 32);
@@ -40,6 +278,63 @@ export default function MapEditor() {
   });
 
   const { store } = editorState;
+
+  useEffect(() => {
+    if (!mapId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMapForEdit = async () => {
+      try {
+        setLoadingMap(true);
+        setLoadError(null);
+
+        const learnerToken = tokenStorage.getLearnerToken();
+        const cmsToken = tokenStorage.getCmsToken();
+
+        const mapsApi = learnerToken ? learnerMapsApi : cmsToken ? cmsMapsApi : null;
+        if (!mapsApi) {
+          throw new Error("You must be logged in to edit a map");
+        }
+
+        const response = await mapsApi.getMapById(mapId, false);
+        if (!response.data.isSuccess || !response.data.data) {
+          throw new Error(response.data.message || "Failed to load map");
+        }
+
+        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
+        if (cancelled) return;
+
+        const loadedStore = new EditorStore(loadedMapData);
+        setEditorState({
+          store: loadedStore,
+          mapData: loadedStore.getState(),
+          activeLayer: loadedStore.getActiveLayer(),
+          selectedTile: loadedStore.getSelectedTile(),
+          selectedObjectId: loadedStore.getSelectedObjectId(),
+          selectedTool: loadedStore.getSelectedTool(),
+          canUndo: loadedStore.canUndo(),
+          canRedo: loadedStore.canRedo(),
+        });
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Failed to load map";
+        setLoadError(message);
+      } finally {
+        if (!cancelled) {
+          setLoadingMap(false);
+        }
+      }
+    };
+
+    loadMapForEdit();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapId]);
 
   // Subscribe to store changes
   useEffect(() => {
@@ -131,6 +426,10 @@ export default function MapEditor() {
         </button>
         <div>
           <h1 style={styles.title}>Map Editor</h1>
+          {mapId && (
+            <p style={styles.subtitle}>{loadingMap ? "Loading map..." : `Editing map: ${mapId}`}</p>
+          )}
+          {loadError && <p style={styles.errorText}>{loadError}</p>}
         </div>
       </div>
 
@@ -139,6 +438,8 @@ export default function MapEditor() {
           <aside style={styles.leftSidebar}>
             <MapEditorControls
               sectionMode="left"
+              editingMapId={mapId}
+              editorMode={routeState?.mode}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
@@ -205,6 +506,8 @@ export default function MapEditor() {
             <LayerPanel store={store} />
             <MapEditorControls
               sectionMode="right"
+              editingMapId={mapId}
+              editorMode={routeState?.mode}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
