@@ -42,6 +42,10 @@ export default function GameView() {
   } | null>(null);
   const [hoveredControl, setHoveredControl] = useState<string | null>(null);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const [canvasRenderSize, setCanvasRenderSize] = useState({ width: 0, height: 0 });
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -92,6 +96,7 @@ export default function GameView() {
         const tileSize = 48;
         canvas.width = levelDefinition.width * tileSize;
         canvas.height = levelDefinition.height * tileSize;
+        setCanvasRenderSize({ width: canvas.width, height: canvas.height });
 
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
@@ -443,6 +448,38 @@ export default function GameView() {
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
+  useEffect(() => {
+    const viewport = canvasViewportRef.current;
+    if (!viewport || canvasRenderSize.width === 0 || canvasRenderSize.height === 0) return;
+
+    const computeScale = () => {
+      if (zoomMode === "actual") {
+        setCanvasScale(1);
+        return;
+      }
+
+      const availableWidth = viewport.clientWidth - 8;
+      const availableHeight = viewport.clientHeight - 8;
+      if (availableWidth <= 0 || availableHeight <= 0) return;
+
+      const widthRatio = availableWidth / canvasRenderSize.width;
+      const heightRatio = availableHeight / canvasRenderSize.height;
+      const nextScale = Math.min(1, widthRatio, heightRatio);
+      setCanvasScale(Math.max(0.1, nextScale));
+    };
+
+    computeScale();
+
+    const resizeObserver = new ResizeObserver(computeScale);
+    resizeObserver.observe(viewport);
+
+    window.addEventListener("resize", computeScale);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", computeScale);
+    };
+  }, [canvasRenderSize, zoomMode]);
+
   const controlButtonStyle = (
     variant: "neutral" | "primary" | "danger" | "warning",
     disabled: boolean,
@@ -706,7 +743,50 @@ export default function GameView() {
               <h2 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
                 Game View - Block Programming
               </h2>
-              <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    background: "var(--surface-2)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setZoomMode("fit")}
+                    style={{
+                      border: "none",
+                      padding: "6px 10px",
+                      background: zoomMode === "fit" ? "var(--primary)" : "transparent",
+                      color: zoomMode === "fit" ? "#fff" : "var(--text-2)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Fit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomMode("actual")}
+                    style={{
+                      border: "none",
+                      borderLeft: "1px solid var(--border)",
+                      padding: "6px 10px",
+                      background: zoomMode === "actual" ? "var(--primary)" : "transparent",
+                      color: zoomMode === "actual" ? "#fff" : "var(--text-2)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    100%
+                  </button>
+                </div>
+                <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+              </div>
             </div>
 
             <div
@@ -722,9 +802,10 @@ export default function GameView() {
                 alignItems: "center",
                 justifyContent: "center",
                 padding: "16px",
-                overflow: "auto",
+                overflow: zoomMode === "fit" ? "hidden" : "auto",
                 transition: "box-shadow 0.2s ease, transform 0.2s ease",
               }}
+              ref={canvasViewportRef}
             >
               <canvas
                 ref={canvasRef}
@@ -734,6 +815,10 @@ export default function GameView() {
                   display: "block",
                   background: "var(--surface)",
                   boxShadow: "0 12px 24px rgba(15, 23, 42, 0.22)",
+                  width: `${Math.round(canvasRenderSize.width * canvasScale)}px`,
+                  height: `${Math.round(canvasRenderSize.height * canvasScale)}px`,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
                 }}
               />
             </div>

@@ -770,9 +770,13 @@ export const MyMapsPage: React.FC = () => {
     fetchMaps();
   }, [fetchMaps]);
 
-  const handleViewDetails = async (mapId: string) => {
-    // Navigate to map editor or view
-    navigate(ROUTES.MAP_EDITOR, { state: { mapId } });
+  const handleViewDetails = (mapId: string) => {
+    // Tab "Sưu tầm": vào trang chi tiết map (xem/chơi). Tab "Bản đồ của tôi": vào editor.
+    if (activeTab === "collected") {
+      navigate(`/app/map/${mapId}`);
+    } else {
+      navigate(ROUTES.MAP_EDITOR, { state: { mapId } });
+    }
   };
 
   const handleUpdateMap = (mapId: string) => {
@@ -1072,7 +1076,7 @@ export const MyMapsPage: React.FC = () => {
               cursor: "pointer",
             }}
           >
-            Bản đồ của tôi
+            {t("myMaps")}
           </button>
           <button
             type="button"
@@ -1090,7 +1094,7 @@ export const MyMapsPage: React.FC = () => {
               cursor: "pointer",
             }}
           >
-            Sưu tầm
+            {t("collectedTab")}
           </button>
         </div>
 
