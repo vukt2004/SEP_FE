@@ -24,6 +24,8 @@ export const ROUTES = {
   LEARNER_MAP_DETAIL: "/app/map/:id",
   LEARNER_ROOM_CREATE: "/app/room/create",
   LEARNER_ROOM_JOIN: "/app/room/join",
+  /** Room detail/waiting – use with /app/room/:roomId */
+  LEARNER_ROOM_DETAIL: (roomId: string) => `/app/room/${roomId}`,
 
   // CMS
   CMS_LOGIN: "/cms/login",

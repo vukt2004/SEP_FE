@@ -1,0 +1,201 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.loadingWrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  color: var(--text-2);
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  color: var(--text);
+}
+
+.roomCodeWrap {
+  margin-bottom: 8px;
+}
+
+.roomCodeLabel {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.roomCode {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: var(--primary);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.players {
+  margin-bottom: 24px;
+}
+
+.playersTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.playersList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--surface) 95%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.playerId {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.hostBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+}
+
+.readyIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.readyBtn,
+.startBtn,
+.leaveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.readyBtn {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.readyBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.startBtn {
+  background: var(--accent);
+  color: #0b1220;
+}
+
+.startBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.leaveBtn {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.leaveBtn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-2);
+}
+
+.leaveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
