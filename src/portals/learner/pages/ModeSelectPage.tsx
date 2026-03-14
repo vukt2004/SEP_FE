@@ -58,7 +58,7 @@ export default function ModeSelectPage() {
       <section className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>Play Game</h1>
-          <p className={styles.subtitle}>Chọn chế độ chơi phù hợp với bạn</p>
+          <p className={styles.subtitle}>Choose the game mode that fits you</p>
         </header>
 
         <div className={styles.grid}>
@@ -67,8 +67,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconSingle} aria-hidden>
                 <SinglePersonIcon className={styles.iconSvg} />
               </div>
-              <h2 className={styles.cardTitle}>Chơi đơn</h2>
-              <p className={styles.cardLabel}>Luyện tập các câu đố chơi đơn</p>
+              <h2 className={styles.cardTitle}>Single Player</h2>
+              <p className={styles.cardLabel}>Practice and solve solo challenges</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -76,7 +76,7 @@ export default function ModeSelectPage() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
               >
-                Xem câu đố
+                Browse Challenges
               </button>
             </div>
           </article>
@@ -86,8 +86,8 @@ export default function ModeSelectPage() {
               <div className={styles.iconMulti} aria-hidden>
                 <ThreePeopleIcon className={styles.iconSvg} />
               </div>
-              <h2 className={styles.cardTitle}>Chơi nhiều người</h2>
-              <p className={styles.cardLabel}>Thi đấu nhiều người cùng giải câu đố</p>
+              <h2 className={styles.cardTitle}>Multiplayer</h2>
+              <p className={styles.cardLabel}>Compete with others to solve challenges</p>
             </div>
             <div className={styles.actions}>
               <button
@@ -95,14 +95,14 @@ export default function ModeSelectPage() {
                 className={`${styles.btn} ${styles.btnAccent}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_CREATE)}
               >
-                Tạo phòng
+                Create Room
               </button>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_JOIN)}
               >
-                Vào phòng
+                Join Room
               </button>
             </div>
           </article>
