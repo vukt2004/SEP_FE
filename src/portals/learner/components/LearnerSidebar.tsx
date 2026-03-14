@@ -1,6 +1,6 @@
 // src/portals/learner/components/LearnerSidebar.tsx
 import { NavLink } from "react-router-dom";
-import { Home, Gamepad2, User, Wallet, Package, Map, Store } from "lucide-react";
+import { Gamepad2, Map, Store } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 
 export default function LearnerSidebar() {
@@ -24,25 +24,18 @@ export default function LearnerSidebar() {
         aria-label="Learner navigation"
         style={{ display: "flex", flexDirection: "column", gap: 6 }}
       >
-        <SideNavLink to={ROUTES.LEARNER_HOME ?? "/app"} label="Home" icon={Home} />
-        <SideNavLink
-          to={ROUTES.LEARNER_LEARN ?? "/app/browse"}
-          label="Game Mode Browse"
-          icon={Gamepad2}
-        />
-        <SideNavLink to={ROUTES.LEARNER_PROFILE ?? "/app/profile"} label="Profile" icon={User} />
-        <SideNavLink to={ROUTES.LEARNER_WALLET ?? "/app/wallet"} label="Wallet" icon={Wallet} />
-        <SideNavLink
-          to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"}
-          label="Packages"
-          icon={Package}
-        />
-        <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label="My Maps" icon={Map} />
+        {/* Marketplace as primary tab */}
         <SideNavLink
           to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
           label="Marketplace"
           icon={Store}
         />
+        <SideNavLink
+          to={ROUTES.LEARNER_LEARN ?? "/app/browse"}
+          label="Game Mode Browse"
+          icon={Gamepad2}
+        />
+        <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label="My Maps" icon={Map} />
       </nav>
     </aside>
   );

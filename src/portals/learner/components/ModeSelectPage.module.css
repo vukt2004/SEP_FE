@@ -1,148 +1,176 @@
 .page {
-  min-height: 100dvh;
-  background: var(--bg);
-  color: var(--text);
-  display: grid;
-  place-items: center;
-  padding: 24px 14px;
+  min-height: calc(100vh - 120px);
+  padding: 40px 0 48px;
 }
 
 .container {
-  width: min(980px, 100%);
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .header {
-  margin-bottom: 18px;
+  text-align: center;
+  margin-bottom: 48px;
 }
 
 .title {
-  font-size: 34px;
-  line-height: 1.15;
-  margin: 0 0 6px;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  color: var(--text);
 }
 
 .subtitle {
-  margin: 0 0 12px;
+  margin: 0;
+  font-size: 18px;
   color: var(--text-2);
-}
-
-.pills {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.pill {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 13px;
 }
 
 .grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 28px;
 }
 
-@media (min-width: 860px) {
+@media (min-width: 720px) {
   .grid {
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 36px;
   }
 }
 
 .card {
-  background: var(--surface);
+  background: var(--elevated, var(--surface));
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+  border-radius: 24px;
+  padding: 40px 36px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.cardTop {
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+
+.cardBody {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 10px;
+  text-align: center;
+  margin-bottom: 32px;
 }
 
 .iconSingle,
 .iconMulti {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--border);
   background: var(--surface-2);
+  margin-bottom: 20px;
 }
 
 .iconSingle {
-  outline: 2px solid rgba(37, 99, 235, 0.35);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  color: var(--primary);
 }
 
 .iconMulti {
-  outline: 2px solid rgba(249, 115, 22, 0.35);
+  background: color-mix(in srgb, #f97316 12%, var(--surface));
+  border-color: color-mix(in srgb, #f97316 35%, var(--border));
+  color: #f97316;
+}
+
+.iconSvg {
+  width: 64px;
+  height: 64px;
 }
 
 .cardTitle {
   margin: 0;
-  font-size: 20px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .cardLabel {
-  margin: 2px 0 0;
+  margin: 10px 0 0;
+  font-size: 17px;
   color: var(--text-2);
-  font-size: 13px;
-}
-
-.list {
-  margin: 10px 0 14px;
-  padding-left: 18px;
-  color: var(--text-2);
+  line-height: 1.5;
 }
 
 .actions {
   display: flex;
-  gap: 10px;
+  gap: 16px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
+  height: 52px;
+  padding: 0 28px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 16px;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .btn:focus-visible {
-  outline: 3px solid var(--focus);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
 .btnPrimary {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--on-primary, #fff);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
 }
 
 .btnAccent {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #f97316;
+  border-color: #f97316;
   color: #0b1220;
 }
 
-.btnGhost:hover {
+.btnAccent:hover {
+  filter: brightness(1.08);
+}
+
+.btnGhost {
   background: var(--surface-2);
 }
 
+.btnGhost:hover {
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--border));
+}
+
 .footerNote {
-  margin-top: 14px;
+  margin-top: 40px;
+  text-align: center;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 15px;
 }

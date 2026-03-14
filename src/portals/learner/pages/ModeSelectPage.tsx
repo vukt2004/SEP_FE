@@ -57,81 +57,56 @@ export default function ModeSelectPage() {
     <main className={styles.page}>
       <section className={styles.container}>
         <header className={styles.header}>
-          <h1 className={styles.title}>Choose Mode</h1>
-          <p className={styles.subtitle}>Pick how you want to play today.</p>
+          <h1 className={styles.title}>Play Game</h1>
+          <p className={styles.subtitle}>Chọn chế độ chơi phù hợp với bạn</p>
         </header>
-        {/* Căn giữa */}
 
         <div className={styles.grid}>
-          {/* Single Player */}
           <article className={`${styles.card} ${styles.cardSingle}`}>
-            <div className={styles.cardTop}>
+            <div className={styles.cardBody}>
               <div className={styles.iconSingle} aria-hidden>
                 <SinglePersonIcon className={styles.iconSvg} />
               </div>
-              <div>
-                <h2 className={styles.cardTitle}>Single Player</h2>
-                <p className={styles.cardLabel}>Challenge Mode</p>
-              </div>
+              <h2 className={styles.cardTitle}>Chơi đơn</h2>
+              <p className={styles.cardLabel}>Luyện tập các câu đố chơi đơn</p>
             </div>
-            {/* To icon, nhỏ mô tả, Icon lớn ở trên, tên mode ở dưới */}
-
-            <ul className={styles.list}>
-              <li>Browse catalog by difficulty & concept tags</li>
-              <li>Run / Step-run with highlighted blocks</li>
-              <li>Layered hints, earn XP & stars</li>
-            </ul>
-
             <div className={styles.actions}>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => navigate(ROUTES.LEARNER_CHALLENGES)}
               >
-                Browse challenges
+                Xem câu đố
               </button>
             </div>
           </article>
 
-          {/* Multiplayer */}
           <article className={`${styles.card} ${styles.cardMulti}`}>
-            <div className={styles.cardTop}>
+            <div className={styles.cardBody}>
               <div className={styles.iconMulti} aria-hidden>
                 <ThreePeopleIcon className={styles.iconSvg} />
               </div>
-              <div>
-                <h2 className={styles.cardTitle}>Multiplayer</h2>
-                <p className={styles.cardLabel}>Competitive Mode</p>
-              </div>
+              <h2 className={styles.cardTitle}>Chơi nhiều người</h2>
+              <p className={styles.cardLabel}>Thi đấu nhiều người cùng giải câu đố</p>
             </div>
-
-            <ul className={styles.list}>
-              <li>2–8 players solve the same puzzle</li>
-              <li>Rank by correctness, efficiency & speed</li>
-              <li>See results & replays of others</li>
-            </ul>
-
             <div className={styles.actions}>
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnAccent}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_CREATE)}
               >
-                Create room
+                Tạo phòng
               </button>
-
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={() => navigate(ROUTES.LEARNER_ROOM_JOIN)}
               >
-                Join room
+                Vào phòng
               </button>
             </div>
           </article>
         </div>
-
-        <footer className={styles.footerNote}>Tip: You can switch modes anytime.</footer>
       </section>
     </main>
   );

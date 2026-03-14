@@ -1,21 +1,43 @@
 // src/portals/learner/components/layout/LearnerHeader.tsx
+import { useEffect, useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { User, Wallet, Package, LogOut, Store, Gamepad2, Map } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
 
 export default function LearnerHeader() {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    orbitCoinApi.getBalance().then((res) => {
+      if (res.isSuccess && res.data) setBalance(res.data.balance);
+    });
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
 
   const onLogout = () => {
-    // TODO: thay bằng logic logout thật của bạn (auth store/service)
     localStorage.removeItem("qo_learner_token");
     navigate(ROUTES.LANDING ?? "/", { replace: true });
   };
+
+  const userName = "User";
+  const balanceStr = balance != null ? balance.toLocaleString() : "—";
 
   return (
     <header
       style={{
         position: "sticky",
-        height: 95,
+        height: 72,
         top: 0,
         zIndex: 30,
         background: "var(--bg)",
@@ -24,20 +46,21 @@ export default function LearnerHeader() {
       }}
     >
       <div
-        className="container"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
-          paddingTop: 12,
-          paddingBottom: 12,
+          gap: 20,
+          padding: "0 48px",
+          height: "100%",
+          maxWidth: 1440,
+          margin: "0 auto",
         }}
       >
-        {/* Left */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+        {/* Left: Logo + Nav tabs */}
+        <div style={{ display: "flex", alignItems: "center", gap: 56, minWidth: 0 }}>
           <NavLink
-            to={ROUTES.LEARNER_HOME ?? "/app"}
+            to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -49,7 +72,7 @@ export default function LearnerHeader() {
               whiteSpace: "nowrap",
             }}
           >
-            <a style={{ display: "block", height: "100%", paddingRight: 40, paddingTop: 10 }}>
+            <span style={{ display: "block", lineHeight: 0 }}>
               <img
                 src="/brand/logo.png"
                 alt="QuackOrbit"
@@ -58,67 +81,166 @@ export default function LearnerHeader() {
                   width: "auto",
                   display: "block",
                   objectFit: "contain",
-                  transform: "scale(1.8)",
-                  transformOrigin: "left center",
                 }}
               />
-            </a>
+            </span>
           </NavLink>
+          <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <HeaderNavLink to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"} icon={Store}>
+              Marketplace
+            </HeaderNavLink>
+            <HeaderNavLink to={ROUTES.LEARNER_LEARN ?? "/app/browse"} icon={Gamepad2}>
+              Playgame
+            </HeaderNavLink>
+            <HeaderNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} icon={Map}>
+              My Maps
+            </HeaderNavLink>
+          </nav>
         </div>
 
         {/* Right */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <SearchBox />
-          <button
-            type="button"
-            onClick={onLogout}
-            style={{
-              cursor: "pointer",
-              padding: "8px 12px",
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontWeight: 800,
-            }}
-          >
-            Logout
-          </button>
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Mở menu"
+              aria-expanded={menuOpen}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "8px 12px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                cursor: "pointer",
+                color: "var(--text)",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              {userName} • {balanceStr} OC
+            </button>
+
+            {menuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: 8,
+                  minWidth: 180,
+                  background: "var(--elevated, var(--surface))",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+                  overflow: "hidden",
+                }}
+              >
+                <NavLink
+                  to={ROUTES.LEARNER_PROFILE ?? "/app/profile"}
+                  onClick={() => setMenuOpen(false)}
+                  style={menuLinkStyle}
+                >
+                  <User size={18} />
+                  <span>Profile</span>
+                </NavLink>
+                <NavLink
+                  to={ROUTES.LEARNER_WALLET ?? "/app/wallet"}
+                  onClick={() => setMenuOpen(false)}
+                  style={menuLinkStyle}
+                >
+                  <Wallet size={18} />
+                  <span>Ví tiền</span>
+                </NavLink>
+                <NavLink
+                  to={ROUTES.LEARNER_PACKAGES ?? "/app/packages"}
+                  onClick={() => setMenuOpen(false)}
+                  style={menuLinkStyle}
+                >
+                  <Package size={18} />
+                  <span>Package</span>
+                </NavLink>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onLogout();
+                  }}
+                  style={{
+                    ...menuBtnStyle,
+                    color: "var(--danger)",
+                    borderTop: "1px solid var(--border)",
+                  }}
+                >
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
   );
 }
 
-function SearchBox() {
+function menuLinkStyle({ isActive }: { isActive: boolean }): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "12px 16px",
+    color: isActive ? "var(--primary)" : "var(--text)",
+    textDecoration: "none",
+    fontWeight: 600,
+    fontSize: 14,
+  };
+}
+
+const menuBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "12px 16px",
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: 14,
+  textAlign: "left",
+};
+
+function HeaderNavLink({
+  to,
+  icon: Icon,
+  children,
+}: {
+  to: string;
+  icon: React.ComponentType<{ size?: number }>;
+  children: React.ReactNode;
+}) {
   return (
-    <label
-      style={{
+    <NavLink
+      to={to}
+      style={({ isActive }) => ({
         display: "flex",
         alignItems: "center",
         gap: 8,
-        padding: "8px 10px",
-        borderRadius: 12,
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-        minWidth: 260,
-      }}
+        padding: "8px 14px",
+        borderRadius: 10,
+        textDecoration: "none",
+        color: isActive ? "var(--primary)" : "var(--muted)",
+        fontWeight: 700,
+        fontSize: 14,
+        background: isActive
+          ? "color-mix(in srgb, var(--primary) 12%, transparent)"
+          : "transparent",
+      })}
     >
-      <span aria-hidden style={{ color: "var(--muted)" }}>
-        🔎
-      </span>
-      <input
-        placeholder="Search challenges..."
-        aria-label="Search"
-        style={{
-          width: "100%",
-          outline: "none",
-          border: "none",
-          background: "transparent",
-          color: "var(--text)",
-          fontSize: 14,
-        }}
-      />
-    </label>
+      <Icon size={18} aria-hidden />
+      <span>{children}</span>
+    </NavLink>
   );
 }
