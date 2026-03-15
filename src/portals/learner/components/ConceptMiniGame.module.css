@@ -1,0 +1,224 @@
+.miniGameSection {
+  margin-top: 32px;
+  padding: 24px 22px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--primary) 0.06, var(--surface)) 0%,
+    var(--surface) 100%
+  );
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--primary) 0.2, transparent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.sectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 16px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 0.12, transparent);
+  border-radius: 12px;
+}
+
+.sectionDesc {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 700px) {
+  .cardsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card:nth-child(1) {
+  border-top: 4px solid var(--primary);
+}
+
+.card:nth-child(2) {
+  border-top: 4px solid color-mix(in srgb, 34 197 94 0.9, var(--primary));
+}
+
+.card:nth-child(3) {
+  border-top: 4px solid color-mix(in srgb, 59 130 246 0.9, var(--primary));
+}
+
+.cardLabel {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cardQuestion {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.cardQuestion code {
+  font-family: ui-monospace, monospace;
+  background: color-mix(in srgb, var(--primary) 0.1, transparent);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid color-mix(in srgb, var(--primary) 0.2, transparent);
+}
+
+.codeBlock {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--text) 0.05, var(--surface));
+  border-radius: 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+  border: 1px solid var(--border);
+}
+
+.codeBlock code {
+  background: none;
+  padding: 0;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.choiceBtn {
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.15s;
+}
+
+.choiceBtn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  transform: scale(1.02);
+}
+
+.choiceBtn:disabled {
+  cursor: default;
+  opacity: 0.9;
+}
+
+.feedbackCorrect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, 34 197 94 0.18, transparent);
+  border-radius: 10px;
+  color: var(--success, #16a34a);
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, 34 197 94 0.4, transparent);
+}
+
+.feedbackWrong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, 239 68 68 0.12, transparent);
+  border-radius: 10px;
+  color: var(--error, #dc2626);
+  font-size: 14px;
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, 239 68 68 0.35, transparent);
+}
+
+.orderList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.orderItem {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 13px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.orderItem:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.orderItem code {
+  font-family: ui-monospace, monospace;
+  background: var(--surface-2);
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.submitOrderBtn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-contrast, #fff);
+  cursor: pointer;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 35%, transparent);
+  transition: transform 0.15s;
+}
+
+.submitOrderBtn:hover {
+  transform: translateY(-1px);
+}

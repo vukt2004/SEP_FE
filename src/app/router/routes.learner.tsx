@@ -28,6 +28,14 @@ const LearnerRoomCreatePage = React.lazy(() => import("@/portals/learner/pages/R
 const LearnerRoomJoinPage = React.lazy(() => import("@/portals/learner/pages/RoomJoinPage"));
 const LearnerRoomDetailPage = React.lazy(() => import("@/portals/learner/pages/RoomDetailPage"));
 const LearnerRoomResultPage = React.lazy(() => import("@/portals/learner/pages/RoomResultPage"));
+const LearnerGoalSelectPage = React.lazy(() => import("@/portals/learner/pages/GoalSelectPage"));
+const LearnerMyPathPage = React.lazy(() => import("@/portals/learner/pages/MyPathPage"));
+const LearnerConceptDetailPage = React.lazy(
+  () => import("@/portals/learner/pages/ConceptDetailPage"),
+);
+const LearnerConceptsListPage = React.lazy(
+  () => import("@/portals/learner/pages/ConceptsListPage"),
+);
 
 /**
  * Public learner routes:
@@ -72,5 +80,9 @@ export const learnerRoutes: RouteObject = {
     { path: "room/join", element: <LearnerRoomJoinPage /> },
     { path: "room/result", element: <LearnerRoomResultPage /> },
     { path: "room/:roomId", element: <LearnerRoomDetailPage /> },
+    { path: "goal-select", element: <LearnerGoalSelectPage /> },
+    { path: "my-path", element: <LearnerMyPathPage /> },
+    { path: "concept/:id", element: <LearnerConceptDetailPage /> },
+    { path: "concepts", element: <LearnerConceptsListPage /> },
   ],
 };

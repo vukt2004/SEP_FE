@@ -2,7 +2,18 @@
 import { useEffect, useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Wallet, Package, LogOut, Store, Gamepad2, Map, Sun, Moon } from "lucide-react";
+import {
+  User,
+  Wallet,
+  Package,
+  LogOut,
+  Store,
+  Gamepad2,
+  Map,
+  Sun,
+  Moon,
+  Route,
+} from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
 import { useThemeStore } from "@/stores/theme.store";
@@ -122,6 +133,11 @@ export default function LearnerHeader() {
                 {t("package")}
               </HeaderNavLink>
             </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_MY_PATH ?? "/app/my-path"} icon={Route}>
+                {t("myPath")}
+              </HeaderNavLink>
+            </motion.div>
           </nav>
         </div>
 
@@ -224,6 +240,14 @@ export default function LearnerHeader() {
                   >
                     <Map size={18} />
                     <span>{t("myMaps")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_MY_PATH ?? "/app/my-path"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <Route size={18} />
+                    <span>{t("myPath")}</span>
                   </NavLink>
                   <button
                     type="button"
