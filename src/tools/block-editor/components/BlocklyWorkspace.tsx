@@ -15,6 +15,7 @@ const cssVar = (name: string, fallback: string) => {
 
 const createEduWorkspaceTheme = () =>
   Blockly.Theme.defineTheme("eduWorkspace", {
+    name: "eduWorkspace",
     base: Blockly.Themes.Classic,
     componentStyles: {
       workspaceBackgroundColour: cssVar("--surface", "#0f1b2d"),
@@ -35,11 +36,19 @@ const createEduWorkspaceTheme = () =>
 interface BlocklyWorkspaceProps {
   workspaceId?: string;
   onWorkspaceReady?: (workspace: Blockly.WorkspaceSvg) => void;
+  bannedBlockTypes?: string[];
+  blockLimit?: number | null;
+  onConstraintViolation?: (message: string) => void;
+  onBlockCountChange?: (count: number) => void;
 }
 
 const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
   workspaceId = "blockly-workspace",
   onWorkspaceReady,
+  bannedBlockTypes = [],
+  blockLimit = null,
+  onConstraintViolation,
+  onBlockCountChange,
 }) => {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const blocklyWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -86,13 +95,25 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         setError(null);
 
         // Load block definitions from JSON
-        const blockDefinitions: BlockConfig[] = loadBlockRegistry();
+        const blockedTypes = new Set(bannedBlockTypes);
+        const blockDefinitions: BlockConfig[] = loadBlockRegistry().map((block) => {
+          if (!blockedTypes.has(block.type)) {
+            return block;
+          }
+
+          return {
+            ...block,
+            tooltip: "This block is not allowed in this level",
+          };
+        });
 
         // Register blocks dynamically
         registerBlocks(blockDefinitions);
 
         // Generate dynamic toolbox
-        const toolbox = generateToolbox(blockDefinitions);
+        const toolbox = generateToolbox(blockDefinitions, {
+          disabledBlockTypes: bannedBlockTypes,
+        });
 
         if (!mounted) return;
 
@@ -140,6 +161,40 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         if (onWorkspaceReady && blocklyWorkspaceRef.current) {
           onWorkspaceReady(blocklyWorkspaceRef.current);
         }
+
+        const workspace = blocklyWorkspaceRef.current;
+        let revertingCreate = false;
+
+        const reportBlockCount = () => {
+          const totalBlocks = workspace
+            .getAllBlocks(false)
+            .filter((block) => !block.isShadow()).length;
+          onBlockCountChange?.(totalBlocks);
+        };
+
+        reportBlockCount();
+
+        workspace.addChangeListener((event) => {
+          if (revertingCreate) return;
+
+          reportBlockCount();
+
+          if (event.type !== Blockly.Events.BLOCK_CREATE) return;
+
+          if (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit <= 0) {
+            return;
+          }
+
+          const totalBlocks = workspace
+            .getAllBlocks(false)
+            .filter((block) => !block.isShadow()).length;
+          if (totalBlocks <= blockLimit) return;
+
+          revertingCreate = true;
+          workspace.undo(false);
+          revertingCreate = false;
+          onConstraintViolation?.(`Block limit reached (${blockLimit}).`);
+        });
       } catch (err) {
         if (mounted) {
           const errorMessage =
@@ -161,7 +216,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         blocklyWorkspaceRef.current = null;
       }
     };
-  }, [onWorkspaceReady]);
+  }, [bannedBlockTypes, blockLimit, onBlockCountChange, onConstraintViolation, onWorkspaceReady]);
 
   // Handle container resize
   useEffect(() => {

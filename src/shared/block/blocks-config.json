@@ -200,7 +200,7 @@
     {
       "type": "custom_do_while",
       "category": "control",
-      "label": "Do",
+      "label": "Do While",
       "tooltip": "Execute the enclosed blocks, then repeat while the condition is true",
       "color": "#FF9800",
       "command": "CUSTOM_DO_WHILE",

@@ -10,13 +10,28 @@ import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 import type { MapConfig } from "../../shared/types/MapSchema";
+import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
+import { MissionBar } from "./MissionBar";
+import { LevelMissionModal } from "./LevelMissionModal";
+import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
-import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send, Flag } from "lucide-react";
+import {
+  ArrowLeft,
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Eraser,
+  Send,
+  Flag,
+  Info,
+} from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
+import blocksConfig from "../../shared/block/blocks-config.json";
 
 export default function GameView() {
   const location = useLocation();
@@ -29,6 +44,7 @@ export default function GameView() {
   const [error, setError] = useState<string | null>(null);
   const [isExecutorRunning, setIsExecutorRunning] = useState(false);
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
+  const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [audioSystem, setAudioSystem] = useState<
@@ -49,6 +65,10 @@ export default function GameView() {
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
+  const [showMissionModal, setShowMissionModal] = useState(false);
+  const [isLevelStarted, setIsLevelStarted] = useState(false);
+  const [levelTitle, setLevelTitle] = useState("Level");
+  const [blocksUsed, setBlocksUsed] = useState(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
 
   // Get level ID and multiplayer room from location state
@@ -112,6 +132,8 @@ export default function GameView() {
         }
 
         const levelDefinition = levelResult.level;
+        setBlockConstraints(levelDefinition.blockConstraints ?? null);
+        setLevelTitle(levelDefinition.name || levelDefinition.id || "Level");
         console.log("Level loaded successfully:", levelDefinition.name || levelDefinition.id);
 
         // Set canvas size based on level dimensions
@@ -149,7 +171,9 @@ export default function GameView() {
 
         // Initialize and start engine
         await engine.initialize();
-        engine.start();
+        engine.reset();
+        setShowMissionModal(true);
+        setIsLevelStarted(false);
 
         // Expose AudioSystem via state so it can be safely used during render
         setAudioSystem(engine.getAudioSystem() ?? null);
@@ -286,6 +310,11 @@ export default function GameView() {
       return;
     }
 
+    if (!isLevelStarted) {
+      setShowMissionModal(true);
+      return;
+    }
+
     try {
       // Generate AST from Blockly workspace (blocks remain in editor)
       // Note: This only reads the workspace, it does not modify or remove blocks
@@ -293,10 +322,22 @@ export default function GameView() {
       console.log("Blocks in workspace before generation:", blocksBeforeGeneration);
 
       // Count only learner-placed blocks (exclude Blockly shadow blocks).
-      const usedBlocksCount = workspaceRef.current
+      const placedBlocks = workspaceRef.current
         .getAllBlocks(false)
-        .filter((block) => !block.isShadow()).length;
+        .filter((block) => !block.isShadow());
+      const usedBlocksCount = placedBlocks.length;
       lastRunBlockCountRef.current = usedBlocksCount;
+
+      const blockUsage = placedBlocks.reduce<Record<string, number>>((acc, block) => {
+        acc[block.type] = (acc[block.type] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      const constraintsValidation = engineRef.current.validateBlockUsage(blockUsage);
+      if (!constraintsValidation.isValid) {
+        showWarningToast(constraintsValidation.message || "Block constraints are not satisfied.");
+        return;
+      }
 
       const program: BlockProgram = generateAST(workspaceRef.current);
 
@@ -418,6 +459,24 @@ export default function GameView() {
     if (!confirm("Clear all blocks in the workspace?")) return;
     workspaceRef.current.clear();
   };
+
+  const handleStartLevel = () => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.start();
+    setIsLevelStarted(true);
+    setShowMissionModal(false);
+  };
+
+  const blockTypeLabelMap = new Map(blocksConfig.blocks.map((block) => [block.type, block.label]));
+  const toBlockLabel = (type: string) => blockTypeLabelMap.get(type) || type;
+
+  const missionGoal = mapConfig?.winCondition === 2 ? "Collect All Fruits" : "Reach Goal";
+  const requiredBlocks = (blockConstraints?.requiredBlocks ?? []).map((rule) => {
+    const label = toBlockLabel(rule.type);
+    return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
+  });
+  const forbiddenBlocks = (blockConstraints?.bannedBlocks ?? []).map((type) => toBlockLabel(type));
 
   // Multiplayer: listen RankingUpdated, GameEnded
   useEffect(() => {
@@ -648,10 +707,10 @@ export default function GameView() {
 
         <button
           onClick={handleRunProgram}
-          disabled={isLoading || !!error || isExecutorRunning}
+          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
           style={controlButtonStyle(
             "primary",
-            isLoading || !!error || isExecutorRunning,
+            isLoading || !!error || isExecutorRunning || !isLevelStarted,
             hoveredControl === "run",
           )}
           onMouseEnter={() => setHoveredControl("run")}
@@ -662,10 +721,10 @@ export default function GameView() {
 
         <button
           onClick={handleStepExecution}
-          disabled={isLoading || !!error || isExecutorRunning}
+          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
           style={controlButtonStyle(
             "primary",
-            isLoading || !!error || isExecutorRunning,
+            isLoading || !!error || isExecutorRunning || !isLevelStarted,
             hoveredControl === "step",
           )}
           onMouseEnter={() => setHoveredControl("step")}
@@ -774,6 +833,34 @@ export default function GameView() {
             <div style={{ minWidth: "120px" }}>
               <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
             </div>
+
+            <button
+              onClick={() => setShowMissionModal(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 700,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "color-mix(in srgb, var(--primary) 18%, var(--surface))";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)";
+              }}
+            >
+              <Info size={14} /> Mission
+            </button>
+
             <div
               style={{
                 padding: "8px 12px",
@@ -787,7 +874,7 @@ export default function GameView() {
             >
               🍎 Fruits: {collectedFruits}
             </div>
-            <div
+            {/* <div
               style={{
                 padding: "8px 12px",
                 borderRadius: "12px",
@@ -799,8 +886,15 @@ export default function GameView() {
               }}
             >
               🎯 {mapConfig?.winCondition === 1 ? "Reach Goal" : "Collect All Fruits"}
-            </div>
+            </div> */}
           </div>
+
+          <MissionBar
+            goal={missionGoal}
+            blockLimit={blockConstraints?.blockLimit ?? null}
+            requiredBlocks={requiredBlocks}
+            forbiddenBlocks={forbiddenBlocks}
+          />
 
           <div
             style={{
@@ -960,34 +1054,39 @@ export default function GameView() {
               padding: "10px 12px",
               borderBottom: "1px solid var(--border)",
               background: "var(--surface-2)",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "var(--text)",
-                background: "color-mix(in srgb, var(--primary) 20%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
-                borderRadius: "999px",
-                padding: "4px 10px",
-              }}
-            >
-              Movement
-            </span>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "var(--text)",
-                background: "color-mix(in srgb, var(--accent) 20%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
-                borderRadius: "999px",
-                padding: "4px 10px",
-              }}
-            >
-              Control
-            </span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  background: "color-mix(in srgb, var(--primary) 20%, var(--surface))",
+                  border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+                  borderRadius: "999px",
+                  padding: "4px 10px",
+                }}
+              >
+                Movement
+              </span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  background: "color-mix(in srgb, var(--accent) 20%, var(--surface))",
+                  border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
+                  borderRadius: "999px",
+                  padding: "4px 10px",
+                }}
+              >
+                Control
+              </span>
+            </div>
+            <BlockCounter used={blocksUsed} limit={blockConstraints?.blockLimit ?? null} />
           </div>
 
           <div
@@ -999,10 +1098,27 @@ export default function GameView() {
               background: "var(--surface)",
             }}
           >
-            <BlocklyWorkspace onWorkspaceReady={handleWorkspaceReady} />
+            <BlocklyWorkspace
+              onWorkspaceReady={handleWorkspaceReady}
+              bannedBlockTypes={blockConstraints?.bannedBlocks ?? []}
+              blockLimit={blockConstraints?.blockLimit ?? null}
+              onConstraintViolation={showWarningToast}
+              onBlockCountChange={setBlocksUsed}
+            />
           </div>
         </div>
       </div>
+
+      <LevelMissionModal
+        isOpen={showMissionModal && !isLoading && !error}
+        levelTitle={levelTitle}
+        goal={missionGoal}
+        blockLimit={blockConstraints?.blockLimit ?? null}
+        requiredBlocks={requiredBlocks}
+        forbiddenBlocks={forbiddenBlocks}
+        onStart={handleStartLevel}
+        onClose={() => setShowMissionModal(false)}
+      />
 
       {/* Game Results Modal */}
       {gameResult && (

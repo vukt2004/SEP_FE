@@ -634,6 +634,56 @@ export class EditorStore {
   }
 
   /**
+   * Update the map block limit
+   *
+   * @param blockLimit - Maximum blocks allowed, or null for unlimited
+   */
+  setBlockLimit(blockLimit: number | null): void {
+    this.saveHistory();
+    const normalized =
+      typeof blockLimit === "number" && Number.isFinite(blockLimit)
+        ? Math.max(1, Math.floor(blockLimit))
+        : null;
+    this.mapData.blockConstraints.blockLimit = normalized;
+    this.notify();
+  }
+
+  /**
+   * Update the list of banned block types
+   *
+   * @param bannedBlocks - Block type IDs that cannot be used
+   */
+  setBannedBlocks(bannedBlocks: string[]): void {
+    this.saveHistory();
+    this.mapData.blockConstraints.bannedBlocks = Array.from(
+      new Set(bannedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
+    );
+    this.notify();
+  }
+
+  /**
+   * Update required block rules
+   *
+   * @param requiredBlocks - Block type requirements with minimum counts
+   */
+  setRequiredBlocks(requiredBlocks: Array<{ type: string; minCount: number }>): void {
+    this.saveHistory();
+    this.mapData.blockConstraints.requiredBlocks = requiredBlocks
+      .filter(
+        (rule) =>
+          typeof rule.type === "string" &&
+          rule.type.trim().length > 0 &&
+          typeof rule.minCount === "number" &&
+          Number.isFinite(rule.minCount),
+      )
+      .map((rule) => ({
+        type: rule.type,
+        minCount: Math.max(1, Math.floor(rule.minCount)),
+      }));
+    this.notify();
+  }
+
+  /**
    * Load a new map into the editor
    * Supports backward compatibility with 2-layer maps
    *
@@ -685,6 +735,28 @@ export class EditorStore {
     // Backward compatibility: Add decorativeObjects if missing
     if (!loadedMap.objects.decorativeObjects) {
       loadedMap.objects.decorativeObjects = [];
+    }
+
+    // Backward compatibility: Add block constraints if missing
+    if (!loadedMap.blockConstraints) {
+      loadedMap.blockConstraints = {
+        blockLimit: null,
+        bannedBlocks: [],
+        requiredBlocks: [],
+      };
+    }
+    if (!Array.isArray(loadedMap.blockConstraints.bannedBlocks)) {
+      loadedMap.blockConstraints.bannedBlocks = [];
+    }
+    if (!Array.isArray(loadedMap.blockConstraints.requiredBlocks)) {
+      loadedMap.blockConstraints.requiredBlocks = [];
+    }
+    if (
+      loadedMap.blockConstraints.blockLimit !== null &&
+      (typeof loadedMap.blockConstraints.blockLimit !== "number" ||
+        !Number.isFinite(loadedMap.blockConstraints.blockLimit))
+    ) {
+      loadedMap.blockConstraints.blockLimit = null;
     }
 
     this.mapData = loadedMap;

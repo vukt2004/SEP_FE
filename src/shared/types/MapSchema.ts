@@ -76,6 +76,28 @@ export interface DecorativeObject {
 }
 
 /**
+ * Required block rule for a level
+ */
+export interface RequiredBlockRule {
+  /** Block type from blocks-config.json */
+  type: string;
+  /** Minimum number of times this block must be used */
+  minCount: number;
+}
+
+/**
+ * Block usage constraints for a level
+ */
+export interface BlockConstraints {
+  /** Maximum total number of blocks allowed. Null means unlimited */
+  blockLimit: number | null;
+  /** Block types that cannot be used */
+  bannedBlocks: string[];
+  /** Block types that must be used at least minCount times */
+  requiredBlocks: RequiredBlockRule[];
+}
+
+/**
  * Game objects and entities placed on the map
  */
 export interface Objects {
@@ -102,4 +124,6 @@ export interface MapData {
   layers: Layers;
   /** Game objects */
   objects: Objects;
+  /** Block programming constraints */
+  blockConstraints: BlockConstraints;
 }

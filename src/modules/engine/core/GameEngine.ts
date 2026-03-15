@@ -225,6 +225,8 @@ export class GameEngine {
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
     this.runtime.collectedFruits.clear();
+    this.runtime.startTime = null;
+    this.runtime.timeElapsed = 0;
     this.goalRequirementNotified = false;
 
     // Update player collider
@@ -278,6 +280,56 @@ export class GameEngine {
 
   getConfig(): GameConfig {
     return this.config;
+  }
+
+  /**
+   * Get block constraints from the loaded level.
+   */
+  getBlockConstraints(): LevelDefinition["blockConstraints"] {
+    return this.level.blockConstraints;
+  }
+
+  /**
+   * Validate block usage against level constraints.
+   */
+  validateBlockUsage(blockUsage: Record<string, number>): { isValid: boolean; message?: string } {
+    const constraints = this.level.blockConstraints;
+    if (!constraints) {
+      return { isValid: true };
+    }
+
+    const blockLimit = constraints.blockLimit;
+    if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
+      const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
+      if (totalUsed > blockLimit) {
+        return {
+          isValid: false,
+          message: `Block limit exceeded (${totalUsed}/${blockLimit}).`,
+        };
+      }
+    }
+
+    for (const bannedType of constraints.bannedBlocks || []) {
+      const used = blockUsage[bannedType] ?? 0;
+      if (used > 0) {
+        return {
+          isValid: false,
+          message: `Forbidden block used: ${bannedType}.`,
+        };
+      }
+    }
+
+    for (const rule of constraints.requiredBlocks || []) {
+      const used = blockUsage[rule.type] ?? 0;
+      if (used < rule.minCount) {
+        return {
+          isValid: false,
+          message: `Required block missing: ${rule.type} (${used}/${rule.minCount}).`,
+        };
+      }
+    }
+
+    return { isValid: true };
   }
 
   /**
