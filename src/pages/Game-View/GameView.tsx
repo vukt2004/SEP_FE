@@ -37,15 +37,19 @@ export default function GameView() {
   const [gameResult, setGameResult] = useState<{
     isWin: boolean;
     stepCount: number;
+    blocksUsed: number;
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
   const [hoveredControl, setHoveredControl] = useState<string | null>(null);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const lastRunBlockCountRef = useRef(0);
   const [canvasRenderSize, setCanvasRenderSize] = useState({ width: 0, height: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
+  const [warningToast, setWarningToast] = useState<string | null>(null);
+  const warningToastTimeoutRef = useRef<number | null>(null);
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -54,6 +58,25 @@ export default function GameView() {
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const showWarningToast = useCallback((message: string) => {
+    setWarningToast(message);
+    if (warningToastTimeoutRef.current !== null) {
+      window.clearTimeout(warningToastTimeoutRef.current);
+    }
+    warningToastTimeoutRef.current = window.setTimeout(() => {
+      setWarningToast(null);
+      warningToastTimeoutRef.current = null;
+    }, 3500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (warningToastTimeoutRef.current !== null) {
+        window.clearTimeout(warningToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     console.log("[useEffect] GameView useEffect triggered");
@@ -103,6 +126,7 @@ export default function GameView() {
 
         // Determine level type from map config, default to TopDown
         const mapType = levelResult.mapConfig?.type || "topdown";
+        const winCondition = levelResult.mapConfig?.winCondition === 2 ? 2 : 1;
         const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
         // Convert map type to GameType format
         const gameType = mapType === "platform" ? "platformer" : "topdown";
@@ -116,7 +140,7 @@ export default function GameView() {
         );
 
         // Create game config based on map type
-        const config = createGameConfig(levelType);
+        const config = createGameConfig(levelType, { winCondition });
         const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
@@ -141,6 +165,7 @@ export default function GameView() {
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
+            blocksUsed: lastRunBlockCountRef.current,
             elapsedTime: engine.getElapsedTime(),
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
@@ -157,6 +182,7 @@ export default function GameView() {
           setGameResult({
             isWin: false,
             stepCount: engine.getStepCount(),
+            blocksUsed: lastRunBlockCountRef.current,
             elapsedTime: engine.getElapsedTime(),
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
@@ -176,10 +202,17 @@ export default function GameView() {
           }
         };
 
+        const handleWinConditionNotMet = (event: EngineEvent) => {
+          if (event.type === "winConditionNotMet") {
+            showWarningToast(event.message);
+          }
+        };
+
         engine.on("win", handleWin);
         engine.on("engine:failed", handleFailed);
         engine.on("objectStateChanged", handleObjectStateChanged);
         engine.on("fruitCollected", handleFruitCollected);
+        engine.on("winConditionNotMet", handleWinConditionNotMet);
 
         const handleKeyDown = (e: KeyboardEvent) => {
           const executor = executorRef.current;
@@ -214,6 +247,7 @@ export default function GameView() {
           engine.off("engine:failed", handleFailed);
           engine.off("objectStateChanged", handleObjectStateChanged);
           engine.off("fruitCollected", handleFruitCollected);
+          engine.off("winConditionNotMet", handleWinConditionNotMet);
           if (executorRef.current) {
             executorRef.current.stop();
           }
@@ -238,7 +272,7 @@ export default function GameView() {
         cleanup();
       }
     };
-  }, [levelFile, levelId]); // Include both dependencies
+  }, [levelFile, levelId, showWarningToast]); // Include both dependencies
 
   // Handle workspace ready - memoized to prevent Blockly re-renders
   const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
@@ -257,6 +291,12 @@ export default function GameView() {
       // Note: This only reads the workspace, it does not modify or remove blocks
       const blocksBeforeGeneration = workspaceRef.current.getAllBlocks().length;
       console.log("Blocks in workspace before generation:", blocksBeforeGeneration);
+
+      // Count only learner-placed blocks (exclude Blockly shadow blocks).
+      const usedBlocksCount = workspaceRef.current
+        .getAllBlocks(false)
+        .filter((block) => !block.isShadow()).length;
+      lastRunBlockCountRef.current = usedBlocksCount;
 
       const program: BlockProgram = generateAST(workspaceRef.current);
 
@@ -282,6 +322,12 @@ export default function GameView() {
             return engine.isObstacleAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
+          case "wallLeft":
+            return engine.isObstacleLeft();
+          case "wallRight":
+            return engine.isObstacleRight();
+          case "goalReached":
+            return engine.hasWon();
           default:
             return false;
         }
@@ -294,6 +340,9 @@ export default function GameView() {
 
       // Create new executor with the generated program
       const executor = new StepExecutor(program, conditionChecker);
+      executor.setWarningCallback((message) => {
+        showWarningToast(message);
+      });
       executorRef.current = executor;
 
       // Run the executor
@@ -522,6 +571,30 @@ export default function GameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
+      {warningToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "16px",
+            right: "16px",
+            zIndex: 1000,
+            maxWidth: "420px",
+            padding: "12px 14px",
+            borderRadius: "12px",
+            background: "color-mix(in srgb, var(--warning) 88%, black 12%)",
+            color: "#ffffff",
+            border: "1px solid color-mix(in srgb, var(--warning) 80%, black 20%)",
+            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.24)",
+            fontSize: "13px",
+            fontWeight: 700,
+          }}
+        >
+          {warningToast}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -663,7 +736,7 @@ export default function GameView() {
       >
         <div
           style={{
-            flex: isCompactLayout ? "1 1 auto" : "7 1 0",
+            flex: isCompactLayout ? "1 1 auto" : "6 1 0",
             minHeight: 0,
             borderRadius: "18px",
             border: "1px solid var(--border)",
@@ -685,7 +758,7 @@ export default function GameView() {
               alignItems: "center",
             }}
           >
-            <div
+            {/* <div
               style={{
                 padding: "8px 12px",
                 borderRadius: "12px",
@@ -697,7 +770,7 @@ export default function GameView() {
               }}
             >
               ⏱ Time
-            </div>
+            </div> */}
             <div style={{ minWidth: "120px" }}>
               <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
             </div>
@@ -827,10 +900,11 @@ export default function GameView() {
 
         <div
           style={{
-            flex: isCompactLayout ? "1 1 auto" : "3 1 0",
+            flex: isCompactLayout ? "1 1 auto" : "4 1 0",
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
+            width: isCompactLayout ? "100%" : "min(42vw, 560px)",
             minHeight: 0,
             borderRadius: "18px",
             border: "1px solid var(--border)",
@@ -937,6 +1011,7 @@ export default function GameView() {
           onClose={() => setShowResultsModal(false)}
           isWin={gameResult.isWin}
           stepCount={gameResult.stepCount}
+          blocksUsed={gameResult.blocksUsed}
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
           onReset={() => {

@@ -25,12 +25,17 @@ export interface JumpCommand {
   type: "jump";
 }
 
+export interface WaitCommand {
+  type: "wait";
+}
+
 export type EngineCommand =
   | MoveCommand
   | MoveForwardCommand
   | TurnCommand
   | InteractCommand
-  | JumpCommand;
+  | JumpCommand
+  | WaitCommand;
 
 /**
  * Result of executing a single block

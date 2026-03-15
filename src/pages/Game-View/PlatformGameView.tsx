@@ -50,15 +50,19 @@ export default function PlatformGameView() {
   const [gameResult, setGameResult] = useState<{
     isWin: boolean;
     stepCount: number;
+    blocksUsed: number;
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
   const [hoveredControl, setHoveredControl] = useState<string | null>(null);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const lastRunBlockCountRef = useRef(0);
   const [canvasRenderSize, setCanvasRenderSize] = useState({ width: 0, height: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
+  const [warningToast, setWarningToast] = useState<string | null>(null);
+  const warningToastTimeoutRef = useRef<number | null>(null);
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -67,6 +71,25 @@ export default function PlatformGameView() {
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const showWarningToast = useCallback((message: string) => {
+    setWarningToast(message);
+    if (warningToastTimeoutRef.current !== null) {
+      window.clearTimeout(warningToastTimeoutRef.current);
+    }
+    warningToastTimeoutRef.current = window.setTimeout(() => {
+      setWarningToast(null);
+      warningToastTimeoutRef.current = null;
+    }, 3500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (warningToastTimeoutRef.current !== null) {
+        window.clearTimeout(warningToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -100,10 +123,11 @@ export default function PlatformGameView() {
 
         // Always use Platform level type for this view
         const mapType = levelResult.mapConfig?.type || "platform";
+        const winCondition = levelResult.mapConfig?.winCondition === 2 ? 2 : 1;
         const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
         const gameType = mapType === "platform" ? "platformer" : "topdown";
 
-        const config = createGameConfig(levelType);
+        const config = createGameConfig(levelType, { winCondition });
         const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
@@ -119,6 +143,7 @@ export default function PlatformGameView() {
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
+            blocksUsed: lastRunBlockCountRef.current,
             elapsedTime: engine.getElapsedTime(),
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
@@ -133,6 +158,7 @@ export default function PlatformGameView() {
           setGameResult({
             isWin: false,
             stepCount: engine.getStepCount(),
+            blocksUsed: lastRunBlockCountRef.current,
             elapsedTime: engine.getElapsedTime(),
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
@@ -147,6 +173,13 @@ export default function PlatformGameView() {
           }
         };
         engine.on("fruitCollected", handleFruitCollected);
+
+        const handleWinConditionNotMet = (event: EngineEvent) => {
+          if (event.type === "winConditionNotMet") {
+            showWarningToast(event.message);
+          }
+        };
+        engine.on("winConditionNotMet", handleWinConditionNotMet);
 
         // Keyboard controls (manual play, secondary to block editor)
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -187,6 +220,7 @@ export default function PlatformGameView() {
           engine.off("win", handleWin);
           engine.off("engine:failed", handleFailed);
           engine.off("fruitCollected", handleFruitCollected);
+          engine.off("winConditionNotMet", handleWinConditionNotMet);
           if (executorRef.current) executorRef.current.stop();
           engine.stop();
         };
@@ -201,7 +235,7 @@ export default function PlatformGameView() {
     return () => {
       if (cleanup) cleanup();
     };
-  }, [levelId, levelFile]);
+  }, [levelId, levelFile, showWarningToast]);
 
   // Handle Blockly workspace ready
   const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
@@ -216,6 +250,12 @@ export default function PlatformGameView() {
     }
 
     try {
+      // Count only learner-placed blocks (exclude Blockly shadow blocks).
+      const usedBlocksCount = workspaceRef.current
+        .getAllBlocks(false)
+        .filter((block) => !block.isShadow()).length;
+      lastRunBlockCountRef.current = usedBlocksCount;
+
       const program: BlockProgram = generateAST(workspaceRef.current);
       if (program.length === 0) {
         alert("No blocks in workspace! Add some blocks first.");
@@ -233,6 +273,12 @@ export default function PlatformGameView() {
             return engine.isObstacleAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
+          case "wallLeft":
+            return engine.isObstacleLeft();
+          case "wallRight":
+            return engine.isObstacleRight();
+          case "goalReached":
+            return engine.hasWon();
           default:
             return false;
         }
@@ -242,6 +288,9 @@ export default function PlatformGameView() {
       if (executorRef.current) executorRef.current.stop();
 
       const executor = new StepExecutor(program, conditionChecker);
+      executor.setWarningCallback((message) => {
+        showWarningToast(message);
+      });
       executorRef.current = executor;
 
       setIsExecutorRunning(true);
@@ -314,6 +363,38 @@ export default function PlatformGameView() {
     window.addEventListener("resize", updateLayout);
     return () => window.removeEventListener("resize", updateLayout);
   }, []);
+
+  useEffect(() => {
+    const viewport = canvasViewportRef.current;
+    if (!viewport || canvasRenderSize.width === 0 || canvasRenderSize.height === 0) return;
+
+    const computeScale = () => {
+      if (zoomMode === "actual") {
+        setCanvasScale(1);
+        return;
+      }
+
+      const availableWidth = viewport.clientWidth - 8;
+      const availableHeight = viewport.clientHeight - 8;
+      if (availableWidth <= 0 || availableHeight <= 0) return;
+
+      const widthRatio = availableWidth / canvasRenderSize.width;
+      const heightRatio = availableHeight / canvasRenderSize.height;
+      const nextScale = Math.min(1, widthRatio, heightRatio);
+      setCanvasScale(Math.max(0.1, nextScale));
+    };
+
+    computeScale();
+
+    const resizeObserver = new ResizeObserver(computeScale);
+    resizeObserver.observe(viewport);
+
+    window.addEventListener("resize", computeScale);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", computeScale);
+    };
+  }, [canvasRenderSize, zoomMode]);
 
   // Multiplayer: listen RankingUpdated, GameEnded
   useEffect(() => {
@@ -428,6 +509,30 @@ export default function PlatformGameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
+      {warningToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "16px",
+            right: "16px",
+            zIndex: 1000,
+            maxWidth: "420px",
+            padding: "12px 14px",
+            borderRadius: "12px",
+            background: "color-mix(in srgb, var(--warning) 88%, black 12%)",
+            color: "#ffffff",
+            border: "1px solid color-mix(in srgb, var(--warning) 80%, black 20%)",
+            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.24)",
+            fontSize: "13px",
+            fontWeight: 700,
+          }}
+        >
+          {warningToast}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -572,7 +677,7 @@ export default function PlatformGameView() {
       >
         <div
           style={{
-            flex: isCompactLayout ? "1 1 auto" : "7 1 0",
+            flex: isCompactLayout ? "1 1 auto" : "6 1 0",
             minHeight: 0,
             borderRadius: "18px",
             border: "1px solid var(--border)",
@@ -594,7 +699,7 @@ export default function PlatformGameView() {
               alignItems: "center",
             }}
           >
-            <div
+            {/* <div
               style={{
                 padding: "8px 12px",
                 borderRadius: "12px",
@@ -606,7 +711,7 @@ export default function PlatformGameView() {
               }}
             >
               ⏱ Time
-            </div>
+            </div> */}
             <div style={{ minWidth: "120px" }}>
               <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
             </div>
@@ -736,10 +841,11 @@ export default function PlatformGameView() {
 
         <div
           style={{
-            flex: isCompactLayout ? "1 1 auto" : "3 1 0",
+            flex: isCompactLayout ? "1 1 auto" : "4 1 0",
             display: "flex",
             flexDirection: "column",
             minWidth: 0,
+            width: isCompactLayout ? "100%" : "min(42vw, 560px)",
             minHeight: 0,
             borderRadius: "18px",
             border: "1px solid var(--border)",
@@ -846,6 +952,7 @@ export default function PlatformGameView() {
           onClose={() => setShowResultsModal(false)}
           isWin={gameResult.isWin}
           stepCount={gameResult.stepCount}
+          blocksUsed={gameResult.blocksUsed}
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
           onReset={() => {

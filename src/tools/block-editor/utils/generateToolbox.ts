@@ -27,6 +27,7 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
   movement: "Movement",
   control: "Control",
   logic: "Logic",
+  procedure: "Procedure",
 };
 
 /**
@@ -51,7 +52,7 @@ export function generateToolbox(blockDefinitions: BlockConfig[]): FlyoutToolbox 
   const contents: (ToolboxBlock | ToolboxSeparator | ToolboxLabel)[] = [];
 
   // Define category order
-  const categoryOrder: BlockCategory[] = ["movement", "control", "logic"];
+  const categoryOrder: BlockCategory[] = ["movement", "control", "logic", "procedure"];
 
   categoryOrder.forEach((category, index) => {
     const blocks = blocksByCategory.get(category);

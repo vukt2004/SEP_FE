@@ -89,6 +89,12 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "wait":
+      return {
+        type: "wait",
+        blockId,
+      };
+
     case "repeat": {
       const timesValue = block.getFieldValue("TIMES");
       const times = Math.max(0, Number(timesValue) || 0);
@@ -123,6 +129,27 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "wall_left":
+      return {
+        type: "condition",
+        conditionType: "wallLeft",
+        blockId,
+      };
+
+    case "wall_right":
+      return {
+        type: "condition",
+        conditionType: "wallRight",
+        blockId,
+      };
+
+    case "goal_reached":
+      return {
+        type: "condition",
+        conditionType: "goalReached",
+        blockId,
+      };
+
     case "logic_true":
       return {
         type: "booleanLiteral",
@@ -136,6 +163,39 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         value: false,
         blockId,
       };
+
+    case "logic_and": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      return {
+        type: "logicBinary",
+        operator: "and",
+        left,
+        right,
+        blockId,
+      };
+    }
+
+    case "logic_or": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      return {
+        type: "logicBinary",
+        operator: "or",
+        left,
+        right,
+        blockId,
+      };
+    }
+
+    case "logic_not": {
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "logicNot",
+        value,
+        blockId,
+      };
+    }
 
     // New control blocks with dynamic conditions
     case "custom_if": {
@@ -169,6 +229,37 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         type: "customDoWhile",
         condition,
         body,
+        blockId,
+      };
+    }
+
+    case "repeat_until": {
+      const condition = getValueInput(block, "CONDITION");
+      const body = getStatementBlocks(block, "DO");
+      return {
+        type: "repeatUntil",
+        condition,
+        body,
+        blockId,
+      };
+    }
+
+    case "define_procedure": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myProcedure";
+      const body = getStatementBlocks(block, "BODY");
+      return {
+        type: "defineProcedure",
+        name,
+        body,
+        blockId,
+      };
+    }
+
+    case "call_procedure": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myProcedure";
+      return {
+        type: "callProcedure",
+        name,
         blockId,
       };
     }

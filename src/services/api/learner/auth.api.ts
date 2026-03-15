@@ -57,6 +57,8 @@ export const learnerAuthApi = {
   },
 
   refreshToken() {
-    return learnerAxios.post<AuthResponseResult>("/api/learner/auth/refresh-token");
+    return learnerAxios.post<AuthResponseResult>("/api/learner/auth/refresh-token", undefined, {
+      withCredentials: true,
+    });
   },
 };
