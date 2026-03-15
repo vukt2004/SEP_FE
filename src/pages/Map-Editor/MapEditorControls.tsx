@@ -20,12 +20,14 @@ import {
   ObjectSpriteCache,
   type ObjectDefinition,
 } from "../../modules/engine/assets";
+import blocksConfig from "../../shared/block/blocks-config.json";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
 import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
 import { ROUTES } from "../../lib/constants/routes";
+import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 
 /**
  * Convert MapData config type to GameType
@@ -56,6 +58,9 @@ interface MapEditorControlsProps {
   onTimeLimitChange?: (seconds: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onPriceChange?: (price: number) => void;
+  onBlockLimitChange?: (blockLimit: number | null) => void;
+  onBannedBlocksChange?: (bannedBlocks: string[]) => void;
+  onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
   sectionMode?: "left" | "right";
   editingMapId?: string;
   editorMode?: "edit" | "view";
@@ -188,6 +193,9 @@ export function MapEditorControls({
   onTimeLimitChange,
   onWinConditionChange,
   onPriceChange,
+  onBlockLimitChange,
+  onBannedBlocksChange,
+  onRequiredBlocksChange,
   sectionMode = "right",
   editingMapId,
   editorMode,
@@ -216,6 +224,7 @@ export function MapEditorControls({
     string,
     ObjectDefinition
   > | null>(null);
+  const availableBlocks = blocksConfig.blocks;
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
   const showLeftPanel = sectionMode === "left";
   const showRightPanel = sectionMode === "right";
@@ -279,6 +288,76 @@ export function MapEditorControls({
 
     onResize(validWidth, validHeight, resizeTileSize);
     setShowResizeDialog(false);
+  };
+
+  const handleBlockLimitInput = (value: string) => {
+    if (!onBlockLimitChange) return;
+
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      onBlockLimitChange(null);
+      return;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+
+    onBlockLimitChange(Math.max(1, Math.floor(parsed)));
+  };
+
+  const updateBannedBlock = (index: number, nextType: string) => {
+    if (!onBannedBlocksChange) return;
+
+    const next = [...mapData.blockConstraints.bannedBlocks];
+    next[index] = nextType;
+    onBannedBlocksChange(Array.from(new Set(next)));
+  };
+
+  const addBannedBlock = () => {
+    if (!onBannedBlocksChange) return;
+
+    const usedTypes = new Set(mapData.blockConstraints.bannedBlocks);
+    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    if (!candidate) return;
+
+    onBannedBlocksChange([...mapData.blockConstraints.bannedBlocks, candidate.type]);
+  };
+
+  const removeBannedBlock = (index: number) => {
+    if (!onBannedBlocksChange) return;
+    onBannedBlocksChange(mapData.blockConstraints.bannedBlocks.filter((_, i) => i !== index));
+  };
+
+  const updateRequiredBlock = (
+    index: number,
+    patch: Partial<{ type: string; minCount: number }>,
+  ) => {
+    if (!onRequiredBlocksChange) return;
+
+    const next = mapData.blockConstraints.requiredBlocks.map((rule, ruleIndex) =>
+      ruleIndex === index ? { ...rule, ...patch } : rule,
+    );
+    onRequiredBlocksChange(next);
+  };
+
+  const addRequiredBlock = () => {
+    if (!onRequiredBlocksChange) return;
+
+    const usedTypes = new Set(mapData.blockConstraints.requiredBlocks.map((rule) => rule.type));
+    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    if (!candidate) return;
+
+    onRequiredBlocksChange([
+      ...mapData.blockConstraints.requiredBlocks,
+      { type: candidate.type, minCount: 1 },
+    ]);
+  };
+
+  const removeRequiredBlock = (index: number) => {
+    if (!onRequiredBlocksChange) return;
+    onRequiredBlocksChange(mapData.blockConstraints.requiredBlocks.filter((_, i) => i !== index));
   };
 
   const handleSaveMapFromModal = async () => {
@@ -457,6 +536,168 @@ export function MapEditorControls({
             {activeLayer === "foreground" && (
               <p style={styles.helpText}>Foreground renders above objects and player.</p>
             )}
+          </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Block Rules</h3>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Block Limit:</label>
+              <p style={styles.helpText}>Leave empty for unlimited blocks</p>
+              <input
+                type="number"
+                min="1"
+                value={mapData.blockConstraints.blockLimit ?? ""}
+                onChange={(e) => handleBlockLimitInput(e.target.value)}
+                placeholder="Unlimited"
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Banned Blocks:</label>
+              <p style={styles.helpText}>Players cannot use these block types</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {mapData.blockConstraints.bannedBlocks.map((type, index) => (
+                  <div
+                    key={`panel-banned-row-${type}-${index}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: "6px",
+                      alignItems: "center",
+                    }}
+                  >
+                    <select
+                      value={type}
+                      onChange={(e) => updateBannedBlock(index, e.target.value)}
+                      style={styles.select}
+                    >
+                      {availableBlocks.map((block) => (
+                        <option key={`panel-banned-option-${block.type}`} value={block.type}>
+                          {block.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => removeBannedBlock(index)}
+                      style={{
+                        padding: "6px 8px",
+                        background: "#ff6b6b",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addBannedBlock}
+                disabled={mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length}
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 10px",
+                  background:
+                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                      ? "#cfd8dc"
+                      : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor:
+                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                + Add Banned Block
+              </button>
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Required Blocks:</label>
+              <p style={styles.helpText}>Players must use these blocks at least N times</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {mapData.blockConstraints.requiredBlocks.map((rule, index) => (
+                  <div
+                    key={`panel-required-${rule.type}-${index}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 80px auto",
+                      gap: "6px",
+                      alignItems: "center",
+                    }}
+                  >
+                    <select
+                      value={rule.type}
+                      onChange={(e) => updateRequiredBlock(index, { type: e.target.value })}
+                      style={styles.select}
+                    >
+                      {availableBlocks.map((block) => (
+                        <option key={`panel-required-option-${block.type}`} value={block.type}>
+                          {block.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      value={rule.minCount}
+                      onChange={(e) =>
+                        updateRequiredBlock(index, {
+                          minCount: Math.max(1, Number(e.target.value) || 1),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                    <button
+                      onClick={() => removeRequiredBlock(index)}
+                      style={{
+                        padding: "6px 8px",
+                        background: "#ff6b6b",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addRequiredBlock}
+                disabled={mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length}
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 10px",
+                  background:
+                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                      ? "#cfd8dc"
+                      : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor:
+                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                + Add Required Block
+              </button>
+            </div>
           </div>
 
           <div style={styles.section}>

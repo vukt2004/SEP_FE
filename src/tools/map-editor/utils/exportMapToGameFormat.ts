@@ -38,6 +38,14 @@ export interface GameLevelFormat {
     targetAlgorithm: string;
     estimatedSteps: number;
   };
+  blockConstraints?: {
+    blockLimit: number | null;
+    bannedBlocks: string[];
+    requiredBlocks: Array<{
+      type: string;
+      minCount: number;
+    }>;
+  };
 }
 
 /**
@@ -138,6 +146,11 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       description: description,
       targetAlgorithm: "manual",
       estimatedSteps: 50,
+    },
+    blockConstraints: {
+      blockLimit: mapData.blockConstraints.blockLimit,
+      bannedBlocks: mapData.blockConstraints.bannedBlocks,
+      requiredBlocks: mapData.blockConstraints.requiredBlocks,
     },
   };
 }

@@ -200,7 +200,7 @@
     {
       "type": "custom_do_while",
       "category": "control",
-      "label": "Do",
+      "label": "Do While",
       "tooltip": "Execute the enclosed blocks, then repeat while the condition is true",
       "color": "#FF9800",
       "command": "CUSTOM_DO_WHILE",
@@ -217,6 +217,166 @@
           "label": ")"
         }
       ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "logic_and",
+      "category": "logic",
+      "label": "AND",
+      "tooltip": "Returns true if both conditions are true",
+      "color": "#5C81F6",
+      "command": "LOGIC_AND",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Boolean",
+          "label": ""
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Boolean",
+          "label": ""
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "logic_or",
+      "category": "logic",
+      "label": "OR",
+      "tooltip": "Returns true if at least one condition is true",
+      "color": "#5C81F6",
+      "command": "LOGIC_OR",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Boolean",
+          "label": ""
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Boolean",
+          "label": ""
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "logic_not",
+      "category": "logic",
+      "label": "NOT",
+      "tooltip": "Returns the opposite boolean value",
+      "color": "#5C81F6",
+      "command": "LOGIC_NOT",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Boolean",
+          "label": ""
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "wall_left",
+      "category": "logic",
+      "label": "wall left?",
+      "tooltip": "Returns true if there is a wall on the left",
+      "color": "#5C81F6",
+      "command": "WALL_LEFT",
+      "output": "Boolean"
+    },
+    {
+      "type": "wall_right",
+      "category": "logic",
+      "label": "wall right?",
+      "tooltip": "Returns true if there is a wall on the right",
+      "color": "#5C81F6",
+      "command": "WALL_RIGHT",
+      "output": "Boolean"
+    },
+    {
+      "type": "goal_reached",
+      "category": "logic",
+      "label": "goal reached?",
+      "tooltip": "Returns true if the character has reached the goal",
+      "color": "#5C81F6",
+      "command": "GOAL_REACHED",
+      "output": "Boolean"
+    },
+    {
+      "type": "repeat_until",
+      "category": "control",
+      "label": "Repeat Until",
+      "tooltip": "Repeat enclosed blocks until the condition becomes true",
+      "color": "#FF9800",
+      "command": "REPEAT_UNTIL",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "CONDITION",
+          "check": "Boolean",
+          "label": "until"
+        }
+      ],
+      "statementInput": {
+        "name": "DO",
+        "label": "do"
+      },
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "define_procedure",
+      "category": "procedure",
+      "label": "Define Procedure",
+      "tooltip": "Define a reusable procedure",
+      "color": "#9C27B0",
+      "command": "DEFINE_PROCEDURE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "name",
+          "text": "myProcedure"
+        }
+      ],
+      "statementInput": {
+        "name": "BODY",
+        "label": "do"
+      }
+    },
+    {
+      "type": "call_procedure",
+      "category": "procedure",
+      "label": "Call Procedure",
+      "tooltip": "Execute a defined procedure",
+      "color": "#9C27B0",
+      "command": "CALL_PROCEDURE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "name",
+          "text": "myProcedure"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "wait",
+      "category": "movement",
+      "label": "Wait",
+      "tooltip": "Wait for one turn before executing the next command",
+      "color": "#4CAF50",
+      "command": "WAIT",
       "previousStatement": true,
       "nextStatement": true
     }

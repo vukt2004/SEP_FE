@@ -5,6 +5,7 @@ interface GameResultsModalProps {
   onClose: () => void;
   isWin: boolean;
   stepCount: number;
+  blocksUsed: number;
   elapsedTime: number;
   fruitsCollected: number;
   onReset: () => void;
@@ -16,6 +17,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   onClose,
   isWin,
   stepCount,
+  blocksUsed,
   elapsedTime,
   fruitsCollected,
   onReset,
@@ -158,6 +160,31 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
                 }}
               >
                 {stepCount}
+              </span>
+            </div>
+
+            {/* Blocks Used */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px",
+                backgroundColor: "white",
+                borderRadius: "8px",
+              }}
+            >
+              <span style={{ fontSize: "16px", color: "#374151" }}>
+                🧩 <strong>Blocks Used:</strong>
+              </span>
+              <span
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "bold",
+                  color: "#1f2937",
+                }}
+              >
+                {blocksUsed}
               </span>
             </div>
 

@@ -10,6 +10,7 @@ import type { MapData } from "../../shared/types/MapSchema";
 import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { tokenStorage } from "../../lib/storage/tokenStorage";
+import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 
 type MapEditorRouteState = {
   mapId?: string;
@@ -68,6 +69,63 @@ const normalizeNumberLayer = (
   });
 };
 
+const normalizeBlockLimit = (value: unknown): number | null => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return Math.max(1, Math.floor(value));
+};
+
+const normalizeStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value.filter((item): item is string => typeof item === "string" && item.trim().length > 0),
+    ),
+  );
+};
+
+const normalizeRequiredBlocks = (value: unknown): RequiredBlockRule[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (item): item is { type: string; minCount: number } =>
+        isRecord(item) && typeof item.type === "string" && typeof item.minCount === "number",
+    )
+    .map((item) => ({
+      type: item.type,
+      minCount: Math.max(1, Math.floor(item.minCount)),
+    }));
+};
+
+const normalizeBlockConstraints = (
+  source: Record<string, unknown> | null,
+): {
+  blockLimit: number | null;
+  bannedBlocks: string[];
+  requiredBlocks: RequiredBlockRule[];
+} => {
+  if (!source) {
+    return {
+      blockLimit: null,
+      bannedBlocks: [],
+      requiredBlocks: [],
+    };
+  }
+
+  return {
+    blockLimit: normalizeBlockLimit(source.blockLimit),
+    bannedBlocks: normalizeStringList(source.bannedBlocks),
+    requiredBlocks: normalizeRequiredBlocks(source.requiredBlocks),
+  };
+};
+
 const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
   let sourceJson: unknown = detail.mapDetailJson;
 
@@ -98,6 +156,9 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
     const fruitsRaw = Array.isArray(objectsRaw.fruits) ? objectsRaw.fruits : [];
     const enemiesRaw = Array.isArray(objectsRaw.enemies) ? objectsRaw.enemies : [];
     const decoRaw = Array.isArray(objectsRaw.decorativeObjects) ? objectsRaw.decorativeObjects : [];
+    const blockConstraintsRaw = isRecord(sourceJson.blockConstraints)
+      ? sourceJson.blockConstraints
+      : null;
 
     return {
       config: {
@@ -166,6 +227,7 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           )
           .map((item) => ({ id: item.id, x: item.x, y: item.y })),
       },
+      blockConstraints: normalizeBlockConstraints(blockConstraintsRaw),
     };
   }
 
@@ -175,6 +237,9 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
     const layersRaw = sourceJson.layers;
 
     const objectsRaw = Array.isArray(sourceJson.objects) ? sourceJson.objects : [];
+    const blockConstraintsRaw = isRecord(sourceJson.blockConstraints)
+      ? sourceJson.blockConstraints
+      : null;
 
     const fruits = objectsRaw
       .filter(
@@ -235,6 +300,7 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         enemies,
         decorativeObjects: [],
       },
+      blockConstraints: normalizeBlockConstraints(blockConstraintsRaw),
     };
   }
 
@@ -407,6 +473,18 @@ export default function MapEditor() {
     store?.setMapPrice(price);
   };
 
+  const handleBlockLimitChange = (blockLimit: number | null) => {
+    store?.setBlockLimit(blockLimit);
+  };
+
+  const handleBannedBlocksChange = (bannedBlocks: string[]) => {
+    store?.setBannedBlocks(bannedBlocks);
+  };
+
+  const handleRequiredBlocksChange = (requiredBlocks: RequiredBlockRule[]) => {
+    store?.setRequiredBlocks(requiredBlocks);
+  };
+
   const handleUndo = () => {
     store?.undo();
   };
@@ -461,6 +539,9 @@ export default function MapEditor() {
               onTimeLimitChange={handleTimeLimitChange}
               onWinConditionChange={handleWinConditionChange}
               onPriceChange={handlePriceChange}
+              onBlockLimitChange={handleBlockLimitChange}
+              onBannedBlocksChange={handleBannedBlocksChange}
+              onRequiredBlocksChange={handleRequiredBlocksChange}
             />
           </aside>
 
@@ -529,6 +610,9 @@ export default function MapEditor() {
               onTimeLimitChange={handleTimeLimitChange}
               onWinConditionChange={handleWinConditionChange}
               onPriceChange={handlePriceChange}
+              onBlockLimitChange={handleBlockLimitChange}
+              onBannedBlocksChange={handleBannedBlocksChange}
+              onRequiredBlocksChange={handleRequiredBlocksChange}
             />
           </aside>
         </div>

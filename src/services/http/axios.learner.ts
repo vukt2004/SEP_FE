@@ -5,7 +5,17 @@ import type { AuthResponseResult } from "@/types/api/learner/auth";
 
 export const learnerAxios = axiosBase.create();
 
+function isAuthEndpoint(url?: string): boolean {
+  return /auth\/login|auth\/refresh-token/.test(url ?? "");
+}
+
 learnerAxios.interceptors.request.use((config) => {
+  // Do not attach a possibly expired access token to login/refresh endpoints.
+  if (isAuthEndpoint(config.url)) {
+    config.withCredentials = true;
+    return config;
+  }
+
   const token = tokenStorage.getLearnerToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -18,7 +28,9 @@ let refreshPromise: Promise<string> | null = null;
 function doRefresh(): Promise<string> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = learnerAxios
-    .post<AuthResponseResult>("/api/learner/auth/refresh-token")
+    .post<AuthResponseResult>("/api/learner/auth/refresh-token", undefined, {
+      withCredentials: true,
+    })
     .then((res) => {
       refreshPromise = null;
       const token = res.data?.data?.accessToken;
@@ -44,7 +56,7 @@ learnerAxios.interceptors.response.use(
     if (!config || !error.response || error.response.status !== 401) {
       return Promise.reject(error);
     }
-    if (/auth\/login|refresh-token/.test(config.url ?? "")) {
+    if (isAuthEndpoint(config.url)) {
       return Promise.reject(error);
     }
     return doRefresh().then((newToken) => {

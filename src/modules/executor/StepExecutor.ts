@@ -14,7 +14,8 @@ interface StackFrame {
   nodes: ASTNode[];
   index: number;
   repeatLeft?: number;
-  whileCondition?: ConditionType;
+  whileConditionNode?: ASTNode | null;
+  repeatUntilConditionNode?: ASTNode | null;
   isDoWhile?: boolean;
   doWhileFirstRun?: boolean;
 }
@@ -40,22 +41,29 @@ interface StackFrame {
  */
 export class StepExecutor {
   private stack: StackFrame[];
+  private procedures: Map<string, ASTNode[]>;
+  private warnedMissingProcedures: Set<string>;
   private originalProgram: BlockProgram;
   private timeoutId: number | null;
   private isRunning: boolean;
   private isPaused: boolean;
   private conditionChecker: (condition: ConditionType) => boolean;
   private callback: ((result: ExecutionResult) => void) | null;
+  private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
 
   constructor(program: BlockProgram, conditionChecker: (condition: ConditionType) => boolean) {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
+    this.procedures = new Map();
+    this.warnedMissingProcedures = new Set();
+    this.preRegisterProcedures(program);
     this.timeoutId = null;
     this.isRunning = false;
     this.isPaused = false;
     this.conditionChecker = conditionChecker;
     this.callback = null;
+    this.warningCallback = null;
     this.intervalMs = 500;
   }
 
@@ -65,6 +73,36 @@ export class StepExecutor {
   reset(): void {
     this.stop();
     this.stack = [{ nodes: this.originalProgram, index: 0 }];
+    this.procedures.clear();
+    this.warnedMissingProcedures.clear();
+    this.preRegisterProcedures(this.originalProgram);
+  }
+
+  setWarningCallback(callback: (message: string, blockId: string) => void): void {
+    this.warningCallback = callback;
+  }
+
+  private preRegisterProcedures(nodes: ASTNode[]): void {
+    for (const node of nodes) {
+      switch (node.type) {
+        case "defineProcedure":
+          this.procedures.set(node.name, node.body);
+          this.preRegisterProcedures(node.body);
+          break;
+        case "repeat":
+        case "customWhile":
+        case "customDoWhile":
+        case "repeatUntil":
+          this.preRegisterProcedures(node.body);
+          break;
+        case "customIf":
+          this.preRegisterProcedures(node.body);
+          this.preRegisterProcedures(node.elseBranch);
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   /**
@@ -105,9 +143,9 @@ export class StepExecutor {
         }
 
         // Handle while loop continuation
-        if (frame.whileCondition && !frame.isDoWhile) {
+        if (frame.whileConditionNode && !frame.isDoWhile) {
           // Re-evaluate condition for regular while loop
-          if (this.conditionChecker(frame.whileCondition)) {
+          if (this.evaluateCondition(frame.whileConditionNode)) {
             frame.index = 0; // Reset to beginning of loop
             continue;
           }
@@ -117,23 +155,34 @@ export class StepExecutor {
         }
 
         // Handle do-while loop continuation
-        if (frame.isDoWhile && frame.whileCondition) {
+        if (frame.isDoWhile && frame.whileConditionNode) {
           // For do-while, always execute at least once
           if (frame.doWhileFirstRun) {
             // First run complete, now check condition
             frame.doWhileFirstRun = false;
-            if (this.conditionChecker(frame.whileCondition)) {
+            if (this.evaluateCondition(frame.whileConditionNode)) {
               frame.index = 0; // Reset to beginning of loop
               continue;
             }
           } else {
             // Check condition for subsequent runs
-            if (this.conditionChecker(frame.whileCondition)) {
+            if (this.evaluateCondition(frame.whileConditionNode)) {
               frame.index = 0; // Reset to beginning of loop
               continue;
             }
           }
           // Condition false, exit do-while loop
+          this.stack.pop();
+          continue;
+        }
+
+        // Handle repeat-until loop continuation
+        if (frame.repeatUntilConditionNode) {
+          const shouldStop = this.evaluateCondition(frame.repeatUntilConditionNode);
+          if (!shouldStop) {
+            frame.index = 0;
+            continue;
+          }
           this.stack.pop();
           continue;
         }
@@ -183,6 +232,14 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "wait":
+          return {
+            command: {
+              type: "wait",
+            },
+            blockId: node.blockId,
+          };
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
@@ -226,7 +283,7 @@ export class StepExecutor {
               this.stack.push({
                 nodes: node.body,
                 index: 0,
-                whileCondition: this.extractConditionType(node.condition),
+                whileConditionNode: node.condition,
               });
             }
           }
@@ -240,12 +297,44 @@ export class StepExecutor {
             this.stack.push({
               nodes: node.body,
               index: 0,
-              whileCondition: this.extractConditionType(node.condition),
+              whileConditionNode: node.condition,
               isDoWhile: true,
               doWhileFirstRun: true,
             });
           }
           // Continue to process the pushed frame
+          continue;
+        }
+
+        case "repeatUntil": {
+          if (node.body.length > 0) {
+            this.stack.push({
+              nodes: node.body,
+              index: 0,
+              repeatUntilConditionNode: node.condition,
+            });
+          }
+          continue;
+        }
+
+        case "defineProcedure":
+          this.procedures.set(node.name, node.body);
+          continue;
+
+        case "callProcedure": {
+          const body = this.procedures.get(node.name);
+          if (body && body.length > 0) {
+            this.stack.push({ nodes: body, index: 0 });
+          } else {
+            console.warn(`Procedure not found or empty: ${node.name}`);
+            if (!this.warnedMissingProcedures.has(node.name)) {
+              this.warnedMissingProcedures.add(node.name);
+              this.warningCallback?.(
+                `Procedure "${node.name}" is not defined. Add a Define Procedure block first.`,
+                node.blockId,
+              );
+            }
+          }
           continue;
         }
 
@@ -259,6 +348,12 @@ export class StepExecutor {
           // Boolean literal blocks are value blocks, not statement blocks
           // They should only be used as inputs to condition sockets
           console.warn("BooleanLiteral block executed directly - this should not happen");
+          continue;
+
+        case "logicBinary":
+        case "logicNot":
+          // Logic expression blocks are value blocks, not statement blocks
+          console.warn("Logic expression block executed directly - this should not happen");
           continue;
       }
     }
@@ -285,22 +380,19 @@ export class StepExecutor {
       return conditionNode.value;
     }
 
+    if (conditionNode.type === "logicBinary") {
+      const left = this.evaluateCondition(conditionNode.left);
+      const right = this.evaluateCondition(conditionNode.right);
+      return conditionNode.operator === "and" ? left && right : left || right;
+    }
+
+    if (conditionNode.type === "logicNot") {
+      return !this.evaluateCondition(conditionNode.value);
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
     return false;
-  }
-
-  /**
-   * Extract the condition type from a condition node
-   * Used to store condition type in while loop frames
-   * @param conditionNode The condition AST node
-   * @returns The condition type, or undefined if not extractable
-   */
-  private extractConditionType(conditionNode: ASTNode | null): ConditionType | undefined {
-    if (!conditionNode || conditionNode.type !== "condition") {
-      return undefined;
-    }
-    return conditionNode.conditionType;
   }
 
   /**

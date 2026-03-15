@@ -51,5 +51,10 @@ export function createEmptyMap(
       enemies: [],
       decorativeObjects: [],
     },
+    blockConstraints: {
+      blockLimit: null,
+      bannedBlocks: [],
+      requiredBlocks: [],
+    },
   };
 }

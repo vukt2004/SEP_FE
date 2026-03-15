@@ -62,6 +62,7 @@ export class GameEngine {
   private config: GameConfig;
   private controller: IPlayerController;
   private gameType: GameType;
+  private goalRequirementNotified: boolean = false;
 
   /**
    * @param level - Level definition
@@ -224,8 +225,9 @@ export class GameEngine {
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
     this.runtime.collectedFruits.clear();
-    this.runtime.timeElapsed = 0;
     this.runtime.startTime = null;
+    this.runtime.timeElapsed = 0;
+    this.goalRequirementNotified = false;
 
     // Update player collider
     this.updatePlayerCollider();
@@ -278,6 +280,56 @@ export class GameEngine {
 
   getConfig(): GameConfig {
     return this.config;
+  }
+
+  /**
+   * Get block constraints from the loaded level.
+   */
+  getBlockConstraints(): LevelDefinition["blockConstraints"] {
+    return this.level.blockConstraints;
+  }
+
+  /**
+   * Validate block usage against level constraints.
+   */
+  validateBlockUsage(blockUsage: Record<string, number>): { isValid: boolean; message?: string } {
+    const constraints = this.level.blockConstraints;
+    if (!constraints) {
+      return { isValid: true };
+    }
+
+    const blockLimit = constraints.blockLimit;
+    if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
+      const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
+      if (totalUsed > blockLimit) {
+        return {
+          isValid: false,
+          message: `Block limit exceeded (${totalUsed}/${blockLimit}).`,
+        };
+      }
+    }
+
+    for (const bannedType of constraints.bannedBlocks || []) {
+      const used = blockUsage[bannedType] ?? 0;
+      if (used > 0) {
+        return {
+          isValid: false,
+          message: `Forbidden block used: ${bannedType}.`,
+        };
+      }
+    }
+
+    for (const rule of constraints.requiredBlocks || []) {
+      const used = blockUsage[rule.type] ?? 0;
+      if (used < rule.minCount) {
+        return {
+          isValid: false,
+          message: `Required block missing: ${rule.type} (${used}/${rule.minCount}).`,
+        };
+      }
+    }
+
+    return { isValid: true };
   }
 
   /**
@@ -465,6 +517,11 @@ export class GameEngine {
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
         break;
+      case "wait":
+        // Consume one turn without movement while still advancing physics.
+        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.updatePlayerCollider();
+        break;
       case "interact":
         this.interact();
         break;
@@ -527,8 +584,26 @@ export class GameEngine {
     }
   }
 
+  private isObstacleRelative(rotation: "clockwise" | "counterclockwise"): boolean {
+    const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
+    const virtualPlayer = {
+      ...this.runtime.player,
+      facing: lookDirection,
+    };
+
+    return this.controller.isObstacleAhead(virtualPlayer, this.level, this.tileSize);
+  }
+
   isObstacleAhead(): boolean {
     return this.controller.isObstacleAhead(this.runtime.player, this.level, this.tileSize);
+  }
+
+  isObstacleLeft(): boolean {
+    return this.isObstacleRelative("counterclockwise");
+  }
+
+  isObstacleRight(): boolean {
+    return this.isObstacleRelative("clockwise");
   }
 
   hasWon(): boolean {
@@ -661,15 +736,43 @@ export class GameEngine {
   private checkWinCondition(): void {
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
-    if (isWinConditionMet(this.level, playerPos)) {
-      // Stop timer and save elapsed time
-      if (this.runtime.startTime !== null) {
-        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
-      }
-      this.runtime.hasPlayerWon = true;
-      this.runtime.state = EngineState.Won;
-      this.emit({ type: "win" });
+    const atGoal = isWinConditionMet(this.level, playerPos);
+
+    if (!atGoal) {
+      this.goalRequirementNotified = false;
+      return;
     }
+
+    // WinCondition = 2 requires collecting all fruits before goal can complete the level.
+    if (this.config.winCondition === 2) {
+      const requiredFruits = this.getTotalFruitsCount();
+      const collectedFruits = this.runtime.collectedFruits.size;
+
+      if (collectedFruits < requiredFruits) {
+        if (!this.goalRequirementNotified) {
+          this.goalRequirementNotified = true;
+          this.emit({
+            type: "winConditionNotMet",
+            message: `Collect all fruits first (${collectedFruits}/${requiredFruits}).`,
+            collectedFruits,
+            requiredFruits,
+          });
+        }
+        return;
+      }
+    }
+
+    // Stop timer and save elapsed time
+    if (this.runtime.startTime !== null) {
+      this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+    }
+    this.runtime.hasPlayerWon = true;
+    this.runtime.state = EngineState.Won;
+    this.emit({ type: "win" });
+  }
+
+  private getTotalFruitsCount(): number {
+    return (this.level.objects || []).filter((obj) => obj.type === "fruit").length;
   }
 
   /**

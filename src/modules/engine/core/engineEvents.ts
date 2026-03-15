@@ -1,5 +1,11 @@
 export type EngineEvent =
   | { type: "win" }
+  | {
+      type: "winConditionNotMet";
+      message: string;
+      collectedFruits: number;
+      requiredFruits: number;
+    }
   | { type: "engine:failed" }
   | {
       type: "objectStateChanged";
