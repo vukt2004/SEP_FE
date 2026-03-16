@@ -1,0 +1,21 @@
+{
+  "objectType": "box3",
+  "states": {
+    "idle": {
+      "sprite": "../Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "break": {
+      "sprite": "../Pixel Adventure 1/Items/Boxes/Box3/Break.png",
+      "frameWidth": 28,
+      "frameHeight": 24,
+      "frameCount": 4,
+      "frameDuration": 100,
+      "loop": false
+    }
+  }
+}

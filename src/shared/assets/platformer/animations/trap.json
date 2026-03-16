@@ -1,0 +1,20 @@
+{
+  "states": {
+    "idle": {
+      "texture": "/assets/Pixel Adventure 1/Traps/Spike Head/Idle.png",
+      "frameWidth": 54,
+      "frameHeight": 52,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "blink": {
+      "texture": "/assets/Pixel Adventure 1/Traps/Spike Head/Blink (54x52).png",
+      "frameWidth": 54,
+      "frameHeight": 52,
+      "frameCount": 4,
+      "frameDuration": 150,
+      "loop": true
+    }
+  }
+}

@@ -359,24 +359,13 @@ export class TileRenderer {
     const { tileSize } = mapData.config;
     const { objects } = mapData;
 
-    // Draw player spawn
-    if (objects.playerSpawn) {
-      this.renderObject(ctx, "player", objects.playerSpawn.x, objects.playerSpawn.y, tileSize);
-    }
+    // Draw all placed objects
+    objects.items?.forEach((item) => {
+      // Use definition name if available (especially for decorative objects >= 5)
+      const objDef = this.objectDefinitions?.[item.id.toString()];
+      const renderType = objDef ? objDef.name : item.type;
 
-    // Draw goal
-    if (objects.goal) {
-      this.renderObject(ctx, "goal", objects.goal.x, objects.goal.y, tileSize);
-    }
-
-    // Draw fruits
-    objects.fruits.forEach((fruit) => {
-      this.renderObject(ctx, "fruit", fruit.x, fruit.y, tileSize);
-    });
-
-    // Draw enemies
-    objects.enemies.forEach((enemy) => {
-      this.renderObject(ctx, "enemy", enemy.x, enemy.y, tileSize);
+      this.renderObject(ctx, renderType, item.x, item.y, tileSize);
     });
   }
 
@@ -408,8 +397,9 @@ export class TileRenderer {
     }
 
     // Calculate source position (frame from sprite sheet)
-    const sx = objDef.frameIndex * objDef.frameWidth;
-    const sy = 0; // Assuming horizontal sprite sheets
+    const cols = objDef.columns ?? Infinity;
+    const sx = (objDef.frameIndex % cols) * objDef.frameWidth;
+    const sy = Math.floor(objDef.frameIndex / cols) * objDef.frameHeight;
 
     // Draw the sprite scaled to tile size
     ctx.drawImage(

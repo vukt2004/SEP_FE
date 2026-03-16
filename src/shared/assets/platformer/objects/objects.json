@@ -24,87 +24,31 @@
       "frameIndex": 0
     },
     "4": {
-      "name": "enemy",
-      "imagePath": "/assets/Pixel Adventure 1/Main Characters/Ninja Frog/Idle (32x32).png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "5": {
-      "name": "apple",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "6": {
-      "name": "banana",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Bananas.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "7": {
-      "name": "cherry",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Cherries.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "8": {
-      "name": "kiwi",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Kiwi.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "9": {
-      "name": "melon",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Melon.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "10": {
-      "name": "orange",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Orange.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "11": {
-      "name": "strawberry",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Strawberry.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "frameIndex": 0
-    },
-    "12": {
       "name": "box1",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
       "frameIndex": 0
     },
-    "13": {
+    "5": {
       "name": "box2",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
       "frameIndex": 0
     },
-    "14": {
+    "6": {
       "name": "box3",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
       "frameIndex": 0
     },
-    "15": {
-      "name": "checkpoint",
-      "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
-      "frameWidth": 64,
-      "frameHeight": 64,
+    "7": {
+      "name": "trap",
+      "imagePath": "/assets/Pixel Adventure 1/Traps/Spike Head/Idle.png",
+      "frameWidth": 54,
+      "frameHeight": 52,
       "frameIndex": 0
     }
   }

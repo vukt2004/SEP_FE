@@ -7,7 +7,8 @@
       "frameHeight": 16,
       "frameCount": 4,
       "frameDuration": 200,
-      "loop": true
+      "loop": true,
+      "columns": 1
     },
     "open": {
       "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
@@ -15,7 +16,8 @@
       "frameHeight": 16,
       "frameCount": 4,
       "frameDuration": 100,
-      "loop": false
+      "loop": false,
+      "columns": 1
     },
     "closed": {
       "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
@@ -23,7 +25,8 @@
       "frameHeight": 16,
       "frameCount": 1,
       "frameDuration": 100,
-      "loop": false
+      "loop": false,
+      "columns": 1
     }
   }
 }

@@ -13,6 +13,8 @@ export interface ObjectDefinition {
   frameHeight: number;
   /** Frame index to use (for sprite sheets, 0 = first frame) */
   frameIndex: number;
+  /** Number of columns in the sprite sheet (for multi-row sheets) */
+  columns?: number;
 }
 
 /**

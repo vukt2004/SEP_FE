@@ -204,8 +204,9 @@ export class Renderer {
       const goalState = goalAnimMap?.["idle"] ? "idle" : "default";
       const frameIndex = this.animationSystem.getCurrentFrame("goal", goalState);
       const frame = goalAnim.frames[frameIndex];
-      const sx = frame * goalAnim.frameWidth;
-      const sy = (goalAnim.row ?? 0) * goalAnim.frameHeight;
+      const cols = goalAnim.columns ?? Infinity;
+      const sx = (frame % cols) * goalAnim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (goalAnim.row ?? 0)) * goalAnim.frameHeight;
 
       this.ctx.drawImage(
         goalAnim.image,
@@ -252,8 +253,9 @@ export class Renderer {
         // Sprite-based rendering
         const frameIndex = this.animationSystem.getCurrentFrame(obj.id, stateKey);
         const frame = anim.frames[frameIndex];
-        const sx = frame * anim.frameWidth;
-        const sy = (anim.row ?? 0) * anim.frameHeight;
+        const cols = anim.columns ?? Infinity;
+        const sx = (frame % cols) * anim.frameWidth;
+        const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
         this.ctx.drawImage(
           anim.image,
           sx,
@@ -300,8 +302,9 @@ export class Renderer {
       // Sprite-based rendering
       const frameIndex = this.animationSystem.getCurrentFrame(player.id, player.animationState);
       const frame = anim.frames[frameIndex];
-      const sx = frame * anim.frameWidth;
-      const sy = (anim.row ?? 0) * anim.frameHeight;
+      const cols = anim.columns ?? Infinity;
+      const sx = (frame % cols) * anim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
 
       this.ctx.save();
 

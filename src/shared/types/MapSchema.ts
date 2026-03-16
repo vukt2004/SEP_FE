@@ -97,20 +97,23 @@ export interface BlockConstraints {
   requiredBlocks: RequiredBlockRule[];
 }
 
+export interface PlacedObject {
+  /** Object definition ID from objects.json */
+  id: number;
+  /** Logical object type (e.g. "player", "goal", "fruit", "enemy", "box1", etc) */
+  type: string;
+  /** Tile x coordinate */
+  x: number;
+  /** Tile y coordinate */
+  y: number;
+}
+
 /**
  * Game objects and entities placed on the map
  */
 export interface Objects {
-  /** Player starting position */
-  playerSpawn: TilePosition | null;
-  /** Goal/finish position */
-  goal: TilePosition | null;
-  /** Collectible fruits */
-  fruits: TilePosition[];
-  /** Enemy spawns */
-  enemies: Enemy[];
-  /** Decorative objects (trees, chests, rocks, etc.) */
-  decorativeObjects: DecorativeObject[];
+  /** Unified array of all placed objects */
+  items: PlacedObject[];
 }
 
 /**

@@ -99,8 +99,9 @@ function ObjectSelectionButton({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Extract the specific frame from the sprite sheet
-    const frameX = objectDef.frameIndex * objectDef.frameWidth;
-    const frameY = 0;
+    const cols = objectDef.columns ?? Infinity;
+    const frameX = (objectDef.frameIndex % cols) * objectDef.frameWidth;
+    const frameY = Math.floor(objectDef.frameIndex / cols) * objectDef.frameHeight;
 
     // Draw centered and scaled to fit canvas
     const scale = Math.min(

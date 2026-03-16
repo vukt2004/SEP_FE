@@ -14,6 +14,7 @@ interface AnimationStateConfig {
   frameDuration: number;
   loop: boolean;
   row?: number; // Optional sprite sheet row (defaults to 0)
+  columns?: number; // Optional sprite sheet columns (for multi-row animations)
 }
 
 /**
@@ -110,6 +111,7 @@ export class AnimationLoader {
               frameDuration: stateConfig.frameDuration,
               loop: stateConfig.loop,
               row: stateConfig.row ?? 0,
+              columns: stateConfig.columns,
             };
 
             this.registry[objectType][stateName] = animDef;

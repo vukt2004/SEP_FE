@@ -153,12 +153,7 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
     const height = Math.max(1, toNumber(configRaw.height, 15));
     const tileSize = Math.max(8, toNumber(configRaw.tileSize, 32));
 
-    const fruitsRaw = Array.isArray(objectsRaw.fruits) ? objectsRaw.fruits : [];
-    const enemiesRaw = Array.isArray(objectsRaw.enemies) ? objectsRaw.enemies : [];
-    const decoRaw = Array.isArray(objectsRaw.decorativeObjects) ? objectsRaw.decorativeObjects : [];
-    const blockConstraintsRaw = isRecord(sourceJson.blockConstraints)
-      ? sourceJson.blockConstraints
-      : null;
+    const itemsRaw = Array.isArray(objectsRaw.items) ? objectsRaw.items : [];
 
     return {
       config: {
@@ -190,44 +185,20 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         collision: normalizeNumberLayer(layersRaw.collision, width, height),
       },
       objects: {
-        playerSpawn:
-          isRecord(objectsRaw.playerSpawn) &&
-          typeof objectsRaw.playerSpawn.x === "number" &&
-          typeof objectsRaw.playerSpawn.y === "number"
-            ? { x: objectsRaw.playerSpawn.x, y: objectsRaw.playerSpawn.y }
-            : null,
-        goal:
-          isRecord(objectsRaw.goal) &&
-          typeof objectsRaw.goal.x === "number" &&
-          typeof objectsRaw.goal.y === "number"
-            ? { x: objectsRaw.goal.x, y: objectsRaw.goal.y }
-            : null,
-        fruits: fruitsRaw
+        items: itemsRaw
           .filter(
-            (item): item is { x: number; y: number } =>
-              isRecord(item) && typeof item.x === "number" && typeof item.y === "number",
-          )
-          .map((item) => ({ x: item.x, y: item.y })),
-        enemies: enemiesRaw
-          .filter(
-            (item): item is { x: number; y: number; type: string } =>
-              isRecord(item) &&
-              typeof item.x === "number" &&
-              typeof item.y === "number" &&
-              typeof item.type === "string",
-          )
-          .map((item) => ({ x: item.x, y: item.y, type: item.type })),
-        decorativeObjects: decoRaw
-          .filter(
-            (item): item is { id: number; x: number; y: number } =>
+            (item): item is { id: number; type: string; x: number; y: number } =>
               isRecord(item) &&
               typeof item.id === "number" &&
+              typeof item.type === "string" &&
               typeof item.x === "number" &&
               typeof item.y === "number",
           )
-          .map((item) => ({ id: item.id, x: item.x, y: item.y })),
+          .map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y })),
       },
-      blockConstraints: normalizeBlockConstraints(blockConstraintsRaw),
+      blockConstraints: normalizeBlockConstraints(
+        isRecord(sourceJson.blockConstraints) ? sourceJson.blockConstraints : null,
+      ),
     };
   }
 
@@ -241,27 +212,56 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
       ? sourceJson.blockConstraints
       : null;
 
-    const fruits = objectsRaw
-      .filter(
-        (obj): obj is { type: string; position: { col: number; row: number } } =>
-          isRecord(obj) &&
-          obj.type === "fruit" &&
-          isRecord(obj.position) &&
-          typeof obj.position.col === "number" &&
-          typeof obj.position.row === "number",
-      )
-      .map((obj) => ({ x: obj.position.col, y: obj.position.row }));
+    const items: { id: number; type: string; x: number; y: number }[] = [];
 
-    const enemies = objectsRaw
-      .filter(
-        (obj): obj is { type: string; position: { col: number; row: number } } =>
-          isRecord(obj) &&
-          obj.type !== "fruit" &&
-          isRecord(obj.position) &&
-          typeof obj.position.col === "number" &&
-          typeof obj.position.row === "number",
-      )
-      .map((obj) => ({ x: obj.position.col, y: obj.position.row, type: obj.type }));
+    if (
+      isRecord(sourceJson.startPosition) &&
+      typeof sourceJson.startPosition.col === "number" &&
+      typeof sourceJson.startPosition.row === "number"
+    ) {
+      items.push({
+        id: 1,
+        type: "player",
+        x: sourceJson.startPosition.col,
+        y: sourceJson.startPosition.row,
+      });
+    }
+
+    if (
+      isRecord(sourceJson.goalPosition) &&
+      typeof sourceJson.goalPosition.col === "number" &&
+      typeof sourceJson.goalPosition.row === "number"
+    ) {
+      items.push({
+        id: 2,
+        type: "goal",
+        x: sourceJson.goalPosition.col,
+        y: sourceJson.goalPosition.row,
+      });
+    }
+
+    objectsRaw.forEach((obj) => {
+      if (
+        isRecord(obj) &&
+        typeof obj.type === "string" &&
+        isRecord(obj.position) &&
+        typeof obj.position.col === "number" &&
+        typeof obj.position.row === "number"
+      ) {
+        if (obj.type === "fruit") {
+          items.push({ id: 3, type: "fruit", x: obj.position.col, y: obj.position.row });
+        } else if (obj.type === "enemy" || obj.type === "slime") {
+          items.push({ id: 4, type: obj.type, x: obj.position.col, y: obj.position.row });
+        } else {
+          // Additional decorative objects based on their id or type
+          const metaId =
+            isRecord(obj.metadata) && typeof obj.metadata.objectId === "number"
+              ? obj.metadata.objectId
+              : 5;
+          items.push({ id: metaId, type: obj.type, x: obj.position.col, y: obj.position.row });
+        }
+      }
+    });
 
     return {
       config: {
@@ -284,21 +284,7 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         collision: normalizeNumberLayer(layersRaw.collision, width, height),
       },
       objects: {
-        playerSpawn:
-          isRecord(sourceJson.startPosition) &&
-          typeof sourceJson.startPosition.col === "number" &&
-          typeof sourceJson.startPosition.row === "number"
-            ? { x: sourceJson.startPosition.col, y: sourceJson.startPosition.row }
-            : null,
-        goal:
-          isRecord(sourceJson.goalPosition) &&
-          typeof sourceJson.goalPosition.col === "number" &&
-          typeof sourceJson.goalPosition.row === "number"
-            ? { x: sourceJson.goalPosition.col, y: sourceJson.goalPosition.row }
-            : null,
-        fruits,
-        enemies,
-        decorativeObjects: [],
+        items,
       },
       blockConstraints: normalizeBlockConstraints(blockConstraintsRaw),
     };
