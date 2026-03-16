@@ -42,6 +42,7 @@ interface StackFrame {
 export class StepExecutor {
   private stack: StackFrame[];
   private procedures: Map<string, ASTNode[]>;
+  private variables: Map<string, number>;
   private warnedMissingProcedures: Set<string>;
   private originalProgram: BlockProgram;
   private timeoutId: number | null;
@@ -56,6 +57,7 @@ export class StepExecutor {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
     this.procedures = new Map();
+    this.variables = new Map();
     this.warnedMissingProcedures = new Set();
     this.preRegisterProcedures(program);
     this.timeoutId = null;
@@ -74,6 +76,7 @@ export class StepExecutor {
     this.stop();
     this.stack = [{ nodes: this.originalProgram, index: 0 }];
     this.procedures.clear();
+    this.variables.clear();
     this.warnedMissingProcedures.clear();
     this.preRegisterProcedures(this.originalProgram);
   }
@@ -346,6 +349,19 @@ export class StepExecutor {
           continue;
         }
 
+        case "setVariable": {
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
+          continue;
+        }
+
+        case "changeVariable": {
+          const delta = this.evaluateNumber(node.value);
+          const current = this.variables.get(node.name) ?? 0;
+          this.variables.set(node.name, current + delta);
+          continue;
+        }
+
         case "condition":
           // Condition blocks shouldn't be executed directly in the main flow
           // They should only be evaluated as part of if/while blocks
@@ -360,6 +376,9 @@ export class StepExecutor {
 
         case "logicBinary":
         case "logicNot":
+        case "numberLiteral":
+        case "getVariable":
+        case "compare":
           // Logic expression blocks are value blocks, not statement blocks
           console.warn("Logic expression block executed directly - this should not happen");
           continue;
@@ -398,9 +417,59 @@ export class StepExecutor {
       return !this.evaluateCondition(conditionNode.value);
     }
 
+    if (conditionNode.type === "compare") {
+      const left = this.evaluateNumber(conditionNode.left);
+      const right = this.evaluateNumber(conditionNode.right);
+      switch (conditionNode.operator) {
+        case ">":
+          return left > right;
+        case "<":
+          return left < right;
+        case "==":
+          return left === right;
+        case ">=":
+          return left >= right;
+        case "<=":
+          return left <= right;
+        case "!=":
+          return left !== right;
+        default:
+          return false;
+      }
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
     return false;
+  }
+
+  private evaluateNumber(node: ASTNode | null): number {
+    if (!node) {
+      return 0;
+    }
+
+    if (node.type === "numberLiteral") {
+      return node.value;
+    }
+
+    if (node.type === "getVariable") {
+      return this.variables.get(node.name) ?? 0;
+    }
+
+    if (node.type === "booleanLiteral") {
+      return node.value ? 1 : 0;
+    }
+
+    if (node.type === "condition" || node.type === "logicBinary" || node.type === "logicNot") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    if (node.type === "compare") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    console.warn("Unsupported numeric expression node:", node.type);
+    return 0;
   }
 
   /**

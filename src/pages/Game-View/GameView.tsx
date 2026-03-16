@@ -371,6 +371,12 @@ export default function GameView() {
             return engine.isObstacleRight();
           case "goalReached":
             return engine.hasWon();
+          case "enemyAhead":
+            return engine.isEnemyAhead();
+          case "trapAhead":
+            return engine.isTrapAhead();
+          case "fruitCollected":
+            return engine.hasCollectedFruit();
           default:
             return false;
         }
@@ -476,8 +482,8 @@ export default function GameView() {
   const missionGoal =
     mapConfig?.winCondition === 2
       ? mapConfig.requiredFruits && mapConfig.requiredFruits > 0
-        ? `Collect ${mapConfig.requiredFruits} Fruits`
-        : "Collect All Fruits"
+        ? `Collect ${mapConfig.requiredFruits} Fruits and reach goal`
+        : "Collect All Fruits and reach goal"
       : "Reach Goal";
   const requiredBlocks = (blockConstraints?.requiredBlocks ?? []).map((rule) => {
     const label = toBlockLabel(rule.type);
@@ -901,6 +907,8 @@ export default function GameView() {
             blockLimit={blockConstraints?.blockLimit ?? null}
             requiredBlocks={requiredBlocks}
             forbiddenBlocks={forbiddenBlocks}
+            width={mapConfig?.width}
+            height={mapConfig?.height}
           />
 
           <div

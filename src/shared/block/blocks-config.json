@@ -391,6 +391,151 @@
       "nextStatement": true
     },
     {
+      "type": "set_variable",
+      "category": "variables",
+      "label": "set",
+      "tooltip": "Set a variable to a numeric value",
+      "color": "#FF5722",
+      "command": "SET_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "=",
+          "text": "score"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "change_variable",
+      "category": "variables",
+      "label": "change",
+      "tooltip": "Change a variable by adding a numeric value",
+      "color": "#FF5722",
+      "command": "CHANGE_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "by",
+          "text": "score"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "get_variable",
+      "category": "variables",
+      "label": "variable",
+      "tooltip": "Get the current numeric value of a variable",
+      "color": "#FF5722",
+      "command": "GET_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "",
+          "text": "score"
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "number_literal",
+      "category": "math",
+      "label": "",
+      "tooltip": "A numeric literal value",
+      "color": "#2196F3",
+      "command": "NUMBER_LITERAL",
+      "inputs": [
+        {
+          "kind": "field_number",
+          "name": "VALUE",
+          "label": "",
+          "value": 5
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "logic_compare",
+      "category": "logic",
+      "label": "",
+      "tooltip": "Compare two numbers and return true or false",
+      "color": "#5C81F6",
+      "command": "LOGIC_COMPARE",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Number",
+          "label": ""
+        },
+        {
+          "kind": "field_dropdown",
+          "name": "OP",
+          "label": "",
+          "options": [
+            [">", ">"],
+            ["<", "<"],
+            ["==", "=="],
+            [">=", ">="],
+            ["<=", "<="],
+            ["!=", "!="]
+          ]
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "enemy_ahead",
+      "category": "logic",
+      "label": "enemy ahead?",
+      "tooltip": "Returns true if there is an enemy ahead",
+      "color": "#5C81F6",
+      "command": "ENEMY_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "trap_ahead",
+      "category": "logic",
+      "label": "trap ahead?",
+      "tooltip": "Returns true if there is a trap ahead",
+      "color": "#5C81F6",
+      "command": "TRAP_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "fruit_collected",
+      "category": "logic",
+      "label": "fruit collected?",
+      "tooltip": "Returns true if the character has collected at least one fruit",
+      "color": "#5C81F6",
+      "command": "FRUIT_COLLECTED",
+      "output": "Boolean"
+    },
+    {
       "type": "interact",
       "category": "movement",
       "label": "Interact",

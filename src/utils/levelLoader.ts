@@ -73,6 +73,8 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
       winCondition: mapDetail.winCondition as 1 | 2,
       price: mapDetail.price,
       requiredFruits: (levelData as LevelDefinition).metadata?.requiredFruits,
+      width: (levelData as LevelDefinition).width,
+      height: (levelData as LevelDefinition).height,
     };
 
     console.log("Extracted map config:", mapConfig);
@@ -105,9 +107,11 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
     let mapConfig: Partial<MapConfig> | undefined;
     if (data.config) {
       mapConfig = data.config;
-    } else if (data.metadata) {
+    } else if (data.metadata || (data.width && data.height)) {
       mapConfig = {
-        requiredFruits: data.metadata.requiredFruits,
+        requiredFruits: data.metadata?.requiredFruits,
+        width: data.width,
+        height: data.height,
       };
     }
 

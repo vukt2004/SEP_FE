@@ -70,7 +70,59 @@ export type ConditionType =
   | "obstacleAhead"
   | "wallLeft"
   | "wallRight"
-  | "goalReached";
+  | "goalReached"
+  | "enemyAhead"
+  | "trapAhead"
+  | "fruitCollected";
+
+/**
+ * Numeric literal node
+ */
+export interface NumberLiteralNode {
+  type: "numberLiteral";
+  value: number;
+  blockId: string;
+}
+
+/**
+ * Variable assignment node
+ */
+export interface SetVariableNode {
+  type: "setVariable";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Variable increment/decrement node
+ */
+export interface ChangeVariableNode {
+  type: "changeVariable";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Variable getter node
+ */
+export interface GetVariableNode {
+  type: "getVariable";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Number comparison node that evaluates to a boolean
+ */
+export interface CompareNode {
+  type: "compare";
+  operator: ">" | "<" | "==" | ">=" | "<=" | "!=";
+  left: ASTNode | null;
+  right: ASTNode | null;
+  blockId: string;
+}
 
 /**
  * Condition node representing a boolean expression
@@ -190,6 +242,11 @@ export type ASTNode =
   | WaitNode
   | InteractNode
   | RepeatNode
+  | NumberLiteralNode
+  | SetVariableNode
+  | ChangeVariableNode
+  | GetVariableNode
+  | CompareNode
   | ConditionNode
   | BooleanLiteralNode
   | LogicBinaryNode

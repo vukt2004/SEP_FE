@@ -628,6 +628,42 @@ export class GameEngine {
     return this.isObstacleRelative("clockwise");
   }
 
+  isEnemyAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["enemy"]);
+  }
+
+  isTrapAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["trap"]);
+  }
+
+  hasCollectedFruit(): boolean {
+    return this.runtime.collectedFruits.size > 0;
+  }
+
+  private hasObjectAt(x: number, y: number, objectTypes: string[]): boolean {
+    const typeSet = new Set(objectTypes);
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== x || obj.position.row !== y) {
+        continue;
+      }
+
+      if (!typeSet.has(obj.type)) {
+        continue;
+      }
+
+      // Collected fruits are no longer present as sensors.
+      if (obj.type === "fruit" && this.runtime.collectedFruits.has(obj.id)) {
+        continue;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
   hasWon(): boolean {
     return this.runtime.hasPlayerWon;
   }
@@ -783,7 +819,7 @@ export class GameEngine {
           this.goalRequirementNotified = true;
           this.emit({
             type: "winConditionNotMet",
-            message: `Collect all fruits first (${collectedFruits}/${requiredFruits}).`,
+            message: `Collect fruits and reach goal (${collectedFruits}/${requiredFruits}).`,
             collectedFruits,
             requiredFruits,
           });

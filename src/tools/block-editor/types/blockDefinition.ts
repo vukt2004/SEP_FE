@@ -1,4 +1,4 @@
-export type BlockCategory = "movement" | "control" | "logic" | "procedure";
+export type BlockCategory = "movement" | "control" | "logic" | "procedure" | "variables" | "math";
 
 /**
  * Configuration for a number field input
@@ -34,12 +34,23 @@ export interface BlockTextFieldConfig {
 }
 
 /**
+ * Configuration for a dropdown field input
+ */
+export interface BlockDropdownFieldConfig {
+  kind: "field_dropdown";
+  name: string;
+  label: string;
+  options: [string, string][];
+}
+
+/**
  * Union type for all input configurations
  */
 export type BlockInputConfig =
   | BlockNumberFieldConfig
   | BlockValueInputConfig
-  | BlockTextFieldConfig;
+  | BlockTextFieldConfig
+  | BlockDropdownFieldConfig;
 
 /**
  * Configuration for a statement input (for nested blocks)

@@ -30,6 +30,8 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
   control: "Control",
   logic: "Logic",
   procedure: "Procedure",
+  variables: "Variables",
+  math: "Math",
 };
 
 /**
@@ -61,7 +63,14 @@ export function generateToolbox(
   const contents: (ToolboxBlock | ToolboxSeparator | ToolboxLabel)[] = [];
 
   // Define category order
-  const categoryOrder: BlockCategory[] = ["movement", "control", "logic", "procedure"];
+  const categoryOrder: BlockCategory[] = [
+    "movement",
+    "control",
+    "logic",
+    "variables",
+    "math",
+    "procedure",
+  ];
 
   categoryOrder.forEach((category, index) => {
     const blocks = blocksByCategory.get(category);

@@ -156,6 +156,27 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "enemy_ahead":
+      return {
+        type: "condition",
+        conditionType: "enemyAhead",
+        blockId,
+      };
+
+    case "trap_ahead":
+      return {
+        type: "condition",
+        conditionType: "trapAhead",
+        blockId,
+      };
+
+    case "fruit_collected":
+      return {
+        type: "condition",
+        conditionType: "fruitCollected",
+        blockId,
+      };
+
     case "logic_true":
       return {
         type: "booleanLiteral",
@@ -199,6 +220,62 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       return {
         type: "logicNot",
         value,
+        blockId,
+      };
+    }
+
+    case "number_literal": {
+      const value = Number(block.getFieldValue("VALUE")) || 0;
+      return {
+        type: "numberLiteral",
+        value,
+        blockId,
+      };
+    }
+
+    case "set_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "setVariable",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "change_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "changeVariable",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "get_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      return {
+        type: "getVariable",
+        name,
+        blockId,
+      };
+    }
+
+    case "logic_compare": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      const rawOp = block.getFieldValue("OP") || "==";
+      const operator = [">", "<", "==", ">=", "<=", "!="].includes(rawOp)
+        ? (rawOp as ">" | "<" | "==" | ">=" | "<=" | "!=")
+        : "==";
+      return {
+        type: "compare",
+        operator,
+        left,
+        right,
         blockId,
       };
     }
