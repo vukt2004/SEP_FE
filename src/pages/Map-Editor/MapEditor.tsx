@@ -528,6 +528,7 @@ export default function MapEditor() {
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
+              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
             />
           </aside>
 
@@ -599,6 +600,7 @@ export default function MapEditor() {
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
+              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
             />
           </aside>
         </div>

@@ -100,6 +100,7 @@ export class Renderer {
     tileSize: number,
     player: Player,
     collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
   ): void {
     // Layer rendering order for proper depth:
     // 1. Background layer (base tiles)
@@ -111,7 +112,7 @@ export class Renderer {
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
     // 4. Objects (fruits, etc.)
-    this.drawObjects(level, tileSize, collectedFruits);
+    this.drawObjects(level, tileSize, collectedFruits, objectStates);
     // 5. Player character
     this.drawPlayer(player, tileSize);
     // 6. Foreground layer (renders ABOVE player for depth effect)
@@ -232,6 +233,7 @@ export class Renderer {
     level: LevelDefinition,
     tileSize: number,
     collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
   ): void {
     const { objects } = level;
 
@@ -241,9 +243,22 @@ export class Renderer {
         continue;
       }
 
-      const stateKey = obj.initialState ?? "default";
+      const runtimeState = objectStates?.get(obj.id);
+      const stateKey = runtimeState ?? obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
-      const anim = animMap?.[stateKey];
+      let anim = animMap?.[stateKey];
+      let resolvedStateKey = stateKey;
+
+      // Fallback to idle or default if requested state is missing
+      if (!anim && animMap) {
+        if (animMap["idle"]) {
+          anim = animMap["idle"];
+          resolvedStateKey = "idle";
+        } else if (animMap["default"]) {
+          anim = animMap["default"];
+          resolvedStateKey = "default";
+        }
+      }
 
       // Convert grid position to pixel position
       const pixelX = obj.position.col * tileSize;
@@ -251,7 +266,7 @@ export class Renderer {
 
       if (anim) {
         // Sprite-based rendering
-        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, stateKey);
+        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, resolvedStateKey);
         const frame = anim.frames[frameIndex];
         const cols = anim.columns ?? Infinity;
         const sx = (frame % cols) * anim.frameWidth;
@@ -272,7 +287,8 @@ export class Renderer {
         if (obj.type === "goal") {
           this.ctx.fillStyle = GOAL_COLOR;
         } else if (obj.type === "door") {
-          this.ctx.fillStyle = obj.initialState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+          const doorState = runtimeState ?? obj.initialState;
+          this.ctx.fillStyle = doorState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
         } else {
           this.ctx.fillStyle = "#ff00ff";
         }

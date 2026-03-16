@@ -240,6 +240,14 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "interact":
+          return {
+            command: {
+              type: "interact",
+            },
+            blockId: node.blockId,
+          };
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted

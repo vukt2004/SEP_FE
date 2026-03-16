@@ -81,6 +81,16 @@
       "nextStatement": true
     },
     {
+      "type": "interact",
+      "category": "movement",
+      "label": "Interact",
+      "tooltip": "Interact with an object in front of you (e.g. break a box, open a chest, trigger a switch).",
+      "color": "#4CAF50",
+      "command": "INTERACT",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "repeat",
       "category": "control",
       "label": "Repeat",
@@ -377,6 +387,16 @@
       "tooltip": "Wait for one turn before executing the next command",
       "color": "#4CAF50",
       "command": "WAIT",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "interact",
+      "category": "movement",
+      "label": "Interact",
+      "tooltip": "Interact with an object (e.g., open a door, break a box)",
+      "color": "#4CAF50",
+      "command": "INTERACT",
       "previousStatement": true,
       "nextStatement": true
     }

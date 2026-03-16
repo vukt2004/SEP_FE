@@ -5,21 +5,21 @@
       "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
-      "frameCount": 4,
+      "frameCount": 1,
       "frameDuration": 200,
-      "loop": true,
-      "columns": 1
+      "loop": false,
+      "row": 1
     },
-    "open": {
+    "closed": {
       "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
-      "frameCount": 4,
+      "frameCount": 2,
       "frameDuration": 100,
       "loop": false,
       "columns": 1
     },
-    "closed": {
+    "open": {
       "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,

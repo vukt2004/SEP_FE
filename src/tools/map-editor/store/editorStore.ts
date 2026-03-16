@@ -25,6 +25,10 @@ export class EditorStore {
   private undoStack: MapData[];
   private redoStack: MapData[];
   private readonly maxHistorySize: number = 50;
+  private objectDefinitions: Record<
+    string,
+    import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
+  > | null = null;
 
   /**
    * Initialize the editor store with a map
@@ -46,6 +50,15 @@ export class EditorStore {
     this.listeners = new Set();
     this.undoStack = [];
     this.redoStack = [];
+  }
+
+  setObjectDefinitions(
+    defs: Record<
+      string,
+      import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
+    >,
+  ): void {
+    this.objectDefinitions = defs;
   }
 
   /**
@@ -422,12 +435,15 @@ export class EditorStore {
     let objectType = "unknown";
 
     // Map hardcoded IDs back to string types (or use objectDefinitions if available)
-    if (objectId === 1) objectType = "player";
-    else if (objectId === 2) objectType = "goal";
-    else if (objectId === 3) objectType = "fruit";
-    else if (objectId === 4)
-      objectType = "enemy"; // default to generic enemy, type could be "slime"
-    else objectType = "decorative"; // We can refine this if we map directly to definitions
+    if (this.objectDefinitions && this.objectDefinitions[objectId]) {
+      objectType = this.objectDefinitions[objectId].name;
+    } else {
+      // Fallbacks if definitions aren't loaded somehow
+      if (objectId === 1) objectType = "player";
+      else if (objectId === 2) objectType = "goal";
+      else if (objectId === 3) objectType = "fruit";
+      else objectType = "decorative";
+    }
 
     // Logic for unique items (player, goal)
     if (objectId === 1 || objectId === 2) {
@@ -729,6 +745,7 @@ export class EditorStore {
       // Migrate enemies
       if (Array.isArray(objectsRaw.enemies)) {
         objectsRaw.enemies.forEach((e) => {
+          // Keep as id 4 for palette highlighting backward compat, but don't force string type
           loadedMap.objects.items.push({ id: 4, type: e.type || "enemy", x: e.x, y: e.y });
         });
       }
