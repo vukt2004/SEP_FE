@@ -1,0 +1,174 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  color: var(--text);
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--text-2);
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  color: var(--text-2);
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Learning path – bố trí theo chiều dọc, có đường nối */
+.goalList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 24px;
+  border-left: 3px solid var(--border);
+  margin-left: 8px;
+}
+
+.goalItem {
+  margin: 0;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.goalItem:last-child {
+  padding-bottom: 0;
+}
+
+/* Chấm tròn trên đường dọc */
+.goalItem::before {
+  content: "";
+  position: absolute;
+  left: -30px;
+  top: 22px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-sizing: border-box;
+}
+
+.goalCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 18px 20px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.goalCard:hover:not(:disabled) {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.goalCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.goalName {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.goalDesc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.stepCount {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
