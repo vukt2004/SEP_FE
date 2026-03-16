@@ -149,7 +149,9 @@ export default function PlatformGameView() {
         const levelType = mapType === "platform" ? LevelType.Platform : LevelType.TopDown;
         const gameType = mapType === "platform" ? "platformer" : "topdown";
 
-        const config = createGameConfig(levelType, { winCondition });
+        const requiredFruits =
+          levelResult.mapConfig?.requiredFruits ?? levelResult.level.metadata?.requiredFruits;
+        const config = createGameConfig(levelType, { winCondition, requiredFruits });
         const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
@@ -409,7 +411,12 @@ export default function PlatformGameView() {
   const blockTypeLabelMap = new Map(blocksConfig.blocks.map((block) => [block.type, block.label]));
   const toBlockLabel = (type: string) => blockTypeLabelMap.get(type) || type;
 
-  const missionGoal = mapConfig?.winCondition === 2 ? "Collect All Fruits" : "Reach Goal";
+  const missionGoal =
+    mapConfig?.winCondition === 2
+      ? mapConfig.requiredFruits && mapConfig.requiredFruits > 0
+        ? `Collect ${mapConfig.requiredFruits} Fruits`
+        : "Collect All Fruits"
+      : "Reach Goal";
   const requiredBlocks = (blockConstraints?.requiredBlocks ?? []).map((rule) => {
     const label = toBlockLabel(rule.type);
     return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;

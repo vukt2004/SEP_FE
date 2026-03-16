@@ -771,7 +771,11 @@ export class GameEngine {
 
     // WinCondition = 2 requires collecting all fruits before goal can complete the level.
     if (this.config.winCondition === 2) {
-      const requiredFruits = this.getTotalFruitsCount();
+      const mapFruitsCount = this.getTotalFruitsCount();
+      const requiredFruits =
+        this.config.requiredFruits !== undefined && this.config.requiredFruits > 0
+          ? Math.min(this.config.requiredFruits, mapFruitsCount)
+          : mapFruitsCount;
       const collectedFruits = this.runtime.collectedFruits.size;
 
       if (collectedFruits < requiredFruits) {

@@ -72,6 +72,7 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
       timeLimitSeconds: Math.floor(mapDetail.timeLimitMs / 1000), // Convert ms to seconds
       winCondition: mapDetail.winCondition as 1 | 2,
       price: mapDetail.price,
+      requiredFruits: (levelData as LevelDefinition).metadata?.requiredFruits,
     };
 
     console.log("Extracted map config:", mapConfig);
@@ -104,6 +105,10 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
     let mapConfig: Partial<MapConfig> | undefined;
     if (data.config) {
       mapConfig = data.config;
+    } else if (data.metadata) {
+      mapConfig = {
+        requiredFruits: data.metadata.requiredFruits,
+      };
     }
 
     return {
@@ -143,7 +148,7 @@ export async function loadLevelsIndex(): Promise<{
 /**
  * Get a level by ID from the index
  */
-export async function getLevelById(levelId: string): Promise<LevelDefinition> {
+export async function getLevelById(levelId: string): Promise<LevelLoadResult> {
   const index = await loadLevelsIndex();
   const levelInfo = index.levels.find((level) => level.id === levelId);
 

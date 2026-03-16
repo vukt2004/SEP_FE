@@ -601,6 +601,17 @@ export class EditorStore {
   }
 
   /**
+   * Update the map required fruits
+   *
+   * @param count - Number of required fruits (0 means all fruits)
+   */
+  setMapRequiredFruits(count: number): void {
+    this.saveHistory();
+    this.mapData.config.requiredFruits = Math.max(0, count);
+    this.notify();
+  }
+
+  /**
    * Update the map price
    *
    * @param price - Map price
@@ -711,6 +722,9 @@ export class EditorStore {
     }
     if (loadedMap.config.winCondition === undefined) {
       loadedMap.config.winCondition = 1; // Default: Reach goal
+    }
+    if (loadedMap.config.requiredFruits === undefined) {
+      loadedMap.config.requiredFruits = 0; // Default: All fruits
     }
     if (loadedMap.config.price === undefined) {
       loadedMap.config.price = 0; // Default: Free

@@ -57,6 +57,7 @@ interface MapEditorControlsProps {
   onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
   onTimeLimitChange?: (seconds: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
+  onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
   onBannedBlocksChange?: (bannedBlocks: string[]) => void;
@@ -194,6 +195,7 @@ export function MapEditorControls({
   onDifficultyChange,
   onTimeLimitChange,
   onWinConditionChange,
+  onRequiredFruitsChange,
   onPriceChange,
   onBlockLimitChange,
   onBannedBlocksChange,
@@ -371,6 +373,20 @@ export function MapEditorControls({
     if (!mapName) {
       alert("Please set a map name before saving");
       return;
+    }
+
+    if (
+      mapData.config.winCondition === 2 &&
+      mapData.config.requiredFruits !== undefined &&
+      mapData.config.requiredFruits > 0
+    ) {
+      const totalFruits = mapData.objects.items.filter((obj) => obj.type === "fruit").length;
+      if (mapData.config.requiredFruits > totalFruits) {
+        alert(
+          `Required fruits (${mapData.config.requiredFruits}) cannot exceed the total number of fruits on the map (${totalFruits}).`,
+        );
+        return;
+      }
     }
 
     if (userType === "unknown") {
@@ -996,9 +1012,25 @@ export function MapEditorControls({
                   style={styles.select}
                 >
                   <option value={1}>Reach Goal</option>
-                  <option value={2}>Collect All Fruits</option>
+                  <option value={2}>Collect Fruits</option>
                 </select>
               </div>
+
+              {mapData.config.winCondition === 2 && (
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Required Fruits (0 = All):</label>
+                  <p style={styles.helpText}>Leave 0 to require all fruits on the map</p>
+                  <input
+                    type="number"
+                    min="0"
+                    value={mapData.config.requiredFruits ?? 0}
+                    onChange={(e) =>
+                      onRequiredFruitsChange?.(Math.max(0, parseInt(e.target.value) || 0))
+                    }
+                    style={styles.input}
+                  />
+                </div>
+              )}
 
               <div style={styles.formGroup}>
                 <label style={styles.label}>Price:</label>

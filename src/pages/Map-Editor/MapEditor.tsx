@@ -176,6 +176,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         winCondition: clampWinCondition(
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
+        requiredFruits: Math.max(
+          0,
+          toNumber(
+            isRecord(sourceJson.metadata) ? sourceJson.metadata.requiredFruits : undefined,
+            toNumber(configRaw.requiredFruits, 0),
+          ),
+        ),
         price: Math.max(0, toNumber(detail.price, toNumber(configRaw.price, 0))),
       },
       layers: {
@@ -275,6 +282,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
         winCondition: clampWinCondition(detail.winCondition),
+        requiredFruits: Math.max(
+          0,
+          toNumber(
+            isRecord(sourceJson.metadata) ? sourceJson.metadata.requiredFruits : undefined,
+            0,
+          ),
+        ),
         price: Math.max(0, detail.price),
       },
       layers: {
@@ -455,6 +469,10 @@ export default function MapEditor() {
     store?.setMapWinCondition(winCondition);
   };
 
+  const handleRequiredFruitsChange = (requiredFruits: number) => {
+    store?.setMapRequiredFruits(requiredFruits);
+  };
+
   const handlePriceChange = (price: number) => {
     store?.setMapPrice(price);
   };
@@ -596,6 +614,7 @@ export default function MapEditor() {
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
               onWinConditionChange={handleWinConditionChange}
+              onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}
