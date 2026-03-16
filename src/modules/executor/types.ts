@@ -172,6 +172,14 @@ export interface CallProcedureNode {
 }
 
 /**
+ * Interact command - interacts with an object in front of the player
+ */
+export interface InteractNode {
+  type: "interact";
+  blockId: string;
+}
+
+/**
  * Union type of all possible AST node types
  */
 export type ASTNode =
@@ -180,6 +188,7 @@ export type ASTNode =
   | TurnNode
   | JumpNode
   | WaitNode
+  | InteractNode
   | RepeatNode
   | ConditionNode
   | BooleanLiteralNode

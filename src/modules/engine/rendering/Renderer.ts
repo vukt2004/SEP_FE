@@ -100,6 +100,7 @@ export class Renderer {
     tileSize: number,
     player: Player,
     collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
   ): void {
     // Layer rendering order for proper depth:
     // 1. Background layer (base tiles)
@@ -111,7 +112,7 @@ export class Renderer {
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
     // 4. Objects (fruits, etc.)
-    this.drawObjects(level, tileSize, collectedFruits);
+    this.drawObjects(level, tileSize, collectedFruits, objectStates);
     // 5. Player character
     this.drawPlayer(player, tileSize);
     // 6. Foreground layer (renders ABOVE player for depth effect)
@@ -204,8 +205,9 @@ export class Renderer {
       const goalState = goalAnimMap?.["idle"] ? "idle" : "default";
       const frameIndex = this.animationSystem.getCurrentFrame("goal", goalState);
       const frame = goalAnim.frames[frameIndex];
-      const sx = frame * goalAnim.frameWidth;
-      const sy = (goalAnim.row ?? 0) * goalAnim.frameHeight;
+      const cols = goalAnim.columns ?? Infinity;
+      const sx = (frame % cols) * goalAnim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (goalAnim.row ?? 0)) * goalAnim.frameHeight;
 
       this.ctx.drawImage(
         goalAnim.image,
@@ -231,6 +233,7 @@ export class Renderer {
     level: LevelDefinition,
     tileSize: number,
     collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
   ): void {
     const { objects } = level;
 
@@ -240,9 +243,22 @@ export class Renderer {
         continue;
       }
 
-      const stateKey = obj.initialState ?? "default";
+      const runtimeState = objectStates?.get(obj.id);
+      const stateKey = runtimeState ?? obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
-      const anim = animMap?.[stateKey];
+      let anim = animMap?.[stateKey];
+      let resolvedStateKey = stateKey;
+
+      // Fallback to idle or default if requested state is missing
+      if (!anim && animMap) {
+        if (animMap["idle"]) {
+          anim = animMap["idle"];
+          resolvedStateKey = "idle";
+        } else if (animMap["default"]) {
+          anim = animMap["default"];
+          resolvedStateKey = "default";
+        }
+      }
 
       // Convert grid position to pixel position
       const pixelX = obj.position.col * tileSize;
@@ -250,10 +266,11 @@ export class Renderer {
 
       if (anim) {
         // Sprite-based rendering
-        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, stateKey);
+        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, resolvedStateKey);
         const frame = anim.frames[frameIndex];
-        const sx = frame * anim.frameWidth;
-        const sy = (anim.row ?? 0) * anim.frameHeight;
+        const cols = anim.columns ?? Infinity;
+        const sx = (frame % cols) * anim.frameWidth;
+        const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
         this.ctx.drawImage(
           anim.image,
           sx,
@@ -270,7 +287,8 @@ export class Renderer {
         if (obj.type === "goal") {
           this.ctx.fillStyle = GOAL_COLOR;
         } else if (obj.type === "door") {
-          this.ctx.fillStyle = obj.initialState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+          const doorState = runtimeState ?? obj.initialState;
+          this.ctx.fillStyle = doorState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
         } else {
           this.ctx.fillStyle = "#ff00ff";
         }
@@ -300,8 +318,9 @@ export class Renderer {
       // Sprite-based rendering
       const frameIndex = this.animationSystem.getCurrentFrame(player.id, player.animationState);
       const frame = anim.frames[frameIndex];
-      const sx = frame * anim.frameWidth;
-      const sy = (anim.row ?? 0) * anim.frameHeight;
+      const cols = anim.columns ?? Infinity;
+      const sx = (frame % cols) * anim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
 
       this.ctx.save();
 

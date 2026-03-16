@@ -95,6 +95,12 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "interact":
+      return {
+        type: "interact",
+        blockId,
+      };
+
     case "repeat": {
       const timesValue = block.getFieldValue("TIMES");
       const times = Math.max(0, Number(timesValue) || 0);

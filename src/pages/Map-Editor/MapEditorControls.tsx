@@ -61,6 +61,7 @@ interface MapEditorControlsProps {
   onBlockLimitChange?: (blockLimit: number | null) => void;
   onBannedBlocksChange?: (bannedBlocks: string[]) => void;
   onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
+  onObjectDefinitionsLoaded?: (defs: Record<string, ObjectDefinition>) => void;
   sectionMode?: "left" | "right";
   editingMapId?: string;
   editorMode?: "edit" | "view";
@@ -99,8 +100,9 @@ function ObjectSelectionButton({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Extract the specific frame from the sprite sheet
-    const frameX = objectDef.frameIndex * objectDef.frameWidth;
-    const frameY = 0;
+    const cols = objectDef.columns ?? Infinity;
+    const frameX = (objectDef.frameIndex % cols) * objectDef.frameWidth;
+    const frameY = Math.floor(objectDef.frameIndex / cols) * objectDef.frameHeight;
 
     // Draw centered and scaled to fit canvas
     const scale = Math.min(
@@ -196,6 +198,7 @@ export function MapEditorControls({
   onBlockLimitChange,
   onBannedBlocksChange,
   onRequiredBlocksChange,
+  onObjectDefinitionsLoaded,
   sectionMode = "right",
   editingMapId,
   editorMode,
@@ -261,10 +264,13 @@ export function MapEditorControls({
         if (cancelled) return;
         setObjectDefinitions(defs);
         setObjectSpritesLoaded(true);
-      } catch (error) {
-        console.error("Failed to load object sprites:", error);
+        if (onObjectDefinitionsLoaded) {
+          onObjectDefinitionsLoaded(defs);
+        }
+      } catch (err) {
+        console.error("Failed to load object definitions:", err);
         if (!cancelled) {
-          setObjectSpritesLoaded(false);
+          setObjectSpritesLoaded(true); // Still set true to avoid infinite loading
           setObjectDefinitions(null);
         }
       }

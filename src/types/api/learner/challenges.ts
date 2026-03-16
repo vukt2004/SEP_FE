@@ -8,7 +8,7 @@ export type Challenge = {
   difficulty: number;
   timeLimitMs: number;
   isPublished: boolean;
-  mapStatus: number;
+  mapStatus: "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
   price: number;
   createdByUserId: string;
   createdAt: string;

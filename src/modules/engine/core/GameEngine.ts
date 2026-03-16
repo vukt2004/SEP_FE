@@ -96,6 +96,15 @@ export class GameEngine {
     const startPixelX = startX * tileSize;
     const startPixelY = startY * tileSize;
 
+    const objectStates = new Map<string, string>();
+    if (level.objects) {
+      for (const obj of level.objects) {
+        if (obj.initialState) {
+          objectStates.set(obj.id, obj.initialState);
+        }
+      }
+    }
+
     this.runtime = {
       player: {
         id: "player",
@@ -113,6 +122,7 @@ export class GameEngine {
         jumpPower: 2,
         isGrounded: true,
       },
+      objectStates,
       stepCount: 0,
       hasPlayerWon: false,
       state: EngineState.Idle,
@@ -229,6 +239,16 @@ export class GameEngine {
     this.runtime.timeElapsed = 0;
     this.goalRequirementNotified = false;
 
+    // Reset object states to their initial values
+    this.runtime.objectStates.clear();
+    if (this.level.objects) {
+      for (const obj of this.level.objects) {
+        if (obj.initialState) {
+          this.runtime.objectStates.set(obj.id, obj.initialState);
+        }
+      }
+    }
+
     // Update player collider
     this.updatePlayerCollider();
 
@@ -238,6 +258,7 @@ export class GameEngine {
       this.tileSize,
       this.runtime.player,
       this.runtime.collectedFruits,
+      this.runtime.objectStates,
     );
   }
 
@@ -397,7 +418,7 @@ export class GameEngine {
 
     // Update animations for objects
     for (const obj of this.level.objects || []) {
-      const stateKey = obj.initialState ?? "default";
+      const stateKey = this.runtime.objectStates.get(obj.id) ?? obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
       const anim = animMap?.[stateKey];
       if (anim) {
@@ -441,6 +462,7 @@ export class GameEngine {
       this.tileSize,
       this.runtime.player,
       this.runtime.collectedFruits,
+      this.runtime.objectStates,
     );
   }
 
@@ -718,12 +740,16 @@ export class GameEngine {
       if (objPixelX === targetPixelX && objPixelY === targetPixelY) {
         const behavior = objectRegistry[obj.type];
         if (behavior?.onInteract) {
-          const newState = behavior.onInteract(obj.initialState);
-          this.emit({
-            type: "objectStateChanged",
-            objectId: obj.id,
-            newState: newState,
-          });
+          const currentState = this.runtime.objectStates.get(obj.id) ?? obj.initialState;
+          const newState = behavior.onInteract(currentState);
+          if (newState) {
+            this.runtime.objectStates.set(obj.id, newState);
+            this.emit({
+              type: "objectStateChanged",
+              objectId: obj.id,
+              newState,
+            });
+          }
         }
       }
     }

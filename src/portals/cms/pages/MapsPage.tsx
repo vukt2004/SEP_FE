@@ -185,15 +185,15 @@ export const MapsPage: React.FC = () => {
 
   const getMapStatusLabel = (status: MapStatusEnum) => {
     switch (status) {
-      case 0:
+      case "Draft":
         return "Draft";
-      case 1:
+      case "PendingReview":
         return "Pending Review";
-      case 2:
+      case "Approved":
         return "Approved";
-      case 3:
+      case "Rejected":
         return "Rejected";
-      case 4:
+      case "Published":
         return "Published";
       default:
         return "Unknown";
@@ -202,15 +202,15 @@ export const MapsPage: React.FC = () => {
 
   const getMapStatusColor = (status: MapStatusEnum) => {
     switch (status) {
-      case 0:
+      case "Draft":
         return "var(--muted)";
-      case 1:
+      case "PendingReview":
         return "var(--warning)";
-      case 2:
+      case "Approved":
         return "var(--info)";
-      case 3:
+      case "Rejected":
         return "var(--danger)";
-      case 4:
+      case "Published":
         return "var(--success)";
       default:
         return "var(--text-2)";
@@ -427,10 +427,7 @@ export const MapsPage: React.FC = () => {
           value={filterStatus}
           onChange={(e) =>
             handleFilterChange([
-              () =>
-                setFilterStatus(
-                  e.target.value === "" ? "" : (Number(e.target.value) as MapStatusEnum),
-                ),
+              () => setFilterStatus(e.target.value === "" ? "" : (e.target.value as MapStatusEnum)),
             ])
           }
           style={{
@@ -444,11 +441,11 @@ export const MapsPage: React.FC = () => {
           }}
         >
           <option value="">All Statuses</option>
-          <option value="0">Draft</option>
-          <option value="1">Pending Review</option>
-          <option value="2">Approved</option>
-          <option value="3">Rejected</option>
-          <option value="4">Published</option>
+          <option value="Draft">Draft</option>
+          <option value="PendingReview">Pending Review</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Published">Published</option>
         </select>
 
         {/* Difficulty Filter */}
@@ -909,7 +906,7 @@ export const MapsPage: React.FC = () => {
                       </button>
 
                       {/* Approve */}
-                      {map.mapStatus === 1 && (
+                      {map.mapStatus === "PendingReview" && (
                         <button
                           onClick={() => handleOpenApproveModal(map.id, map.title)}
                           disabled={actionLoading}
@@ -930,7 +927,7 @@ export const MapsPage: React.FC = () => {
                       )}
 
                       {/* Reject */}
-                      {map.mapStatus === 1 && (
+                      {map.mapStatus === "PendingReview" && (
                         <button
                           onClick={() => handleOpenRejectModal(map.id, map.title)}
                           disabled={actionLoading}

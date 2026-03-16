@@ -14,6 +14,9 @@ export interface EngineRuntimeState {
   /** Current player state and position */
   player: Player;
 
+  /** Current per-object states keyed by object id */
+  objectStates: Map<string, string>;
+
   /** Total number of commands executed */
   stepCount: number;
 

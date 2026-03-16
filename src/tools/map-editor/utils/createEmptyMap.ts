@@ -45,11 +45,7 @@ export function createEmptyMap(
       collision: createEmptyLayer(width, height, 0),
     },
     objects: {
-      playerSpawn: null,
-      goal: null,
-      fruits: [],
-      enemies: [],
-      decorativeObjects: [],
+      items: [],
     },
     blockConstraints: {
       blockLimit: null,
