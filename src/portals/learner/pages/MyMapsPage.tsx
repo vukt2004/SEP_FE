@@ -63,7 +63,7 @@ type MapCardProps = {
   isAuthor: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
-  getMapStatusLabel: (status: number) => string;
+  getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
@@ -77,7 +77,7 @@ type MapListProps = {
   ownershipMap: OwnershipMap;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
-  getMapStatusLabel: (status: number) => string;
+  getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
@@ -118,8 +118,8 @@ const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
   };
 };
 
-const getStatusBadgeStyle = (status: number): React.CSSProperties => {
-  if (status === 0) {
+const getStatusBadgeStyle = (status: string): React.CSSProperties => {
+  if (status === "Draft") {
     return {
       background: "rgba(107, 114, 128, 0.18)",
       color: "#374151",
@@ -127,7 +127,7 @@ const getStatusBadgeStyle = (status: number): React.CSSProperties => {
     };
   }
 
-  if (status === 1) {
+  if (status === "PendingReview" || status === "Rejected") {
     return {
       background: "rgba(249, 115, 22, 0.16)",
       color: "#9a3412",
@@ -135,7 +135,7 @@ const getStatusBadgeStyle = (status: number): React.CSSProperties => {
     };
   }
 
-  if (status === 4) {
+  if (status === "Approved" || status === "Published") {
     return {
       background: "rgba(34, 197, 94, 0.14)",
       color: "#166534",
@@ -620,7 +620,7 @@ const MapCard: React.FC<MapCardProps> = ({
             <Eye size={14} /> {t("view")}
           </button>
 
-          {isAuthor && map.mapStatus === 0 && (
+          {isAuthor && map.mapStatus === "Draft" && (
             <>
               <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
                 <Edit size={14} /> {t("edit")}
@@ -898,17 +898,17 @@ export const MyMapsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const getMapStatusLabel = (status: number) => {
+  const getMapStatusLabel = (status: string) => {
     switch (status) {
-      case 0:
+      case "Draft":
         return t("draft");
-      case 1:
+      case "PendingReview":
         return t("pendingReview");
-      case 2:
+      case "Approved":
         return t("approved");
-      case 3:
+      case "Rejected":
         return t("rejected");
-      case 4:
+      case "Published":
         return t("published");
       default:
         return t("unknown");
@@ -953,8 +953,8 @@ export const MyMapsPage: React.FC = () => {
     return acc;
   }, {} as OwnershipMap);
 
-  const publishedCount = maps.filter((m) => m.isPublished || m.mapStatus === 4).length;
-  const draftCount = maps.filter((m) => m.mapStatus === 0).length;
+  const publishedCount = maps.filter((m) => m.isPublished || m.mapStatus === "Published").length;
+  const draftCount = maps.filter((m) => m.mapStatus === "Draft").length;
 
   if (loading && maps.length === 0) {
     return (

@@ -132,7 +132,7 @@ export default function MarketplacePage() {
         const response = await learnerMapsApi.getMaps({
           pageNumber: currentPage,
           pageSize: 20,
-          mapStatus: 4, // chỉ lấy map Published cho catalog
+          mapStatus: "Published", // chỉ lấy map Published cho catalog
           difficulty: difficultyFilter,
           type: typeFilter,
           search: searchTerm || undefined,
@@ -182,7 +182,7 @@ export default function MarketplacePage() {
         const response = await learnerMapsApi.getMaps({
           pageNumber: 1,
           pageSize: 10,
-          mapStatus: 4,
+          mapStatus: "Published",
           sortBy: "CreatedAt",
           sortAscending: false,
         });

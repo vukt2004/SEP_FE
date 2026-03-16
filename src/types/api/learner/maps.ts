@@ -1,6 +1,8 @@
 // src/types/api/learner/maps.ts
 import type { ApiResult } from "../common";
 
+export type MapStatusEnum = "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
+
 /**
  * Request parameters for uploading a map from JSON
  */
@@ -57,7 +59,7 @@ export interface Map {
   type: "Topdown" | "Platform";
   timeLimitMs: number;
   isPublished: boolean;
-  mapStatus: number;
+  mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
   /** Display name of the map creator (when returned by API) */
@@ -81,7 +83,7 @@ export interface GetMapsParams {
   pageSize?: number;
   publishedOnly?: boolean;
   difficulty?: number;
-  mapStatus?: number;
+  mapStatus?: MapStatusEnum;
   type?: number;
   tagId?: string;
   createdByUserId?: string;
@@ -161,7 +163,7 @@ export interface MapDetail {
   difficulty: number;
   timeLimitMs: number;
   isPublished: boolean;
-  mapStatus: number;
+  mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
   editorialContent: string;
@@ -188,7 +190,7 @@ export interface MapInfo {
   type: "Topdown" | "Platform";
   timeLimitMs: number;
   isPublished: boolean;
-  mapStatus: string;
+  mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
   createdByUserName: string;

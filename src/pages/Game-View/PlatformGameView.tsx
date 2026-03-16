@@ -1057,7 +1057,7 @@ export default function PlatformGameView() {
         requiredBlocks={requiredBlocks}
         forbiddenBlocks={forbiddenBlocks}
         onStart={handleStartLevel}
-        onClose={() => setShowMissionModal(false)}
+        onClose={handleStartLevel}
       />
 
       {/* Game Results Modal */}

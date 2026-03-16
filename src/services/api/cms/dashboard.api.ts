@@ -55,7 +55,7 @@ interface MapListItem {
   difficulty: number;
   timeLimitMs: number;
   isPublished: boolean;
-  mapStatus: number;
+  mapStatus: "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
   price?: number;
   createdByUserId: string;
   createdAt: string | null;
@@ -121,9 +121,9 @@ export const getOverview = async (): Promise<DashboardOverview> => {
     const totalLevels = maps.filter((m) => m.isPublished).length;
 
     // Calculate user-created maps
-    // MapStatus: 0=Draft, 1=PendingReview, 2=Approved, 3=Rejected, 4=Published
-    // User-created = not yet published (status 0-3)
-    const userCreatedMaps = maps.filter((m) => m.mapStatus < 4).length;
+    // MapStatus: "Draft", "PendingReview", "Approved", "Rejected", "Published"
+    // User-created = not yet published
+    const userCreatedMaps = maps.filter((m) => m.mapStatus !== "Published").length;
 
     // Simulated metrics (these would need actual gameplay/attempt data from backend)
     // Once backend provides attempt/submission endpoints, we can calculate real metrics

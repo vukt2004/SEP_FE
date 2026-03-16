@@ -26,7 +26,7 @@ export interface PaginationResult<T> {
  * 3 = Rejected
  * 4 = Published
  */
-export type MapStatusEnum = 0 | 1 | 2 | 3 | 4;
+export type MapStatusEnum = "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
 
 /**
  * Map item in list view
@@ -122,6 +122,7 @@ export interface MapDetail {
   tagNames: string[];
   conceptNames: string[];
   winCondition: number;
+  avatarUrl?: string | null;
   mapDetailJson?: unknown; // Optional field that might be added by backend
 }
 
