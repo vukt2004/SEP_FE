@@ -771,12 +771,8 @@ export const MyMapsPage: React.FC = () => {
   }, [fetchMaps]);
 
   const handleViewDetails = (mapId: string) => {
-    // Tab "Sưu tầm": vào trang chi tiết map (xem/chơi). Tab "Bản đồ của tôi": vào editor.
-    if (activeTab === "collected") {
-      navigate(`/app/map/${mapId}`);
-    } else {
-      navigate(ROUTES.MAP_EDITOR, { state: { mapId } });
-    }
+    // Open the map in game view for both author and collected tabs
+    navigate(`/app/map/${mapId}`);
   };
 
   const handleUpdateMap = (mapId: string) => {

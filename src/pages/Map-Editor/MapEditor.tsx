@@ -25,6 +25,9 @@ type MapDetailLike = {
   timeLimitMs: number;
   winCondition: number;
   price: number;
+  hints?: Array<{ orderNo: number; content: string }>;
+  tagNames?: string[];
+  avatarUrl?: string | null;
   mapDetailJson?: unknown;
   activeSpec?: {
     gridSpec?: string;
@@ -326,6 +329,9 @@ export default function MapEditor() {
   const [zoom, setZoom] = useState(1);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
+  const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
+  const [editingMapHints, setEditingMapHints] = useState<string[]>([]);
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const initialMap = createEmptyMap("platform", 20, 15, 32);
@@ -347,6 +353,9 @@ export default function MapEditor() {
 
   useEffect(() => {
     if (!mapId) {
+      setEditingMapTagNames([]);
+      setEditingMapAvatarUrl(null);
+      setEditingMapHints([]);
       return;
     }
 
@@ -370,8 +379,23 @@ export default function MapEditor() {
           throw new Error(response.data.message || "Failed to load map");
         }
 
-        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
         if (cancelled) return;
+
+        setEditingMapTagNames(
+          Array.isArray((response.data.data as MapDetailLike).tagNames)
+            ? ((response.data.data as MapDetailLike).tagNames ?? [])
+            : [],
+        );
+        setEditingMapAvatarUrl((response.data.data as MapDetailLike).avatarUrl ?? null);
+        setEditingMapHints(
+          Array.isArray((response.data.data as MapDetailLike).hints)
+            ? ((response.data.data as MapDetailLike).hints ?? [])
+                .map((hint) => hint.content)
+                .filter((content) => typeof content === "string" && content.trim().length > 0)
+            : [],
+        );
+
+        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
 
         const loadedStore = new EditorStore(loadedMapData);
         setEditorState({
@@ -522,6 +546,9 @@ export default function MapEditor() {
               sectionMode="left"
               editingMapId={mapId}
               editorMode={routeState?.mode}
+              initialSelectedTagNames={editingMapTagNames}
+              initialAvatarUrl={editingMapAvatarUrl}
+              initialHints={editingMapHints}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
@@ -594,6 +621,9 @@ export default function MapEditor() {
               sectionMode="right"
               editingMapId={mapId}
               editorMode={routeState?.mode}
+              initialSelectedTagNames={editingMapTagNames}
+              initialAvatarUrl={editingMapAvatarUrl}
+              initialHints={editingMapHints}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}

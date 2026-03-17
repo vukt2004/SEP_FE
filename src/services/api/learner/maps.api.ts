@@ -8,6 +8,7 @@ import type {
   MapDetailResult,
   MapOwnershipResult,
   MapInfoResult,
+  MapTagsResult,
 } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -62,6 +63,14 @@ export const learnerMapsApi = {
    */
   getMapInfo(id: string) {
     return learnerAxios.get<MapInfoResult>(`/api/learner/maps/${id}/info`);
+  },
+
+  /**
+   * Get available map tags
+   * GET /api/learner/maps/tags
+   */
+  getMapTags() {
+    return learnerAxios.get<MapTagsResult>("/api/learner/maps/tags");
   },
 
   /**

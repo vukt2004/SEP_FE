@@ -1,46 +1,6 @@
 {
   "blocks": [
     {
-      "type": "move_up",
-      "category": "movement",
-      "label": "Move Up",
-      "tooltip": "Move up one step",
-      "color": "#4CAF50",
-      "command": "MOVE_UP",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_down",
-      "category": "movement",
-      "label": "Move Down",
-      "tooltip": "Move down one step",
-      "color": "#4CAF50",
-      "command": "MOVE_DOWN",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_left",
-      "category": "movement",
-      "label": "Move Left",
-      "tooltip": "Move left one step",
-      "color": "#4CAF50",
-      "command": "MOVE_LEFT",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_right",
-      "category": "movement",
-      "label": "Move Right",
-      "tooltip": "Move right one step",
-      "color": "#4CAF50",
-      "command": "MOVE_RIGHT",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
       "type": "move_forward",
       "category": "movement",
       "label": "Move Forward",
