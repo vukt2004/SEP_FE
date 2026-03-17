@@ -15,13 +15,18 @@ const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
  * No gravity, player can move in all 4 directions
  */
 export class TopDownController implements IPlayerController {
-  moveForward(player: Player, level: LevelDefinition, tileSize: number): boolean {
+  moveForward(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
     // Check if blocked by solid tile
-    if (this.isSolidTile(nextX, nextY, level)) return false;
+    if (this.isSolidTile(nextX, nextY, level, objectStates)) return false;
 
     player.x = nextX;
     player.y = nextY;
@@ -39,22 +44,39 @@ export class TopDownController implements IPlayerController {
     return true;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  applyPhysics(_player: Player, _level: LevelDefinition, _tileSize: number): void {
+  applyPhysics(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): void {
+    void player;
+    void level;
+    void tileSize;
+    void objectStates;
     // Top-down games have no gravity
     // This method intentionally does nothing
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  isObstacleAhead(player: Player, level: LevelDefinition, _tileSize: number): boolean {
+  isObstacleAhead(
+    player: Player,
+    level: LevelDefinition,
+    _tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
-    return this.isSolidTile(nextX, nextY, level);
+    return this.isSolidTile(nextX, nextY, level, objectStates);
   }
 
-  isSolidTile(x: number, y: number, level: LevelDefinition): boolean {
+  isSolidTile(
+    x: number,
+    y: number,
+    level: LevelDefinition,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     // Out of bounds is considered solid
     if (!this.isInBounds(x, y, level)) return true;
 
@@ -65,7 +87,8 @@ export class TopDownController implements IPlayerController {
     for (const obj of level.objects || []) {
       if (obj.position.col === x && obj.position.row === y) {
         const behavior = objectRegistry[obj.type];
-        if (behavior?.isCollidable?.(obj.initialState)) {
+        const currentState = objectStates.get(obj.id) ?? obj.initialState;
+        if (behavior?.isCollidable?.(currentState)) {
           return true;
         }
       }
@@ -74,8 +97,16 @@ export class TopDownController implements IPlayerController {
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  jump(_player: Player, _level: LevelDefinition, _tileSize: number): void {
+  jump(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): void {
+    void player;
+    void level;
+    void tileSize;
+    void objectStates;
     // Top-down games don't support jumping
     // This method intentionally does nothing
   }

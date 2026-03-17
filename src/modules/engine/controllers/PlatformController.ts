@@ -16,13 +16,18 @@ const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
  * Player can move left/right, but will fall if no ground below
  */
 export class PlatformController implements IPlayerController {
-  moveForward(player: Player, level: LevelDefinition, tileSize: number): boolean {
+  moveForward(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
     // Check if blocked by solid tile
-    if (this.isSolidTile(nextX, nextY, level)) return false;
+    if (this.isSolidTile(nextX, nextY, level, objectStates)) return false;
 
     player.x = nextX;
     player.y = nextY;
@@ -40,21 +45,35 @@ export class PlatformController implements IPlayerController {
     return true;
   }
 
-  applyPhysics(player: Player, level: LevelDefinition, tileSize: number): void {
+  applyPhysics(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): void {
     // Apply rule-based gravity
-    this.applyGravity(player, level, tileSize);
+    this.applyGravity(player, level, tileSize, objectStates);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  isObstacleAhead(player: Player, level: LevelDefinition, _tileSize: number): boolean {
+  isObstacleAhead(
+    player: Player,
+    level: LevelDefinition,
+    _tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     const { dx, dy } = DIRECTION_DELTA[player.facing];
     const nextX = player.x + dx;
     const nextY = player.y + dy;
 
-    return this.isSolidTile(nextX, nextY, level);
+    return this.isSolidTile(nextX, nextY, level, objectStates);
   }
 
-  isSolidTile(x: number, y: number, level: LevelDefinition): boolean {
+  isSolidTile(
+    x: number,
+    y: number,
+    level: LevelDefinition,
+    objectStates: ReadonlyMap<string, string>,
+  ): boolean {
     // Out of bounds is considered solid (prevents falling off map)
     if (!this.isInBounds(x, y, level)) return true;
 
@@ -65,7 +84,8 @@ export class PlatformController implements IPlayerController {
     for (const obj of level.objects || []) {
       if (obj.position.col === x && obj.position.row === y) {
         const behavior = objectRegistry[obj.type];
-        if (behavior?.isCollidable?.(obj.initialState)) {
+        const currentState = objectStates.get(obj.id) ?? obj.initialState;
+        if (behavior?.isCollidable?.(currentState)) {
           return true;
         }
       }
@@ -77,11 +97,16 @@ export class PlatformController implements IPlayerController {
   /**
    * Execute a jump if player is grounded
    */
-  jump(player: Player, level: LevelDefinition, tileSize: number): void {
+  jump(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): void {
     // Check if player is grounded (can only jump if on solid ground)
     const isGrounded =
       this.isInBounds(player.x, player.y + 1, level) &&
-      this.isSolidTile(player.x, player.y + 1, level);
+      this.isSolidTile(player.x, player.y + 1, level, objectStates);
 
     if (!isGrounded) return; // Can't jump if not grounded
 
@@ -90,7 +115,7 @@ export class PlatformController implements IPlayerController {
     for (let i = 0; i < jumpHeight; i++) {
       if (
         this.isInBounds(player.x, player.y - 1, level) &&
-        !this.isSolidTile(player.x, player.y - 1, level)
+        !this.isSolidTile(player.x, player.y - 1, level, objectStates)
       ) {
         player.y--;
       } else {
@@ -109,10 +134,15 @@ export class PlatformController implements IPlayerController {
    * Called once per command step so the fall arc is visible across
    * multiple block executions rather than teleporting to the floor.
    */
-  private applyGravity(player: Player, level: LevelDefinition, tileSize: number): void {
+  private applyGravity(
+    player: Player,
+    level: LevelDefinition,
+    tileSize: number,
+    objectStates: ReadonlyMap<string, string>,
+  ): void {
     const canFall =
       this.isInBounds(player.x, player.y + 1, level) &&
-      !this.isSolidTile(player.x, player.y + 1, level);
+      !this.isSolidTile(player.x, player.y + 1, level, objectStates);
 
     if (canFall) {
       // Fall exactly one tile per step
@@ -126,7 +156,7 @@ export class PlatformController implements IPlayerController {
     // Update grounded flag
     player.isGrounded =
       this.isInBounds(player.x, player.y + 1, level) &&
-      this.isSolidTile(player.x, player.y + 1, level);
+      this.isSolidTile(player.x, player.y + 1, level, objectStates);
     player.isJumping = !player.isGrounded;
   }
 

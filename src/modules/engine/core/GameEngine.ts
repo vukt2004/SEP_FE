@@ -501,7 +501,12 @@ export class GameEngine {
         // Handle absolute directional movement
         this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
@@ -511,7 +516,12 @@ export class GameEngine {
         // Move in the current facing direction
         this.moveInDirection(this.runtime.player.facing);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
@@ -537,7 +547,12 @@ export class GameEngine {
       }
       case "jump":
         // Execute jump — moves player up by jumpPower tiles (if grounded)
-        this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        this.controller.jump(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Play jump sound
         this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
@@ -549,7 +564,12 @@ export class GameEngine {
         break;
       case "wait":
         // Consume one turn without movement while still advancing physics.
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         this.updatePlayerCollider();
         this.checkFruitCollection();
         this.checkWinCondition();
@@ -639,11 +659,21 @@ export class GameEngine {
       facing: lookDirection,
     };
 
-    return this.controller.isObstacleAhead(virtualPlayer, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      virtualPlayer,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleAhead(): boolean {
-    return this.controller.isObstacleAhead(this.runtime.player, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleLeft(): boolean {
@@ -757,7 +787,12 @@ export class GameEngine {
 
   private moveForward(): void {
     // Delegate movement to controller
-    const moved = this.controller.moveForward(this.runtime.player, this.level, this.tileSize);
+    const moved = this.controller.moveForward(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
 
     if (moved) {
       // Play walk sound when player moves
