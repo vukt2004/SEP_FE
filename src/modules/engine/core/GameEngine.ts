@@ -504,6 +504,8 @@ export class GameEngine {
         this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "moveForward":
         // Move in the current facing direction
@@ -512,10 +514,14 @@ export class GameEngine {
         this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "turn": {
-        // Rotate facing direction by 90 degrees
-        const newDirection = this.rotateFacing(this.runtime.player.facing, command.rotation);
+        const newDirection = this.resolveTurnDirection(
+          this.runtime.player.facing,
+          command.rotation,
+        );
         this.runtime.player.facing = newDirection;
         // Update sprite direction for rendering
         if (this.gameType === "topdown") {
@@ -536,6 +542,8 @@ export class GameEngine {
         this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
         break;
@@ -543,6 +551,8 @@ export class GameEngine {
         // Consume one turn without movement while still advancing physics.
         this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "interact":
         this.interact();
@@ -573,6 +583,22 @@ export class GameEngine {
 
     // Execute movement in that direction
     this.moveForward();
+  }
+
+  /**
+   * Resolve turn behavior by game type.
+   * - Top-down: rotate facing by 90 degrees.
+   * - Platform: map turn blocks to absolute horizontal facing.
+   */
+  private resolveTurnDirection(
+    currentFacing: Direction,
+    rotation: "clockwise" | "counterclockwise",
+  ): Direction {
+    if (this.gameType === "platformer") {
+      return rotation === "clockwise" ? "right" : "left";
+    }
+
+    return this.rotateFacing(currentFacing, rotation);
   }
 
   /**
@@ -796,6 +822,10 @@ export class GameEngine {
    * State transition: Running → Won
    */
   private checkWinCondition(): void {
+    if (this.runtime.state === EngineState.Won || this.runtime.hasPlayerWon) {
+      return;
+    }
+
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
     const atGoal = isWinConditionMet(this.level, playerPos);
