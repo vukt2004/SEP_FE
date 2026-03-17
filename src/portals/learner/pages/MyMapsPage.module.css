@@ -1,0 +1,530 @@
+/* Full-page layout & background */
+.page {
+  position: relative;
+  min-height: 100vh;
+  margin: -24px -48px -40px;
+  padding: 32px 24px 48px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(
+      ellipse 120% 70% at 50% -15%,
+      color-mix(in srgb, var(--primary) 20%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 6%, transparent) 40%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 100% 30%,
+      color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 0% 70%,
+      color-mix(in srgb, var(--primary) 8%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      color-mix(in srgb, var(--surface-2) 40%, transparent) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Loading state */
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.loadingInner {
+  text-align: center;
+}
+
+.spinner {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: mymapsSpin 0.9s linear infinite;
+}
+
+@keyframes mymapsSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  color: var(--text-2);
+  margin-top: 16px;
+  font-size: 15px;
+}
+
+/* Hero / header block */
+.hero {
+  margin-bottom: 28px;
+  padding: 24px 28px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, var(--surface-2));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.heroTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.heroTitle {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.heroSubtitle {
+  color: var(--text-2);
+  font-size: 15px;
+  margin: 0;
+}
+
+.createBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.15s ease,
+    opacity 0.2s ease;
+}
+
+.createBtn:active {
+  transform: scale(0.98);
+}
+
+.createBtnPrimary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.createBtnPrimary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.createBtnDisabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Stats grid – keep in sync with StatsCards inline or move to module */
+.statsWrap {
+  margin-top: 20px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tabsGroup {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.tabActive {
+  background: var(--primary);
+  color: var(--on-primary, #fff);
+  border-color: var(--primary);
+}
+
+.tabInactive {
+  background: transparent;
+  color: var(--text);
+}
+
+.tabInactive:hover {
+  background: var(--surface-2);
+}
+
+/* Filters bar */
+.filtersBar {
+  margin-bottom: 20px;
+}
+
+/* List card container */
+.listCard {
+  background: color-mix(in srgb, var(--surface) 97%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Map table – single grid: same columns + stretch rows so horizontal borders line up */
+.mapTable {
+  display: grid;
+  grid-template-columns: 72px minmax(180px, 1fr) 88px 100px 92px 100px 72px auto;
+  gap: 0;
+  align-items: stretch;
+}
+
+/* No image column (tab My Maps / author) */
+.mapTableNoImage {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 88px 100px 92px 100px 72px auto;
+  gap: 0;
+  align-items: stretch;
+}
+
+.mapTableNoImage .mapTableHeaderCell:nth-child(2),
+.mapTableNoImage .mapTableHeaderCell:nth-child(3),
+.mapTableNoImage .mapTableHeaderCell:nth-child(4),
+.mapTableNoImage .mapTableHeaderCell:nth-child(5),
+.mapTableNoImage .mapTableHeaderCell:nth-child(6) {
+  justify-content: center;
+  text-align: center;
+}
+
+.mapTableNoImage .mapTableCell:nth-child(1) {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.mapTableNoImage .mapTableCell:nth-child(2),
+.mapTableNoImage .mapTableCell:nth-child(3),
+.mapTableNoImage .mapTableCell:nth-child(4),
+.mapTableNoImage .mapTableCell:nth-child(5),
+.mapTableNoImage .mapTableCell:nth-child(6) {
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mapTableHeader,
+.mapTableRow {
+  display: contents;
+}
+
+.mapTableHeaderCell {
+  padding: 12px 14px;
+  min-height: 44px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--border));
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Center-align header for Difficulty, Time, Status, Created, Price */
+.mapTableHeaderCell:nth-child(3),
+.mapTableHeaderCell:nth-child(4),
+.mapTableHeaderCell:nth-child(5),
+.mapTableHeaderCell:nth-child(6),
+.mapTableHeaderCell:nth-child(7) {
+  justify-content: center;
+  text-align: center;
+}
+
+.mapTableRow:hover .mapTableCell {
+  background: color-mix(in srgb, var(--surface) 92%, white);
+}
+
+/* Cells stretch to full row height so border-bottom forms one straight line */
+.mapTableCell {
+  padding: 12px 14px;
+  min-height: 52px;
+  display: flex;
+  align-items: flex-start;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+
+.mapTableRow:last-child .mapTableCell {
+  border-bottom: none;
+}
+
+/* Map name cell (multi-line) */
+.mapTableCell:nth-child(2) {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+/* Difficulty, Time, Status, Created, Price – horizontal center, top-aligned with row */
+.mapTableCell:nth-child(3),
+.mapTableCell:nth-child(4),
+.mapTableCell:nth-child(5),
+.mapTableCell:nth-child(6),
+.mapTableCell:nth-child(7) {
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mapTableThumb {
+  border-radius: 10px;
+  overflow: hidden;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapTableThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mapTableTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapTableMeta {
+  font-size: 12px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mapTableTypeTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 4px;
+  width: fit-content;
+}
+
+.mapTableBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.mapTablePrice {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.mapTablePriceFree {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.mapTableActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* Keep time and date on one line */
+.mapTableSingleLine {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .listCard {
+    overflow-x: auto;
+  }
+
+  .mapTable {
+    min-width: 800px;
+    grid-template-columns: 64px minmax(140px, 1fr) 80px 92px 88px 90px 68px auto;
+  }
+
+  .mapTableNoImage {
+    min-width: 720px;
+    grid-template-columns: minmax(140px, 1fr) 80px 92px 88px 90px 68px auto;
+  }
+
+  .mapTableHeaderCell,
+  .mapTableCell {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .mapTableThumb {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* Empty state */
+.emptyState {
+  padding: 56px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.emptyText {
+  color: var(--text-2);
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.emptyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--primary);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    filter 0.2s ease;
+}
+
+.emptyBtn:hover {
+  filter: brightness(1.08);
+}
+
+.emptyBtn:active {
+  transform: scale(0.98);
+}
+
+/* Error banner */
+.errorBanner {
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  color: var(--danger);
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+/* Pagination */
+.pagination {
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.paginationInfo {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.paginationBtns {
+  display: flex;
+  gap: 10px;
+}
+
+.paginationBtn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.paginationBtnActive {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.paginationBtnActive:hover {
+  background: var(--surface-2);
+}
+
+.paginationBtnDisabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}

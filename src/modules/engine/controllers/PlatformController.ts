@@ -105,26 +105,29 @@ export class PlatformController implements IPlayerController {
   }
 
   /**
-   * Apply rule-based gravity: drop player tile-by-tile until reaching solid ground
+   * Apply rule-based gravity: drop player one tile toward the ground.
+   * Called once per command step so the fall arc is visible across
+   * multiple block executions rather than teleporting to the floor.
    */
   private applyGravity(player: Player, level: LevelDefinition, tileSize: number): void {
-    // Fall one tile at a time until hitting solid ground
-    while (
+    const canFall =
       this.isInBounds(player.x, player.y + 1, level) &&
-      !this.isSolidTile(player.x, player.y + 1, level)
-    ) {
+      !this.isSolidTile(player.x, player.y + 1, level);
+
+    if (canFall) {
+      // Fall exactly one tile per step
       player.y++;
     }
 
-    // Update target pixel position for smooth fall animation
+    // Update target pixel position
     player.targetPixelX = player.x * tileSize;
     player.targetPixelY = player.y * tileSize;
 
-    // Check if player is grounded
+    // Update grounded flag
     player.isGrounded =
       this.isInBounds(player.x, player.y + 1, level) &&
       this.isSolidTile(player.x, player.y + 1, level);
-    player.isJumping = false;
+    player.isJumping = !player.isGrounded;
   }
 
   private isInBounds(x: number, y: number, level: LevelDefinition): boolean {

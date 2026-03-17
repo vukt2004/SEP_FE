@@ -1,0 +1,67 @@
+<div class="concept-intro" id="section-intro">
+  <p>🎯 <strong>Bài này học gì?</strong> Học cách "để dành" một thông tin (số, chữ, trạng thái) vào một cái tên, để sau này dùng lại. Giống như bạn dán nhãn "Hộp bút" lên hộp — mỗi lần cần bút, bạn biết tìm ở đâu.</p>
+</div>
+
+<section class="concept-section" id="section-1">
+  <h2>1️⃣ Biến là gì? Nói đơn giản thôi.</h2>
+  <p><strong>Biến</strong> = một cái <strong>hộp có nhãn</strong>.</p>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--tip">Hình dung</span> 📦 Nhãn = tên biến (ví dụ: <code>diem</code>, <code>mang</code>, <code>ten</code>).</p>
+    <p>📦 Trong hộp = giá trị (số 10, chữ "Minh", hoặc số mạng 3...).</p>
+  </div>
+  <p>Máy tính nhớ: "Ô tên <code>diem</code> đang chứa số 10." Khi cần, ta hỏi "diem là bao nhiêu?" → máy trả lời 10.</p>
+</section>
+
+<section class="concept-section" id="section-2">
+  <h2>2️⃣ Tại sao cần biến?</h2>
+  <p>Nếu không có biến, mỗi lần cần dùng "điểm hiện tại" ta phải ghi lại số 10 ở nhiều chỗ. Sau đó điểm đổi thành 15 thì phải sửa <strong>từng chỗ</strong> → dễ quên, dễ sai.</p>
+  <p>✅ Có biến: ta chỉ cần <strong>một chỗ</strong> lưu giá trị. Mọi chỗ khác chỉ cần gọi tên <code>diem</code> là máy tự lấy đúng số mới.</p>
+</section>
+
+<section class="concept-section" id="section-3">
+  <h2>3️⃣ Hai việc chính: Gán và Đọc</h2>
+  <h3>✏️ Gán (cho vào hộp)</h3>
+  <p>"Gán" = đặt giá trị vào biến. Lần đầu gán là tạo biến; lần sau gán là <strong>đổi</strong> giá trị trong hộp.</p>
+  <pre><code>diem = 10
+mang = 3
+ten = "Minh"</code></pre>
+  <p>Nghĩa: Hộp tên <code>diem</code> chứa 10, hộp <code>mang</code> chứa 3, hộp <code>ten</code> chứa chữ "Minh".</p>
+
+  <h3>👀 Đọc (lấy ra dùng)</h3>
+  <p>Khi in ra màn hình, so sánh, hoặc tính toán, ta dùng tên biến. Máy sẽ thay tên bằng giá trị đang lưu.</p>
+  <pre><code>in(diem)     → in ra 10
+diem + 5     → 10 + 5 = 15
+diem = diem + 1   → điểm mới = 10 + 1 = 11</code></pre>
+</section>
+
+<section class="concept-section" id="section-4">
+  <h2>4️⃣ Ví dụ từng bước (như trong game)</h2>
+  <div class="concept-example">
+    <p><span class="concept-label concept-label--example">Ví dụ</span></p>
+    <p><strong>Bước 1:</strong> Bắt đầu chơi, có 3 mạng → <code>mang = 3</code></p>
+    <p><strong>Bước 2:</strong> Chạm quái → trừ 1 mạng → <code>mang = mang - 1</code> → giờ <code>mang = 2</code></p>
+    <p><strong>Bước 3:</strong> Ăn sao +10 điểm → <code>diem = diem + 10</code> (giả sử trước đó diem = 0 → giờ diem = 10)</p>
+    <p><strong>Bước 4:</strong> Hiển thị "Mạng: 2, Điểm: 10" → ta chỉ cần in <code>mang</code> và <code>diem</code>, máy tự thay bằng 2 và 10.</p>
+  </div>
+  <div class="concept-callout">
+    <p><span class="concept-label concept-label--tip">Nhớ</span> 💡 <strong>Nhớ:</strong> <code>mang = mang - 1</code> nghĩa là "lấy số cũ trong hộp <code>mang</code>, trừ 1, rồi bỏ kết quả lại vào chính hộp <code>mang</code>."</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-5">
+  <h2>5️⃣ Đặt tên biến thế nào cho dễ nhớ?</h2>
+  <ul>
+    <li>Dùng tên có ý nghĩa: <code>diem</code>, <code>mang</code>, <code>tenNhanVat</code> thay vì <code>x</code>, <code>a</code>.</li>
+    <li>Thường không dùng dấu cách; có thể dùng chữ, số (số không đứng đầu), gạch dưới.</li>
+  </ul>
+</section>
+
+<section class="concept-section concept-summary" id="section-summary">
+  <h2>📌 Ôn lại nhanh</h2>
+  <ul>
+    <li>Biến = hộp có nhãn (tên) chứa một giá trị.</li>
+    <li>Gán = cho giá trị vào biến (hoặc đổi giá trị).</li>
+    <li>Đọc = dùng tên biến để lấy giá trị ra (in, tính toán, so sánh).</li>
+    <li>Trong game: dùng biến để lưu điểm, mạng, tên người chơi... và cập nhật khi có sự kiện (ăn sao, chạm quái...).</li>
+  </ul>
+</section>

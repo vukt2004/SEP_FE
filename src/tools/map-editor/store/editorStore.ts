@@ -25,6 +25,10 @@ export class EditorStore {
   private undoStack: MapData[];
   private redoStack: MapData[];
   private readonly maxHistorySize: number = 50;
+  private objectDefinitions: Record<
+    string,
+    import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
+  > | null = null;
 
   /**
    * Initialize the editor store with a map
@@ -46,6 +50,15 @@ export class EditorStore {
     this.listeners = new Set();
     this.undoStack = [];
     this.redoStack = [];
+  }
+
+  setObjectDefinitions(
+    defs: Record<
+      string,
+      import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
+    >,
+  ): void {
+    this.objectDefinitions = defs;
   }
 
   /**
@@ -418,66 +431,41 @@ export class EditorStore {
 
     this.saveHistory();
 
-    // Handle reserved objects (1-4)
-    switch (this.selectedObjectId) {
-      case 1: // player
-        // Only one player spawn allowed - replace existing
-        this.mapData.objects.playerSpawn = { x, y };
-        break;
+    const objectId = this.selectedObjectId;
+    let objectType = "unknown";
 
-      case 2: // goal
-        // Only one goal allowed - replace existing
-        this.mapData.objects.goal = { x, y };
-        break;
+    // Map hardcoded IDs back to string types (or use objectDefinitions if available)
+    if (this.objectDefinitions && this.objectDefinitions[objectId]) {
+      objectType = this.objectDefinitions[objectId].name;
+    } else {
+      // Fallbacks if definitions aren't loaded somehow
+      if (objectId === 1) objectType = "player";
+      else if (objectId === 2) objectType = "goal";
+      else if (objectId === 3) objectType = "fruit";
+      else objectType = "decorative";
+    }
 
-      case 3: {
-        // fruit
-        // Toggle fruit at position
-        const fruitIndex = this.mapData.objects.fruits.findIndex(
-          (fruit) => fruit.x === x && fruit.y === y,
-        );
-        if (fruitIndex !== -1) {
-          // Remove existing fruit
-          this.mapData.objects.fruits.splice(fruitIndex, 1);
-        } else {
-          // Add new fruit
-          this.mapData.objects.fruits.push({ x, y });
-        }
-        break;
-      }
+    // Logic for unique items (player, goal)
+    if (objectId === 1 || objectId === 2) {
+      // Remove any existing player/goal
+      this.mapData.objects.items = this.mapData.objects.items.filter(
+        (item) => item.id !== objectId,
+      );
+      // Place the new one
+      this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
+    } else {
+      // For multiple-placement items (fruits, enemies, decorative)
+      // Toggle at position
+      const existingIndex = this.mapData.objects.items.findIndex(
+        (obj) => obj.x === x && obj.y === y && obj.id === objectId,
+      );
 
-      case 4: {
-        // enemy
-        // Toggle enemy at position
-        const enemyIndex = this.mapData.objects.enemies.findIndex(
-          (enemy) => enemy.x === x && enemy.y === y,
-        );
-        if (enemyIndex !== -1) {
-          // Remove existing enemy
-          this.mapData.objects.enemies.splice(enemyIndex, 1);
-        } else {
-          // Add new enemy with default type
-          this.mapData.objects.enemies.push({ x, y, type: "slime" });
-        }
-        break;
-      }
-
-      default: {
-        // Handle decorative objects (5+)
-        if (this.selectedObjectId >= 5) {
-          // Toggle decorative object at position
-          const objIndex = this.mapData.objects.decorativeObjects.findIndex(
-            (obj) => obj.x === x && obj.y === y && obj.id === this.selectedObjectId,
-          );
-          if (objIndex !== -1) {
-            // Remove existing decorative object
-            this.mapData.objects.decorativeObjects.splice(objIndex, 1);
-          } else {
-            // Add new decorative object
-            this.mapData.objects.decorativeObjects.push({ id: this.selectedObjectId, x, y });
-          }
-        }
-        break;
+      if (existingIndex !== -1) {
+        // Remove existing object
+        this.mapData.objects.items.splice(existingIndex, 1);
+      } else {
+        // Add new object
+        this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
       }
     }
 
@@ -515,12 +503,15 @@ export class EditorStore {
    * @param width - New width in tiles
    * @param height - New height in tiles
    */
-  resize(width: number, height: number): void {
+  resize(width: number, height: number, tileSize?: number): void {
     this.saveHistory();
 
     // Update config
     this.mapData.config.width = width;
     this.mapData.config.height = height;
+    if (tileSize !== undefined) {
+      this.mapData.config.tileSize = tileSize;
+    }
 
     // Regenerate all 4 layers
     this.mapData.layers.background = createEmptyLayer(width, height, 0);
@@ -529,11 +520,7 @@ export class EditorStore {
     this.mapData.layers.collision = createEmptyLayer(width, height, 0);
 
     // Clear objects that might be out of bounds
-    this.mapData.objects.playerSpawn = null;
-    this.mapData.objects.goal = null;
-    this.mapData.objects.fruits = [];
-    this.mapData.objects.enemies = [];
-    this.mapData.objects.decorativeObjects = [];
+    this.mapData.objects.items = [];
 
     this.notify();
   }
@@ -581,6 +568,106 @@ export class EditorStore {
   }
 
   /**
+   * Update the map difficulty
+   *
+   * @param difficulty - Difficulty level (1=easy, 2=normal, 3=hard)
+   */
+  setMapDifficulty(difficulty: 1 | 2 | 3): void {
+    this.saveHistory();
+    this.mapData.config.difficulty = difficulty;
+    this.notify();
+  }
+
+  /**
+   * Update the map time limit
+   *
+   * @param seconds - Time limit in seconds
+   */
+  setMapTimeLimitSeconds(seconds: number): void {
+    this.saveHistory();
+    this.mapData.config.timeLimitSeconds = seconds;
+    this.notify();
+  }
+
+  /**
+   * Update the map win condition
+   *
+   * @param winCondition - Win condition (1=reach goal, 2=collect all fruits)
+   */
+  setMapWinCondition(winCondition: 1 | 2): void {
+    this.saveHistory();
+    this.mapData.config.winCondition = winCondition;
+    this.notify();
+  }
+
+  /**
+   * Update the map price
+   *
+   * @param price - Map price
+   */
+  setMapPrice(price: number): void {
+    this.saveHistory();
+    this.mapData.config.price = price;
+    this.notify();
+  }
+
+  setMapType(type: "platform" | "topdown"): void {
+    this.saveHistory();
+    this.mapData.config.type = type;
+    this.notify();
+  }
+
+  /**
+   * Update the map block limit
+   *
+   * @param blockLimit - Maximum blocks allowed, or null for unlimited
+   */
+  setBlockLimit(blockLimit: number | null): void {
+    this.saveHistory();
+    const normalized =
+      typeof blockLimit === "number" && Number.isFinite(blockLimit)
+        ? Math.max(1, Math.floor(blockLimit))
+        : null;
+    this.mapData.blockConstraints.blockLimit = normalized;
+    this.notify();
+  }
+
+  /**
+   * Update the list of banned block types
+   *
+   * @param bannedBlocks - Block type IDs that cannot be used
+   */
+  setBannedBlocks(bannedBlocks: string[]): void {
+    this.saveHistory();
+    this.mapData.blockConstraints.bannedBlocks = Array.from(
+      new Set(bannedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
+    );
+    this.notify();
+  }
+
+  /**
+   * Update required block rules
+   *
+   * @param requiredBlocks - Block type requirements with minimum counts
+   */
+  setRequiredBlocks(requiredBlocks: Array<{ type: string; minCount: number }>): void {
+    this.saveHistory();
+    this.mapData.blockConstraints.requiredBlocks = requiredBlocks
+      .filter(
+        (rule) =>
+          typeof rule.type === "string" &&
+          rule.type.trim().length > 0 &&
+          typeof rule.minCount === "number" &&
+          Number.isFinite(rule.minCount),
+      )
+      .map((rule) => ({
+        type: rule.type,
+        minCount: Math.max(1, Math.floor(rule.minCount)),
+      }));
+    this.notify();
+  }
+
+  /**
    * Load a new map into the editor
    * Supports backward compatibility with 2-layer maps
    *
@@ -615,9 +702,89 @@ export class EditorStore {
       loadedMap.config.description = "";
     }
 
-    // Backward compatibility: Add decorativeObjects if missing
-    if (!loadedMap.objects.decorativeObjects) {
-      loadedMap.objects.decorativeObjects = [];
+    // Backward compatibility: Add missing config fields if needed
+    if (loadedMap.config.difficulty === undefined) {
+      loadedMap.config.difficulty = 1; // Default: Easy
+    }
+    if (loadedMap.config.timeLimitSeconds === undefined) {
+      loadedMap.config.timeLimitSeconds = 300; // Default: 5 minutes
+    }
+    if (loadedMap.config.winCondition === undefined) {
+      loadedMap.config.winCondition = 1; // Default: Reach goal
+    }
+    if (loadedMap.config.price === undefined) {
+      loadedMap.config.price = 0; // Default: Free
+    }
+
+    // Backward compatibility: Convert specific arrays into unified items array
+    if (!loadedMap.objects.items) {
+      loadedMap.objects.items = [];
+
+      // Migrate playerSpawn
+      const anyMap = loadedMap as unknown as Record<string, unknown>;
+      const objectsRaw = (anyMap.objects as Record<string, unknown>) || {};
+
+      if (objectsRaw.playerSpawn) {
+        const ps = objectsRaw.playerSpawn as { x: number; y: number };
+        loadedMap.objects.items.push({ id: 1, type: "player", x: ps.x, y: ps.y });
+      }
+
+      // Migrate goal
+      if (objectsRaw.goal) {
+        const g = objectsRaw.goal as { x: number; y: number };
+        loadedMap.objects.items.push({ id: 2, type: "goal", x: g.x, y: g.y });
+      }
+
+      // Migrate fruits
+      if (Array.isArray(objectsRaw.fruits)) {
+        objectsRaw.fruits.forEach((f) => {
+          loadedMap.objects.items.push({ id: 3, type: "fruit", x: f.x, y: f.y });
+        });
+      }
+
+      // Migrate enemies
+      if (Array.isArray(objectsRaw.enemies)) {
+        objectsRaw.enemies.forEach((e) => {
+          // Keep as id 4 for palette highlighting backward compat, but don't force string type
+          loadedMap.objects.items.push({ id: 4, type: e.type || "enemy", x: e.x, y: e.y });
+        });
+      }
+
+      // Migrate decorative objects
+      if (Array.isArray(objectsRaw.decorativeObjects)) {
+        objectsRaw.decorativeObjects.forEach((d) => {
+          loadedMap.objects.items.push({ id: d.id, type: "decorative", x: d.x, y: d.y });
+        });
+      }
+
+      // Clean up old fields
+      delete objectsRaw.playerSpawn;
+      delete objectsRaw.goal;
+      delete objectsRaw.fruits;
+      delete objectsRaw.enemies;
+      delete objectsRaw.decorativeObjects;
+    }
+
+    // Backward compatibility: Add block constraints if missing
+    if (!loadedMap.blockConstraints) {
+      loadedMap.blockConstraints = {
+        blockLimit: null,
+        bannedBlocks: [],
+        requiredBlocks: [],
+      };
+    }
+    if (!Array.isArray(loadedMap.blockConstraints.bannedBlocks)) {
+      loadedMap.blockConstraints.bannedBlocks = [];
+    }
+    if (!Array.isArray(loadedMap.blockConstraints.requiredBlocks)) {
+      loadedMap.blockConstraints.requiredBlocks = [];
+    }
+    if (
+      loadedMap.blockConstraints.blockLimit !== null &&
+      (typeof loadedMap.blockConstraints.blockLimit !== "number" ||
+        !Number.isFinite(loadedMap.blockConstraints.blockLimit))
+    ) {
+      loadedMap.blockConstraints.blockLimit = null;
     }
 
     this.mapData = loadedMap;

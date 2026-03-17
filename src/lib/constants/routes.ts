@@ -6,18 +6,36 @@ export const ROUTES = {
   MAP_EDITOR: "/map-editor",
   GAMEMENU: "/game-menu",
 
-  // Student
-  STUDENT_LOGIN: "/login",
-  STUDENT_APP: "/app",
-  STUDENT_HOME: "/app/home",
-  STUDENT_CHALLENGES: "/app/challenges",
-  STUDENT_PACKAGES: "/app/packages",
-  STUDENT_VERIFY_OTP: "/verify-otp",
-  STUDENT_REGISTER: "/register",
-  STUDENT_LEARN: "/app/browse",
-  STUDENT_PROFILE: "/app/profile",
-  STUDENT_ROOM_CREATE: "/app/room/create",
-  STUDENT_ROOM_JOIN: "/app/room/join",
+  // Learner
+  LEARNER_LOGIN: "/login",
+  LEARNER_APP: "/app",
+  // Default learner landing (currently Marketplace)
+  LEARNER_HOME: "/app/marketplace",
+  /** Browse / play maps (ex-challenges) */
+  LEARNER_MAPS_BROWSE: "/app/maps",
+  LEARNER_PACKAGES: "/app/packages",
+  LEARNER_VERIFY_OTP: "/verify-otp",
+  LEARNER_REGISTER: "/register",
+  LEARNER_LEARN: "/app/browse",
+  LEARNER_PROFILE: "/app/profile",
+  LEARNER_WALLET: "/app/wallet",
+  LEARNER_MAPS: "/app/my-maps",
+  LEARNER_MARKETPLACE: "/app/marketplace",
+  LEARNER_MAP_DETAIL: "/app/map/:id",
+  LEARNER_ROOM_CREATE: "/app/room/create",
+  LEARNER_ROOM_JOIN: "/app/room/join",
+  /** Room detail/waiting – use with /app/room/:roomId (roomId must be single segment, no slashes) */
+  LEARNER_ROOM_DETAIL: (roomId: string) => `/app/room/${String(roomId).replace(/\//g, "").trim()}`,
+  /** Kết quả xếp hạng sau khi tất cả đã submit – truyền state: { ranking, roomId } */
+  LEARNER_ROOM_RESULT: "/app/room/result",
+  /** Chọn mục tiêu học tập (sau đăng nhập / lần đầu) */
+  LEARNER_GOAL_SELECT: "/app/goal-select",
+  /** Lộ trình của tôi – danh sách concept + map theo goal đã chọn */
+  LEARNER_MY_PATH: "/app/my-path",
+  /** Đọc nội dung khái niệm – use with /app/concept/:id */
+  LEARNER_CONCEPT: (id: string) => `/app/concept/${id}`,
+  /** Danh sách concept – học thêm concept khác (query: goalId để lọc theo goal) */
+  LEARNER_CONCEPTS: "/app/concepts",
 
   // CMS
   CMS_LOGIN: "/cms/login",

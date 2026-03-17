@@ -1,0 +1,69 @@
+<div class="concept-intro" id="section-intro">
+  <p>🎯 <strong>Bài này học gì?</strong> Học quy tắc đơn giản: máy tính làm từng lệnh <strong>theo thứ tự từ trên xuống dưới</strong>, giống như đọc sách từ trang 1 đến trang 2, không nhảy cóc (trừ khi có lệnh đặc biệt như if-else hay vòng lặp).</p>
+</div>
+
+<section class="concept-section" id="section-1">
+  <h2>1️⃣ Đọc từ trên xuống, từ trái sang phải</h2>
+  <p>Chương trình giống một <strong>danh sách việc cần làm</strong>:</p>
+  <ol>
+    <li>Làm việc 1 xong</li>
+    <li>Làm việc 2 xong</li>
+    <li>Làm việc 3 xong</li>
+  </ol>
+  <p>Máy không làm việc 2 trước việc 1. Nó luôn bắt đầu từ <strong>dòng đầu tiên</strong>, xong rồi mới xuống dòng tiếp theo.</p>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--tip">Hình dung</span> ⬇️ Thứ tự = từ trên xuống dưới.</p>
+    <p>➡️ Trong một dòng = từ trái sang phải (ví dụ: tính 2 + 3 trước rồi mới gán vào biến).</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-2">
+  <h2>2️⃣ Ví dụ từng bước</h2>
+  <pre><code>diem = 0
+diem = diem + 10
+in(diem)
+diem = diem + 5
+in(diem)</code></pre>
+  <div class="concept-example">
+    <p><strong>Bước 1:</strong> <code>diem = 0</code> → hộp "diem" chứa 0.</p>
+    <p><strong>Bước 2:</strong> <code>diem = diem + 10</code> → 0 + 10 = 10, bỏ vào hộp → diem = 10.</p>
+    <p><strong>Bước 3:</strong> <code>in(diem)</code> → in ra màn hình: 10.</p>
+    <p><strong>Bước 4:</strong> <code>diem = diem + 5</code> → 10 + 5 = 15, bỏ vào hộp → diem = 15.</p>
+    <p><strong>Bước 5:</strong> <code>in(diem)</code> → in ra: 15.</p>
+  </div>
+  <p>Kết quả màn hình: in ra <strong>10</strong> rồi in ra <strong>15</strong>. Đúng thứ tự từ trên xuống.</p>
+</section>
+
+<section class="concept-section" id="section-3">
+  <h2>3️⃣ Hình dung: xếp khối trong game</h2>
+  <p>Khi bạn xếp các khối lệnh (block) trong game:</p>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--tip">Trong game</span> 🟦 Khối 1: "Di chuyển sang phải"</p>
+    <p>🟦 Khối 2: "Nhảy"</p>
+    <p>🟦 Khối 3: "Thu thập sao"</p>
+  </div>
+  <p>Nhân vật sẽ làm đúng thứ tự: <strong>đi phải</strong> → <strong>nhảy</strong> → <strong>thu thập sao</strong>. Đổi thứ tự khối thì hành động đổi theo!</p>
+  <div class="concept-callout">
+    <p><span class="concept-label concept-label--tip">Tip</span> 💡 Muốn nhân vật nhảy rồi mới đi? Hãy đặt khối "Nhảy" lên trên khối "Di chuyển".</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-4">
+  <h2>4️⃣ Tại sao thứ tự quan trọng?</h2>
+  <p>Ví dụ:</p>
+  <ul>
+    <li>Nếu bạn in <code>diem</code> <strong>trước</strong> khi gán <code>diem = 10</code>, máy có thể in ra số cũ (hoặc lỗi).</li>
+    <li>Trong game: phải "kiểm tra chạm quái" <strong>trước</strong> khi "trừ mạng", chứ không thể trừ mạng rồi mới kiểm tra.</li>
+  </ul>
+  <p>✅ Sắp xếp đúng thứ tự = chương trình làm đúng ý mình.</p>
+</section>
+
+<section class="concept-section concept-summary" id="section-summary">
+  <h2>📌 Ôn lại nhanh</h2>
+  <ul>
+    <li>Máy chạy lệnh <strong>từ trên xuống dưới</strong>, từ trái sang phải trong một dòng.</li>
+    <li>Không nhảy cóc (trừ khi gặp if-else, vòng lặp... sẽ học sau).</li>
+    <li>Xếp khối đúng thứ tự → nhân vật / chương trình làm đúng trình tự.</li>
+    <li>Khi lỗi, thử xem mình có đặt lệnh sai thứ tự không.</li>
+  </ul>
+</section>

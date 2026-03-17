@@ -24,11 +24,10 @@ export class TileRenderer {
   private objectSpriteCache: ObjectSpriteCache;
   private currentStore: EditorStore | null = null;
   private objectDefinitions: Record<string, ObjectDefinition> | null = null;
+  private objectDefinitionsByName: Record<string, ObjectDefinition> | null = null;
   private objectSpritesLoaded: boolean = false;
-  private gameType: GameType;
 
   constructor(gameType: GameType) {
-    this.gameType = gameType;
     this.tilesetLoader = new TilesetLoader(gameType);
     this.tilesetCache = new TilesetCache();
     this.objectSpriteLoader = new ObjectSpriteLoader(gameType);
@@ -44,6 +43,13 @@ export class TileRenderer {
       // Load object definitions from JSON
       this.objectDefinitions = await this.objectSpriteLoader.loadObjectDefinitions("objects");
 
+      // Build fast lookup by logical object name (player, goal, fruit, enemy, ...)
+      const byName: Record<string, ObjectDefinition> = {};
+      for (const objDef of Object.values(this.objectDefinitions)) {
+        byName[objDef.name] = objDef;
+      }
+      this.objectDefinitionsByName = byName;
+
       // Preload all object sprite images
       const imagePathsSet = new Set<string>();
       for (const objDef of Object.values(this.objectDefinitions)) {
@@ -58,6 +64,7 @@ export class TileRenderer {
     } catch (error) {
       console.error("Failed to load object sprites:", error);
       this.objectSpritesLoaded = false;
+      this.objectDefinitionsByName = null;
     }
   }
 
@@ -120,6 +127,12 @@ export class TileRenderer {
 
     // Render layers in order, checking visibility
     for (const layer of renderOrder) {
+      // Skip collision layer in normal render pass if it's visible
+      // We'll render it separately at the end to ensure it's always on top
+      if (layer === "collision") {
+        continue;
+      }
+
       // Always render the active layer, regardless of visibility setting
       const shouldRender = layer === activeLayer || store.isLayerVisible(layer);
 
@@ -127,18 +140,20 @@ export class TileRenderer {
         continue; // Skip invisible non-active layers
       }
 
-      if (layer === "collision") {
-        // Special rendering for collision layer
-        this.renderCollisionLayer(ctx, mapData);
-      } else {
-        // Render tile layer
-        this.renderLayer(ctx, mapData, layer, tileSize);
+      // Render tile layer
+      this.renderLayer(ctx, mapData, layer, tileSize);
 
-        // Render objects after ground layer (objects sit on ground, before foreground)
-        if (layer === "ground") {
-          this.renderObjects(ctx, mapData);
-        }
+      // Render objects after ground layer (objects sit on ground, before foreground)
+      if (layer === "ground") {
+        this.renderObjects(ctx, mapData);
       }
+    }
+
+    // Render collision layer last if it's visible or active
+    // This ensures collision is always rendered on top of other layers
+    const shouldRenderCollision = activeLayer === "collision" || store.isLayerVisible("collision");
+    if (shouldRenderCollision) {
+      this.renderCollisionLayer(ctx, mapData);
     }
 
     // Highlight active layer with a subtle overlay on non-active tiles
@@ -225,19 +240,11 @@ export class TileRenderer {
 
   /**
    * Render collision layer with clear visual indicators
+   * Always renders as transparent overlay so other layers remain visible
    */
   private renderCollisionLayer(ctx: CanvasRenderingContext2D, mapData: MapData): void {
     const { width, height, tileSize } = mapData.config;
     const layer = mapData.layers.collision;
-
-    // Draw background checkerboard
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const isCheckerDark = (x + y) % 2 === 0;
-        ctx.fillStyle = isCheckerDark ? "#f5f5f5" : "#ffffff";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
 
     // Draw collision tiles (solid = 1, empty = 0)
     for (let y = 0; y < height; y++) {
@@ -245,19 +252,14 @@ export class TileRenderer {
         const value = layer[y][x];
 
         if (value === 1) {
-          // Solid collision - red with pattern
+          // Solid collision - red with transparency so layers below are visible
           ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
           ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
 
-          // Add diagonal lines pattern
-          // ctx.strokeStyle = "rgba(200, 0, 0, 0.6)";
-          // ctx.lineWidth = 2;
-          // ctx.beginPath();
-          // ctx.moveTo(x * tileSize, y * tileSize);
-          // ctx.lineTo((x + 1) * tileSize, (y + 1) * tileSize);
-          // ctx.moveTo((x + 1) * tileSize, y * tileSize);
-          // ctx.lineTo(x * tileSize, (y + 1) * tileSize);
-          // ctx.stroke();
+          // Add border to make collision tiles more visible
+          ctx.strokeStyle = "rgba(200, 0, 0, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
         }
       }
     }
@@ -357,24 +359,13 @@ export class TileRenderer {
     const { tileSize } = mapData.config;
     const { objects } = mapData;
 
-    // Draw player spawn
-    if (objects.playerSpawn) {
-      this.renderObject(ctx, "player", objects.playerSpawn.x, objects.playerSpawn.y, tileSize);
-    }
+    // Draw all placed objects
+    objects.items?.forEach((item) => {
+      // Use definition name if available (especially for decorative objects >= 5)
+      const objDef = this.objectDefinitions?.[item.id.toString()];
+      const renderType = objDef ? objDef.name : item.type;
 
-    // Draw goal
-    if (objects.goal) {
-      this.renderObject(ctx, "goal", objects.goal.x, objects.goal.y, tileSize);
-    }
-
-    // Draw fruits
-    objects.fruits.forEach((fruit) => {
-      this.renderObject(ctx, "fruit", fruit.x, fruit.y, tileSize);
-    });
-
-    // Draw enemies
-    objects.enemies.forEach((enemy) => {
-      this.renderObject(ctx, "enemy", enemy.x, enemy.y, tileSize);
+      this.renderObject(ctx, renderType, item.x, item.y, tileSize);
     });
   }
 
@@ -388,12 +379,12 @@ export class TileRenderer {
     y: number,
     tileSize: number,
   ): void {
-    if (!this.objectDefinitions || !this.objectSpritesLoaded) {
+    if (!this.objectDefinitionsByName || !this.objectSpritesLoaded) {
       this.renderObjectFallback(ctx, objectType, x, y, tileSize);
       return;
     }
 
-    const objDef = this.objectDefinitions[objectType];
+    const objDef = this.objectDefinitionsByName[objectType];
     if (!objDef) {
       this.renderObjectFallback(ctx, objectType, x, y, tileSize);
       return;
@@ -406,8 +397,9 @@ export class TileRenderer {
     }
 
     // Calculate source position (frame from sprite sheet)
-    const sx = objDef.frameIndex * objDef.frameWidth;
-    const sy = 0; // Assuming horizontal sprite sheets
+    const cols = objDef.columns ?? Infinity;
+    const sx = (objDef.frameIndex % cols) * objDef.frameWidth;
+    const sy = Math.floor(objDef.frameIndex / cols) * objDef.frameHeight;
 
     // Draw the sprite scaled to tile size
     ctx.drawImage(

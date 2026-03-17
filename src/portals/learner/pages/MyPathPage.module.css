@@ -1,0 +1,225 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  color: var(--text);
+}
+
+.header {
+  margin-bottom: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--text-2);
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.noGoal {
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.noGoalText {
+  margin: 0;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.primaryBtn {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-contrast, #fff);
+  cursor: pointer;
+}
+
+.primaryBtn:hover {
+  opacity: 0.95;
+}
+
+.goalName {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.exploreConceptsBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.exploreConceptsBtn:hover {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.empty {
+  color: var(--text-2);
+  padding: 24px 0;
+}
+
+/* Lộ trình – bố trí theo chiều dọc với timeline */
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 24px;
+  border-left: 3px solid var(--border);
+  margin-left: 8px;
+}
+
+.itemRow {
+  margin: 0;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.itemRow:last-child {
+  padding-bottom: 0;
+}
+
+.itemRow::before {
+  content: "";
+  position: absolute;
+  left: -30px;
+  top: 20px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-sizing: border-box;
+}
+
+.itemCard {
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.itemIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.itemTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completedIcon {
+  color: var(--success, green);
+}
+
+.lockIcon {
+  color: var(--text-2);
+}
+
+.itemDesc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.actionBtn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

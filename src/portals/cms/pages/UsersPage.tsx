@@ -2,7 +2,7 @@
  * CMS Users Page
  *
  * Displays paginated list of all users with:
- * - Role badges (Admin/Student)
+ * - Role badges (Admin/Learner)
  * - Status indicators (Active/Inactive/Suspended)
  * - Search and filter functionality
  * - Pagination controls
@@ -44,6 +44,7 @@ export const UsersPage: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]);
 
   const fetchUsers = async () => {
@@ -156,7 +157,7 @@ export const UsersPage: React.FC = () => {
 
   const getRoleLabel = (roles: RoleEnum[]) => {
     if (roles.includes(0)) return "Admin";
-    if (roles.includes(1)) return "Student";
+    if (roles.includes(1)) return "Learner";
     return "User";
   };
 
@@ -887,7 +888,7 @@ export const UsersPage: React.FC = () => {
                   }}
                 >
                   <option value={0}>Admin</option>
-                  <option value={1}>Student</option>
+                  <option value={1}>Learner</option>
                 </select>
               </div>
 

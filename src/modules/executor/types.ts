@@ -35,6 +35,22 @@ export interface TurnNode {
 }
 
 /**
+ * Jump command - jump over an obstacle or gap
+ */
+export interface JumpNode {
+  type: "jump";
+  blockId: string;
+}
+
+/**
+ * Wait command - consume one turn without moving
+ */
+export interface WaitNode {
+  type: "wait";
+  blockId: string;
+}
+
+/**
  * Repeat control flow block
  * Executes body blocks a specified number of times
  */
@@ -48,7 +64,13 @@ export interface RepeatNode {
 /**
  * Condition types for reusable boolean blocks
  */
-export type ConditionType = "wallAhead" | "pathAhead" | "obstacleAhead";
+export type ConditionType =
+  | "wallAhead"
+  | "pathAhead"
+  | "obstacleAhead"
+  | "wallLeft"
+  | "wallRight"
+  | "goalReached";
 
 /**
  * Condition node representing a boolean expression
@@ -56,6 +78,35 @@ export type ConditionType = "wallAhead" | "pathAhead" | "obstacleAhead";
 export interface ConditionNode {
   type: "condition";
   conditionType: ConditionType;
+  blockId: string;
+}
+
+/**
+ * Boolean literal node - represents a hardcoded True or False value
+ */
+export interface BooleanLiteralNode {
+  type: "booleanLiteral";
+  value: boolean;
+  blockId: string;
+}
+
+/**
+ * Logic AND/OR with two boolean operands
+ */
+export interface LogicBinaryNode {
+  type: "logicBinary";
+  operator: "and" | "or";
+  left: ASTNode | null;
+  right: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Logic NOT with a single boolean operand
+ */
+export interface LogicNotNode {
+  type: "logicNot";
+  value: ASTNode | null;
   blockId: string;
 }
 
@@ -92,17 +143,63 @@ export interface CustomDoWhileNode {
 }
 
 /**
+ * Repeat until condition is true
+ */
+export interface RepeatUntilNode {
+  type: "repeatUntil";
+  condition: ASTNode | null;
+  body: ASTNode[];
+  blockId: string;
+}
+
+/**
+ * Define a named reusable procedure
+ */
+export interface DefineProcedureNode {
+  type: "defineProcedure";
+  name: string;
+  body: ASTNode[];
+  blockId: string;
+}
+
+/**
+ * Call a named procedure
+ */
+export interface CallProcedureNode {
+  type: "callProcedure";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Interact command - interacts with an object in front of the player
+ */
+export interface InteractNode {
+  type: "interact";
+  blockId: string;
+}
+
+/**
  * Union type of all possible AST node types
  */
 export type ASTNode =
   | MoveNode
   | MoveForwardNode
   | TurnNode
+  | JumpNode
+  | WaitNode
+  | InteractNode
   | RepeatNode
   | ConditionNode
+  | BooleanLiteralNode
+  | LogicBinaryNode
+  | LogicNotNode
   | CustomIfNode
   | CustomWhileNode
-  | CustomDoWhileNode;
+  | CustomDoWhileNode
+  | RepeatUntilNode
+  | DefineProcedureNode
+  | CallProcedureNode;
 
 /**
  * A program is a sequence of AST nodes to execute
