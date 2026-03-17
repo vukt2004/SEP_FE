@@ -1,0 +1,109 @@
+<div class="concept-intro" id="section-intro">
+  <p>🎯 <strong>Bài này học gì?</strong> Học cách bảo máy tính: "Nếu điều kiện đúng thì làm A, nếu sai thì làm B." Giống như khi mẹ nói: "Nếu trời mưa thì mang áo mưa, không thì mang nón."</p>
+</div>
+
+<section class="concept-section" id="section-1">
+  <h2>1️⃣ Hiểu "đúng" và "sai"</h2>
+  <p>Máy tính chỉ hiểu hai thứ: <strong>đúng</strong> (✅) và <strong>sai</strong> (❌).</p>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--example">Ví dụ</span></p>
+    <ul>
+      <li>"3 lớn hơn 2 không?" → ✅ Đúng</li>
+      <li>"5 bằng 10 không?" → ❌ Sai</li>
+      <li>"Bạn có ít nhất 1 mạng không?" → ✅ Đúng hoặc ❌ Sai</li>
+    </ul>
+  </div>
+  <p>Khi ta viết <strong>if-else</strong>, ta đang nói với máy: "Hãy xem điều kiện này đúng hay sai. Đúng thì làm việc này, sai thì làm việc kia."</p>
+</section>
+
+<section class="concept-section" id="section-2">
+  <h2>2️⃣ Hình dung: con đường rẽ đôi</h2>
+  <p>Hãy tưởng tượng bạn đứng trước hai con đường:</p>
+  <div class="concept-diagram">
+    <svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flow-svg">
+      <text x="120" y="20" text-anchor="middle" font-size="12" fill="currentColor">Bắt đầu</text>
+      <path d="M 120 28 L 120 50" stroke="currentColor" stroke-width="2" fill="none"/>
+      <ellipse cx="120" cy="58" rx="50" ry="18" fill="rgba(0,0,0,0.05)" stroke="currentColor" stroke-width="1.5"/>
+      <text x="120" y="62" text-anchor="middle" font-size="10">Điều kiện đúng?</text>
+      <path d="M 70 58 L 40 80" stroke="currentColor" stroke-width="2" fill="none"/>
+      <path d="M 170 58 L 200 80" stroke="currentColor" stroke-width="2" fill="none"/>
+      <rect x="10" y="72" width="60" height="28" rx="4" fill="rgba(0,0,0,0.06)" stroke="currentColor" stroke-width="1"/>
+      <text x="40" y="90" text-anchor="middle" font-size="9">Làm A ✅</text>
+      <rect x="170" y="72" width="60" height="28" rx="4" fill="rgba(0,0,0,0.06)" stroke="currentColor" stroke-width="1"/>
+      <text x="200" y="90" text-anchor="middle" font-size="9">Làm B ❌</text>
+    </svg>
+  </div>
+  <p>🔀 <strong>If-else</strong> = đứng ở ngã ba, kiểm tra bảng chỉ dẫn (điều kiện). Đúng thì đi đường A, sai thì đi đường B.</p>
+</section>
+
+<section class="concept-section" id="section-3">
+  <h2>3️⃣ Viết ra sao?</h2>
+  <p>Trong code, ta viết gần giống tiếng Anh:</p>
+  <pre><code>if (điều kiện đúng?) {
+  làm việc A;
+} else {
+  làm việc B;
+}</code></pre>
+  <div class="concept-callout">
+    <p><span class="concept-label concept-label--tip">Nhớ</span> 💡 <strong>Nhớ nhé:</strong> <code>if</code> = "nếu", <code>else</code> = "còn không thì". Máy sẽ chỉ chạy <strong>một trong hai</strong> nhánh thôi (A hoặc B), không chạy cả hai.</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-4">
+  <h2>4️⃣ Ví dụ dễ: Điểm đạt hay chưa?</h2>
+  <p>Quy định: điểm từ 5 trở lên là đạt, dưới 5 là chưa đạt.</p>
+  <div class="concept-example">
+    <p><span class="concept-label concept-label--example">Ví dụ</span></p>
+    <p><strong>Bước 1:</strong> Có biến điểm, ví dụ <code>diem = 7</code>.</p>
+    <p><strong>Bước 2:</strong> Hỏi: "diem có lớn hơn hoặc bằng 5 không?"</p>
+    <p><strong>Bước 3:</strong> Nếu <strong>có</strong> → in "Đạt" 🎉. Nếu <strong>không</strong> → in "Chưa đạt" 📝.</p>
+  </div>
+  <pre><code>if (diem >= 5) {
+  in("Đạt");
+} else {
+  in("Chưa đạt");
+}</code></pre>
+  <p>Thử trong đầu: nếu <code>diem = 3</code> thì máy in gì? → In "Chưa đạt", vì 3 &lt; 5 (điều kiện sai).</p>
+</section>
+
+<section class="concept-section" id="section-5">
+  <h2>5️⃣ Nhiều nhánh: else if</h2>
+  <p>Đôi khi không chỉ có hai lựa chọn mà có ba, bốn:</p>
+  <ul>
+    <li>Điểm từ 8 trở lên → "Giỏi" 🌟</li>
+    <li>Từ 5 đến dưới 8 → "Khá" 👍</li>
+    <li>Dưới 5 → "Cần cố gắng" 💪</li>
+  </ul>
+  <p>Ta dùng <code>else if</code> (còn không thì nếu...):</p>
+  <pre><code>if (diem >= 8) {
+  in("Giỏi");
+} else if (diem >= 5) {
+  in("Khá");
+} else {
+  in("Cần cố gắng");
+}</code></pre>
+  <div class="concept-callout">
+    <p><span class="concept-label concept-label--tip">Tip</span> 🧩 Máy đọc từ trên xuống. Gặp điều kiện đúng đầu tiên thì làm xong rồi <strong>bỏ qua</strong> các dòng còn lại.</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-6">
+  <h2>6️⃣ Trong game dùng if-else thế nào?</h2>
+  <p>Ví dụ:</p>
+  <ul>
+    <li>Nếu <strong>chạm quái</strong> → trừ 1 mạng, không thì không trừ.</li>
+    <li>Nếu <strong>số mạng = 0</strong> → hiện màn hình "Game Over", không thì tiếp tục chơi.</li>
+    <li>Nếu <strong>nhân vật đứng trên đất</strong> → mới cho nhảy, không thì không nhảy (tránh nhảy lia lịa trên không).</li>
+  </ul>
+  <p>🎮 Tóm lại: if-else giúp game "biết" phản ứng khác nhau tùy tình huống (đúng/sai).</p>
+</section>
+
+<section class="concept-section concept-summary" id="section-summary">
+  <h2>📌 Ôn lại nhanh</h2>
+  <ul>
+    <li>If-else = "Nếu đúng thì làm A, sai thì làm B."</li>
+    <li>Máy chỉ chạy <strong>một</strong> trong hai nhánh.</li>
+    <li>Dùng <code>else if</code> khi có nhiều hơn hai lựa chọn.</li>
+    <li>Trong game: dùng để kiểm tra điều kiện (chạm quái, hết mạng, đứng đất...) rồi làm hành động tương ứng.</li>
+  </ul>
+</section>

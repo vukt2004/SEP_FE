@@ -1,6 +1,6 @@
 // src/portals/learner/components/LearnerSidebar.tsx
 import { NavLink } from "react-router-dom";
-import { Gamepad2, Map, Store } from "lucide-react";
+import { Gamepad2, Map, Store, Route } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 
@@ -36,6 +36,11 @@ export default function LearnerSidebar() {
           to={ROUTES.LEARNER_LEARN ?? "/app/browse"}
           label={t("gameModeBrowse")}
           icon={Gamepad2}
+        />
+        <SideNavLink
+          to={ROUTES.LEARNER_MY_PATH ?? "/app/my-path"}
+          label={t("myPath")}
+          icon={Route}
         />
         <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label={t("myMaps")} icon={Map} />
       </nav>

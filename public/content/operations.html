@@ -1,0 +1,72 @@
+<div class="concept-intro" id="section-intro">
+  <p>🎯 <strong>Bài này học gì?</strong> Học bốn phép tính cơ bản mà máy tính dùng suốt: cộng (+), trừ (-), nhân (*), chia (/). Giống như khi bạn đếm kẹo, tính tiền, hay cộng điểm trong game.</p>
+</div>
+
+<section class="concept-section" id="section-1">
+  <h2>1️⃣ Bốn phép tính quen thuộc</h2>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--tip">Bốn phép</span></p>
+    <p><strong>➕ Cộng</strong> — gộp lại: 3 + 2 = 5 (3 cái kẹo thêm 2 cái = 5 cái)</p>
+    <p><strong>➖ Trừ</strong> — bớt đi: 10 - 4 = 6 (có 10, bớt 4 còn 6)</p>
+    <p><strong>✖️ Nhân</strong> — cộng nhiều lần: 3 × 4 = 12 (3 nhóm, mỗi nhóm 4 cái)</p>
+    <p><strong>➗ Chia</strong> — chia đều: 15 ÷ 3 = 5 (15 cái chia 3 phần, mỗi phần 5 cái)</p>
+  </div>
+  <p>Trong code ta viết: <code>+</code> <code>-</code> <code>*</code> <code>/</code>. Ví dụ: <code>5 + 3</code>, <code>10 - 4</code>, <code>6 * 2</code>, <code>15 / 3</code>.</p>
+</section>
+
+<section class="concept-section" id="section-2">
+  <h2>2️⃣ Ví dụ dễ hình dung</h2>
+  <h3>🎮 Trong game</h3>
+  <ul>
+    <li>Ăn 1 sao → <code>diem = diem + 10</code> (cộng 10 vào điểm)</li>
+    <li>Chạm quái → <code>mang = mang - 1</code> (trừ 1 mạng)</li>
+    <li>Ăn sao x2 → điểm nhân đôi: <code>diem = diem * 2</code></li>
+    <li>Chia đều phần thưởng cho 4 người: <code>moiNguoi = tongQua / 4</code></li>
+  </ul>
+</section>
+
+<section class="concept-section" id="section-3">
+  <h2>3️⃣ Thứ tự tính: Nhân/Chia trước, Cộng/Trừ sau</h2>
+  <p>Máy tính không luôn đọc từ trái sang phải. Nó làm <strong>nhân và chia trước</strong>, rồi mới <strong>cộng và trừ</strong>.</p>
+  <div class="concept-example">
+    <p><span class="concept-label concept-label--example">Ví dụ</span> <code>2 + 3 * 4</code></p>
+    <p>❌ Đọc trái sang phải sai: 2+3=5, 5*4=20 (đôi khi ta hay nhầm thế)</p>
+    <p>✅ Đúng: nhân trước 3*4=12, rồi cộng 2+12= <strong>14</strong></p>
+  </div>
+  <p>Nếu muốn "cộng trước": dùng dấu ngoặc <code>( )</code>. Ví dụ: <code>(2 + 3) * 4</code> = 5 * 4 = 20.</p>
+  <div class="concept-callout">
+    <p>💡 <strong>Nhớ:</strong> Ngoặc ( ) = làm trong ngoặc trước. <code>10 - (2 + 3)</code> = 10 - 5 = 5.</p>
+  </div>
+</section>
+
+<section class="concept-section" id="section-4">
+  <h2>4️⃣ Dùng với biến</h2>
+  <p>Ta thường không ghi số cố định mà dùng biến:</p>
+  <pre><code>diem = 0
+diem = diem + 10
+diem = diem - 2
+soNhan = 3 * 4
+moiPhan = 100 / 5</code></pre>
+  <p>Sau các dòng trên: <code>diem</code> = 8, <code>soNhan</code> = 12, <code>moiPhan</code> = 20.</p>
+</section>
+
+<section class="concept-section" id="section-5">
+  <h2>5️⃣ Tóm tắt bằng hình</h2>
+  <div class="concept-visual">
+    <p><span class="concept-label concept-label--summary">Tóm tắt</span></p>
+    <p>➕ Cộng → tăng (điểm, số lượng)</p>
+    <p>➖ Trừ → giảm (mạng, thời gian)</p>
+    <p>✖️ Nhân → gấp đôi, gấp ba... (bonus x2)</p>
+    <p>➗ Chia → chia đều (phần thưởng cho N người)</p>
+  </div>
+</section>
+
+<section class="concept-section concept-summary" id="section-summary">
+  <h2>📌 Ôn lại nhanh</h2>
+  <ul>
+    <li>Bốn phép: + - * / (cộng, trừ, nhân, chia).</li>
+    <li>Nhân và chia tính trước, cộng và trừ tính sau.</li>
+    <li>Dùng ( ) khi muốn tính một cụm trước.</li>
+    <li>Trong game: dùng để cập nhật điểm, mạng, thời gian, phần thưởng...</li>
+  </ul>
+</section>

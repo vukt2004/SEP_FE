@@ -28,6 +28,14 @@ export const ROUTES = {
   LEARNER_ROOM_DETAIL: (roomId: string) => `/app/room/${String(roomId).replace(/\//g, "").trim()}`,
   /** Kết quả xếp hạng sau khi tất cả đã submit – truyền state: { ranking, roomId } */
   LEARNER_ROOM_RESULT: "/app/room/result",
+  /** Chọn mục tiêu học tập (sau đăng nhập / lần đầu) */
+  LEARNER_GOAL_SELECT: "/app/goal-select",
+  /** Lộ trình của tôi – danh sách concept + map theo goal đã chọn */
+  LEARNER_MY_PATH: "/app/my-path",
+  /** Đọc nội dung khái niệm – use with /app/concept/:id */
+  LEARNER_CONCEPT: (id: string) => `/app/concept/${id}`,
+  /** Danh sách concept – học thêm concept khác (query: goalId để lọc theo goal) */
+  LEARNER_CONCEPTS: "/app/concepts",
 
   // CMS
   CMS_LOGIN: "/cms/login",
