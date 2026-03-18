@@ -95,19 +95,34 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
-    case "interact":
+    case "break": {
+      const power = getValueInput(block, "POWER");
       return {
-        type: "interact",
+        type: "break",
+        power,
+        blockId,
+      };
+    }
+
+    case "open_door":
+      return {
+        type: "openDoor",
+        blockId,
+      };
+
+    case "close_door":
+      return {
+        type: "closeDoor",
         blockId,
       };
 
     case "repeat": {
-      const timesValue = block.getFieldValue("TIMES");
-      const times = Math.max(0, Number(timesValue) || 0);
+      const timesValue = getValueInput(block, "TIMES");
+      const legacyTimes = Math.max(0, Number(block.getFieldValue("TIMES")) || 0);
       const body = getStatementBlocks(block, "DO");
       return {
         type: "repeat",
-        times,
+        times: timesValue ?? legacyTimes,
         body,
         blockId,
       };
@@ -273,6 +288,22 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         : "==";
       return {
         type: "compare",
+        operator,
+        left,
+        right,
+        blockId,
+      };
+    }
+
+    case "math_arithmetic": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      const rawOp = block.getFieldValue("OP") || "+";
+      const operator = ["+", "-", "*", "/"].includes(rawOp)
+        ? (rawOp as "+" | "-" | "*" | "/")
+        : "+";
+      return {
+        type: "arithmetic",
         operator,
         left,
         right,

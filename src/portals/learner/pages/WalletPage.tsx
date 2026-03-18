@@ -58,7 +58,7 @@ export default function WalletPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [t]);
 
   const loadPage = async (page: number) => {
     if (page < 1 || page > totalPages || loadingTransactions) return;

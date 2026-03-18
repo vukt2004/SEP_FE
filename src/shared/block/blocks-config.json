@@ -41,12 +41,40 @@
       "nextStatement": true
     },
     {
-      "type": "interact",
+      "type": "break",
       "category": "movement",
-      "label": "Interact",
-      "tooltip": "Interact with an object in front of you (e.g. break a box, open a chest, trigger a switch).",
+      "label": "Break",
+      "tooltip": "Break an object in front of you using a specified power",
       "color": "#4CAF50",
-      "command": "INTERACT",
+      "command": "BREAK",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "POWER",
+          "check": "Number",
+          "label": "power"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "open_door",
+      "category": "movement",
+      "label": "Open Door",
+      "tooltip": "Open a door in front of you",
+      "color": "#4CAF50",
+      "command": "OPEN_DOOR",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "close_door",
+      "category": "movement",
+      "label": "Close Door",
+      "tooltip": "Close a door in front of you",
+      "color": "#4CAF50",
+      "command": "CLOSE_DOOR",
       "previousStatement": true,
       "nextStatement": true
     },
@@ -59,12 +87,11 @@
       "command": "REPEAT",
       "inputs": [
         {
-          "kind": "field_number",
+          "kind": "value",
           "name": "TIMES",
+          "check": "Number",
           "label": "times",
-          "value": 3,
-          "min": 1,
-          "max": 100
+          "value": 3
         }
       ],
       "statementInput": {
@@ -378,14 +405,14 @@
       "type": "change_variable",
       "category": "variables",
       "label": "change",
-      "tooltip": "Change a variable by adding a numeric value",
+      "tooltip": "Set a variable to a numeric value",
       "color": "#FF5722",
       "command": "CHANGE_VARIABLE",
       "inputs": [
         {
           "kind": "field_input",
           "name": "NAME",
-          "label": "by",
+          "label": "to",
           "text": "score"
         },
         {
@@ -428,6 +455,40 @@
           "name": "VALUE",
           "label": "",
           "value": 5
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "math_arithmetic",
+      "category": "math",
+      "label": "",
+      "tooltip": "Apply arithmetic operation to two numbers",
+      "color": "#2196F3",
+      "command": "MATH_ARITHMETIC",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Number",
+          "label": ""
+        },
+        {
+          "kind": "field_dropdown",
+          "name": "OP",
+          "label": "",
+          "options": [
+            ["+", "+"],
+            ["-", "-"],
+            ["*", "*"],
+            ["/", "/"]
+          ]
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Number",
+          "label": ""
         }
       ],
       "output": "Number"
@@ -494,16 +555,6 @@
       "color": "#5C81F6",
       "command": "FRUIT_COLLECTED",
       "output": "Boolean"
-    },
-    {
-      "type": "interact",
-      "category": "movement",
-      "label": "Interact",
-      "tooltip": "Interact with an object (e.g., open a door, break a box)",
-      "color": "#4CAF50",
-      "command": "INTERACT",
-      "previousStatement": true,
-      "nextStatement": true
     }
   ]
 }

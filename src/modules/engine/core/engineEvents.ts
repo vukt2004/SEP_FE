@@ -21,4 +21,8 @@ export type EngineEvent =
       type: "fruitCollected";
       fruitId: string;
       totalCollected: number;
+    }
+  | {
+      type: "interactionFeedback";
+      message: string;
     };

@@ -37,6 +37,11 @@ export const objectRegistry: Record<string, ObjectBehavior> = {
     onInteract: (state) => (state === "break" ? undefined : "break"),
   },
 
+  box: {
+    isCollidable: (state) => state !== "break",
+    onInteract: (state) => (state === "break" ? undefined : "break"),
+  },
+
   trap: {
     isCollidable: () => false, // Spikes are usually walked over to take damage, etc
     onInteract: (state) => (state === "blink" ? "idle" : "blink"),

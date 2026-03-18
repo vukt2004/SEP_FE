@@ -3,7 +3,6 @@ import { isWinConditionMet } from "../../map-system/types";
 import type { Player, Direction } from "./types";
 import { Renderer } from "../rendering/Renderer";
 import type { EngineCommand } from "../../executor/commands";
-import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
 import { AnimationSystem } from "../systems/animation/AnimationSystem";
@@ -99,8 +98,9 @@ export class GameEngine {
     const objectStates = new Map<string, string>();
     if (level.objects) {
       for (const obj of level.objects) {
-        if (obj.initialState) {
-          objectStates.set(obj.id, obj.initialState);
+        const initialState = this.getInitialObjectState(obj);
+        if (initialState) {
+          objectStates.set(obj.id, initialState);
         }
       }
     }
@@ -243,8 +243,9 @@ export class GameEngine {
     this.runtime.objectStates.clear();
     if (this.level.objects) {
       for (const obj of this.level.objects) {
-        if (obj.initialState) {
-          this.runtime.objectStates.set(obj.id, obj.initialState);
+        const initialState = this.getInitialObjectState(obj);
+        if (initialState) {
+          this.runtime.objectStates.set(obj.id, initialState);
         }
       }
     }
@@ -574,8 +575,14 @@ export class GameEngine {
         this.checkFruitCollection();
         this.checkWinCondition();
         break;
-      case "interact":
-        this.interact();
+      case "break":
+        this.breakObject(command.power);
+        break;
+      case "openDoor":
+        this.openDoor();
+        break;
+      case "closeDoor":
+        this.closeDoor();
         break;
     }
 
@@ -824,32 +831,137 @@ export class GameEngine {
     }
   }
 
-  private interact(): void {
+  private getInitialObjectState(obj: {
+    type: string;
+    initialState?: string;
+    metadata?: Record<string, unknown>;
+  }): string | undefined {
+    if (obj.initialState) {
+      return obj.initialState;
+    }
+
+    if (obj.type === "door") {
+      const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
+      return isOpen ? "open" : "closed";
+    }
+
+    return undefined;
+  }
+
+  private getObjectInFront():
+    | {
+        id: string;
+        type: string;
+        initialState?: string;
+        metadata?: Record<string, unknown>;
+      }
+    | undefined {
     const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
     const targetX = this.runtime.player.x + dx;
     const targetY = this.runtime.player.y + dy;
-    const targetPixelX = targetX * this.tileSize;
-    const targetPixelY = targetY * this.tileSize;
 
     for (const obj of this.level.objects || []) {
-      const objPixelX = obj.position.col * this.tileSize;
-      const objPixelY = obj.position.row * this.tileSize;
-      if (objPixelX === targetPixelX && objPixelY === targetPixelY) {
-        const behavior = objectRegistry[obj.type];
-        if (behavior?.onInteract) {
-          const currentState = this.runtime.objectStates.get(obj.id) ?? obj.initialState;
-          const newState = behavior.onInteract(currentState);
-          if (newState) {
-            this.runtime.objectStates.set(obj.id, newState);
-            this.emit({
-              type: "objectStateChanged",
-              objectId: obj.id,
-              newState,
-            });
-          }
-        }
+      if (obj.position.col === targetX && obj.position.row === targetY) {
+        return obj;
       }
     }
+
+    return undefined;
+  }
+
+  private isBoxType(type: string): boolean {
+    return type === "box" || type === "box1" || type === "box2" || type === "box3";
+  }
+
+  private getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> }): number {
+    const metadataHardness =
+      typeof obj.metadata?.hardness === "number" && Number.isFinite(obj.metadata.hardness)
+        ? obj.metadata.hardness
+        : undefined;
+
+    if (metadataHardness !== undefined) {
+      return Math.max(1, Math.floor(metadataHardness));
+    }
+
+    switch (obj.type) {
+      case "box1":
+        return 1;
+      case "box2":
+        return 2;
+      case "box3":
+        return 3;
+      default:
+        return 1;
+    }
+  }
+
+  private breakObject(power: number): void {
+    const target = this.getObjectInFront();
+
+    if (!target) {
+      this.emit({ type: "interactionFeedback", message: "Nothing to break in front." });
+      return;
+    }
+
+    if (!this.isBoxType(target.type)) {
+      this.emit({ type: "interactionFeedback", message: "Target is not breakable." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "break") {
+      this.emit({ type: "interactionFeedback", message: "Box is already broken." });
+      return;
+    }
+
+    const hardness = this.getBoxHardness(target);
+    if (power >= hardness) {
+      this.runtime.objectStates.set(target.id, "break");
+      this.emit({ type: "objectStateChanged", objectId: target.id, newState: "break" });
+      return;
+    }
+
+    this.emit({
+      type: "interactionFeedback",
+      message: `Power too low (${Math.floor(power)}/${hardness}).`,
+    });
+  }
+
+  private openDoor(): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to open." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "open") {
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "open");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "open" });
+  }
+
+  private closeDoor(): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to close." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "closed") {
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "closed");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "closed" });
   }
 
   /**

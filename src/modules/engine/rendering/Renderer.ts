@@ -27,6 +27,32 @@ const PLATFORMER_OBJECT_RENDER_OFFSETS: Partial<Record<string, { x: number; y: n
   box3: { x: 0, y: 0.25 },
 };
 
+function isBreakableBoxType(type: string): boolean {
+  return type === "box" || type === "box1" || type === "box2" || type === "box3";
+}
+
+function getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> }): number {
+  const metadataHardness =
+    typeof obj.metadata?.hardness === "number" && Number.isFinite(obj.metadata.hardness)
+      ? obj.metadata.hardness
+      : undefined;
+
+  if (metadataHardness !== undefined) {
+    return Math.max(1, Math.floor(metadataHardness));
+  }
+
+  switch (obj.type) {
+    case "box1":
+      return 1;
+    case "box2":
+      return 2;
+    case "box3":
+      return 3;
+    default:
+      return 1;
+  }
+}
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private animationSystem: AnimationSystem;
@@ -305,6 +331,17 @@ export class Renderer {
           this.ctx.fillStyle = "#ff00ff";
         }
         this.ctx.fillRect(renderX, renderY, tileSize, tileSize);
+      }
+
+      if (isBreakableBoxType(obj.type) && resolvedStateKey !== "break") {
+        const hardness = getBoxHardness(obj);
+        this.ctx.save();
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.35))}px monospace`;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(String(hardness), renderX + tileSize / 2, renderY + tileSize / 2);
+        this.ctx.restore();
       }
     }
   }

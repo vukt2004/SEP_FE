@@ -9,7 +9,7 @@
  * - Action buttons (View Details, Edit)
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { cmsPackagesApi } from "@/services/api/cms/packages.api";
 import type { PackageListItem, PackageDetail, PackageStatusEnum } from "@/types/api/cms/packages";
 import { Modal } from "../components/Modal";
@@ -51,11 +51,7 @@ export const PackagesPage: React.FC = () => {
     isActive: false,
   });
 
-  useEffect(() => {
-    fetchPackages();
-  }, [currentPage]);
-
-  const fetchPackages = async () => {
+  const fetchPackages = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -77,7 +73,11 @@ export const PackagesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
 
   const handleViewDetails = async (packageId: string) => {
     try {

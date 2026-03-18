@@ -56,7 +56,7 @@ export interface WaitNode {
  */
 export interface RepeatNode {
   type: "repeat";
-  times: number;
+  times: ASTNode | number | null;
   body: ASTNode[];
   blockId: string;
 }
@@ -85,6 +85,17 @@ export interface NumberLiteralNode {
 }
 
 /**
+ * Arithmetic expression node that evaluates to a number
+ */
+export interface ArithmeticNode {
+  type: "arithmetic";
+  operator: "+" | "-" | "*" | "/";
+  left: ASTNode | null;
+  right: ASTNode | null;
+  blockId: string;
+}
+
+/**
  * Variable assignment node
  */
 export interface SetVariableNode {
@@ -95,7 +106,7 @@ export interface SetVariableNode {
 }
 
 /**
- * Variable increment/decrement node
+ * Variable assignment node (alternate variable block)
  */
 export interface ChangeVariableNode {
   type: "changeVariable";
@@ -224,10 +235,27 @@ export interface CallProcedureNode {
 }
 
 /**
- * Interact command - interacts with an object in front of the player
+ * Break command - attempts to break the object in front using evaluated power
  */
-export interface InteractNode {
-  type: "interact";
+export interface BreakNode {
+  type: "break";
+  power: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Open door command - opens a door in front of the player
+ */
+export interface OpenDoorNode {
+  type: "openDoor";
+  blockId: string;
+}
+
+/**
+ * Close door command - closes a door in front of the player
+ */
+export interface CloseDoorNode {
+  type: "closeDoor";
   blockId: string;
 }
 
@@ -240,9 +268,12 @@ export type ASTNode =
   | TurnNode
   | JumpNode
   | WaitNode
-  | InteractNode
+  | BreakNode
+  | OpenDoorNode
+  | CloseDoorNode
   | RepeatNode
   | NumberLiteralNode
+  | ArithmeticNode
   | SetVariableNode
   | ChangeVariableNode
   | GetVariableNode

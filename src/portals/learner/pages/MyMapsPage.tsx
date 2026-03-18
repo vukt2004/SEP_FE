@@ -764,7 +764,7 @@ export const MyMapsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchTerm, filterDifficulty, sortBy, sortOrder, activeTab]);
+  }, [activeTab, currentPage, filterDifficulty, pageSize, searchTerm, sortBy, sortOrder, t]);
 
   useEffect(() => {
     fetchMaps();

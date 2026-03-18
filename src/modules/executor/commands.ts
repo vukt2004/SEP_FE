@@ -17,8 +17,17 @@ export interface TurnCommand {
   rotation: Rotation;
 }
 
-export interface InteractCommand {
-  type: "interact";
+export interface BreakCommand {
+  type: "break";
+  power: number;
+}
+
+export interface OpenDoorCommand {
+  type: "openDoor";
+}
+
+export interface CloseDoorCommand {
+  type: "closeDoor";
 }
 
 export interface JumpCommand {
@@ -33,7 +42,9 @@ export type EngineCommand =
   | MoveCommand
   | MoveForwardCommand
   | TurnCommand
-  | InteractCommand
+  | BreakCommand
+  | OpenDoorCommand
+  | CloseDoorCommand
   | JumpCommand
   | WaitCommand;
 
