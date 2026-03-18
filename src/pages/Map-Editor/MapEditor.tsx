@@ -342,7 +342,7 @@ interface EditorState {
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed to numeric ID
-  selectedTool: "paint" | "erase" | "fill" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -487,7 +487,7 @@ export default function MapEditor() {
     store?.setSelectedObjectId(objectId);
   };
 
-  const handleToolSelect = (tool: "paint" | "erase" | "fill" | null) => {
+  const handleToolSelect = (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => {
     store?.setSelectedTool(tool);
   };
 

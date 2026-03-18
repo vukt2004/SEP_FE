@@ -1,43 +1,176 @@
-.page {
+ .page {
   position: relative;
   min-height: 100vh;
   padding: 24px 16px;
+}
+
+@media (min-width: 1100px) {
+  .page {
+    padding: 24px 24px;
+  }
 }
 
 .bg {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-color: var(--bg);
+  background:
+    radial-gradient(1200px 520px at 10% -10%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 60%),
+    radial-gradient(900px 420px at 92% 8%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 55%),
+    repeating-radial-gradient(
+      circle at 20% 30%,
+      color-mix(in srgb, var(--text) 5%, transparent) 0,
+      color-mix(in srgb, var(--text) 5%, transparent) 1px,
+      transparent 1px,
+      transparent 18px
+    ),
+    var(--bg);
   pointer-events: none;
 }
+
+.shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 4px;
+}
+
+@media (min-width: 1100px) {
+  .shell {
+    grid-template-columns: 300px minmax(0, 1fr) 300px;
+    align-items: start;
+    gap: 20px;
+  }
+}
+
+.side {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .side {
+    display: block;
+  }
+}
+
+.sideCard {
+  position: sticky;
+  top: 24px;
+  padding: 14px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+}
+
+.sideCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.sideList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+
+.sideList li::marker {
+  color: var(--primary);
+}
+
+.sideStats {
+  display: grid;
+  gap: 10px;
+}
+
+.sideLinkBtn {
+  margin-top: 12px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: transparent;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.sideLinkBtn:hover {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.sideStat {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.sideStatLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.sideStatValue {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+/* side "next" removed to avoid duplication with header continue CTA */
 
 .container {
   position: relative;
   z-index: 1;
-  max-width: 520px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
 }
 
+/* Back button is now inside headerTop */
 .backBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 24px;
-  padding: 8px 0;
-  background: none;
-  border: none;
-  color: var(--text-2);
-  font-size: 14px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
 }
 
 .backBtn:hover {
-  color: var(--text);
-}
-
-.header {
-  margin-bottom: 16px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .title {
@@ -45,6 +178,167 @@
   font-size: 22px;
   font-weight: 700;
   color: var(--text);
+}
+
+/* Header: title + goal + progress trong 1 block */
+.header {
+  margin-bottom: 20px;
+  padding: 20px 18px;
+  background:
+    radial-gradient(900px 240px at 20% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 55%),
+    var(--surface);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: 16px;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.titleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.subTitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.goalPill {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  border-radius: 999px;
+}
+
+.headerProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.motivationRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.motivationIcon {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.motivationText {
+  flex: 1;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progressBarWrap {
+  flex: 1;
+  height: 10px;
+  background: var(--bg);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 80%, transparent));
+  border-radius: 8px;
+  transition: width 0.3s ease;
+  transform-origin: left;
+  animation: progressGrow 0.7s ease-out;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.progressCount {
+  color: var(--text);
+}
+
+.progressPct {
+  color: var(--primary);
+  min-width: 2.5em;
+}
+
+/* Header actions: continue + change goal */
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.continueBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    var(--primary),
+    color-mix(in srgb, var(--primary) 78%, transparent)
+  );
+  color: var(--primary-contrast, #fff);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  flex: 1;
+  min-width: 260px;
+}
+
+.continueBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.continueBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.continueHint {
+  font-weight: 700;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 520px;
 }
 
 .loading {
@@ -95,77 +389,294 @@
   opacity: 0.95;
 }
 
-.goalName {
-  margin: 0 0 12px;
-  font-size: 14px;
-  color: var(--text-2);
-}
-
-.exploreConceptsBtn {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 18px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  font-weight: 600;
-  border: 1px solid var(--primary);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  color: var(--primary);
-  cursor: pointer;
-}
-
-.exploreConceptsBtn:hover {
-  background: color-mix(in srgb, var(--primary) 22%, transparent);
-}
+/* exploreConceptsBtn removed (moved into headerActions as changeGoalBtn) */
 
 .empty {
   color: var(--text-2);
   padding: 24px 0;
 }
 
-/* Lộ trình – bố trí theo chiều dọc với timeline */
-.itemList {
+.board {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 32px;
+}
+
+.journey {
+  position: relative;
+  width: 100%;
+  max-width: 780px;
+  padding: 8px 0 8px 0;
+}
+
+.journeyLine {
+  position: absolute;
+  left: 40px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, #dbeafe, #e2e8f0);
+  opacity: 0.9;
+}
+
+.journeyList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  position: relative;
-  padding-left: 24px;
-  border-left: 3px solid var(--border);
-  margin-left: 8px;
+  gap: 26px;
 }
 
-.itemRow {
+.journeyItem {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.journeyLeft {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.journeyNode {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid #cbd5f5;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+}
+
+.journeyIndex {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.journeyContent {
+  position: relative;
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.journeyItem:hover .journeyContent {
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+  transform: translateY(-2px);
+}
+
+.boardSectionUnlocked {
+  border-color: transparent;
+}
+
+.boardSectionLocked {
+  border-color: transparent;
+}
+
+.boardSectionCompleted {
+  border-color: transparent;
+}
+
+.boardSectionUnlocked::before,
+.boardSectionLocked::before,
+.boardSectionCompleted::before {
+  content: none;
+}
+
+.boardSectionUnlocked::before {
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 45%, transparent));
+}
+
+.boardSectionLocked::before {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--text) 28%, transparent), transparent);
+}
+
+.boardSectionCompleted::before {
+  background: linear-gradient(90deg, var(--success, #16a34a), color-mix(in srgb, var(--success, #16a34a) 45%, transparent));
+}
+
+.boardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 10px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  background: transparent;
+  position: static;
+}
+
+.boardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.boardIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
+  background: radial-gradient(
+    80% 80% at 30% 20%,
+    color-mix(in srgb, var(--primary) 18%, transparent),
+    transparent
+  );
+  flex-shrink: 0;
+}
+
+.boardTitle {
   margin: 0;
-  position: relative;
-  padding-bottom: 16px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.itemRow:last-child {
-  padding-bottom: 0;
+.boardCount {
+  min-width: 32px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
 }
 
-.itemRow::before {
+.boardGrid {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 6px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: none;
+  overflow: visible;
+  align-items: stretch;
+}
+
+.boardGrid::before {
   content: "";
   position: absolute;
-  left: -30px;
-  top: 20px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--primary);
-  border: 2px solid var(--bg);
-  box-sizing: border-box;
+  left: 16px;
+  top: 16px;
+  bottom: 12px;
+  width: 2px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+@media (min-width: 1200px) {
+  .boardGrid {
+    max-height: 620px;
+  }
+}
+
+.boardItem {
+  position: relative;
+  margin: 0;
+}
+
+.boardItem::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 24px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--primary);
+  background: var(--surface);
+}
+
+.itemTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.itemBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.statePillCurrent,
+.statePillLocked,
+.statePillDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+
+.statePillCurrent {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.statePillLocked {
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.statePillDone {
+  color: var(--success, #16a34a);
+  background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--success, #16a34a) 35%, var(--border));
 }
 
 .itemCard {
-  padding: 16px 18px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.itemCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
 }
 
 .itemHeader {
@@ -181,20 +692,65 @@
 }
 
 .itemTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
+}
+
+.miniProgress {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.completedIcon {
-  color: var(--success, green);
+.miniProgressBar {
+  height: 8px;
+  flex: 1;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 75%, transparent);
+  overflow: hidden;
 }
 
-.lockIcon {
+.miniProgressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #fff));
+}
+
+.miniProgressPct {
+  font-size: 12px;
+  font-weight: 800;
   color: var(--text-2);
+  min-width: 38px;
+  text-align: right;
+}
+
+.itemCardCompleted {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--success, #16a34a) 35%, var(--border));
+}
+
+.itemCardCurrent {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.itemCardLocked {
+  opacity: 0.85;
+  filter: saturate(0.7);
+  background: var(--surface);
+}
+
+.stepLabel {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  margin-bottom: 8px;
 }
 
 .itemDesc {
@@ -204,22 +760,414 @@
   line-height: 1.4;
 }
 
+.rewardRow {
+  margin-bottom: 12px;
+}
+
+.xpBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 0.15, transparent);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lockedHint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.previewThumb {
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 200px;
+  border: 1px solid var(--border);
+}
+
+.previewThumb img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .actionBtn {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
   font-size: 14px;
   font-weight: 600;
-  border: 1px solid var(--primary);
+  border: none;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--primary) 15%, transparent);
-  color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-contrast, #fff);
   cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .actionBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 25%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.actionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--text-2);
+  color: var(--surface);
+}
+
+.itemCardCompleted .actionBtn {
+  background: var(--success, #16a34a);
+  color: #fff;
+  border: 2px solid var(--success, #15803d);
+}
+
+.itemCardCompleted .actionBtn:hover:not(:disabled) {
+  background: var(--success, #15803d);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
 }
 
 .actionBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ===========================
+   Modern playful dashboard overrides
+   =========================== */
+
+.page {
+  padding: 32px 16px;
+  background:
+    radial-gradient(900px 400px at 10% 0%, rgba(59, 130, 246, 0.18), transparent 60%),
+    radial-gradient(800px 380px at 90% 0%, rgba(56, 189, 248, 0.18), transparent 55%),
+    linear-gradient(180deg, #f3f4ff 0%, #eef2ff 40%, #f9fafb 100%);
+}
+
+@media (min-width: 1100px) {
+  .page {
+    padding: 32px 40px;
+  }
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-inline: 4px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #0f172a;
+}
+
+.subTitle {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.header {
+  margin-bottom: 28px;
+  padding: 22px 20px 20px;
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(56, 189, 248, 0.12)),
+    rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.85) inset;
+}
+
+.motivationRow {
+  background: rgba(191, 219, 254, 0.5);
+  color: #0f172a;
+}
+
+.progressBarWrap {
+  height: 14px;
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.progressFill {
+  background: linear-gradient(90deg, #3b82f6, #22c1c3, #a855f7);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  animation: progressGrow 0.7s ease-out, progressShimmer 2.4s linear infinite;
+}
+
+@keyframes progressGrow {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes progressShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.progressMeta {
+  gap: 10px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.progressCount {
+  color: #0f172a;
+}
+
+.progressPct {
+  color: #2563eb;
+}
+
+.progressLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #64748b;
+}
+
+.continueBtn {
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #22c1c3);
+  color: #f9fafb;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 14px 30px rgba(37, 99, 235, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.continueBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 18px 40px rgba(37, 99, 235, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+.continueBtn:disabled {
+  background: linear-gradient(135deg, #cbd5f5, #e2e8f0);
+  color: #64748b;
+}
+
+.itemCard {
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgba(129, 140, 248, 0.08), transparent 55%),
+    #ffffff;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.itemCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.itemTitle {
+  color: #0f172a;
+}
+
+.itemDesc {
+  color: #64748b;
+}
+
+.miniProgressBar {
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.miniProgressFill {
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c1c3, #3b82f6);
+  background-size: 160% 100%;
+  animation: progressShimmer 2.4s linear infinite;
+}
+
+.miniProgressPct {
+  color: #0f172a;
+}
+
+/* Section-specific styling (In Progress / Upcoming / Completed) */
+
+.boardSectionUnlocked {
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(56, 189, 248, 0.1)),
+    #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  box-shadow: 0 20px 50px rgba(37, 99, 235, 0.28);
+}
+
+.boardSectionLocked {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+
+.boardSectionCompleted {
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.10), rgba(250, 204, 21, 0.08)),
+    #ffffff;
+  border-radius: 18px;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 16px 40px rgba(22, 163, 74, 0.25);
+}
+
+/* Timeline nodes per section */
+
+.boardSectionUnlocked::before {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35);
+}
+
+.boardSectionLocked::before {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 5px rgba(148, 163, 184, 0.32);
+}
+
+.boardSectionCompleted::before {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.4);
+}
+
+/* Item card states */
+
+.itemCardCurrent {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.35),
+    0 16px 38px rgba(37, 99, 235, 0.3);
+}
+
+.itemCardLocked {
+  border-color: rgba(148, 163, 184, 0.6);
+  background:
+    linear-gradient(135deg, rgba(148, 163, 184, 0.16), rgba(226, 232, 240, 0.85));
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+  filter: none;
+  opacity: 0.94;
+}
+
+.itemCardCompleted {
+  border-color: rgba(34, 197, 94, 0.7);
+  background:
+    radial-gradient(130% 160% at 0% 0%, rgba(34, 197, 94, 0.18), transparent 55%),
+    #ffffff;
+}
+
+/* Status pills */
+
+.statePillCurrent {
+  color: #1d4ed8;
+  background: rgba(191, 219, 254, 0.8);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.statePillLocked {
+  color: #64748b;
+  background: rgba(226, 232, 240, 0.95);
+  border-color: rgba(148, 163, 184, 0.7);
+}
+
+.statePillDone {
+  color: #16a34a;
+  background: rgba(187, 247, 208, 0.85);
+  border-color: rgba(22, 163, 74, 0.8);
+}
+
+/* XP badge gamification */
+
+.xpBadge {
+  padding-inline: 12px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 0% 0%, #facc15, #f97316);
+  color: #0f172a;
+  font-weight: 800;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7) inset,
+    0 6px 16px rgba(248, 180, 0, 0.6);
+  position: relative;
+}
+
+.xpBadge::before {
+  content: "★";
+  font-size: 11px;
+}
+
+@keyframes xpSparkle {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.xpBadge {
+  animation: xpSparkle 3s ease-in-out infinite;
+}
+
+/* Card CTA button – gradient + glow */
+
+.actionBtn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 12px 28px rgba(22, 163, 74, 0.4);
+  font-weight: 700;
+}
+
+.itemCardLocked .actionBtn {
+  background: linear-gradient(135deg, #e2e8f0, #cbd5f5);
+  color: #64748b;
+  box-shadow: none;
+}
+
+.actionBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(22, 163, 74, 0.55);
+}
+
+.actionBtn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
 }

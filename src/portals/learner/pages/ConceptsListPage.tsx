@@ -84,7 +84,7 @@ export default function ConceptsListPage() {
     learnerLearningPathApi
       .getGoals()
       .then((res) => {
-        const data = res.data?.data ?? (res.data as unknown as { data?: unknown })?.Data;
+        const data = res.data?.data ?? (res.data as unknown as { Data?: unknown })?.Data;
         if (Array.isArray(data)) {
           setGoals(
             data
