@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
@@ -539,6 +539,13 @@ export default function MapEditor() {
     store?.setRequiredBlocks(requiredBlocks);
   };
 
+  const handleObjectDefinitionsLoaded = useCallback(
+    (defs: Record<string, import("../../modules/engine/assets").ObjectDefinition>) => {
+      store?.setObjectDefinitions(defs);
+    },
+    [store],
+  );
+
   const handleUndo = () => {
     store?.undo();
   };
@@ -599,7 +606,7 @@ export default function MapEditor() {
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
+              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
             />
           </aside>
 
@@ -675,7 +682,7 @@ export default function MapEditor() {
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
+              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
             />
           </aside>
         </div>

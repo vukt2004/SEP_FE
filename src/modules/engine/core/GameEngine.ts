@@ -3,6 +3,7 @@ import { isWinConditionMet } from "../../map-system/types";
 import type { Player, Direction } from "./types";
 import { Renderer } from "../rendering/Renderer";
 import type { EngineCommand } from "../../executor/commands";
+import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
 import { AnimationSystem } from "../systems/animation/AnimationSystem";
@@ -674,21 +675,92 @@ export class GameEngine {
     );
   }
 
+  private isWallRelative(rotation: "clockwise" | "counterclockwise"): boolean {
+    const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
+    const { dx, dy } = DIRECTION_DELTA[lookDirection];
+    const targetX = this.runtime.player.x + dx;
+    const targetY = this.runtime.player.y + dy;
+
+    return this.isWallAt(targetX, targetY);
+  }
+
+  private isObjectObstacleRelative(rotation: "clockwise" | "counterclockwise"): boolean {
+    const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
+    const { dx, dy } = DIRECTION_DELTA[lookDirection];
+    const targetX = this.runtime.player.x + dx;
+    const targetY = this.runtime.player.y + dy;
+
+    return this.hasCollidableObjectAt(targetX, targetY);
+  }
+
+  private isWallAt(x: number, y: number): boolean {
+    if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) {
+      return true;
+    }
+
+    return this.level.layers.collision[y]?.[x] ?? true;
+  }
+
+  private hasCollidableObjectAt(x: number, y: number): boolean {
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== x || obj.position.row !== y) {
+        continue;
+      }
+
+      const behavior = objectRegistry[obj.type];
+      if (!behavior?.isCollidable) {
+        continue;
+      }
+
+      const currentState = this.runtime.objectStates.get(obj.id) ?? this.getInitialObjectState(obj);
+      if (behavior.isCollidable(currentState)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  isWallAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.isWallAt(this.runtime.player.x + dx, this.runtime.player.y + dy);
+  }
+
+  isWallLeft(): boolean {
+    return this.isWallRelative("counterclockwise");
+  }
+
+  isWallRight(): boolean {
+    return this.isWallRelative("clockwise");
+  }
+
+  // Obstacle = collidable object in front (e.g. box, closed door), not wall tile.
   isObstacleAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasCollidableObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy);
+  }
+
+  isObstacleLeft(): boolean {
+    return this.isObjectObstacleRelative("counterclockwise");
+  }
+
+  isObstacleRight(): boolean {
+    return this.isObjectObstacleRelative("clockwise");
+  }
+
+  isBlockedAhead(): boolean {
+    const lookDirection = this.runtime.player.facing;
+    const virtualPlayer = {
+      ...this.runtime.player,
+      facing: lookDirection,
+    };
+
     return this.controller.isObstacleAhead(
-      this.runtime.player,
+      virtualPlayer,
       this.level,
       this.tileSize,
       this.runtime.objectStates,
     );
-  }
-
-  isObstacleLeft(): boolean {
-    return this.isObstacleRelative("counterclockwise");
-  }
-
-  isObstacleRight(): boolean {
-    return this.isObstacleRelative("clockwise");
   }
 
   isEnemyAhead(): boolean {
@@ -699,6 +771,21 @@ export class GameEngine {
   isTrapAhead(): boolean {
     const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
     return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["trap"]);
+  }
+
+  getBoxHardnessAhead(): number {
+    const target = this.getObjectInFront();
+    if (!target || !this.isBoxType(target.type)) {
+      return 0;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "break") {
+      return 0;
+    }
+
+    return this.getBoxHardness(target);
   }
 
   hasCollectedFruit(): boolean {

@@ -85,6 +85,20 @@ export interface NumberLiteralNode {
 }
 
 /**
+ * Runtime numeric sensor types exposed by the game engine
+ */
+export type NumberSensorType = "boxHardnessAhead";
+
+/**
+ * Numeric sensor node resolved at runtime
+ */
+export interface NumberSensorNode {
+  type: "numberSensor";
+  sensorType: NumberSensorType;
+  blockId: string;
+}
+
+/**
  * Arithmetic expression node that evaluates to a number
  */
 export interface ArithmeticNode {
@@ -273,6 +287,7 @@ export type ASTNode =
   | CloseDoorNode
   | RepeatNode
   | NumberLiteralNode
+  | NumberSensorNode
   | ArithmeticNode
   | SetVariableNode
   | ChangeVariableNode

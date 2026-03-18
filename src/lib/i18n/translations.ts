@@ -1,4 +1,5 @@
 import { useLanguageStore } from "@/stores/language.store";
+import { useMemo } from "react";
 
 export type LocaleId = "en" | "vi";
 
@@ -689,5 +690,6 @@ export function getT(locale: LocaleId) {
 
 export function useTranslation() {
   const locale = useLanguageStore((s) => s.locale);
-  return { t: getT(locale), locale };
+  const t = useMemo(() => getT(locale), [locale]);
+  return { t, locale };
 }

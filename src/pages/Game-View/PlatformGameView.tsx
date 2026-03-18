@@ -4,7 +4,6 @@ import * as Blockly from "blockly";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
 import type { BlockProgram, ConditionType } from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
-import type { Direction } from "../../modules/engine/core/types";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
@@ -38,10 +37,6 @@ import { learnerMapsApi } from "@/services/api/learner/maps.api";
 
 /**
  * PlatformGameView - Platformer game view with block editor and gravity physics.
- *
- * Keyboard controls (manual):
- * - Arrow Left/Right: Move horizontally
- * - Space: Jump
  *
  * Block editor controls:
  * - Run Program: Execute the block program
@@ -268,43 +263,9 @@ export default function PlatformGameView() {
           }
         };
         engine.on("interactionFeedback", handleInteractionFeedback);
-
-        // Keyboard controls (manual play, secondary to block editor)
-        const handleKeyDown = (e: KeyboardEvent) => {
-          // If executor is running, ignore manual key input
-          if (executorRef.current?.getState().isRunning) return;
-
-          let direction: Direction | null = null;
-          switch (e.key) {
-            case "ArrowLeft":
-              direction = "left";
-              break;
-            case "ArrowRight":
-              direction = "right";
-              break;
-            case "ArrowUp":
-              direction = "up";
-              break;
-            case "ArrowDown":
-              direction = "down";
-              break;
-            case " ":
-              e.preventDefault();
-              engine.executeCommand({ type: "jump" });
-              return;
-            default:
-              return;
-          }
-          if (direction) {
-            engine.executeCommand({ type: "move", direction });
-          }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
         setIsLoading(false);
 
         cleanup = () => {
-          window.removeEventListener("keydown", handleKeyDown);
           engine.off("win", handleWin);
           engine.off("engine:failed", handleFailed);
           engine.off("fruitCollected", handleFruitCollected);
@@ -374,15 +335,15 @@ export default function PlatformGameView() {
         if (!engine) return false;
         switch (condition) {
           case "pathAhead":
-            return !engine.isObstacleAhead();
+            return !engine.isWallAhead() && !engine.isObstacleAhead();
           case "wallAhead":
-            return engine.isObstacleAhead();
+            return engine.isWallAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
           case "wallLeft":
-            return engine.isObstacleLeft();
+            return engine.isWallLeft();
           case "wallRight":
-            return engine.isObstacleRight();
+            return engine.isWallRight();
           case "goalReached":
             return engine.hasWon();
           case "enemyAhead":
@@ -396,10 +357,22 @@ export default function PlatformGameView() {
         }
       };
 
+      const numberResolver = (sensorType: "boxHardnessAhead"): number => {
+        const engine = engineRef.current;
+        if (!engine) return 0;
+
+        switch (sensorType) {
+          case "boxHardnessAhead":
+            return engine.getBoxHardnessAhead();
+          default:
+            return 0;
+        }
+      };
+
       // Stop any running executor first
       if (executorRef.current) executorRef.current.stop();
 
-      const executor = new StepExecutor(program, conditionChecker);
+      const executor = new StepExecutor(program, conditionChecker, numberResolver);
       executor.setWarningCallback((message) => {
         showWarningToast(message);
       });

@@ -423,15 +423,15 @@ export default function GameView() {
 
         switch (condition) {
           case "pathAhead":
-            return !engine.isObstacleAhead();
+            return !engine.isWallAhead() && !engine.isObstacleAhead();
           case "wallAhead":
-            return engine.isObstacleAhead();
+            return engine.isWallAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
           case "wallLeft":
-            return engine.isObstacleLeft();
+            return engine.isWallLeft();
           case "wallRight":
-            return engine.isObstacleRight();
+            return engine.isWallRight();
           case "goalReached":
             return engine.hasWon();
           case "enemyAhead":
@@ -445,13 +445,25 @@ export default function GameView() {
         }
       };
 
+      const numberResolver = (sensorType: "boxHardnessAhead"): number => {
+        const engine = engineRef.current;
+        if (!engine) return 0;
+
+        switch (sensorType) {
+          case "boxHardnessAhead":
+            return engine.getBoxHardnessAhead();
+          default:
+            return 0;
+        }
+      };
+
       // Stop existing executor if running
       if (executorRef.current) {
         executorRef.current.stop();
       }
 
       // Create new executor with the generated program
-      const executor = new StepExecutor(program, conditionChecker);
+      const executor = new StepExecutor(program, conditionChecker, numberResolver);
       executor.setWarningCallback((message) => {
         showWarningToast(message);
       });

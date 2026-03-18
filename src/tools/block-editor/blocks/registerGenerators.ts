@@ -248,6 +248,14 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       };
     }
 
+    case "box_hardness_ahead": {
+      return {
+        type: "numberSensor",
+        sensorType: "boxHardnessAhead",
+        blockId,
+      };
+    }
+
     case "set_variable": {
       const name = (block.getFieldValue("NAME") || "").trim() || "score";
       const value = getValueInput(block, "VALUE");

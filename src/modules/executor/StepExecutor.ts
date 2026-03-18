@@ -1,4 +1,4 @@
-import type { BlockProgram, ASTNode, ConditionType } from "./types";
+import type { BlockProgram, ASTNode, ConditionType, NumberSensorType } from "./types";
 import type { ExecutionResult } from "./commands";
 
 /**
@@ -50,11 +50,16 @@ export class StepExecutor {
   private isRunning: boolean;
   private isPaused: boolean;
   private conditionChecker: (condition: ConditionType) => boolean;
+  private numberResolver: (sensorType: NumberSensorType) => number;
   private callback: ((result: ExecutionResult) => void) | null;
   private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
 
-  constructor(program: BlockProgram, conditionChecker: (condition: ConditionType) => boolean) {
+  constructor(
+    program: BlockProgram,
+    conditionChecker: (condition: ConditionType) => boolean,
+    numberResolver?: (sensorType: NumberSensorType) => number,
+  ) {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
     this.procedures = new Map();
@@ -66,6 +71,7 @@ export class StepExecutor {
     this.isRunning = false;
     this.isPaused = false;
     this.conditionChecker = conditionChecker;
+    this.numberResolver = numberResolver ?? (() => 0);
     this.callback = null;
     this.warningCallback = null;
     this.intervalMs = 500;
@@ -481,6 +487,11 @@ export class StepExecutor {
 
     if (node.type === "numberLiteral") {
       return node.value;
+    }
+
+    if (node.type === "numberSensor") {
+      const value = this.numberResolver(node.sensorType);
+      return Number.isFinite(value) ? value : 0;
     }
 
     if (node.type === "arithmetic") {

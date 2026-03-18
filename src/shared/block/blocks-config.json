@@ -548,6 +548,15 @@
       "output": "Boolean"
     },
     {
+      "type": "box_hardness_ahead",
+      "category": "logic",
+      "label": "box hardness ahead",
+      "tooltip": "Returns hardness of the box in front, or 0 if there is no box",
+      "color": "#5C81F6",
+      "command": "BOX_HARDNESS_AHEAD",
+      "output": "Number"
+    },
+    {
       "type": "fruit_collected",
       "category": "logic",
       "label": "fruit collected?",
