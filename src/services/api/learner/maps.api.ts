@@ -66,6 +66,19 @@ export const learnerMapsApi = {
   },
 
   /**
+   * Get hints for a map during gameplay
+   * GET /api/learner/gameplay/maps/{id}/hints
+   *
+   * @param id - Map ID
+   * @returns List of hints with orderNo and content
+   */
+  getMapHints(id: string) {
+    return learnerAxios.get<ApiResult<Array<{ orderNo: number; content: string }>>>(
+      `/api/learner/gameplay/maps/${id}/hints`,
+    );
+  },
+
+  /**
    * Get available map tags
    * GET /api/learner/maps/tags
    */

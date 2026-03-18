@@ -530,7 +530,17 @@ export function MapEditorControls({
         .map((h) => h.trim())
         .filter((h) => h.length > 0)
         .slice(0, 3)
-        .map((content, index) => ({ orderNo: index + 1, content }));
+        .map((content, index) => {
+          const orderNo = index + 1;
+
+          return {
+            // Keep both naming styles to support strict backend JSON binders.
+            orderNo,
+            content,
+            OrderNo: orderNo,
+            Content: content,
+          };
+        });
       const hintsJson = normalizedHints.length > 0 ? JSON.stringify(normalizedHints) : undefined;
 
       const gameLevelFormat = exportMapToGameFormat(mapData);
