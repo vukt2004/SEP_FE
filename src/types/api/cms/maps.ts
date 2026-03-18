@@ -141,3 +141,17 @@ export interface ApproveMapParams {
 export interface RejectMapParams {
   rejectReason?: string;
 }
+
+/**
+ * Map tag item
+ * GET /api/cms/maps/tags
+ */
+export interface MapTag {
+  id: string;
+  name: string;
+}
+
+/**
+ * API result for map tags list
+ */
+export type MapTagsResult = ApiResult<MapTag[]>;

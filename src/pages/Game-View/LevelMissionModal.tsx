@@ -1,3 +1,4 @@
+import { Target, ShieldAlert, Boxes, Ban, X, Play } from "lucide-react";
 import type { CSSProperties } from "react";
 
 interface LevelMissionModalProps {
@@ -30,38 +31,50 @@ export function LevelMissionModal({
           <h2 style={styles.title}>Map Mission</h2>
           {onClose && (
             <button style={styles.closeButton} onClick={onClose} aria-label="Close mission modal">
-              ✕
+              <X size={18} />
             </button>
           )}
         </div>
         <p style={styles.levelTitle}>{levelTitle}</p>
 
         <div style={styles.section}>
-          <p style={styles.label}>Goal:</p>
+          <div style={styles.sectionHeader}>
+            <Target size={16} />
+            <p style={styles.label}>Goal</p>
+          </div>
           <p style={styles.value}>{goal}</p>
         </div>
 
         <div style={styles.section}>
-          <p style={styles.label}>Block Limit:</p>
+          <div style={styles.sectionHeader}>
+            <Boxes size={16} />
+            <p style={styles.label}>Block Limit</p>
+          </div>
           <p style={styles.value}>{blockLimit !== null ? `${blockLimit} blocks` : "No limit"}</p>
         </div>
 
         <div style={styles.section}>
-          <p style={styles.label}>Required Blocks:</p>
+          <div style={styles.sectionHeader}>
+            <ShieldAlert size={16} />
+            <p style={styles.label}>Required Blocks</p>
+          </div>
           <p style={styles.value}>
             {requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None"}
           </p>
         </div>
 
         <div style={styles.section}>
-          <p style={styles.label}>Forbidden Blocks:</p>
+          <div style={styles.sectionHeader}>
+            <Ban size={16} />
+            <p style={styles.label}>Forbidden Blocks</p>
+          </div>
           <p style={styles.value}>
             {forbiddenBlocks.length > 0 ? forbiddenBlocks.join(", ") : "None"}
           </p>
         </div>
 
         <button style={styles.startButton} onClick={onStart}>
-          Start Level
+          <Play size={16} /> Start Level
         </button>
       </div>
     </div>
@@ -114,8 +127,6 @@ const styles: Record<string, CSSProperties> = {
     background: "var(--surface-2)",
     color: "var(--text-2)",
     cursor: "pointer",
-    fontSize: "18px",
-    fontWeight: 700,
     transition: "all 0.2s ease",
   },
   levelTitle: {
@@ -131,11 +142,20 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid color-mix(in srgb, var(--primary) 25%, var(--border))",
     background: "color-mix(in srgb, var(--surface-2) 86%, var(--primary) 14%)",
   },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    color: "var(--primary)",
+    marginBottom: "4px",
+  },
   label: {
     margin: 0,
     fontSize: "12px",
     color: "var(--text-2)",
     fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
   },
   value: {
     margin: "4px 0 0",
@@ -150,9 +170,15 @@ const styles: Record<string, CSSProperties> = {
     background: "var(--primary)",
     color: "#fff",
     borderRadius: "12px",
-    padding: "10px 14px",
-    fontSize: "14px",
+    padding: "12px 14px",
+    fontSize: "15px",
     fontWeight: 800,
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
   },
 };

@@ -32,6 +32,20 @@ export interface UploadMapFromJsonParams {
 }
 
 /**
+ * Map tag item
+ * GET /api/learner/maps/tags
+ */
+export interface MapTag {
+  id: string;
+  name: string;
+}
+
+/**
+ * API result for map tags list
+ */
+export type MapTagsResult = ApiResult<MapTag[]>;
+
+/**
  * Response data after uploading a map
  */
 export interface UploadMapResult {

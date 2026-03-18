@@ -501,21 +501,37 @@ export class GameEngine {
         // Handle absolute directional movement
         this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "moveForward":
         // Move in the current facing direction
         this.moveInDirection(this.runtime.player.facing);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "turn": {
-        // Rotate facing direction by 90 degrees
-        const newDirection = this.rotateFacing(this.runtime.player.facing, command.rotation);
+        const newDirection = this.resolveTurnDirection(
+          this.runtime.player.facing,
+          command.rotation,
+        );
         this.runtime.player.facing = newDirection;
         // Update sprite direction for rendering
         if (this.gameType === "topdown") {
@@ -531,18 +547,32 @@ export class GameEngine {
       }
       case "jump":
         // Execute jump — moves player up by jumpPower tiles (if grounded)
-        this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        this.controller.jump(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Play jump sound
         this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
         break;
       case "wait":
         // Consume one turn without movement while still advancing physics.
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "interact":
         this.interact();
@@ -573,6 +603,22 @@ export class GameEngine {
 
     // Execute movement in that direction
     this.moveForward();
+  }
+
+  /**
+   * Resolve turn behavior by game type.
+   * - Top-down: rotate facing by 90 degrees.
+   * - Platform: map turn blocks to absolute horizontal facing.
+   */
+  private resolveTurnDirection(
+    currentFacing: Direction,
+    rotation: "clockwise" | "counterclockwise",
+  ): Direction {
+    if (this.gameType === "platformer") {
+      return rotation === "clockwise" ? "right" : "left";
+    }
+
+    return this.rotateFacing(currentFacing, rotation);
   }
 
   /**
@@ -613,11 +659,21 @@ export class GameEngine {
       facing: lookDirection,
     };
 
-    return this.controller.isObstacleAhead(virtualPlayer, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      virtualPlayer,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleAhead(): boolean {
-    return this.controller.isObstacleAhead(this.runtime.player, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleLeft(): boolean {
@@ -626,6 +682,42 @@ export class GameEngine {
 
   isObstacleRight(): boolean {
     return this.isObstacleRelative("clockwise");
+  }
+
+  isEnemyAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["enemy"]);
+  }
+
+  isTrapAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["trap"]);
+  }
+
+  hasCollectedFruit(): boolean {
+    return this.runtime.collectedFruits.size > 0;
+  }
+
+  private hasObjectAt(x: number, y: number, objectTypes: string[]): boolean {
+    const typeSet = new Set(objectTypes);
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== x || obj.position.row !== y) {
+        continue;
+      }
+
+      if (!typeSet.has(obj.type)) {
+        continue;
+      }
+
+      // Collected fruits are no longer present as sensors.
+      if (obj.type === "fruit" && this.runtime.collectedFruits.has(obj.id)) {
+        continue;
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   hasWon(): boolean {
@@ -695,7 +787,12 @@ export class GameEngine {
 
   private moveForward(): void {
     // Delegate movement to controller
-    const moved = this.controller.moveForward(this.runtime.player, this.level, this.tileSize);
+    const moved = this.controller.moveForward(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
 
     if (moved) {
       // Play walk sound when player moves
@@ -760,6 +857,10 @@ export class GameEngine {
    * State transition: Running → Won
    */
   private checkWinCondition(): void {
+    if (this.runtime.state === EngineState.Won || this.runtime.hasPlayerWon) {
+      return;
+    }
+
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
     const atGoal = isWinConditionMet(this.level, playerPos);
@@ -771,7 +872,11 @@ export class GameEngine {
 
     // WinCondition = 2 requires collecting all fruits before goal can complete the level.
     if (this.config.winCondition === 2) {
-      const requiredFruits = this.getTotalFruitsCount();
+      const mapFruitsCount = this.getTotalFruitsCount();
+      const requiredFruits =
+        this.config.requiredFruits !== undefined && this.config.requiredFruits > 0
+          ? Math.min(this.config.requiredFruits, mapFruitsCount)
+          : mapFruitsCount;
       const collectedFruits = this.runtime.collectedFruits.size;
 
       if (collectedFruits < requiredFruits) {
@@ -779,7 +884,7 @@ export class GameEngine {
           this.goalRequirementNotified = true;
           this.emit({
             type: "winConditionNotMet",
-            message: `Collect all fruits first (${collectedFruits}/${requiredFruits}).`,
+            message: `Collect fruits and reach goal (${collectedFruits}/${requiredFruits}).`,
             collectedFruits,
             requiredFruits,
           });
