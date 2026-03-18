@@ -105,10 +105,28 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
   let enemyCount = 1;
   let decoCount = 1;
 
+  const isBoxType = (type: string): boolean =>
+    type === "box" || type === "box1" || type === "box2" || type === "box3";
+
+  const defaultHardnessByType = (type: string): number => {
+    if (type === "box1") return 1;
+    if (type === "box2") return 2;
+    if (type === "box3") return 3;
+    return 1;
+  };
+
   mapData.objects.items?.forEach((item) => {
     // Skip player and goal as they are handled by startPosition/goalPosition
     if (item.type === "player" || item.id === 1 || item.type === "goal" || item.id === 2) {
       return;
+    }
+
+    const metadata = { ...(item.metadata ?? {}) };
+    if (item.type === "door" && typeof metadata.isOpen !== "boolean") {
+      metadata.isOpen = false;
+    }
+    if (isBoxType(item.type) && typeof metadata.hardness !== "number") {
+      metadata.hardness = defaultHardnessByType(item.type);
     }
 
     if (item.type === "fruit" || item.id === 3) {
@@ -116,21 +134,21 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
         id: `fruit-${fruitCount++}`,
         type: "fruit",
         position: { row: item.y, col: item.x },
-        metadata: { points: 10 },
+        metadata: { ...metadata, points: 10 },
       });
     } else if (item.id === 4 || item.type === "enemy" || item.type === "slime") {
       objects.push({
         id: `enemy-${enemyCount++}`,
         type: item.type === "enemy" ? "slime" : item.type,
         position: { row: item.y, col: item.x },
-        metadata: { difficulty: "normal" },
+        metadata: { ...metadata, difficulty: "normal" },
       });
     } else {
       objects.push({
         id: `deco-${decoCount++}`,
         type: item.type,
         position: { row: item.y, col: item.x },
-        metadata: { objectId: item.id },
+        metadata: { objectId: item.id, ...metadata },
       });
     }
   });

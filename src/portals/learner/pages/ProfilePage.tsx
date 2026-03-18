@@ -123,7 +123,7 @@ export default function ProfilePage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [t]);
 
   const onPickAvatar = (file: File | null) => {
     setSuccessMsg(null);

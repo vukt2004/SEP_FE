@@ -289,11 +289,18 @@ export default function GameView() {
           }
         };
 
+        const handleInteractionFeedback = (event: EngineEvent) => {
+          if (event.type === "interactionFeedback") {
+            showWarningToast(event.message);
+          }
+        };
+
         engine.on("win", handleWin);
         engine.on("engine:failed", handleFailed);
         engine.on("objectStateChanged", handleObjectStateChanged);
         engine.on("fruitCollected", handleFruitCollected);
         engine.on("winConditionNotMet", handleWinConditionNotMet);
+        engine.on("interactionFeedback", handleInteractionFeedback);
 
         const handleKeyDown = (e: KeyboardEvent) => {
           const executor = executorRef.current;
@@ -329,6 +336,7 @@ export default function GameView() {
           engine.off("objectStateChanged", handleObjectStateChanged);
           engine.off("fruitCollected", handleFruitCollected);
           engine.off("winConditionNotMet", handleWinConditionNotMet);
+          engine.off("interactionFeedback", handleInteractionFeedback);
           if (executorRef.current) {
             executorRef.current.stop();
           }

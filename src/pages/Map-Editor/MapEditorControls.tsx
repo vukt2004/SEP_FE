@@ -325,7 +325,7 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache, showLeftPanel]);
+  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel]);
 
   useEffect(() => {
     if (!showRightPanel || userType === "unknown") {

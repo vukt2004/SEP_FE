@@ -108,6 +108,8 @@ export interface PlacedObject {
   x: number;
   /** Tile y coordinate */
   y: number;
+  /** Optional object-specific data (e.g. door isOpen, box hardness) */
+  metadata?: Record<string, unknown>;
 }
 
 /**

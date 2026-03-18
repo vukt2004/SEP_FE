@@ -197,14 +197,28 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
       objects: {
         items: itemsRaw
           .filter(
-            (item): item is { id: number; type: string; x: number; y: number } =>
+            (
+              item,
+            ): item is {
+              id: number;
+              type: string;
+              x: number;
+              y: number;
+              metadata?: Record<string, unknown>;
+            } =>
               isRecord(item) &&
               typeof item.id === "number" &&
               typeof item.type === "string" &&
               typeof item.x === "number" &&
               typeof item.y === "number",
           )
-          .map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y })),
+          .map((item) => ({
+            id: item.id,
+            type: item.type,
+            x: item.x,
+            y: item.y,
+            ...(isRecord(item.metadata) ? { metadata: item.metadata } : {}),
+          })),
       },
       blockConstraints: normalizeBlockConstraints(
         isRecord(sourceJson.blockConstraints) ? sourceJson.blockConstraints : null,
@@ -222,7 +236,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
       ? sourceJson.blockConstraints
       : null;
 
-    const items: { id: number; type: string; x: number; y: number }[] = [];
+    const items: Array<{
+      id: number;
+      type: string;
+      x: number;
+      y: number;
+      metadata?: Record<string, unknown>;
+    }> = [];
 
     if (
       isRecord(sourceJson.startPosition) &&
@@ -268,7 +288,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
             isRecord(obj.metadata) && typeof obj.metadata.objectId === "number"
               ? obj.metadata.objectId
               : 5;
-          items.push({ id: metaId, type: obj.type, x: obj.position.col, y: obj.position.row });
+          items.push({
+            id: metaId,
+            type: obj.type,
+            x: obj.position.col,
+            y: obj.position.row,
+            ...(isRecord(obj.metadata) ? { metadata: obj.metadata } : {}),
+          });
         }
       }
     });

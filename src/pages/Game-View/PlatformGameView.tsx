@@ -262,6 +262,13 @@ export default function PlatformGameView() {
         };
         engine.on("winConditionNotMet", handleWinConditionNotMet);
 
+        const handleInteractionFeedback = (event: EngineEvent) => {
+          if (event.type === "interactionFeedback") {
+            showWarningToast(event.message);
+          }
+        };
+        engine.on("interactionFeedback", handleInteractionFeedback);
+
         // Keyboard controls (manual play, secondary to block editor)
         const handleKeyDown = (e: KeyboardEvent) => {
           // If executor is running, ignore manual key input
@@ -302,6 +309,7 @@ export default function PlatformGameView() {
           engine.off("engine:failed", handleFailed);
           engine.off("fruitCollected", handleFruitCollected);
           engine.off("winConditionNotMet", handleWinConditionNotMet);
+          engine.off("interactionFeedback", handleInteractionFeedback);
           if (executorRef.current) executorRef.current.stop();
           engine.stop();
         };

@@ -71,7 +71,7 @@ function AdminPuzzlesSection() {
         setLoading(false);
       }
     },
-    [currentPage, searchTerm, difficultyFilter],
+    [currentPage, difficultyFilter, searchTerm, t],
   );
 
   useEffect(() => {

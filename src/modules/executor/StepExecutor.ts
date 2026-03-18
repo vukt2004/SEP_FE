@@ -44,6 +44,7 @@ export class StepExecutor {
   private procedures: Map<string, ASTNode[]>;
   private variables: Map<string, number>;
   private warnedMissingProcedures: Set<string>;
+  private warnedLiteralBreakBlocks: Set<string>;
   private originalProgram: BlockProgram;
   private timeoutId: number | null;
   private isRunning: boolean;
@@ -59,6 +60,7 @@ export class StepExecutor {
     this.procedures = new Map();
     this.variables = new Map();
     this.warnedMissingProcedures = new Set();
+    this.warnedLiteralBreakBlocks = new Set();
     this.preRegisterProcedures(program);
     this.timeoutId = null;
     this.isRunning = false;
@@ -78,6 +80,7 @@ export class StepExecutor {
     this.procedures.clear();
     this.variables.clear();
     this.warnedMissingProcedures.clear();
+    this.warnedLiteralBreakBlocks.clear();
     this.preRegisterProcedures(this.originalProgram);
   }
 
@@ -243,10 +246,36 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
-        case "interact":
+        case "break":
+          if (node.power && !this.expressionUsesVariable(node.power)) {
+            if (!this.warnedLiteralBreakBlocks.has(node.blockId)) {
+              this.warnedLiteralBreakBlocks.add(node.blockId);
+              this.warningCallback?.(
+                "Tip: BREAK works best with variables or expressions, not only hardcoded numbers.",
+                node.blockId,
+              );
+            }
+          }
           return {
             command: {
-              type: "interact",
+              type: "break",
+              power: Math.max(0, this.evaluateNumber(node.power)),
+            },
+            blockId: node.blockId,
+          };
+
+        case "openDoor":
+          return {
+            command: {
+              type: "openDoor",
+            },
+            blockId: node.blockId,
+          };
+
+        case "closeDoor":
+          return {
+            command: {
+              type: "closeDoor",
             },
             blockId: node.blockId,
           };
@@ -254,8 +283,10 @@ export class StepExecutor {
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
-          // Defensive handling: ensure times is a valid positive number
-          const times = Math.max(0, node.times ?? 0);
+          // Defensive handling: evaluate dynamic expressions and ensure a valid positive integer
+          const rawTimes =
+            typeof node.times === "number" ? node.times : this.evaluateNumber(node.times);
+          const times = Math.max(0, Math.floor(rawTimes));
           if (times > 0) {
             this.stack.push({
               nodes: node.body,
@@ -356,9 +387,8 @@ export class StepExecutor {
         }
 
         case "changeVariable": {
-          const delta = this.evaluateNumber(node.value);
-          const current = this.variables.get(node.name) ?? 0;
-          this.variables.set(node.name, current + delta);
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
           continue;
         }
 
@@ -377,6 +407,7 @@ export class StepExecutor {
         case "logicBinary":
         case "logicNot":
         case "numberLiteral":
+        case "arithmetic":
         case "getVariable":
         case "compare":
           // Logic expression blocks are value blocks, not statement blocks
@@ -452,6 +483,23 @@ export class StepExecutor {
       return node.value;
     }
 
+    if (node.type === "arithmetic") {
+      const left = this.evaluateNumber(node.left);
+      const right = this.evaluateNumber(node.right);
+      switch (node.operator) {
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+        case "*":
+          return left * right;
+        case "/":
+          return right === 0 ? 0 : left / right;
+        default:
+          return 0;
+      }
+    }
+
     if (node.type === "getVariable") {
       return this.variables.get(node.name) ?? 0;
     }
@@ -470,6 +518,34 @@ export class StepExecutor {
 
     console.warn("Unsupported numeric expression node:", node.type);
     return 0;
+  }
+
+  private expressionUsesVariable(node: ASTNode | null): boolean {
+    if (!node) {
+      return false;
+    }
+
+    if (node.type === "getVariable") {
+      return true;
+    }
+
+    if (node.type === "arithmetic") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "compare") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicBinary") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicNot") {
+      return this.expressionUsesVariable(node.value);
+    }
+
+    return false;
   }
 
   /**

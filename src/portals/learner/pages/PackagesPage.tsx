@@ -42,7 +42,7 @@ export default function PackagesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const handleChoose = (pkg: Package) => {
     if (!pkg.isActive) return;
