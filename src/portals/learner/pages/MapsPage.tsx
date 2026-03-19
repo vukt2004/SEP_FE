@@ -1,15 +1,160 @@
 // src/portals/learner/pages/MapsPage.tsx
-// Browse / play maps page (ex-challenges)
-import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { Search, Clock, Gamepad2 } from "lucide-react";
+// Game library + progression UI for 2D puzzle learning platform
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  Clock,
+  Gamepad2,
+  Play,
+  Lock,
+  Check,
+  Sparkles,
+  GraduationCap,
+  LayoutGrid,
+} from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import type { Map } from "@/types/api/learner/maps";
+import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
+import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
 
-type DifficultyFilter = "all" | 1 | 2 | 3;
-type MapTypeFilter = "all" | "Platform" | "Topdown";
+/** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
+const DIFFICULTY_TAG_NAMES = new Set(
+  ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
+);
+
+/** Vietnamese labels for concept tags (dropdown + cards when locale is vi). Excluded concepts still translated on cards. */
+const CONCEPT_LABELS_VI: Record<string, string> = {
+  "Algorithm Basics": "Cơ bản thuật toán",
+  "Algorithm Design": "Thiết kế thuật toán",
+  Arrays: "Mảng",
+  "Computational Thinking": "Tư duy máy tính",
+  Conditionals: "Điều kiện",
+  Debugging: "Gỡ lỗi",
+  Functions: "Hàm",
+  "Logic Puzzle": "Câu đố logic",
+  "Logical Thinking": "Tư duy logic",
+  Loops: "Vòng lặp",
+  Objects: "Đối tượng",
+  "Obstacle Avoidance": "Tránh chướng ngại vật",
+  Operators: "Toán tử",
+  Optimization: "Tối ưu hóa",
+  Pathfinding: "Tìm đường",
+  "Pattern Recognition": "Nhận dạng mẫu",
+  Pointers: "Con trỏ",
+  "Problem Solving": "Giải quyết vấn đề",
+  Recursion: "Đệ quy",
+  "Resource Collection": "Thu thập tài nguyên",
+  Strategy: "Chiến lược",
+  Variables: "Biến",
+  "If Else": "If / Else",
+  "If/Else": "If / Else",
+};
+
+function getConceptLabel(name: string, locale: LocaleId): string {
+  if (locale === "vi") {
+    const exact = CONCEPT_LABELS_VI[name];
+    if (exact) return exact;
+    const lower = name.toLowerCase();
+    const entry = Object.entries(CONCEPT_LABELS_VI).find(([k]) => k.toLowerCase() === lower);
+    if (entry) return entry[1];
+  }
+  return name;
+}
+
+function isDifficultyTag(tagName: string): boolean {
+  return DIFFICULTY_TAG_NAMES.has(tagName.trim().toLowerCase());
+}
+
+/** Concept tags to hide from the filter dropdown – compare case-insensitively */
+const CONCEPT_FILTER_EXCLUDE_LOWER = new Set([
+  "optimization",
+  "debugging",
+  "computational thinking",
+  "algorithm basics",
+  "algorithm design",
+  "logic puzzle",
+]);
+
+function isConceptExcluded(tagName: string): boolean {
+  return CONCEPT_FILTER_EXCLUDE_LOWER.has(tagName.trim().toLowerCase());
+}
+
+/**
+ * Split concept tags into two groups for filtering:
+ * - Programming knowledge: variables, loops, conditionals, functions, etc.
+ * - Skills / mechanics: pathfinding, pattern recognition, problem solving, etc.
+ *
+ * Note: Backend tag names can be English or Vietnamese -> compare case-insensitively.
+ */
+const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
+  // Vietnamese
+  "tư duy logic",
+  "tránh chướng ngại vật",
+  "tìm đường",
+  "nhận dạng mẫu",
+  "giải quyết vấn đề",
+  "thu thập tài nguyên",
+  "chiến lược",
+  "điều hướng",
+  // English
+  "pathfinding",
+  "obstacle avoidance",
+  "pattern recognition",
+  "problem solving",
+  "resource collection",
+  "strategy",
+  "logical thinking",
+]);
+
+function isSkillMechanismConcept(tagName: string): boolean {
+  return SKILL_MECHANISM_CONCEPTS_LOWER.has(tagName.trim().toLowerCase());
+}
+
+type MapStatus = "locked" | "available" | "in_progress" | "completed";
+type MainTab = "all" | "recommended" | "progress";
+type SortOption = "recommended" | "newest" | "most_played";
+
+// Mock progress: replace with API when available (e.g. learningPath or gameplay progress)
+function useMapProgress(mapIds: string[]) {
+  return useMemo(() => {
+    const inProgress: Record<string, number> = {};
+    const completed = new Set<string>();
+    const locked = new Set<string>();
+    if (mapIds.length > 0) {
+      inProgress[mapIds[0]] = 45;
+      if (mapIds.length > 1) completed.add(mapIds[1]);
+      if (mapIds.length > 2) completed.add(mapIds[2]);
+      // Remaining maps: available (no lock) so users can browse and play; lock only far-future maps if needed
+    }
+    return { inProgress, completed, locked };
+  }, [mapIds.join(",")]);
+}
+
+function getMapStatus(
+  mapId: string,
+  inProgress: Record<string, number>,
+  completed: Set<string>,
+  locked: Set<string>,
+): { status: MapStatus; progressPercent?: number } {
+  if (completed.has(mapId)) return { status: "completed" };
+  if (mapId in inProgress) return { status: "in_progress", progressPercent: inProgress[mapId] };
+  if (locked.has(mapId)) return { status: "locked" };
+  return { status: "available" };
+}
+
+function formatTime(timeLimitMs: number, t: (k: string) => string): string {
+  if (timeLimitMs === 0) return `—`;
+  const minutes = Math.max(1, Math.ceil(timeLimitMs / 60000));
+  return `${minutes} ${t("minutes")}`;
+}
+
+function getDifficultyLabel(d: number, t: (k: string) => string): string {
+  if (d <= 2) return t("easy");
+  if (d <= 5) return t("medium");
+  return t("hard");
+}
 
 export default function MapsPage() {
   const { t } = useTranslation();
@@ -18,266 +163,619 @@ export default function MapsPage() {
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
         <header className={styles.header}>
-          <span className={styles.badge}>{t("playAndLearn")}</span>
           <h1 className={styles.title}>
             <Gamepad2 size={32} className={styles.titleIcon} aria-hidden />
             {t("maps")}
           </h1>
           <p className={styles.subtitle}>{t("pickMapSubtitle")}</p>
         </header>
-
-        <AdminPuzzlesSection />
+        <MapsContent />
       </div>
     </div>
   );
 }
 
-function AdminPuzzlesSection() {
-  const { t } = useTranslation();
-  const [maps, setMaps] = useState<Map[]>([]);
+function MapsContent() {
+  const { t, locale } = useTranslation();
+  const navigate = useNavigate();
+  const [maps, setMaps] = useState<ApiMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all");
-  const [mapTypeFilter, setMapTypeFilter] = useState<MapTypeFilter>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [selectedKnowledgeConcepts, setSelectedKnowledgeConcepts] = useState<string[]>([]);
+  const [knowledgeConceptPicker, setKnowledgeConceptPicker] = useState<string>("all");
+  const [selectedMechanismConcepts, setSelectedMechanismConcepts] = useState<string[]>([]);
+  const [mechanismConceptPicker, setMechanismConceptPicker] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("recommended");
+  const [mainTab, setMainTab] = useState<MainTab>("all");
+  const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
+  const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
 
-  const loadMaps = useCallback(
-    async (overridePage?: number) => {
-      const page = overridePage ?? currentPage;
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await learnerMapsApi.getMaps({
-          pageNumber: page,
-          pageSize: 20,
-          publishedOnly: true,
-          search: searchTerm.trim() || undefined,
-          difficulty: difficultyFilter === "all" ? undefined : difficultyFilter,
-        });
+  const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
+  const { inProgress, completed, locked } = useMapProgress(mapIds);
 
-        if (response.data.isSuccess && response.data.data) {
-          setMaps(response.data.data.items);
-          setTotalPages(response.data.data.totalPages);
-          if (overridePage != null) setCurrentPage(overridePage);
-        } else {
-          setError(response.data.message || t("failedLoadMapList"));
-        }
-      } catch (err) {
-        setError(t("errorLoadMapList"));
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const loadMaps = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await learnerMapsApi.getMaps({
+        pageNumber: 1,
+        pageSize: 50,
+        publishedOnly: true,
+        search: searchTerm.trim() || undefined,
+        difficulty: difficultyFilter === "all" ? undefined : Number(difficultyFilter),
+        sortBy: "CreatedAt",
+        sortAscending: sortBy !== "newest", // false = newest first
+      });
+      if (res.data.isSuccess && res.data.data) {
+        setMaps(res.data.data.items as ApiMap[]);
+      } else {
+        setError(res.data.message || t("failedLoadMapList"));
       }
-    },
-    [currentPage, difficultyFilter, searchTerm, t],
-  );
+    } catch (err) {
+      setError(t("errorLoadMapList"));
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, difficultyFilter, sortBy, t]);
 
   useEffect(() => {
     loadMaps();
   }, [loadMaps]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, difficultyFilter, mapTypeFilter]);
+    learnerMapsApi.getMapTags().then((r) => {
+      if (r.data.isSuccess && r.data.data) {
+        const onlyConcepts = r.data.data
+          .map((tag) => tag.name)
+          .filter((name) => !isDifficultyTag(name) && !isConceptExcluded(name));
+        const uniqueConcepts = [...new Set(onlyConcepts)];
+        const knowledge = uniqueConcepts
+          .filter((name) => !isSkillMechanismConcept(name))
+          .sort((a, b) => a.localeCompare(b));
+        const mechanism = uniqueConcepts
+          .filter((name) => isSkillMechanismConcept(name))
+          .sort((a, b) => a.localeCompare(b));
+        setKnowledgeConceptOptions(knowledge);
+        setMechanismConceptOptions(mechanism);
+      }
+    });
+  }, []);
 
-  const getDifficultyLabel = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "Easy";
-      case 2:
-        return "Medium";
-      case 3:
-        return "Hard";
-      default:
-        return "-";
+  const filteredMaps = useMemo(() => {
+    let list = [...maps];
+    if (selectedKnowledgeConcepts.length > 0) {
+      // Match-all semantics within each group.
+      list = list.filter((m) => {
+        const tags = (m.tagNames ?? []).map((x) => x.toLowerCase().trim());
+        return selectedKnowledgeConcepts.every((c) => tags.includes(c.toLowerCase().trim()));
+      });
     }
-  };
 
-  const formatTimeLimit = (timeLimitMs: number) => {
-    if (timeLimitMs === 0) return "No limit";
-    const minutes = Math.floor(timeLimitMs / 60000);
-    const seconds = Math.floor((timeLimitMs % 60000) / 1000);
-    if (minutes === 0) return `${seconds}s`;
-    if (seconds === 0) return `${minutes}p`;
-    return `${minutes}p ${seconds}s`;
-  };
-
-  const getTypeLabel = (type: Map["type"]) => {
-    switch (type) {
-      case "Platform":
-        return "Platformer";
-      case "Topdown":
-        return "Puzzle / Logic";
-      default:
-        return type;
+    if (selectedMechanismConcepts.length > 0) {
+      list = list.filter((m) => {
+        const tags = (m.tagNames ?? []).map((x) => x.toLowerCase().trim());
+        return selectedMechanismConcepts.every((c) => tags.includes(c.toLowerCase().trim()));
+      });
     }
-  };
+    if (mainTab === "recommended") {
+      list = list.slice(0, 6);
+    }
+    if (mainTab === "progress") {
+      list = list.filter((m) => completed.has(m.id) || m.id in inProgress);
+    }
+    return list;
+  }, [maps, selectedKnowledgeConcepts, selectedMechanismConcepts, mainTab, completed, inProgress]);
 
-  const getCreatorLabel = (map: Map) => {
-    if (map.createdByUserName?.trim()) return `Created by ${map.createdByUserName.trim()}`;
-    if (!map.createdByUserId) return "Admin Team";
-    return `Created by ${map.createdByUserId.slice(0, 8)}`;
-  };
+  const inProgressMaps = useMemo(
+    () => maps.filter((m) => m.id in inProgress),
+    [maps, inProgress],
+  );
+  const recommendedMaps = useMemo(() => maps.slice(0, 2), [maps]);
+  const beginnerMaps = useMemo(() => maps.filter((m) => m.difficulty <= 2), [maps]);
+  const allMapsForGrid = filteredMaps;
 
-  const filteredMaps = maps.filter((map) => {
-    if (mapTypeFilter !== "all" && map.type !== mapTypeFilter) return false;
-    return true;
-  });
+  const hasActiveFilters =
+    difficultyFilter !== "all" ||
+    knowledgeConceptPicker !== "all" ||
+    mechanismConceptPicker !== "all" ||
+    selectedKnowledgeConcepts.length > 0 ||
+    selectedMechanismConcepts.length > 0 ||
+    searchTerm.trim() !== "";
 
-  const getDifficultyClass = (d: number) => {
-    if (d === 1) return styles.difficultyEasy;
-    if (d === 2) return styles.difficultyMedium;
-    if (d === 3) return styles.difficultyHard;
-    return "";
+  if (loading && maps.length === 0) {
+    return (
+      <div className={styles.section}>
+        <div className={styles.loading}>{t("loadingMaps")}</div>
+      </div>
+    );
+  }
+
+  if (error && maps.length === 0) {
+    return (
+      <div className={styles.section}>
+        <div className={styles.error}>{error}</div>
+      </div>
+    );
+  }
+
+  const clearAllFilters = () => {
+    setDifficultyFilter("all");
+    setSelectedKnowledgeConcepts([]);
+    setSelectedMechanismConcepts([]);
+    setSearchTerm("");
+    setKnowledgeConceptPicker("all");
+    setMechanismConceptPicker("all");
   };
 
   return (
     <div className={styles.section}>
-      {loading ? (
-        <div className={styles.loading}>Loading maps...</div>
-      ) : error ? (
-        <div className={styles.error}>{error}</div>
-      ) : (
-        <>
-          <div className={styles.toolbar}>
-            <label className={styles.searchBar} htmlFor="map-search">
-              <Search size={18} />
-              <input
-                id="map-search"
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search maps by name..."
-              />
-            </label>
+      <div className={styles.steamGrid}>
+        {/* Steam-like left filters */}
+        <div className={styles.steamLayout}>
+          <aside className={styles.filterSidebar}>
+          <div className={styles.filterSidebarHeader}>
+            <span className={styles.filterSidebarTitle}>{t("filtersPanel")}</span>
+            {hasActiveFilters && (
+              <button type="button" className={styles.clearAllFiltersBtn} onClick={clearAllFilters}>
+                {t("clearAllFilters")}
+              </button>
+            )}
+          </div>
 
-            <div className={styles.filtersRow}>
+          <div className={styles.filterGroups}>
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel} id="filter-search-label">
+                {t("mapsSearchLabel")}
+              </span>
+              <label className={styles.searchBar} htmlFor="maps-search" aria-labelledby="filter-search-label">
+                <Search size={18} aria-hidden />
+                <input
+                  id="maps-search"
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={t("searchMapPlaceholder")}
+                />
+              </label>
+            </div>
+
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>{t("difficulty")}</span>
               <select
                 className={styles.filterSelect}
                 value={difficultyFilter}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setDifficultyFilter(value === "all" ? "all" : (Number(value) as 1 | 2 | 3));
-                }}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                aria-label={t("difficulty")}
               >
-                <option value="all">Difficulty: All</option>
-                <option value={1}>Easy</option>
-                <option value={2}>Medium</option>
-                <option value={3}>Hard</option>
+                <option value="all">{t("filterAll")}</option>
+                <option value={1}>{t("easy")}</option>
+                <option value={2}>{t("medium")}</option>
+                <option value={3}>{t("hard")}</option>
               </select>
+            </div>
 
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>
+                {t("programmingKnowledge")} <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
+              </span>
+              <div className={styles.conceptFieldWrap}>
+                <select
+                  className={styles.filterSelect}
+                  value={knowledgeConceptPicker}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setKnowledgeConceptPicker(value);
+                    if (value === "all") return;
+                    setSelectedKnowledgeConcepts((prev) => (prev.includes(value) ? prev : [...prev, value]));
+                  }}
+                  aria-label={t("addConcept")}
+                  title={t("conceptsMultiSelectHint")}
+                >
+                  <option value="all">— {t("addConcept")} —</option>
+                  {knowledgeConceptOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {getConceptLabel(name, locale)}
+                    </option>
+                  ))}
+                </select>
+
+                <div className={styles.conceptChipsRow}>
+                  {selectedKnowledgeConcepts.map((concept) => (
+                    <button
+                      key={concept}
+                      type="button"
+                      className={styles.conceptChip}
+                      onClick={() => {
+                        const next = selectedKnowledgeConcepts.filter((x) => x !== concept);
+                        setSelectedKnowledgeConcepts(next);
+                        if (knowledgeConceptPicker === concept && next.length === 0) {
+                          setKnowledgeConceptPicker("all");
+                        }
+                      }}
+                      title={t("conceptMatchAll")}
+                    >
+                      {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                    </button>
+                  ))}
+                  {selectedKnowledgeConcepts.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.clearConceptsBtn}
+                      onClick={() => {
+                        setSelectedKnowledgeConcepts([]);
+                        setKnowledgeConceptPicker("all");
+                      }}
+                    >
+                      {t("filterAll")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>
+                {t("skillMechanism")} <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
+              </span>
+              <div className={styles.conceptFieldWrap}>
+                <select
+                  className={styles.filterSelect}
+                  value={mechanismConceptPicker}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setMechanismConceptPicker(value);
+                    if (value === "all") return;
+                    setSelectedMechanismConcepts((prev) => (prev.includes(value) ? prev : [...prev, value]));
+                  }}
+                  aria-label={t("addConcept")}
+                  title={t("conceptsMultiSelectHint")}
+                >
+                  <option value="all">— {t("addConcept")} —</option>
+                  {mechanismConceptOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {getConceptLabel(name, locale)}
+                    </option>
+                  ))}
+                </select>
+
+                <div className={styles.conceptChipsRow}>
+                  {selectedMechanismConcepts.map((concept) => (
+                    <button
+                      key={concept}
+                      type="button"
+                      className={styles.conceptChip}
+                      onClick={() => {
+                        const next = selectedMechanismConcepts.filter((x) => x !== concept);
+                        setSelectedMechanismConcepts(next);
+                        if (mechanismConceptPicker === concept && next.length === 0) {
+                          setMechanismConceptPicker("all");
+                        }
+                      }}
+                      title={t("conceptMatchAll")}
+                    >
+                      {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                    </button>
+                  ))}
+                  {selectedMechanismConcepts.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.clearConceptsBtn}
+                      onClick={() => {
+                        setSelectedMechanismConcepts([]);
+                        setMechanismConceptPicker("all");
+                      }}
+                    >
+                      {t("filterAll")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>{t("sortByLabel")}</span>
               <select
                 className={styles.filterSelect}
-                value={mapTypeFilter}
-                onChange={(e) => setMapTypeFilter(e.target.value as MapTypeFilter)}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                aria-label={t("sortByLabel")}
               >
-                <option value="all">Type: All</option>
-                <option value="Platform">Platformer</option>
-                <option value="Topdown">Puzzle / Logic</option>
+                <option value="recommended">{t("sortRecommended")}</option>
+                <option value="newest">{t("sortNewest")}</option>
+                <option value="most_played">{t("sortMostPlayed")}</option>
               </select>
             </div>
           </div>
+          </aside>
+        </div>
 
-          <div className={styles.grid}>
-            {filteredMaps.map((map) => {
-              const cardClass = `${styles.card} ${!map.isPublished ? styles.cardDisabled : ""}`;
-              const content = (
-                <>
-                  {map.avatarUrl ? (
-                    <div className={styles.thumb}>
-                      <img
-                        src={map.avatarUrl}
-                        alt={map.title}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className={`${styles.thumb} ${styles.thumbPlaceholder}`}>
-                      <span>No preview</span>
-                    </div>
-                  )}
-
-                  <div className={styles.cardHeader}>
-                    <h3 className={styles.cardTitle}>{map.title}</h3>
-                    <div className={styles.badges}>
-                      <span
-                        className={`${styles.difficulty} ${getDifficultyClass(map.difficulty)}`}
-                      >
-                        {getDifficultyLabel(map.difficulty)}
-                      </span>
-                      <span className={styles.typeBadge}>{getTypeLabel(map.type)}</span>
-                    </div>
-                  </div>
-
-                  <p className={styles.creator}>{getCreatorLabel(map)}</p>
-
-                  {map.description && <p className={styles.description}>{map.description}</p>}
-
-                  <div className={styles.meta}>
-                    <div className={styles.metaItem}>
-                      <Clock size={16} />
-                      <span>{formatTimeLimit(map.timeLimitMs)}</span>
-                    </div>
-                  </div>
-
-                  {map.tagNames && map.tagNames.length > 0 && (
-                    <div className={styles.tags}>
-                      {map.tagNames.slice(0, 4).map((tag, idx) => (
-                        <span key={idx} className={styles.tag}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-              return map.isPublished ? (
-                <Link key={map.id} to={`/app/map/${map.id}`} className={cardClass}>
-                  {content}
-                </Link>
-              ) : (
-                <div key={map.id} className={cardClass}>
-                  {content}
-                </div>
-              );
-            })}
+        <div className={styles.steamMain}>
+          <div className={styles.mainTabs}>
+            {(["all", "recommended", "progress"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`${styles.mainTab} ${mainTab === tab ? styles.mainTabActive : ""}`}
+                onClick={() => setMainTab(tab)}
+              >
+                {tab === "all" ? t("allMaps") : tab === "recommended" ? t("recommended") : t("myProgress")}
+              </button>
+            ))}
           </div>
 
-          {filteredMaps.length === 0 && (
-            <div className={styles.empty}>
-              <p>No matching maps found. Try changing filters or search.</p>
-            </div>
+          {/* Continue Playing */}
+          {inProgressMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
+            <section className={styles.block}>
+              <h2 className={styles.blockTitle}>
+                <Play size={20} className={styles.blockTitleIcon} aria-hidden />
+                {t("continuePlaying")}
+              </h2>
+              <div className={styles.continueGrid}>
+                {inProgressMaps.map((map) => {
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  return (
+                    <MapCard
+                      key={map.id}
+                      map={map}
+                      t={t}
+                      locale={locale}
+                      status={status}
+                      progressPercent={progressPercent}
+                      size="large"
+                      onPlay={() => navigate(`/app/map/${map.id}`)}
+                      showContinue
+                    />
+                  );
+                })}
+              </div>
+            </section>
           )}
 
-          {totalPages > 1 && (
-            <div className={styles.pagination}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-              <span className={styles.paginationInfo}>
-                Page {currentPage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
+          {/* Recommended for you */}
+          {recommendedMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
+            <section className={styles.block}>
+              <h2 className={styles.blockTitle}>
+                <Sparkles size={20} className={styles.blockTitleIcon} aria-hidden />
+                {t("recommendedForYou")}
+              </h2>
+              <div className={styles.recommendedGrid}>
+                {recommendedMaps.map((map) => {
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  return (
+                    <MapCard
+                      key={map.id}
+                      map={map}
+                      t={t}
+                      locale={locale}
+                      status={status}
+                      progressPercent={progressPercent}
+                      size="large"
+                      badge="recommended"
+                      onPlay={() => navigate(`/app/map/${map.id}`)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
           )}
-        </>
-      )}
+
+          {/* Beginner friendly */}
+          {beginnerMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
+            <section className={styles.block}>
+              <h2 className={styles.blockTitle}>
+                <GraduationCap size={20} className={styles.blockTitleIcon} aria-hidden />
+                {t("beginnerFriendly")}
+              </h2>
+              <div className={styles.beginnerGrid}>
+                {beginnerMaps.slice(0, 4).map((map) => {
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  return (
+                    <MapCard
+                      key={map.id}
+                      map={map}
+                      t={t}
+                      locale={locale}
+                      status={status}
+                      progressPercent={progressPercent}
+                      size="medium"
+                      badge="start_here"
+                      onPlay={() => navigate(`/app/map/${map.id}`)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* All maps grid */}
+          <section className={styles.block}>
+            <h2 className={styles.blockTitle}>
+              <LayoutGrid size={20} className={styles.blockTitleIcon} aria-hidden />
+              {mainTab === "all" ? t("allMaps") : mainTab === "recommended" ? t("recommended") : t("myProgress")}
+            </h2>
+            {allMapsForGrid.length === 0 ? (
+              <div className={styles.empty}>
+                <p>{t("noMapsPublished")}</p>
+              </div>
+            ) : (
+              <div className={styles.mapsGrid}>
+                {allMapsForGrid.map((map) => {
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  return (
+                    <MapCard
+                      key={map.id}
+                      map={map}
+                      t={t}
+                      locale={locale}
+                      status={status}
+                      progressPercent={progressPercent}
+                      size="default"
+                      onPlay={() => navigate(`/app/map/${map.id}`)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type CardSize = "default" | "medium" | "large";
+
+function MapCard({
+  map,
+  t,
+  locale,
+  status,
+  progressPercent,
+  size = "default",
+  badge,
+  showContinue,
+  onPlay,
+}: {
+  map: ApiMap;
+  t: (key: string) => string;
+  locale: LocaleId;
+  status: MapStatus;
+  progressPercent?: number;
+  size?: CardSize;
+  badge?: "recommended" | "start_here";
+  showContinue?: boolean;
+  onPlay: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const isLocked = status === "locked";
+  const difficultyClass =
+    map.difficulty <= 2 ? styles.difficultyEasy : map.difficulty <= 5 ? styles.difficultyMedium : styles.difficultyHard;
+  const tagNames = map.tagNames ?? [];
+  const conceptTags = tagNames.filter((name) => !isDifficultyTag(name));
+  const prerequisites =
+    conceptTags
+      .slice(0, 2)
+      .map((name) => getConceptLabel(name, locale))
+      .join(", ") || "—";
+
+  const cardContent = (
+    <>
+      <div className={`${styles.thumb} ${size === "large" ? styles.thumbLarge : size === "medium" ? styles.thumbMedium : ""} ${isLocked ? styles.thumbLocked : ""}`}>
+        {map.avatarUrl ? (
+          <img
+            src={map.avatarUrl}
+            alt=""
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <div className={styles.thumbPlaceholder}>No preview</div>
+        )}
+        {isLocked && (
+          <div className={styles.lockOverlay}>
+            <Lock size={32} aria-hidden />
+          </div>
+        )}
+        {status === "completed" && (
+          <div className={styles.completedOverlay}>
+            <Check size={28} aria-hidden />
+          </div>
+        )}
+        {progressPercent != null && status === "in_progress" && (
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBarFill} style={{ width: `${progressPercent}%` }} />
+          </div>
+        )}
+        {badge === "recommended" && (
+          <span className={styles.cardBadgeRecommended}>
+            <Sparkles size={12} aria-hidden />
+            {t("recommended")}
+          </span>
+        )}
+        {badge === "start_here" && (
+          <span className={styles.cardBadgeStartHere}>{t("startHere")}</span>
+        )}
+        {hover && !isLocked && (
+          <div className={styles.playOverlay}>
+            <span className={styles.playBtn}>
+              <Play size={20} aria-hidden />
+              {t("playNow")}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.cardInfo}>
+        <h3 className={styles.cardTitle} title={map.title}>{map.title}</h3>
+        {map.description && (
+          <p className={styles.cardDesc}>{map.description}</p>
+        )}
+        <div className={styles.cardMeta}>
+          <span className={styles.metaItem}>
+            <Clock size={14} aria-hidden />
+            {formatTime(map.timeLimitMs, t)}
+          </span>
+          <span className={`${styles.difficulty} ${difficultyClass}`}>
+            {getDifficultyLabel(map.difficulty, t)}
+          </span>
+        </div>
+        <p className={styles.prerequisiteText}>
+          {t("prerequisiteKnowledge")}: {prerequisites}
+        </p>
+        <div className={styles.statusRow}>
+          {status !== "in_progress" && (
+            <span className={styles.statusBadge}>
+              {status === "completed" && (
+                <>
+                  <Check size={12} aria-hidden /> {t("mapCompleted")}
+                </>
+              )}
+              {status === "available" && t("mapAvailable")}
+              {status === "locked" && t("mapLocked")}
+            </span>
+          )}
+          {showContinue && status === "in_progress" && (
+            <button
+              type="button"
+              className={styles.continueBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPlay();
+              }}
+            >
+              {t("continue")}
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  const handleClick = () => {
+    if (isLocked) return;
+    onPlay();
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className={`${styles.card} ${styles[`cardSize_${size}`]} ${isLocked ? styles.cardLocked : ""}`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+    >
+      {cardContent}
     </div>
   );
 }
