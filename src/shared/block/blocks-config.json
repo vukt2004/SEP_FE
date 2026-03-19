@@ -11,6 +11,24 @@
       "nextStatement": true
     },
     {
+      "type": "move_to_cell",
+      "category": "movement",
+      "label": "Move To Cell",
+      "tooltip": "Move one step toward an adjacent target cell x,y",
+      "color": "#4CAF50",
+      "command": "MOVE_TO_CELL",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "CELL",
+          "check": "String",
+          "label": "cell"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "turn_left",
       "category": "movement",
       "label": "Turn Left",
@@ -378,10 +396,34 @@
       "nextStatement": true
     },
     {
+      "type": "create_variable",
+      "category": "variables",
+      "label": "create",
+      "tooltip": "Create a variable with a number or string value",
+      "color": "#FF5722",
+      "command": "CREATE_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "=",
+          "text": "cell"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": ["Number", "String"],
+          "label": ""
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "set_variable",
       "category": "variables",
       "label": "set",
-      "tooltip": "Set a variable to a numeric value",
+      "tooltip": "Set a variable to a number or string value",
       "color": "#FF5722",
       "command": "SET_VARIABLE",
       "inputs": [
@@ -394,31 +436,7 @@
         {
           "kind": "value",
           "name": "VALUE",
-          "check": "Number",
-          "label": ""
-        }
-      ],
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "change_variable",
-      "category": "variables",
-      "label": "change",
-      "tooltip": "Set a variable to a numeric value",
-      "color": "#FF5722",
-      "command": "CHANGE_VARIABLE",
-      "inputs": [
-        {
-          "kind": "field_input",
-          "name": "NAME",
-          "label": "to",
-          "text": "score"
-        },
-        {
-          "kind": "value",
-          "name": "VALUE",
-          "check": "Number",
+          "check": ["Number", "String"],
           "label": ""
         }
       ],
@@ -429,7 +447,7 @@
       "type": "get_variable",
       "category": "variables",
       "label": "variable",
-      "tooltip": "Get the current numeric value of a variable",
+      "tooltip": "Get the current number or string value of a variable",
       "color": "#FF5722",
       "command": "GET_VARIABLE",
       "inputs": [
@@ -440,7 +458,7 @@
           "text": "score"
         }
       ],
-      "output": "Number"
+      "output": ["Number", "String"]
     },
     {
       "type": "number_literal",

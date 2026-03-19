@@ -19,6 +19,7 @@ import type { MapConfig } from "../../shared/types/MapSchema";
 import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
+import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
 import { MissionBar } from "./MissionBar";
 import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
@@ -74,6 +75,7 @@ export default function GameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
+  const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
@@ -521,7 +523,14 @@ export default function GameView() {
           engine.executeCommand(result.command);
           // TODO: Highlight block with result.blockId
         }
-      }, 500);
+      }, 500, () => {
+        setIsExecutorRunning(false);
+        const engine = engineRef.current;
+        if (!engine || engine.hasWon()) {
+          return;
+        }
+        setShowExecutionIncompleteModal(true);
+      });
     } catch (err) {
       console.error("Failed to run program:", err);
       alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
@@ -560,6 +569,7 @@ export default function GameView() {
     setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
+    setShowExecutionIncompleteModal(false);
     setExecVariables({});
     setLastRemoved(null);
     fruitCollectedPulseRef.current = false;
@@ -1377,6 +1387,14 @@ export default function GameView() {
           setRevealedHints((prev) => Math.min(prev + 1, totalHints));
         }}
         onClose={() => setShowHintsModal(false)}
+      />
+
+      <ExecutionIncompleteModal
+        isOpen={showExecutionIncompleteModal}
+        onConfirm={() => {
+          setShowExecutionIncompleteModal(false);
+          handleReset();
+        }}
       />
 
       {/* Game Results Modal */}
