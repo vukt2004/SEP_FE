@@ -85,6 +85,20 @@
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 1
+    },
+    "13": {
+      "name": "sliding_block",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 4
+    },
+    "14": {
+      "name": "disappearing_block",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Basic_Grass_Biom_Tileset.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     }
   }
 }

@@ -1,0 +1,21 @@
+{
+  "objectType": "disappearing_block",
+  "states": {
+    "idle": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Basic_Grass_Biom_Tileset.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "disappearing": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Basic_Grass_Biom_Tileset.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameCount": 5,
+      "frameDuration": 200,
+      "loop": false
+    }
+  }
+}

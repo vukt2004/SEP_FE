@@ -118,6 +118,21 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     });
   });
 
+  // Add sliding and disappearing blocks
+  mapData.objects.decorativeObjects.forEach((obj, index) => {
+    let type = obj.id.toString();
+    if (obj.id === 13) type = "sliding_block";
+    else if (obj.id === 14) type = "disappearing_block";
+    objects.push({
+      id: `block-${index + 1}`,
+      type,
+      position: {
+        row: obj.y,
+        col: obj.x,
+      },
+    });
+  });
+
   return {
     id,
     name,
