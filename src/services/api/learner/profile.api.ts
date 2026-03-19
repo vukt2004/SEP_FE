@@ -1,6 +1,5 @@
 // src/services/api/learner/profile.api.ts
-import axios from "axios";
-import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { learnerAxios } from "@/services/http/axios.learner";
 
 export type ProfileResponse = {
   email?: string | null;
@@ -27,20 +26,9 @@ export type ApiResult<T> = {
   errorCode?: string | null;
 };
 
-// Nếu project bạn đã có axios instance sẵn (vd: httpClient), bạn thay axios.create(...) bằng instance đó.
-const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL, // đảm bảo env này tồn tại
-});
-
-http.interceptors.request.use((config) => {
-  const token = tokenStorage.getLearnerToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 export const learnerProfileApi = {
   getProfile: async () => {
-    const { data } = await http.get<ApiResult<ProfileResponse>>("/api/learner/auth/profile");
+    const { data } = await learnerAxios.get<ApiResult<ProfileResponse>>("/api/learner/auth/profile");
     return data;
   },
 
@@ -56,9 +44,13 @@ export const learnerProfileApi = {
     fd.append("PhoneNumber", payload.phoneNumber);
     if (payload.avatarFile) fd.append("avatarFile", payload.avatarFile);
 
-    const { data } = await http.put<ApiResult<ProfileResponse>>("/api/learner/auth/profile", fd, {
+    const { data } = await learnerAxios.put<ApiResult<ProfileResponse>>(
+      "/api/learner/auth/profile",
+      fd,
+      {
       headers: { "Content-Type": "multipart/form-data" },
-    });
+      },
+    );
     return data;
   },
 };

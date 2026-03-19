@@ -11,6 +11,12 @@ function isLoginOnlyEndpoint(url?: string): boolean {
   return /auth\/login/.test(url ?? "");
 }
 
+function isRefreshTokenEndpoint(url?: string): boolean {
+  // Used to prevent the response interceptor from trying to refresh again
+  // when `/auth/refresh-token` itself fails.
+  return /auth\/refresh-token/.test(url ?? "");
+}
+
 cmsAxios.interceptors.request.use((config) => {
   if (isLoginOnlyEndpoint(config.url)) {
     config.withCredentials = true;
@@ -63,7 +69,19 @@ cmsAxios.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Never retry/refresh on `/refresh-token` itself.
+    if (isRefreshTokenEndpoint(config.url)) {
+      return Promise.reject(error);
+    }
+
+    // Avoid infinite retry loops for the same request.
+    if ((config as { _retry?: boolean })._retry) {
+      return Promise.reject(error);
+    }
+    (config as { _retry?: boolean })._retry = true;
+
     return doRefresh().then((newToken) => {
+      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${newToken}`;
       return cmsAxios.request(config);
     });

@@ -35,6 +35,7 @@ import blocksConfig from "../../shared/block/blocks-config.json";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 
 /**
  * PlatformGameView - Platformer game view with block editor and gravity physics.
@@ -62,6 +63,7 @@ export default function PlatformGameView() {
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
   const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const historyRecordedRef = useRef(false);
   const [audioSystem, setAudioSystem] = useState<
     import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
   >(null);
@@ -426,6 +428,8 @@ export default function PlatformGameView() {
   };
 
   const handleReset = () => {
+    historyRecordedRef.current = false;
+    setSubmitted(false);
     if (executorRef.current) {
       executorRef.current.stop();
       executorRef.current.reset();
@@ -470,6 +474,7 @@ export default function PlatformGameView() {
   };
 
   const handleStartLevel = () => {
+    historyRecordedRef.current = false;
     const engine = engineRef.current;
     if (!engine) return;
     engine.start();
@@ -618,6 +623,73 @@ export default function PlatformGameView() {
       setSubmitLoading(false);
     }
   };
+
+  const isGuid = (value?: string | null): value is string =>
+    Boolean(value) && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value as string);
+
+  // Auto-save play history when the game ends.
+  // - Single player: call POST `/api/learner/gameplay/validate`
+  // - Multiplayer: call POST `/api/learner/lobby/rooms/:roomId/submit`
+  useEffect(() => {
+    if (!showResultsModal || !gameResult) return;
+    if (historyRecordedRef.current) return;
+    historyRecordedRef.current = true;
+
+    void (async () => {
+      try {
+        // Multiplayer: persist when player didn't manually submit.
+        if (multiplayerRoomId) {
+          if (submitted || submitLoading) return;
+          if (!workspaceRef.current) return;
+          setSubmitLoading(true);
+          try {
+            const program = generateAST(workspaceRef.current);
+            const astSpec = gameResult.isWin ? JSON.stringify(program) : null;
+
+            const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+              language: "Blockly",
+              astSpec,
+            });
+
+            if (res.data?.isSuccess) {
+              setSubmitted(true);
+              if (res.data?.data?.rankingIfAllSubmitted?.length) {
+                const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                  playerId: r.playerId,
+                  score: r.score,
+                  rank: r.rank,
+                  status: r.status,
+                }));
+                navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                  state: { ranking, roomId: multiplayerRoomId },
+                });
+              }
+            } else {
+              window.alert(res.data?.message ?? "Submit failed.");
+            }
+          } finally {
+            setSubmitLoading(false);
+          }
+          return;
+        }
+
+        // Single player: validate & save history.
+        if (!isGuid(levelId)) return;
+        if (!workspaceRef.current) return;
+
+        const program = generateAST(workspaceRef.current);
+        await learnerGameplayApi.validateSolution({
+          mapId: levelId,
+          language: "Blockly",
+          astSpec: gameResult.isWin ? JSON.stringify(program) : null,
+          playMode: 0, // Single
+        });
+      } catch (err) {
+        console.error("Failed to save play history", err);
+        historyRecordedRef.current = false;
+      }
+    })();
+  }, [showResultsModal, gameResult, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
 
   const handleEndMultiplayerGame = async () => {
     if (!multiplayerRoomId) return;
