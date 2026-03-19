@@ -783,6 +783,7 @@ export class GameEngine {
       this.updatePlayerCollider();
       this.checkFruitCollection();
       this.checkWinCondition();
+      this.handlePlayerEnterTile();
     }
   }
 
@@ -1037,6 +1038,43 @@ export class GameEngine {
       this.runtime.player.pixelY += step;
     } else {
       this.runtime.player.pixelY = this.runtime.player.targetPixelY;
+    }
+  }
+
+  private handlePlayerEnterTile(): void {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        const behavior = objectRegistry[obj.type];
+        if (behavior?.onPlayerEnter) {
+          const result = behavior.onPlayerEnter(obj.initialState, this.level, this.runtime.player);
+          if (result) {
+            if (result.newState) {
+              this.emit({
+                type: "objectStateChanged",
+                objectId: obj.id,
+                newState: result.newState,
+              });
+            }
+            if (result.remove) {
+              // Remove object from level
+              this.level.objects = this.level.objects?.filter((o) => o.id !== obj.id);
+            }
+            if (result.delayRemove) {
+              // Remove after delay
+              setTimeout(() => {
+                this.level.objects = this.level.objects?.filter((o) => o.id !== obj.id);
+              }, result.delayRemove);
+            }
+            if (result.moveTo) {
+              // Move object to new position
+              obj.position = result.moveTo;
+            }
+          }
+        }
+      }
     }
   }
 }

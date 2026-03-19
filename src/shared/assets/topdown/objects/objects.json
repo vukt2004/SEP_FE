@@ -65,6 +65,34 @@
       "frameWidth": 54,
       "frameHeight": 52,
       "frameIndex": 0
+    },
+    "11": {
+      "name": "milk",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Simple_Milk_and_grass_item.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
+    },
+    "12": {
+      "name": "door",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 1
+    },
+    "13": {
+      "name": "sliding_block",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 4
+    },
+    "14": {
+      "name": "disappearing_block",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Basic_Grass_Biom_Tileset.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 0
     }
   }
 }
