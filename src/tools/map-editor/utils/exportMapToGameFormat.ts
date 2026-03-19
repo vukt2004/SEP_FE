@@ -37,6 +37,15 @@ export interface GameLevelFormat {
     description: string;
     targetAlgorithm: string;
     estimatedSteps: number;
+    requiredFruits?: number;
+  };
+  blockConstraints?: {
+    blockLimit: number | null;
+    bannedBlocks: string[];
+    requiredBlocks: Array<{
+      type: string;
+      minCount: number;
+    }>;
   };
 }
 
@@ -69,53 +78,79 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     row.map((tile) => tile !== 0),
   );
 
+  // Find player and goal for specific positions if any
+  const playerItem = mapData.objects.items?.find((item) => item.type === "player" || item.id === 1);
+  const goalItem = mapData.objects.items?.find((item) => item.type === "goal" || item.id === 2);
+
   // Convert player spawn from {x, y} to {row, col}
-  const startPosition = mapData.objects.playerSpawn
+  const startPosition = playerItem
     ? {
-        row: mapData.objects.playerSpawn.y,
-        col: mapData.objects.playerSpawn.x,
+        row: playerItem.y,
+        col: playerItem.x,
       }
     : null;
 
   // Convert goal from {x, y} to {row, col}
-  const goalPosition = mapData.objects.goal
+  const goalPosition = goalItem
     ? {
-        row: mapData.objects.goal.y,
-        col: mapData.objects.goal.x,
+        row: goalItem.y,
+        col: goalItem.x,
       }
     : null;
 
-  // Convert fruits and enemies to objects array
+  // Convert other items to objects array
   const objects: GameLevelFormat["objects"] = [];
 
-  // Add fruits as collectible objects
-  mapData.objects.fruits.forEach((fruit, index) => {
-    objects.push({
-      id: `fruit-${index + 1}`,
-      type: "fruit",
-      position: {
-        row: fruit.y,
-        col: fruit.x,
-      },
-      metadata: {
-        points: 10,
-      },
-    });
-  });
+  let fruitCount = 1;
+  let enemyCount = 1;
+  let decoCount = 1;
 
-  // Add enemies
-  mapData.objects.enemies.forEach((enemy, index) => {
-    objects.push({
-      id: `enemy-${index + 1}`,
-      type: enemy.type,
-      position: {
-        row: enemy.y,
-        col: enemy.x,
-      },
-      metadata: {
-        difficulty: "normal",
-      },
-    });
+  const isBoxType = (type: string): boolean =>
+    type === "box" || type === "box1" || type === "box2" || type === "box3";
+
+  const defaultHardnessByType = (type: string): number => {
+    if (type === "box1") return 1;
+    if (type === "box2") return 2;
+    if (type === "box3") return 3;
+    return 1;
+  };
+
+  mapData.objects.items?.forEach((item) => {
+    // Skip player and goal as they are handled by startPosition/goalPosition
+    if (item.type === "player" || item.id === 1 || item.type === "goal" || item.id === 2) {
+      return;
+    }
+
+    const metadata = { ...(item.metadata ?? {}) };
+    if (item.type === "door" && typeof metadata.isOpen !== "boolean") {
+      metadata.isOpen = false;
+    }
+    if (isBoxType(item.type) && typeof metadata.hardness !== "number") {
+      metadata.hardness = defaultHardnessByType(item.type);
+    }
+
+    if (item.type === "fruit" || item.id === 3) {
+      objects.push({
+        id: `fruit-${fruitCount++}`,
+        type: "fruit",
+        position: { row: item.y, col: item.x },
+        metadata: { ...metadata, points: 10 },
+      });
+    } else if (item.id === 4 || item.type === "enemy" || item.type === "slime") {
+      objects.push({
+        id: `enemy-${enemyCount++}`,
+        type: item.type === "enemy" ? "slime" : item.type,
+        position: { row: item.y, col: item.x },
+        metadata: { ...metadata, difficulty: "normal" },
+      });
+    } else {
+      objects.push({
+        id: `deco-${decoCount++}`,
+        type: item.type,
+        position: { row: item.y, col: item.x },
+        metadata: { objectId: item.id, ...metadata },
+      });
+    }
   });
 
   // Add sliding and disappearing blocks
@@ -153,6 +188,12 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       description: description,
       targetAlgorithm: "manual",
       estimatedSteps: 50,
+      requiredFruits: mapData.config.requiredFruits,
+    },
+    blockConstraints: {
+      blockLimit: mapData.blockConstraints.blockLimit,
+      bannedBlocks: mapData.blockConstraints.bannedBlocks,
+      requiredBlocks: mapData.blockConstraints.requiredBlocks,
     },
   };
 }

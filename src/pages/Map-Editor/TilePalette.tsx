@@ -38,11 +38,15 @@ export function TilePalette({
    * Load tileset on mount or when game type/tileset name changes
    */
   useEffect(() => {
+    let cancelled = false;
+
     async function loadTileset() {
       try {
         // Create loader with current game type
         const tilesetLoader = new TilesetLoader(gameType);
         const tilesetDef = await tilesetLoader.loadTilesetDefinition(tilesetName);
+
+        if (cancelled) return;
         setTileset(tilesetDef);
 
         // Load all unique tileset images
@@ -59,6 +63,7 @@ export function TilePalette({
           }),
         );
 
+        if (cancelled) return;
         setTileImages(images);
       } catch (error) {
         console.error("Failed to load tileset:", error);
@@ -66,6 +71,10 @@ export function TilePalette({
     }
 
     loadTileset();
+
+    return () => {
+      cancelled = true;
+    };
   }, [tilesetName, gameType]);
 
   if (!tileset) {
@@ -119,16 +128,16 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
     if (!ctx) return;
 
     // Clear canvas
-    ctx.clearRect(0, 0, 48, 48);
+    ctx.clearRect(0, 0, 56, 56);
 
     // Draw background for tile 0 (empty)
     if (tileId === 0) {
       // Checkered pattern for empty tile
       ctx.fillStyle = "#f0f0f0";
-      ctx.fillRect(0, 0, 48, 48);
+      ctx.fillRect(0, 0, 56, 56);
       ctx.fillStyle = "#e0e0e0";
-      ctx.fillRect(0, 0, 24, 24);
-      ctx.fillRect(24, 24, 24, 24);
+      ctx.fillRect(0, 0, 28, 28);
+      ctx.fillRect(28, 28, 28, 28);
       return;
     }
 
@@ -145,8 +154,8 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
       tileDef.tileSize, // Source
       0,
       0,
-      48,
-      48, // Destination (48x48 preview)
+      56,
+      56, // Destination (56x56 preview)
     );
   }, [tileId, tileDef, image]);
 
@@ -155,11 +164,27 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
       style={{
         ...styles.tileButton,
         border: isSelected ? "3px solid #0066ff" : "2px solid #ccc",
+        background: isSelected
+          ? "linear-gradient(180deg, #eff6ff, #dbeafe)"
+          : styles.tileButton.background,
+        boxShadow: isSelected
+          ? "0 8px 16px rgba(37, 99, 235, 0.25)"
+          : "0 2px 8px rgba(15, 23, 42, 0.08)",
       }}
       onClick={onSelect}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 8px 16px rgba(15, 23, 42, 0.16)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = isSelected
+          ? "0 8px 16px rgba(37, 99, 235, 0.25)"
+          : "0 2px 8px rgba(15, 23, 42, 0.08)";
+      }}
       title={`Tile ${tileId}`}
     >
-      <canvas ref={canvasRef} width={48} height={48} style={styles.tileCanvas} />
+      <canvas ref={canvasRef} width={56} height={56} style={styles.tileCanvas} />
       <span style={styles.tileId}>{tileId}</span>
     </button>
   );
@@ -168,10 +193,10 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
 const styles: Record<string, React.CSSProperties> = {
   palette: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))",
-    gap: "8px",
-    padding: "8px",
-    maxHeight: "300px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(82px, 1fr))",
+    gap: "10px",
+    padding: "6px",
+    maxHeight: "340px",
     overflowY: "auto",
   },
   loading: {
@@ -184,21 +209,24 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     gap: "4px",
-    padding: "6px",
-    background: "#fff",
-    borderRadius: "4px",
+    padding: "8px",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    borderRadius: "10px",
     cursor: "pointer",
     transition: "all 0.2s",
+    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.08)",
   },
   tileCanvas: {
-    width: "48px",
-    height: "48px",
+    width: "56px",
+    height: "56px",
     imageRendering: "pixelated",
     display: "block",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
   },
   tileId: {
     fontSize: "11px",
     fontWeight: "500",
-    color: "#333",
+    color: "#334155",
   },
 };

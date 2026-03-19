@@ -168,7 +168,9 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
 
 const styles: Record<string, React.CSSProperties> = {
   canvas: {
-    border: "2px solid #333",
+    border: "1px solid #334155",
+    borderRadius: "6px",
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.18)",
     cursor: "crosshair",
     display: "block",
     imageRendering: "pixelated",

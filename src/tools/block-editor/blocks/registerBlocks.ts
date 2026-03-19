@@ -56,6 +56,30 @@ function registerBlock(blockDef: BlockConfig): void {
             if (input.label) {
               currentMessage += ` ${input.label}`;
             }
+          } else if (input.kind === "field_input") {
+            // Add text field
+            currentMessage += ` %${currentArgs.length + 1}`;
+            currentArgs.push({
+              type: "field_input",
+              name: input.name,
+              text: input.text ?? "",
+            });
+            // Add label after the field
+            if (input.label) {
+              currentMessage += ` ${input.label}`;
+            }
+          } else if (input.kind === "field_dropdown") {
+            // Add dropdown field
+            currentMessage += ` %${currentArgs.length + 1}`;
+            currentArgs.push({
+              type: "field_dropdown",
+              name: input.name,
+              options: input.options,
+            });
+            // Add label after the field
+            if (input.label) {
+              currentMessage += ` ${input.label}`;
+            }
           }
         });
       }

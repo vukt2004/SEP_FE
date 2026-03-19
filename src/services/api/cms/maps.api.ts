@@ -6,80 +6,116 @@ import type {
   MapDetailResult,
   ApproveMapParams,
   RejectMapParams,
-  UploadMapParams,
-  UploadMapResult,
-  GetLevelMapsParams,
-  LevelMapsListResult,
-  LevelMapDetailResult,
+  MapTagsResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
 
 /**
  * CMS Maps API
- * Handles CRUD operations for challenge maps
+ * Handles CRUD operations for maps
  */
 export const cmsMapsApi = {
   /**
    * Get paginated list of all maps
-   * GET /api/cms/challenges/maps
+   * GET /api/cms/maps
    *
    * @param params - Query parameters (page, size, filters)
    * @returns Paginated maps list
    */
   getMaps(params?: GetMapsParams) {
-    return cmsAxios.get<MapsListResult>("/api/cms/challenges/maps", { params });
+    return cmsAxios.get<MapsListResult>("/api/cms/maps/all", { params });
   },
 
   /**
    * Get detailed map information by ID
-   * GET /api/cms/challenges/maps/{id}
+   * GET /api/cms/maps/{id}
    *
    * @param id - Map ID
+   * @param includeEditorialForUser - Whether to include editorial content (optional)
    * @returns Detailed map information
    */
-  getMapById(id: string) {
-    return cmsAxios.get<MapDetailResult>(`/api/cms/challenges/maps/${id}`);
+  getMapById(id: string, includeEditorialForUser?: boolean) {
+    return cmsAxios.get<MapDetailResult>(`/api/cms/maps/${id}`, {
+      params: { includeEditorialForUser },
+    });
+  },
+
+  /**
+   * Get available map tags
+   * GET /api/cms/maps/tags
+   */
+  getMapTags() {
+    return cmsAxios.get<MapTagsResult>("/api/cms/maps/tags");
   },
 
   /**
    * Approve a map
-   * POST /api/cms/challenges/maps/{id}/approve
+   * POST /api/cms/maps/{id}/approve
    *
    * @param id - Map ID
    * @param params - Review note (optional)
    * @returns Success result
    */
   approveMap(id: string, params?: ApproveMapParams) {
-    return cmsAxios.post<ApiResult>(`/api/cms/challenges/maps/${id}/approve`, null, { params });
+    return cmsAxios.post<ApiResult>(`/api/cms/maps/${id}/approve`, null, { params });
   },
 
   /**
    * Reject a map
-   * POST /api/cms/challenges/maps/{id}/reject
+   * POST /api/cms/maps/{id}/reject
    *
    * @param id - Map ID
    * @param params - Reject reason (optional)
    * @returns Success result
    */
   rejectMap(id: string, params?: RejectMapParams) {
-    return cmsAxios.post<ApiResult>(`/api/cms/challenges/maps/${id}/reject`, null, { params });
+    return cmsAxios.post<ApiResult>(`/api/cms/maps/${id}/reject`, null, { params });
   },
 
   /**
-   * Upload a new level map
-   * POST /api/cms/level-maps/upload
+   * Upload a new map from JSON file (creates draft map)
+   * POST /api/cms/maps/upload-json
    *
-   * @param params - Upload parameters with level file and metadata
-   * @returns Upload result
+   * @param params - Upload parameters with map metadata and JSON file
+   * @returns Upload result with created map ID
    */
-  uploadMap(params: UploadMapParams) {
+  uploadMapFromJson(params: {
+    Title: string;
+    Description: string;
+    Type: "Topdown" | "Platform";
+    Difficulty: number;
+    TimeLimitMs: number;
+    WinCondition: number;
+    Price: number;
+    MapDetailFile: File;
+    HintsJson?: string;
+    TagIdsCsv?: string;
+    AvatarFile?: File | null;
+  }) {
     const formData = new FormData();
-    formData.append("levelFile", params.levelFile);
-    formData.append("name", params.name);
-    formData.append("type", params.type);
-    formData.append("difficulty", params.difficulty);
+    formData.append("Title", params.Title);
+    formData.append("Description", params.Description);
+    formData.append("Type", params.Type);
+    formData.append("Difficulty", params.Difficulty.toString());
+    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
+    formData.append("WinCondition", params.WinCondition.toString());
+    formData.append("Price", params.Price.toString());
 
-    return cmsAxios.post<UploadMapResult>("/api/cms/level-maps/upload", formData, {
+    if (params.HintsJson) {
+      formData.append("HintsJson", params.HintsJson);
+    }
+
+    if (params.TagIdsCsv) {
+      formData.append("TagIdsCsv", params.TagIdsCsv);
+    }
+
+    formData.append("MapDetailFile", params.MapDetailFile);
+
+    if (params.AvatarFile) {
+      formData.append("AvatarFile", params.AvatarFile);
+    }
+
+    return cmsAxios.post<ApiResult>("/api/cms/maps/upload-json", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -87,24 +123,55 @@ export const cmsMapsApi = {
   },
 
   /**
-   * Get paginated list of level maps
-   * GET /api/cms/level-maps
-   *
-   * @param params - Query parameters (page, size, filters)
-   * @returns Paginated level maps list
+   * Update an existing map from JSON file (draft only)
+   * PUT /api/cms/maps/{id}/upload-json
    */
-  getLevelMaps(params?: GetLevelMapsParams) {
-    return cmsAxios.get<LevelMapsListResult>("/api/cms/level-maps", { params });
+  updateMapFromJson(
+    id: string,
+    params: {
+      Title: string;
+      Description: string;
+      Type: "Topdown" | "Platform";
+      Difficulty: number;
+      TimeLimitMs: number;
+      WinCondition: number;
+      Price: number;
+      MapDetailFile: File;
+      HintsJson?: string;
+      TagIdsCsv?: string;
+      AvatarFile?: File | null;
+    },
+  ) {
+    const formData = new FormData();
+    formData.append("Title", params.Title);
+    formData.append("Description", params.Description);
+    formData.append("Type", params.Type);
+    formData.append("Difficulty", params.Difficulty.toString());
+    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
+    formData.append("WinCondition", params.WinCondition.toString());
+    formData.append("Price", params.Price.toString());
+
+    if (params.HintsJson) {
+      formData.append("HintsJson", params.HintsJson);
+    }
+
+    if (params.TagIdsCsv) {
+      formData.append("TagIdsCsv", params.TagIdsCsv);
+    }
+
+    formData.append("MapDetailFile", params.MapDetailFile);
+
+    if (params.AvatarFile) {
+      formData.append("AvatarFile", params.AvatarFile);
+    }
+
+    return cmsAxios.put<ApiResult>(`/api/cms/maps/${id}/upload-json`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
-  /**
-   * Get level map detail by ID
-   * GET /api/cms/level-maps/{id}
-   *
-   * @param id - Level map ID
-   * @returns Level map detail with full JSON content
-   */
-  getLevelMapById(id: string) {
-    return cmsAxios.get<LevelMapDetailResult>(`/api/cms/level-maps/${id}`);
-  },
+  // Note: /api/cms/level-maps endpoints have been deprecated.
+  // Map upload and management now use /api/cms/maps endpoints.
 };

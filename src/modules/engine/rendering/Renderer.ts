@@ -20,6 +20,39 @@ const GOAL_COLOR = "#22cc55";
 const DOOR_OPEN_COLOR = "#d4a574";
 const DOOR_CLOSED_COLOR = "#8b4513";
 
+const PLATFORMER_OBJECT_RENDER_OFFSETS: Partial<Record<string, { x: number; y: number }>> = {
+  // Pixel Adventure box sprites include top padding; nudge down to sit on tiles naturally.
+  box1: { x: 0, y: 0.25 },
+  box2: { x: 0, y: 0.25 },
+  box3: { x: 0, y: 0.25 },
+};
+
+function isBreakableBoxType(type: string): boolean {
+  return type === "box" || type === "box1" || type === "box2" || type === "box3";
+}
+
+function getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> }): number {
+  const metadataHardness =
+    typeof obj.metadata?.hardness === "number" && Number.isFinite(obj.metadata.hardness)
+      ? obj.metadata.hardness
+      : undefined;
+
+  if (metadataHardness !== undefined) {
+    return Math.max(1, Math.floor(metadataHardness));
+  }
+
+  switch (obj.type) {
+    case "box1":
+      return 1;
+    case "box2":
+      return 2;
+    case "box3":
+      return 3;
+    default:
+      return 1;
+  }
+}
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private animationSystem: AnimationSystem;
@@ -95,7 +128,13 @@ export class Renderer {
     await Promise.all(loadPromises);
   }
 
-  render(level: LevelDefinition, tileSize: number, player: Player): void {
+  render(
+    level: LevelDefinition,
+    tileSize: number,
+    player: Player,
+    collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
+  ): void {
     // Layer rendering order for proper depth:
     // 1. Background layer (base tiles)
     this.drawLayer(level.layers.background, tileSize);
@@ -106,7 +145,7 @@ export class Renderer {
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
     // 4. Objects (fruits, etc.)
-    this.drawObjects(level, tileSize);
+    this.drawObjects(level, tileSize, collectedFruits, objectStates);
     // 5. Player character
     this.drawPlayer(player, tileSize);
     // 6. Foreground layer (renders ABOVE player for depth effect)
@@ -199,8 +238,9 @@ export class Renderer {
       const goalState = goalAnimMap?.["idle"] ? "idle" : "default";
       const frameIndex = this.animationSystem.getCurrentFrame("goal", goalState);
       const frame = goalAnim.frames[frameIndex];
-      const sx = frame * goalAnim.frameWidth;
-      const sy = (goalAnim.row ?? 0) * goalAnim.frameHeight;
+      const cols = goalAnim.columns ?? Infinity;
+      const sx = (frame % cols) * goalAnim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (goalAnim.row ?? 0)) * goalAnim.frameHeight;
 
       this.ctx.drawImage(
         goalAnim.image,
@@ -222,32 +262,61 @@ export class Renderer {
     }
   }
 
-  private drawObjects(level: LevelDefinition, tileSize: number): void {
+  private drawObjects(
+    level: LevelDefinition,
+    tileSize: number,
+    collectedFruits: Set<string> = new Set(),
+    objectStates?: Map<string, string>,
+  ): void {
     const { objects } = level;
 
     for (const obj of objects || []) {
-      const stateKey = obj.initialState ?? "default";
+      // Skip collected fruits
+      if (obj.type === "fruit" && collectedFruits.has(obj.id)) {
+        continue;
+      }
+
+      const runtimeState = objectStates?.get(obj.id);
+      const stateKey = runtimeState ?? obj.initialState ?? "default";
       const animMap = animationRegistry[obj.type];
-      const anim = animMap?.[stateKey];
+      let anim = animMap?.[stateKey];
+      let resolvedStateKey = stateKey;
+
+      // Fallback to idle or default if requested state is missing
+      if (!anim && animMap) {
+        if (animMap["idle"]) {
+          anim = animMap["idle"];
+          resolvedStateKey = "idle";
+        } else if (animMap["default"]) {
+          anim = animMap["default"];
+          resolvedStateKey = "default";
+        }
+      }
 
       // Convert grid position to pixel position
       const pixelX = obj.position.col * tileSize;
       const pixelY = obj.position.row * tileSize;
 
+      const objectOffset =
+        this.gameType === "platformer" ? PLATFORMER_OBJECT_RENDER_OFFSETS[obj.type] : undefined;
+      const renderX = pixelX + (objectOffset?.x ?? 0) * tileSize;
+      const renderY = pixelY + (objectOffset?.y ?? 0) * tileSize;
+
       if (anim) {
         // Sprite-based rendering
-        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, stateKey);
+        const frameIndex = this.animationSystem.getCurrentFrame(obj.id, resolvedStateKey);
         const frame = anim.frames[frameIndex];
-        const sx = frame * anim.frameWidth;
-        const sy = (anim.row ?? 0) * anim.frameHeight;
+        const cols = anim.columns ?? Infinity;
+        const sx = (frame % cols) * anim.frameWidth;
+        const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
         this.ctx.drawImage(
           anim.image,
           sx,
           sy,
           anim.frameWidth,
           anim.frameHeight,
-          pixelX,
-          pixelY,
+          renderX,
+          renderY,
           tileSize,
           tileSize,
         );
@@ -256,11 +325,23 @@ export class Renderer {
         if (obj.type === "goal") {
           this.ctx.fillStyle = GOAL_COLOR;
         } else if (obj.type === "door") {
-          this.ctx.fillStyle = obj.initialState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+          const doorState = runtimeState ?? obj.initialState;
+          this.ctx.fillStyle = doorState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
         } else {
           this.ctx.fillStyle = "#ff00ff";
         }
-        this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
+        this.ctx.fillRect(renderX, renderY, tileSize, tileSize);
+      }
+
+      if (isBreakableBoxType(obj.type) && resolvedStateKey !== "break") {
+        const hardness = getBoxHardness(obj);
+        this.ctx.save();
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.35))}px monospace`;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(String(hardness), renderX + tileSize / 2, renderY + tileSize / 2);
+        this.ctx.restore();
       }
     }
   }
@@ -286,8 +367,9 @@ export class Renderer {
       // Sprite-based rendering
       const frameIndex = this.animationSystem.getCurrentFrame(player.id, player.animationState);
       const frame = anim.frames[frameIndex];
-      const sx = frame * anim.frameWidth;
-      const sy = (anim.row ?? 0) * anim.frameHeight;
+      const cols = anim.columns ?? Infinity;
+      const sx = (frame % cols) * anim.frameWidth;
+      const sy = (Math.floor(frame / cols) + (anim.row ?? 0)) * anim.frameHeight;
 
       this.ctx.save();
 

@@ -10,7 +10,7 @@
  * - Action buttons (Resolve, Dismiss)
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { cmsReportsApi } from "@/services/api/cms/reports.api";
 import type { ReportListItem } from "@/types/api/cms/reports";
 import { CheckCircle, X } from "lucide-react";
@@ -29,11 +29,7 @@ export const ReportsPage: React.FC = () => {
   // Action state
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    fetchReports();
-  }, [currentPage]);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -55,7 +51,11 @@ export const ReportsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const handleResolve = async (reportId: string, mapTitle: string) => {
     const reviewNote = prompt(`Resolve report for "${mapTitle}"?\n\nEnter review note (optional):`);

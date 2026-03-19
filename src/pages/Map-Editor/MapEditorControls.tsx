@@ -1,4 +1,19 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Brush,
+  Eraser,
+  PaintBucket,
+  History,
+  Layers,
+  Settings2,
+  Save,
+  Maximize2,
+  FolderTree,
+  Shapes,
+  Pencil,
+  ImagePlus,
+} from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
 import { TilePalette } from "./TilePalette";
@@ -7,8 +22,19 @@ import {
   ObjectSpriteCache,
   type ObjectDefinition,
 } from "../../modules/engine/assets";
+import blocksConfig from "../../shared/block/blocks-config.json";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
+import { learnerMapsApi } from "../../services/api/learner/maps.api";
+import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
+import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
+import { ROUTES } from "../../lib/constants/routes";
+import type { RequiredBlockRule } from "../../shared/types/MapSchema";
+
+type MapTag = {
+  id: string;
+  name: string;
+};
 
 /**
  * Convert MapData config type to GameType
@@ -22,28 +48,34 @@ interface MapEditorControlsProps {
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed from string enum to numeric ID
-  selectedTool: "paint" | "erase" | "fill" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
-  onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
-  onResize: (width: number, height: number) => void;
-  onReset: (
-    type: "platform" | "topdown",
-    width: number,
-    height: number,
-    tileSize: number,
-    name?: string,
-    description?: string,
-  ) => void;
-  onExport: () => void;
-  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onToolSelect: (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => void;
+  onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onTypeChange?: (type: "platform" | "topdown") => void;
   onNameChange?: (name: string) => void;
   onDescriptionChange?: (description: string) => void;
+  onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
+  onTimeLimitChange?: (seconds: number) => void;
+  onWinConditionChange?: (winCondition: 1 | 2) => void;
+  onRequiredFruitsChange?: (requiredFruits: number) => void;
+  onPriceChange?: (price: number) => void;
+  onBlockLimitChange?: (blockLimit: number | null) => void;
+  onBannedBlocksChange?: (bannedBlocks: string[]) => void;
+  onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
+  onObjectDefinitionsLoaded?: (defs: Record<string, ObjectDefinition>) => void;
+  sectionMode?: "left" | "right";
+  editingMapId?: string;
+  editorMode?: "edit" | "view";
+  initialSelectedTagNames?: string[];
+  initialAvatarUrl?: string | null;
+  initialHints?: string[];
 }
 
 interface ObjectSelectionButtonProps {
@@ -79,8 +111,9 @@ function ObjectSelectionButton({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Extract the specific frame from the sprite sheet
-    const frameX = objectDef.frameIndex * objectDef.frameWidth;
-    const frameY = 0;
+    const cols = objectDef.columns ?? Infinity;
+    const frameX = (objectDef.frameIndex % cols) * objectDef.frameWidth;
+    const frameY = Math.floor(objectDef.frameIndex / cols) * objectDef.frameHeight;
 
     // Draw centered and scaled to fit canvas
     const scale = Math.min(
@@ -164,38 +197,98 @@ export function MapEditorControls({
   onObjectSelect,
   onToolSelect,
   onResize,
-  onReset,
-  onExport,
-  onImport,
   onUndo,
   onRedo,
+  onTypeChange,
   onNameChange,
   onDescriptionChange,
+  onDifficultyChange,
+  onTimeLimitChange,
+  onWinConditionChange,
+  onRequiredFruitsChange,
+  onPriceChange,
+  onBlockLimitChange,
+  onBannedBlocksChange,
+  onRequiredBlocksChange,
+  onObjectDefinitionsLoaded,
+  sectionMode = "right",
+  editingMapId,
+  editorMode,
+  initialSelectedTagNames = [],
+  initialAvatarUrl = null,
+  initialHints = [],
 }: MapEditorControlsProps) {
+  const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
-  const [resetType, setResetType] = useState<"platform" | "topdown">(mapData.config.type);
-  const [resetWidth, setResetWidth] = useState(20);
-  const [resetHeight, setResetHeight] = useState(15);
-  const [resetTileSize, setResetTileSize] = useState(32);
-  const [resetName, setResetName] = useState("");
-  const [resetDescription, setResetDescription] = useState("");
+  const [resizeTileSize, setResizeTileSize] = useState(mapData.config.tileSize);
+  const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const [activeInlineField, setActiveInlineField] = useState<
+    | "name"
+    | "description"
+    | "difficulty"
+    | "timeLimit"
+    | "winCondition"
+    | "requiredFruits"
+    | "price"
+    | "tags"
+    | "hints"
+    | null
+  >(null);
+  const [hoveredInlineField, setHoveredInlineField] = useState<
+    | "name"
+    | "description"
+    | "difficulty"
+    | "timeLimit"
+    | "winCondition"
+    | "requiredFruits"
+    | "price"
+    | "tags"
+    | "hints"
+    | null
+  >(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
+
+  // Detect user type for API selection
+  const learnerAuth = useLearnerAuthStore();
+  const cmsAuth = useCmsAuthStore();
+  const isLearner = learnerAuth.isAuthenticated;
+  const isCms = cmsAuth.isAuthenticated;
+  const userType = isLearner ? "learner" : isCms ? "cms" : "unknown";
   const [objectDefinitions, setObjectDefinitions] = useState<Record<
     string,
     ObjectDefinition
   > | null>(null);
+  const availableBlocks = blocksConfig.blocks;
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
+  const showLeftPanel = sectionMode === "left";
+  const showRightPanel = sectionMode === "right";
 
   // Load object sprites on mount or when game type changes
   useEffect(() => {
+    if (!showLeftPanel) {
+      setObjectSpritesLoaded(false);
+      setObjectDefinitions(null);
+      return;
+    }
+
     let cancelled = false;
+
+    // Reset immediately so UI shows loading state during transition
+    setObjectSpritesLoaded(false);
+    setObjectDefinitions(null);
 
     async function loadObjects() {
       try {
@@ -215,10 +308,13 @@ export function MapEditorControls({
         if (cancelled) return;
         setObjectDefinitions(defs);
         setObjectSpritesLoaded(true);
-      } catch (error) {
-        console.error("Failed to load object sprites:", error);
+        if (onObjectDefinitionsLoaded) {
+          onObjectDefinitionsLoaded(defs);
+        }
+      } catch (err) {
+        console.error("Failed to load object definitions:", err);
         if (!cancelled) {
-          setObjectSpritesLoaded(false);
+          setObjectSpritesLoaded(true); // Still set true to avoid infinite loading
           setObjectDefinitions(null);
         }
       }
@@ -229,7 +325,92 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache]);
+  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel]);
+
+  useEffect(() => {
+    if (!showRightPanel || userType === "unknown") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMapTags = async () => {
+      try {
+        setLoadingMapTags(true);
+        const response = isLearner
+          ? await learnerMapsApi.getMapTags()
+          : await cmsMapsApi.getMapTags();
+        if (!cancelled && response.data.isSuccess && Array.isArray(response.data.data)) {
+          setAvailableMapTags(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to load map tags:", error);
+      } finally {
+        if (!cancelled) {
+          setLoadingMapTags(false);
+        }
+      }
+    };
+
+    loadMapTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showRightPanel, isLearner, userType]);
+
+  useEffect(() => {
+    if (!availableMapTags.length) {
+      return;
+    }
+
+    const selectedNameSet = new Set(initialSelectedTagNames.map((name) => name.toLowerCase()));
+    const initialTagIds = availableMapTags
+      .filter((tag) => selectedNameSet.has(tag.name.toLowerCase()))
+      .map((tag) => tag.id);
+
+    setSelectedTagIds(initialTagIds);
+  }, [availableMapTags, initialSelectedTagNames]);
+
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+    );
+  };
+
+  useEffect(() => {
+    setAvatarPreviewUrl(initialAvatarUrl ?? null);
+  }, [initialAvatarUrl, showMapInfoModal]);
+
+  useEffect(() => {
+    if (!showMapInfoModal) {
+      return;
+    }
+
+    setHints(initialHints.length > 0 ? initialHints : [""]);
+  }, [showMapInfoModal, initialHints]);
+
+  useEffect(() => {
+    if (!avatarFile) {
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(avatarFile);
+    setAvatarPreviewUrl(nextUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextUrl);
+    };
+  }, [avatarFile]);
+
+  const selectedTagNames = availableMapTags
+    .filter((tag) => selectedTagIds.includes(tag.id))
+    .map((tag) => tag.name);
+
+  const difficultyLabel =
+    mapData.config.difficulty === 1 ? "Easy" : mapData.config.difficulty === 2 ? "Medium" : "Hard";
+
+  const winConditionLabel = mapData.config.winCondition === 2 ? "Collect Fruits" : "Reach Goal";
 
   const handleResizeConfirm = () => {
     // Validate map size (10-30)
@@ -240,58 +421,204 @@ export function MapEditorControls({
       alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
     }
 
-    onResize(validWidth, validHeight);
+    onResize(validWidth, validHeight, resizeTileSize);
     setShowResizeDialog(false);
   };
 
-  const handleResetConfirm = () => {
-    // Validate map size (10-30)
-    const validWidth = Math.max(10, Math.min(30, resetWidth));
-    const validHeight = Math.max(10, Math.min(30, resetHeight));
+  const handleBlockLimitInput = (value: string) => {
+    if (!onBlockLimitChange) return;
 
-    if (validWidth !== resetWidth || validHeight !== resetHeight) {
-      alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
-    }
-
-    if (confirm("This will clear all map data. Are you sure?")) {
-      onReset(resetType, validWidth, validHeight, resetTileSize, resetName, resetDescription);
-      setShowResetDialog(false);
-    }
-  };
-
-  const handleUploadConfirm = async () => {
-    const mapName = mapData.config.name?.trim();
-    if (!mapName) {
-      alert("Please set a map name before uploading");
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      onBlockLimitChange(null);
       return;
     }
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+
+    onBlockLimitChange(Math.max(1, Math.floor(parsed)));
+  };
+
+  const updateBannedBlock = (index: number, nextType: string) => {
+    if (!onBannedBlocksChange) return;
+
+    const next = [...mapData.blockConstraints.bannedBlocks];
+    next[index] = nextType;
+    onBannedBlocksChange(Array.from(new Set(next)));
+  };
+
+  const addBannedBlock = () => {
+    if (!onBannedBlocksChange) return;
+
+    const usedTypes = new Set(mapData.blockConstraints.bannedBlocks);
+    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    if (!candidate) return;
+
+    onBannedBlocksChange([...mapData.blockConstraints.bannedBlocks, candidate.type]);
+  };
+
+  const removeBannedBlock = (index: number) => {
+    if (!onBannedBlocksChange) return;
+    onBannedBlocksChange(mapData.blockConstraints.bannedBlocks.filter((_, i) => i !== index));
+  };
+
+  const updateRequiredBlock = (
+    index: number,
+    patch: Partial<{ type: string; minCount: number }>,
+  ) => {
+    if (!onRequiredBlocksChange) return;
+
+    const next = mapData.blockConstraints.requiredBlocks.map((rule, ruleIndex) =>
+      ruleIndex === index ? { ...rule, ...patch } : rule,
+    );
+    onRequiredBlocksChange(next);
+  };
+
+  const addRequiredBlock = () => {
+    if (!onRequiredBlocksChange) return;
+
+    const usedTypes = new Set(mapData.blockConstraints.requiredBlocks.map((rule) => rule.type));
+    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    if (!candidate) return;
+
+    onRequiredBlocksChange([
+      ...mapData.blockConstraints.requiredBlocks,
+      { type: candidate.type, minCount: 1 },
+    ]);
+  };
+
+  const removeRequiredBlock = (index: number) => {
+    if (!onRequiredBlocksChange) return;
+    onRequiredBlocksChange(mapData.blockConstraints.requiredBlocks.filter((_, i) => i !== index));
+  };
+
+  const handleSaveMapFromModal = async () => {
+    const mapName = mapData.config.name?.trim();
+    if (!mapName) {
+      alert("Please set a map name before saving");
+      return;
+    }
+
+    if (
+      mapData.config.winCondition === 2 &&
+      mapData.config.requiredFruits !== undefined &&
+      mapData.config.requiredFruits > 0
+    ) {
+      const totalFruits = mapData.objects.items.filter((obj) => obj.type === "fruit").length;
+      if (mapData.config.requiredFruits > totalFruits) {
+        alert(
+          `Required fruits (${mapData.config.requiredFruits}) cannot exceed the total number of fruits on the map (${totalFruits}).`,
+        );
+        return;
+      }
+    }
+
+    if (userType === "unknown") {
+      alert("You must be logged in as a learner or CMS user to save maps");
+      return;
+    }
+
+    if (!confirm("Do you want to save the map?")) return;
 
     try {
       setUploading(true);
 
-      // Convert map to game format
+      const normalizedHints = hints
+        .map((h) => h.trim())
+        .filter((h) => h.length > 0)
+        .slice(0, 3)
+        .map((content, index) => {
+          const orderNo = index + 1;
+
+          return {
+            // Keep both naming styles to support strict backend JSON binders.
+            orderNo,
+            content,
+            OrderNo: orderNo,
+            Content: content,
+          };
+        });
+      const hintsJson = normalizedHints.length > 0 ? JSON.stringify(normalizedHints) : undefined;
+
       const gameLevelFormat = exportMapToGameFormat(mapData);
       const json = JSON.stringify(gameLevelFormat, null, 2);
       const blob = new Blob([json], { type: "application/json" });
       const file = new File([blob], `${gameLevelFormat.id}.json`, { type: "application/json" });
 
-      // Upload to API using map config values
-      const response = await cmsMapsApi.uploadMap({
-        levelFile: file,
-        name: mapData.config.name,
-        type: mapData.config.type,
-        difficulty: "1", // Default difficulty
-      });
+      const mapType: "Topdown" | "Platform" =
+        mapData.config.type === "platform" ? "Platform" : "Topdown";
+
+      const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
+      const isEditingExistingMap = Boolean(editingMapId && editorMode === "edit");
+
+      const payload = {
+        Title: mapData.config.name,
+        Description: mapData.config.description || "Map created with Map Editor",
+        Type: mapType,
+        Difficulty: mapData.config.difficulty,
+        TimeLimitMs: mapData.config.timeLimitSeconds * 1000,
+        WinCondition: mapData.config.winCondition,
+        Price: mapData.config.price,
+        HintsJson: hintsJson,
+        TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
+        MapDetailFile: file,
+        AvatarFile: avatarFile ?? undefined,
+      };
+
+      const updatePayload = {
+        Title: payload.Title,
+        Description: payload.Description,
+        Type: payload.Type,
+        Difficulty: payload.Difficulty,
+        TimeLimitMs: payload.TimeLimitMs,
+        WinCondition: payload.WinCondition,
+        Price: payload.Price,
+        HintsJson: payload.HintsJson,
+        TagIdsCsv: payload.TagIdsCsv,
+        MapDetailFile: payload.MapDetailFile,
+      };
+
+      const response = isEditingExistingMap
+        ? await mapsApi.updateMapFromJson(editingMapId!, updatePayload)
+        : await mapsApi.uploadMapFromJson(payload);
 
       if (response.data.isSuccess) {
-        alert("Map uploaded successfully!");
-        setShowUploadDialog(false);
+        if (isEditingExistingMap && isLearner && editingMapId && avatarFile) {
+          const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
+          if (!avatarResponse.data.isSuccess) {
+            alert(
+              `Map updated but avatar upload failed: ${avatarResponse.data.message || "Unknown error"}`,
+            );
+            return;
+          }
+        }
+
+        const mapId =
+          response.data.data && typeof response.data.data === "object" && "id" in response.data.data
+            ? String(response.data.data.id)
+            : "";
+        alert(
+          isEditingExistingMap
+            ? "Map updated successfully!"
+            : `Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`,
+        );
+        setShowMapInfoModal(false);
+        setAvatarFile(null);
+
+        if (isLearner) {
+          navigate(ROUTES.LEARNER_MAPS);
+        } else {
+          navigate(-1);
+        }
       } else {
-        alert(`Upload failed: ${response.data.message || "Unknown error"}`);
+        alert(`Save failed: ${response.data.message || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      alert(`Failed to upload map: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Save error:", error);
+      alert(`Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setUploading(false);
     }
@@ -299,265 +626,426 @@ export function MapEditorControls({
 
   return (
     <div style={styles.container}>
-      {/* Undo/Redo */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>History</h3>
-        <div style={styles.buttonGroup}>
-          <button
-            style={{
-              ...styles.button,
-              ...(canUndo ? {} : styles.buttonDisabled),
-            }}
-            onClick={onUndo}
-            disabled={!canUndo}
-          >
-            ↶ Undo
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(canRedo ? {} : styles.buttonDisabled),
-            }}
-            onClick={onRedo}
-            disabled={!canRedo}
-          >
-            ↷ Redo
-          </button>
-        </div>
-      </div>
-
-      {/* Layer Selection */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Active Layer</h3>
-        <div style={styles.buttonGroup}>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "background" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("background")}
-          >
-            Background
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "ground" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("ground")}
-          >
-            Ground
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "foreground" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("foreground")}
-          >
-            Foreground
-          </button>
-          <button
-            style={{
-              ...styles.button,
-              ...(activeLayer === "collision" ? styles.buttonActive : {}),
-            }}
-            onClick={() => onLayerChange("collision")}
-          >
-            Collision
-          </button>
-        </div>
-        {activeLayer === "collision" && (
-          <p style={styles.helpText}>
-            ⚠️ Collision layer: Paint = solid (blocks movement), Erase = empty (passable)
-          </p>
-        )}
-        {activeLayer === "foreground" && (
-          <p style={styles.helpText}>
-            ℹ️ Foreground layer: Rendered above objects (for trees, bridges, etc.)
-          </p>
-        )}
-      </div>
-
-      {/* Tool Selection - Show on visual layers only */}
-      {(activeLayer === "background" ||
-        activeLayer === "ground" ||
-        activeLayer === "foreground") && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Tile Tools</h3>
-          <p style={styles.helpText}>Select a tile below, then choose a tool</p>
-          <div style={styles.buttonGroup}>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "paint" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
-              title="Paint tiles (click again to deselect)"
-            >
-              🖌️ Paint
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "erase" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
-              title="Erase tiles (click again to deselect)"
-            >
-              🧹 Erase
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "fill" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
-              title="Fill area (click again to deselect)"
-            >
-              🪣 Fill
-            </button>
+      {showRightPanel && (
+        <>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <History size={16} /> History
+            </h3>
+            <div style={styles.buttonGroup}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(canUndo ? {} : styles.buttonDisabled),
+                }}
+                onClick={onUndo}
+                disabled={!canUndo}
+              >
+                ↶ Undo
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(canRedo ? {} : styles.buttonDisabled),
+                }}
+                onClick={onRedo}
+                disabled={!canRedo}
+              >
+                ↷ Redo
+              </button>
+            </div>
           </div>
-        </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Layers size={16} /> Active Layer
+            </h3>
+            <div style={styles.buttonGroup}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "background" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("background")}
+              >
+                Background
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "ground" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("ground")}
+              >
+                Ground
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "foreground" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("foreground")}
+              >
+                Foreground
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(activeLayer === "collision" ? styles.buttonActive : {}),
+                }}
+                onClick={() => onLayerChange("collision")}
+              >
+                Collision
+              </button>
+            </div>
+            {activeLayer === "collision" && (
+              <p style={styles.helpText}>
+                Collision layer: paint blocks movement, erase makes paths passable.
+              </p>
+            )}
+            {activeLayer === "foreground" && (
+              <p style={styles.helpText}>Foreground renders above objects and player.</p>
+            )}
+          </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Block Rules</h3>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Block Limit:</label>
+              <p style={styles.helpText}>Leave empty for unlimited blocks</p>
+              <input
+                type="number"
+                min="1"
+                value={mapData.blockConstraints.blockLimit ?? ""}
+                onChange={(e) => handleBlockLimitInput(e.target.value)}
+                placeholder="Unlimited"
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Banned Blocks:</label>
+              <p style={styles.helpText}>Players cannot use these block types</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {mapData.blockConstraints.bannedBlocks.map((type, index) => (
+                  <div
+                    key={`panel-banned-row-${type}-${index}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: "6px",
+                      alignItems: "center",
+                    }}
+                  >
+                    <select
+                      value={type}
+                      onChange={(e) => updateBannedBlock(index, e.target.value)}
+                      style={styles.select}
+                    >
+                      {availableBlocks.map((block) => (
+                        <option key={`panel-banned-option-${block.type}`} value={block.type}>
+                          {block.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => removeBannedBlock(index)}
+                      style={{
+                        padding: "6px 8px",
+                        background: "#ff6b6b",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addBannedBlock}
+                disabled={mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length}
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 10px",
+                  background:
+                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                      ? "#cfd8dc"
+                      : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor:
+                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                + Add Banned Block
+              </button>
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Required Blocks:</label>
+              <p style={styles.helpText}>Players must use these blocks at least N times</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {mapData.blockConstraints.requiredBlocks.map((rule, index) => (
+                  <div
+                    key={`panel-required-${rule.type}-${index}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 80px auto",
+                      gap: "6px",
+                      alignItems: "center",
+                    }}
+                  >
+                    <select
+                      value={rule.type}
+                      onChange={(e) => updateRequiredBlock(index, { type: e.target.value })}
+                      style={styles.select}
+                    >
+                      {availableBlocks.map((block) => (
+                        <option key={`panel-required-option-${block.type}`} value={block.type}>
+                          {block.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      value={rule.minCount}
+                      onChange={(e) =>
+                        updateRequiredBlock(index, {
+                          minCount: Math.max(1, Number(e.target.value) || 1),
+                        })
+                      }
+                      style={styles.input}
+                    />
+                    <button
+                      onClick={() => removeRequiredBlock(index)}
+                      style={{
+                        padding: "6px 8px",
+                        background: "#ff6b6b",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "11px",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addRequiredBlock}
+                disabled={mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length}
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 10px",
+                  background:
+                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                      ? "#cfd8dc"
+                      : "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor:
+                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                + Add Required Block
+              </button>
+            </div>
+          </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Settings2 size={16} /> Map Settings
+            </h3>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Map Type</label>
+              <select
+                value={mapData.config.type}
+                onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown")}
+                style={styles.select}
+              >
+                <option value="platform">Platform</option>
+                <option value="topdown">Top Down</option>
+              </select>
+            </div>
+            <div style={styles.actionButtons}>
+              <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
+                <Maximize2 size={14} /> Resize Map
+              </button>
+              <button
+                style={{ ...styles.actionButton, ...styles.saveButton }}
+                onClick={() => setShowMapInfoModal(true)}
+                disabled={userType === "unknown"}
+                title={userType === "unknown" ? "Please login to save maps" : "Save map to server"}
+              >
+                <Save size={14} /> Save Map
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Collision Layer Tools */}
-      {activeLayer === "collision" && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Collision Tools</h3>
-          <p style={styles.helpText}>Draw solid areas or erase to make passable</p>
-          <div style={styles.buttonGroup}>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "paint" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
-              title="Paint collision (solid/blocking)"
-            >
-              🟦 Paint Solid
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "erase" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
-              title="Erase collision (passable)"
-            >
-              ⬜ Erase
-            </button>
-            <button
-              style={{
-                ...styles.button,
-                ...(selectedTool === "fill" ? styles.buttonActive : {}),
-              }}
-              onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
-              title="Fill collision area (click again to deselect)"
-            >
-              🪣 Fill
-            </button>
+      {showLeftPanel && (
+        <>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <FolderTree size={16} /> Tile Categories
+            </h3>
+            <div style={styles.categoryRow}>
+              {[
+                { key: "all", label: "All" },
+                { key: "terrain", label: "Terrain" },
+                { key: "decor", label: "Decor" },
+              ].map((category) => (
+                <button
+                  key={category.key}
+                  onClick={() => setTileCategory(category.key as "all" | "terrain" | "decor")}
+                  style={{
+                    ...styles.categoryChip,
+                    ...(tileCategory === category.key ? styles.categoryChipActive : {}),
+                  }}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {(activeLayer === "background" ||
+            activeLayer === "ground" ||
+            activeLayer === "foreground") && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Shapes size={16} /> Tile Tools
+              </h3>
+              <div style={styles.buttonGroup}>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "paint" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
+                  title="Paint tiles"
+                >
+                  <Brush size={14} /> Paint
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "erase" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
+                  title="Erase tiles"
+                >
+                  <Eraser size={14} /> Erase
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "fill" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
+                  title="Fill area"
+                >
+                  <PaintBucket size={14} /> Fill
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeLayer === "collision" && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                <Shapes size={16} /> Collision Tools
+              </h3>
+              <p style={styles.helpText}>Draw solid tiles or erase them to make walkable spaces.</p>
+              <div style={styles.buttonGroup}>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "paint" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
+                >
+                  <Brush size={14} /> Paint Solid
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "erase" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
+                >
+                  <Eraser size={14} /> Erase
+                </button>
+                <button
+                  style={{
+                    ...styles.button,
+                    ...(selectedTool === "fill" ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
+                >
+                  <PaintBucket size={14} /> Fill
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(activeLayer === "background" ||
+            activeLayer === "ground" ||
+            activeLayer === "foreground") && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Tile Selection</h3>
+              <TilePalette
+                selectedTile={selectedTile}
+                onTileSelect={onTileSelect}
+                mapData={mapData}
+              />
+            </div>
+          )}
+
+          {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Object Palette</h3>
+              <p style={styles.helpText}>Pick an object and paint it into the map.</p>
+              <div style={styles.objectToolGrid}>
+                {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
+                  const objectId = parseInt(idStr, 10);
+                  const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+                  return (
+                    <ObjectSelectionButton
+                      key={objectId}
+                      objectId={objectId}
+                      label={label}
+                      objectDef={objDef}
+                      cache={objectCache}
+                      selectedObjectId={selectedObjectId}
+                      onObjectSelect={onObjectSelect}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
-
-      {/* Object Palette - Only show on background layer */}
-      {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Objects</h3>
-          <p style={styles.helpText}>Select an object, then use paint tool to place it</p>
-          <div style={styles.objectToolGrid}>
-            {/* Dynamically render ALL objects from definitions */}
-            {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
-              const objectId = parseInt(idStr, 10);
-              const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
-              return (
-                <ObjectSelectionButton
-                  key={objectId}
-                  objectId={objectId}
-                  label={label}
-                  objectDef={objDef}
-                  cache={objectCache}
-                  selectedObjectId={selectedObjectId}
-                  onObjectSelect={onObjectSelect}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Tile Selection - Show on visual layers only */}
-      {(activeLayer === "background" ||
-        activeLayer === "ground" ||
-        activeLayer === "foreground") && (
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Select Tile</h3>
-          <TilePalette selectedTile={selectedTile} onTileSelect={onTileSelect} mapData={mapData} />
-        </div>
-      )}
-
-      {/* Map Info */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Map Info</h3>
-        <div style={styles.info}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Name:</label>
-            <input
-              type="text"
-              value={mapData.config.name}
-              onChange={(e) => onNameChange?.(e.target.value)}
-              placeholder="Enter map name"
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Description:</label>
-            <textarea
-              value={mapData.config.description}
-              onChange={(e) => onDescriptionChange?.(e.target.value)}
-              placeholder="Enter map description"
-              style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
-              rows={3}
-            />
-          </div>
-          <p style={styles.infoText}>
-            Type: <strong>{mapData.config.type}</strong>
-          </p>
-          <p style={styles.infoText}>
-            Size:{" "}
-            <strong>
-              {mapData.config.width} × {mapData.config.height}
-            </strong>
-          </p>
-          <p style={styles.infoText}>
-            Tile Size: <strong>{mapData.config.tileSize}px</strong>
-          </p>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Actions</h3>
-        <div style={styles.actionButtons}>
-          <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
-            Resize Map
-          </button>
-          <button style={styles.actionButton} onClick={() => setShowResetDialog(true)}>
-            New Map
-          </button>
-          <button style={styles.actionButton} onClick={onExport}>
-            Export JSON
-          </button>
-          <button style={styles.actionButton} onClick={() => setShowUploadDialog(true)}>
-            Upload to CMS
-          </button>
-          <label style={styles.importLabel}>
-            Import JSON
-            <input type="file" accept=".json" onChange={onImport} style={styles.fileInput} />
-          </label>
-        </div>
-      </div>
 
       {/* Resize Dialog */}
       {showResizeDialog && (
@@ -588,6 +1076,17 @@ export function MapEditorControls({
                 style={styles.input}
               />
             </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Tile Size (px):</label>
+              <input
+                type="number"
+                min="8"
+                max="64"
+                value={resizeTileSize}
+                onChange={(e) => setResizeTileSize(Number(e.target.value))}
+                style={styles.input}
+              />
+            </div>
             <div style={styles.modalButtons}>
               <button style={styles.confirmButton} onClick={handleResizeConfirm}>
                 Confirm
@@ -600,137 +1099,451 @@ export function MapEditorControls({
         </div>
       )}
 
-      {/* Reset Dialog */}
-      {showResetDialog && (
+      {/* Map Info Modal */}
+      {showMapInfoModal && (
         <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Create New Map</h3>
-            <p style={styles.helpText}>Map size must be between 10x10 and 30x30</p>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Map Name:</label>
-              <input
-                type="text"
-                value={resetName}
-                onChange={(e) => setResetName(e.target.value)}
-                placeholder="Enter map name"
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Description:</label>
-              <textarea
-                value={resetDescription}
-                onChange={(e) => setResetDescription(e.target.value)}
-                placeholder="Enter map description"
-                style={{ ...styles.input, minHeight: "60px", resize: "vertical" }}
-                rows={3}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Type:</label>
-              <select
-                value={resetType}
-                onChange={(e) => setResetType(e.target.value as "platform" | "topdown")}
-                style={styles.select}
-              >
-                <option value="platform">Platform</option>
-                <option value="topdown">Top Down</option>
-              </select>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Width (tiles):</label>
-              <input
-                type="number"
-                min="10"
-                max="30"
-                value={resetWidth}
-                onChange={(e) => setResetWidth(Number(e.target.value))}
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Height (tiles):</label>
-              <input
-                type="number"
-                min="10"
-                max="30"
-                value={resetHeight}
-                onChange={(e) => setResetHeight(Number(e.target.value))}
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Tile Size (px):</label>
-              <input
-                type="number"
-                min="8"
-                max="64"
-                value={resetTileSize}
-                onChange={(e) => setResetTileSize(Number(e.target.value))}
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.modalButtons}>
-              <button style={styles.confirmButton} onClick={handleResetConfirm}>
-                Create
-              </button>
-              <button style={styles.cancelButton} onClick={() => setShowResetDialog(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Upload Dialog */}
-      {showUploadDialog && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Upload Map to CMS</h3>
-            <p style={styles.helpText}>
-              This will upload the map using the current map information below
+          <div style={{ ...styles.modalContent, ...styles.marketModalContent }}>
+            <h3 style={styles.modalTitle}>Map Details</h3>
+            <p style={{ ...styles.helpText, marginTop: -8, marginBottom: 18 }}>
+              Click a field to edit inline. Changes are previewed instantly.
             </p>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Map Name:</label>
-              <div style={styles.infoBox}>{mapData.config.name || "(No name set)"}</div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Description:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.description || "(No description set)"}
+
+            <div style={styles.detailLayout}>
+              <div style={styles.previewPanel}>
+                <div style={styles.previewFrame}>
+                  {avatarPreviewUrl ? (
+                    <img src={avatarPreviewUrl} alt="Map thumbnail" style={styles.previewImage} />
+                  ) : (
+                    <div style={styles.previewPlaceholder}>
+                      <div style={styles.previewPlaceholderTitle}>
+                        {mapData.config.name || "Untitled Map"}
+                      </div>
+                      <div style={styles.previewPlaceholderText}>
+                        Upload a thumbnail to showcase this map.
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={styles.previewOverlayButton}
+                  >
+                    <ImagePlus size={14} /> Change Image
+                  </button>
+
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
+                    style={styles.fileInput}
+                  />
+                </div>
+
+                {avatarFile && <p style={styles.helpText}>Selected: {avatarFile.name}</p>}
+
+                <div style={styles.mapInfoCard}>
+                  <div style={styles.mapInfoRow}>
+                    <span>Type</span>
+                    <strong>{mapData.config.type}</strong>
+                  </div>
+                  <div style={styles.mapInfoRow}>
+                    <span>Size</span>
+                    <strong>
+                      {mapData.config.width} x {mapData.config.height} tiles
+                    </strong>
+                  </div>
+                  <div style={styles.mapInfoRow}>
+                    <span>Tile Size</span>
+                    <strong>{mapData.config.tileSize}px</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.detailPanel}>
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "name" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("name")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("name")}
+                >
+                  <div style={styles.inlineFieldLabel}>Map Name</div>
+                  {activeInlineField === "name" ? (
+                    <input
+                      autoFocus
+                      value={mapData.config.name}
+                      onChange={(e) => onNameChange?.(e.target.value)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>
+                      {mapData.config.name || "Untitled Map"}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "name" || activeInlineField === "name") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "description" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("description")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("description")}
+                >
+                  <div style={styles.inlineFieldLabel}>Description</div>
+                  {activeInlineField === "description" ? (
+                    <textarea
+                      autoFocus
+                      rows={5}
+                      value={mapData.config.description}
+                      onChange={(e) => onDescriptionChange?.(e.target.value)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineTextarea}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValueMuted}>
+                      {mapData.config.description ||
+                        "Add a description to help players understand the challenge."}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "description" ||
+                    activeInlineField === "description") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "difficulty" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("difficulty")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("difficulty")}
+                >
+                  <div style={styles.inlineFieldLabel}>Difficulty</div>
+                  {activeInlineField === "difficulty" ? (
+                    <select
+                      autoFocus
+                      value={mapData.config.difficulty}
+                      onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    >
+                      <option value={1}>Easy</option>
+                      <option value={2}>Medium</option>
+                      <option value={3}>Hard</option>
+                    </select>
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{difficultyLabel}</div>
+                  )}
+                  {(hoveredInlineField === "difficulty" || activeInlineField === "difficulty") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "timeLimit" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("timeLimit")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("timeLimit")}
+                >
+                  <div style={styles.inlineFieldLabel}>Time Limit</div>
+                  {activeInlineField === "timeLimit" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={30}
+                      max={3600}
+                      value={mapData.config.timeLimitSeconds}
+                      onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{mapData.config.timeLimitSeconds}s</div>
+                  )}
+                  {(hoveredInlineField === "timeLimit" || activeInlineField === "timeLimit") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "winCondition" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("winCondition")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("winCondition")}
+                >
+                  <div style={styles.inlineFieldLabel}>Win Condition</div>
+                  {activeInlineField === "winCondition" ? (
+                    <select
+                      autoFocus
+                      value={mapData.config.winCondition}
+                      onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    >
+                      <option value={1}>Reach Goal</option>
+                      <option value={2}>Collect Fruits</option>
+                    </select>
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{winConditionLabel}</div>
+                  )}
+                  {(hoveredInlineField === "winCondition" ||
+                    activeInlineField === "winCondition") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                {mapData.config.winCondition === 2 && (
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "requiredFruits" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("requiredFruits")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("requiredFruits")}
+                  >
+                    <div style={styles.inlineFieldLabel}>Required Fruits</div>
+                    {activeInlineField === "requiredFruits" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={0}
+                        value={mapData.config.requiredFruits ?? 0}
+                        onChange={(e) =>
+                          onRequiredFruitsChange?.(
+                            Math.max(0, Number.parseInt(e.target.value) || 0),
+                          )
+                        }
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>
+                        {(mapData.config.requiredFruits ?? 0) === 0
+                          ? "All fruits"
+                          : `${mapData.config.requiredFruits} fruits`}
+                      </div>
+                    )}
+                    {(hoveredInlineField === "requiredFruits" ||
+                      activeInlineField === "requiredFruits") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "price" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("price")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("price")}
+                >
+                  <div style={styles.inlineFieldLabel}>Price</div>
+                  {activeInlineField === "price" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={0}
+                      value={mapData.config.price}
+                      onChange={(e) => onPriceChange?.(Number(e.target.value))}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>
+                      {mapData.config.price > 0 ? `${mapData.config.price} OC` : "Free"}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "price" || activeInlineField === "price") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "tags" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("tags")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("tags")}
+                >
+                  <div style={styles.inlineFieldLabel}>Tags</div>
+                  {activeInlineField === "tags" ? (
+                    <div>
+                      {loadingMapTags ? (
+                        <p style={styles.helpText}>Loading tags...</p>
+                      ) : (
+                        <div style={styles.tagWrap}>
+                          {availableMapTags.map((tag) => {
+                            const selected = selectedTagIds.includes(tag.id);
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTagSelection(tag.id);
+                                }}
+                                style={{
+                                  ...styles.tagChip,
+                                  ...(selected ? styles.tagChipSelected : {}),
+                                }}
+                              >
+                                {tag.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveInlineField(null);
+                        }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.tagWrap}>
+                      {selectedTagNames.length > 0 ? (
+                        selectedTagNames.map((name) => (
+                          <span key={name} style={{ ...styles.tagChip, ...styles.tagChipSelected }}>
+                            {name}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={styles.inlineFieldValueMuted}>No tags selected</span>
+                      )}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "tags" || activeInlineField === "tags") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "hints" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("hints")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("hints")}
+                >
+                  <div style={styles.inlineFieldLabel}>Hints</div>
+                  {activeInlineField === "hints" ? (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {hints.map((hint, index) => (
+                        <div
+                          key={`hint-${index}`}
+                          style={{ display: "flex", gap: 8, marginBottom: 8 }}
+                        >
+                          <input
+                            type="text"
+                            value={hint}
+                            onChange={(e) => {
+                              const next = [...hints];
+                              next[index] = e.target.value;
+                              setHints(next);
+                            }}
+                            placeholder={`Hint ${index + 1}`}
+                            style={{ ...styles.inlineInput, flex: 1 }}
+                          />
+                          {hints.length > 1 && (
+                            <button
+                              type="button"
+                              style={{ ...styles.cancelButton, padding: "6px 10px" }}
+                              onClick={() => setHints(hints.filter((_, i) => i !== index))}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {hints.length < 3 && (
+                        <button
+                          type="button"
+                          style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 2 }}
+                          onClick={() => setHints([...hints, ""])}
+                        >
+                          + Add Hint
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                        onClick={() => setActiveInlineField(null)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.tagWrap}>
+                      {hints.filter((h) => h.trim().length > 0).length > 0 ? (
+                        hints
+                          .filter((h) => h.trim().length > 0)
+                          .map((hint, index) => (
+                            <span
+                              key={`hint-chip-${index}`}
+                              style={{ ...styles.tagChip, borderStyle: "dashed" }}
+                            >
+                              {hint}
+                            </span>
+                          ))
+                      ) : (
+                        <span style={styles.inlineFieldValueMuted}>No hints added</span>
+                      )}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "hints" || activeInlineField === "hints") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
               </div>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Type:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.type === "platform" ? "Platform" : "Top Down"}
-              </div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Dimensions:</label>
-              <div style={styles.infoBox}>
-                {mapData.config.width} × {mapData.config.height} tiles
-              </div>
-            </div>
-            {(!mapData.config.name || !mapData.config.description) && (
-              <p style={styles.warningText}>
-                ⚠️ Set map name and description in the Map Info section before uploading
-              </p>
-            )}
+
             <div style={styles.modalButtons}>
               <button
                 style={{
                   ...styles.confirmButton,
                   ...(uploading ? { opacity: 0.6, cursor: "not-allowed" } : {}),
                 }}
-                onClick={handleUploadConfirm}
+                onClick={handleSaveMapFromModal}
                 disabled={uploading}
               >
-                {uploading ? "Uploading..." : "Upload"}
+                {uploading ? "Saving..." : "Save Changes"}
               </button>
               <button
                 style={styles.cancelButton}
-                onClick={() => setShowUploadDialog(false)}
+                onClick={() => {
+                  setShowMapInfoModal(false);
+                  setAvatarFile(null);
+                  setActiveInlineField(null);
+                }}
                 disabled={uploading}
               >
                 Cancel
@@ -746,28 +1559,31 @@ export function MapEditorControls({
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: "100%",
-    maxWidth: "1200px",
-    padding: "20px",
-    backgroundColor: "white",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
   },
   section: {
-    marginBottom: "20px",
-    paddingBottom: "20px",
-    borderBottom: "1px solid #e0e0e0",
+    padding: "14px",
+    borderRadius: "14px",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
   },
   sectionTitle: {
-    fontSize: "18px",
+    fontSize: "14px",
     fontWeight: "600",
     margin: "0 0 12px 0",
-    color: "#333",
+    color: "#0f172a",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    letterSpacing: "0.2px",
   },
   helpText: {
     fontSize: "12px",
-    color: "#888",
+    color: "#64748b",
     marginBottom: "10px",
-    fontStyle: "italic",
   },
   buttonGroup: {
     display: "flex",
@@ -775,92 +1591,59 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   button: {
-    padding: "8px 12px",
+    padding: "9px 12px",
     fontSize: "13px",
     fontWeight: "500",
-    border: "2px solid #ddd",
-    borderRadius: "6px",
-    backgroundColor: "white",
+    border: "1px solid #d1d5db",
+    borderRadius: "10px",
+    backgroundColor: "#ffffff",
     cursor: "pointer",
     transition: "all 0.2s",
-    flex: "1 1 auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "7px",
+    flex: "1 1 120px",
     minWidth: "0",
     whiteSpace: "nowrap",
   },
   buttonActive: {
-    backgroundColor: "#0066ff",
+    backgroundColor: "#1d4ed8",
     color: "white",
-    borderColor: "#0066ff",
+    borderColor: "#1d4ed8",
+    boxShadow: "0 6px 14px rgba(29, 78, 216, 0.25)",
   },
   buttonDisabled: {
     opacity: 0.5,
     cursor: "not-allowed",
   },
-  tileGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 60px)",
-    gap: "10px",
-  },
-  tileButton: {
-    width: "60px",
-    height: "60px",
-    fontSize: "16px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    borderRadius: "4px",
+  categoryRow: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.1s",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  categoryChip: {
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#334155",
+    borderRadius: "999px",
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  categoryChipActive: {
+    border: "1px solid #93c5fd",
+    background: "#dbeafe",
+    color: "#1e40af",
   },
   objectToolGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(76px, 1fr))",
     gap: "8px",
-  },
-  objectButton: {
-    padding: "8px",
-    fontSize: "12px",
-    fontWeight: "500",
-    border: "2px solid #ddd",
-    borderRadius: "6px",
-    backgroundColor: "white",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "6px",
-  },
-  objectPreview: {
-    width: "48px",
-    height: "48px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "4px",
-    backgroundColor: "#f5f5f5",
-    overflow: "hidden",
-  },
-  objectImage: {
-    width: "32px",
-    height: "32px",
-    objectFit: "contain",
-    imageRendering: "pixelated",
-  },
-  objectText: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  objectLabel: {
-    fontSize: "11px",
-    color: "#555",
-  },
-  info: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
+    maxHeight: "280px",
+    overflowY: "auto",
+    padding: "4px",
   },
   infoText: {
     margin: 0,
@@ -873,15 +1656,24 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "10px",
   },
   actionButton: {
-    padding: "10px 20px",
-    fontSize: "14px",
+    padding: "10px 14px",
+    fontSize: "13px",
     fontWeight: "500",
-    border: "2px solid #0066ff",
-    borderRadius: "6px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
     backgroundColor: "white",
-    color: "#0066ff",
+    color: "#1e293b",
     cursor: "pointer",
     transition: "all 0.2s",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  saveButton: {
+    backgroundColor: "#2563eb",
+    color: "#ffffff",
+    border: "1px solid #2563eb",
+    boxShadow: "0 8px 16px rgba(37, 99, 235, 0.22)",
   },
   importLabel: {
     padding: "10px 20px",
@@ -912,9 +1704,181 @@ const styles: Record<string, React.CSSProperties> = {
   modalContent: {
     backgroundColor: "white",
     padding: "30px",
-    borderRadius: "8px",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+    borderRadius: "14px",
+    boxShadow: "0 18px 38px rgba(0,0,0,0.25)",
     minWidth: "400px",
+  },
+  marketModalContent: {
+    width: "min(980px, 92vw)",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    border: "1px solid #dbe3ef",
+    background:
+      "radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 35%), linear-gradient(180deg, #ffffff, #f8fafc)",
+  },
+  detailLayout: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "18px",
+    alignItems: "start",
+  },
+  previewPanel: {
+    display: "grid",
+    gap: "12px",
+  },
+  previewFrame: {
+    position: "relative",
+    borderRadius: "14px",
+    overflow: "hidden",
+    border: "1px solid #cbd5e1",
+    minHeight: "220px",
+    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    minHeight: "220px",
+    objectFit: "cover",
+    display: "block",
+  },
+  previewPlaceholder: {
+    minHeight: "220px",
+    padding: "18px",
+    color: "#e2e8f0",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    gap: "6px",
+    background:
+      "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.4), transparent 35%), linear-gradient(140deg, #0f172a, #1e293b)",
+  },
+  previewPlaceholderTitle: {
+    fontSize: "18px",
+    fontWeight: 700,
+  },
+  previewPlaceholderText: {
+    fontSize: "12px",
+    opacity: 0.85,
+  },
+  previewOverlayButton: {
+    position: "absolute",
+    right: "10px",
+    bottom: "10px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 12px",
+    border: "1px solid rgba(255,255,255,0.4)",
+    borderRadius: "999px",
+    background: "rgba(15, 23, 42, 0.68)",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: 600,
+    transition: "transform 0.2s ease, background 0.2s ease",
+  },
+  mapInfoCard: {
+    border: "1px solid #dbe3ef",
+    borderRadius: "12px",
+    background: "#f8fafc",
+    padding: "10px 12px",
+    display: "grid",
+    gap: "8px",
+  },
+  mapInfoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "13px",
+    color: "#334155",
+  },
+  detailPanel: {
+    display: "grid",
+    gap: "12px",
+  },
+  inlineField: {
+    position: "relative",
+    border: "1px solid #dbe3ef",
+    borderRadius: "12px",
+    background: "#ffffff",
+    padding: "12px",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
+    cursor: "pointer",
+  },
+  inlineFieldActive: {
+    border: "1px solid #93c5fd",
+    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.15)",
+    transform: "translateY(-1px)",
+  },
+  inlineFieldLabel: {
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    marginBottom: "6px",
+  },
+  inlineFieldValue: {
+    fontSize: "17px",
+    fontWeight: 700,
+    color: "#0f172a",
+    lineHeight: 1.3,
+  },
+  inlineFieldValueMuted: {
+    fontSize: "14px",
+    color: "#475569",
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+  },
+  inlineInput: {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: "15px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    color: "#0f172a",
+    boxSizing: "border-box",
+    outline: "none",
+  },
+  inlineTextarea: {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: "14px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    color: "#0f172a",
+    boxSizing: "border-box",
+    resize: "vertical",
+    lineHeight: 1.5,
+    outline: "none",
+  },
+  inlineEditIcon: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    color: "#3b82f6",
+    opacity: 0.8,
+  },
+  tagWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+  },
+  tagChip: {
+    padding: "6px 10px",
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#334155",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  tagChipSelected: {
+    border: "1px solid #2563eb",
+    background: "#dbeafe",
+    color: "#1e40af",
   },
   modalTitle: {
     fontSize: "20px",
@@ -941,30 +1905,19 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "2px solid #ddd",
-    borderRadius: "4px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
     boxSizing: "border-box",
-  },
-  infoBox: {
-    width: "100%",
-    padding: "8px 12px",
-    fontSize: "14px",
-    border: "2px solid #e0e0e0",
-    borderRadius: "4px",
-    backgroundColor: "#f5f5f5",
-    color: "#333",
-    minHeight: "38px",
-    display: "flex",
-    alignItems: "center",
-    boxSizing: "border-box",
+    color: "black",
   },
   select: {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "2px solid #ddd",
-    borderRadius: "4px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
     boxSizing: "border-box",
+    color: "black",
   },
   modalButtons: {
     display: "flex",

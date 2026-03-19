@@ -46,6 +46,18 @@ export interface LevelLayers {
 }
 
 /**
+ * Block usage constraints embedded in level data
+ */
+export interface LevelBlockConstraints {
+  blockLimit: number | null;
+  bannedBlocks: string[];
+  requiredBlocks: Array<{
+    type: string;
+    minCount: number;
+  }>;
+}
+
+/**
  * Immutable level definition
  * Defines the structure and initial configuration of a level
  * Does NOT contain runtime state or rendering information
@@ -60,10 +72,12 @@ export interface LevelDefinition {
   goalPosition: GridPos; // Win condition position
   tileset?: string; // Optional tileset name (defaults to "default")
   objects?: GridObjectDefinition[]; // Optional interactive objects
+  blockConstraints?: LevelBlockConstraints;
   metadata?: {
     difficulty?: "easy" | "medium" | "hard";
     description?: string;
     targetAlgorithm?: string; // e.g., "DFS", "BFS", "backtracking"
+    requiredFruits?: number;
     [key: string]: unknown;
   };
 }

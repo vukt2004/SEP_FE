@@ -3,6 +3,8 @@ import type { BlockConfig, BlockCategory } from "../types/blockDefinition";
 interface ToolboxBlock {
   kind: "block";
   type: string;
+  disabled?: boolean;
+  enabled?: boolean;
 }
 
 interface ToolboxSeparator {
@@ -27,6 +29,9 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
   movement: "Movement",
   control: "Control",
   logic: "Logic",
+  procedure: "Procedure",
+  variables: "Variables",
+  math: "Math",
 };
 
 /**
@@ -35,7 +40,14 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
  * @param blockDefinitions Array of block definitions
  * @returns Blockly toolbox configuration object
  */
-export function generateToolbox(blockDefinitions: BlockConfig[]): FlyoutToolbox {
+export function generateToolbox(
+  blockDefinitions: BlockConfig[],
+  options?: {
+    disabledBlockTypes?: string[];
+  },
+): FlyoutToolbox {
+  const disabledTypes = new Set(options?.disabledBlockTypes ?? []);
+
   // Group blocks by category
   const blocksByCategory = new Map<BlockCategory, BlockConfig[]>();
 
@@ -51,7 +63,14 @@ export function generateToolbox(blockDefinitions: BlockConfig[]): FlyoutToolbox 
   const contents: (ToolboxBlock | ToolboxSeparator | ToolboxLabel)[] = [];
 
   // Define category order
-  const categoryOrder: BlockCategory[] = ["movement", "control", "logic"];
+  const categoryOrder: BlockCategory[] = [
+    "movement",
+    "control",
+    "logic",
+    "variables",
+    "math",
+    "procedure",
+  ];
 
   categoryOrder.forEach((category, index) => {
     const blocks = blocksByCategory.get(category);
@@ -67,9 +86,12 @@ export function generateToolbox(blockDefinitions: BlockConfig[]): FlyoutToolbox 
 
       // Add blocks from this category
       blocks.forEach((block) => {
+        const isDisabled = disabledTypes.has(block.type);
         contents.push({
           kind: "block",
           type: block.type,
+          disabled: isDisabled,
+          enabled: !isDisabled,
         });
       });
     }

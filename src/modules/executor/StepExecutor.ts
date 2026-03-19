@@ -14,7 +14,8 @@ interface StackFrame {
   nodes: ASTNode[];
   index: number;
   repeatLeft?: number;
-  whileCondition?: ConditionType;
+  whileConditionNode?: ASTNode | null;
+  repeatUntilConditionNode?: ASTNode | null;
   isDoWhile?: boolean;
   doWhileFirstRun?: boolean;
 }
@@ -40,22 +41,33 @@ interface StackFrame {
  */
 export class StepExecutor {
   private stack: StackFrame[];
+  private procedures: Map<string, ASTNode[]>;
+  private variables: Map<string, number>;
+  private warnedMissingProcedures: Set<string>;
+  private warnedLiteralBreakBlocks: Set<string>;
   private originalProgram: BlockProgram;
   private timeoutId: number | null;
   private isRunning: boolean;
   private isPaused: boolean;
   private conditionChecker: (condition: ConditionType) => boolean;
   private callback: ((result: ExecutionResult) => void) | null;
+  private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
 
   constructor(program: BlockProgram, conditionChecker: (condition: ConditionType) => boolean) {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
+    this.procedures = new Map();
+    this.variables = new Map();
+    this.warnedMissingProcedures = new Set();
+    this.warnedLiteralBreakBlocks = new Set();
+    this.preRegisterProcedures(program);
     this.timeoutId = null;
     this.isRunning = false;
     this.isPaused = false;
     this.conditionChecker = conditionChecker;
     this.callback = null;
+    this.warningCallback = null;
     this.intervalMs = 500;
   }
 
@@ -65,6 +77,38 @@ export class StepExecutor {
   reset(): void {
     this.stop();
     this.stack = [{ nodes: this.originalProgram, index: 0 }];
+    this.procedures.clear();
+    this.variables.clear();
+    this.warnedMissingProcedures.clear();
+    this.warnedLiteralBreakBlocks.clear();
+    this.preRegisterProcedures(this.originalProgram);
+  }
+
+  setWarningCallback(callback: (message: string, blockId: string) => void): void {
+    this.warningCallback = callback;
+  }
+
+  private preRegisterProcedures(nodes: ASTNode[]): void {
+    for (const node of nodes) {
+      switch (node.type) {
+        case "defineProcedure":
+          this.procedures.set(node.name, node.body);
+          this.preRegisterProcedures(node.body);
+          break;
+        case "repeat":
+        case "customWhile":
+        case "customDoWhile":
+        case "repeatUntil":
+          this.preRegisterProcedures(node.body);
+          break;
+        case "customIf":
+          this.preRegisterProcedures(node.body);
+          this.preRegisterProcedures(node.elseBranch);
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   /**
@@ -105,9 +149,9 @@ export class StepExecutor {
         }
 
         // Handle while loop continuation
-        if (frame.whileCondition && !frame.isDoWhile) {
+        if (frame.whileConditionNode && !frame.isDoWhile) {
           // Re-evaluate condition for regular while loop
-          if (this.conditionChecker(frame.whileCondition)) {
+          if (this.evaluateCondition(frame.whileConditionNode)) {
             frame.index = 0; // Reset to beginning of loop
             continue;
           }
@@ -117,23 +161,34 @@ export class StepExecutor {
         }
 
         // Handle do-while loop continuation
-        if (frame.isDoWhile && frame.whileCondition) {
+        if (frame.isDoWhile && frame.whileConditionNode) {
           // For do-while, always execute at least once
           if (frame.doWhileFirstRun) {
             // First run complete, now check condition
             frame.doWhileFirstRun = false;
-            if (this.conditionChecker(frame.whileCondition)) {
+            if (this.evaluateCondition(frame.whileConditionNode)) {
               frame.index = 0; // Reset to beginning of loop
               continue;
             }
           } else {
             // Check condition for subsequent runs
-            if (this.conditionChecker(frame.whileCondition)) {
+            if (this.evaluateCondition(frame.whileConditionNode)) {
               frame.index = 0; // Reset to beginning of loop
               continue;
             }
           }
           // Condition false, exit do-while loop
+          this.stack.pop();
+          continue;
+        }
+
+        // Handle repeat-until loop continuation
+        if (frame.repeatUntilConditionNode) {
+          const shouldStop = this.evaluateCondition(frame.repeatUntilConditionNode);
+          if (!shouldStop) {
+            frame.index = 0;
+            continue;
+          }
           this.stack.pop();
           continue;
         }
@@ -175,11 +230,63 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "jump":
+          return {
+            command: {
+              type: "jump",
+            },
+            blockId: node.blockId,
+          };
+
+        case "wait":
+          return {
+            command: {
+              type: "wait",
+            },
+            blockId: node.blockId,
+          };
+
+        case "break":
+          if (node.power && !this.expressionUsesVariable(node.power)) {
+            if (!this.warnedLiteralBreakBlocks.has(node.blockId)) {
+              this.warnedLiteralBreakBlocks.add(node.blockId);
+              this.warningCallback?.(
+                "Tip: BREAK works best with variables or expressions, not only hardcoded numbers.",
+                node.blockId,
+              );
+            }
+          }
+          return {
+            command: {
+              type: "break",
+              power: Math.max(0, this.evaluateNumber(node.power)),
+            },
+            blockId: node.blockId,
+          };
+
+        case "openDoor":
+          return {
+            command: {
+              type: "openDoor",
+            },
+            blockId: node.blockId,
+          };
+
+        case "closeDoor":
+          return {
+            command: {
+              type: "closeDoor",
+            },
+            blockId: node.blockId,
+          };
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
-          // Defensive handling: ensure times is a valid positive number
-          const times = Math.max(0, node.times ?? 0);
+          // Defensive handling: evaluate dynamic expressions and ensure a valid positive integer
+          const rawTimes =
+            typeof node.times === "number" ? node.times : this.evaluateNumber(node.times);
+          const times = Math.max(0, Math.floor(rawTimes));
           if (times > 0) {
             this.stack.push({
               nodes: node.body,
@@ -218,7 +325,7 @@ export class StepExecutor {
               this.stack.push({
                 nodes: node.body,
                 index: 0,
-                whileCondition: this.extractConditionType(node.condition),
+                whileConditionNode: node.condition,
               });
             }
           }
@@ -232,7 +339,7 @@ export class StepExecutor {
             this.stack.push({
               nodes: node.body,
               index: 0,
-              whileCondition: this.extractConditionType(node.condition),
+              whileConditionNode: node.condition,
               isDoWhile: true,
               doWhileFirstRun: true,
             });
@@ -241,10 +348,70 @@ export class StepExecutor {
           continue;
         }
 
+        case "repeatUntil": {
+          if (node.body.length > 0) {
+            this.stack.push({
+              nodes: node.body,
+              index: 0,
+              repeatUntilConditionNode: node.condition,
+            });
+          }
+          continue;
+        }
+
+        case "defineProcedure":
+          this.procedures.set(node.name, node.body);
+          continue;
+
+        case "callProcedure": {
+          const body = this.procedures.get(node.name);
+          if (body && body.length > 0) {
+            this.stack.push({ nodes: body, index: 0 });
+          } else {
+            console.warn(`Procedure not found or empty: ${node.name}`);
+            if (!this.warnedMissingProcedures.has(node.name)) {
+              this.warnedMissingProcedures.add(node.name);
+              this.warningCallback?.(
+                `Procedure "${node.name}" is not defined. Add a Define Procedure block first.`,
+                node.blockId,
+              );
+            }
+          }
+          continue;
+        }
+
+        case "setVariable": {
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
+          continue;
+        }
+
+        case "changeVariable": {
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
+          continue;
+        }
+
         case "condition":
           // Condition blocks shouldn't be executed directly in the main flow
           // They should only be evaluated as part of if/while blocks
           console.warn("Condition block executed directly - this should not happen");
+          continue;
+
+        case "booleanLiteral":
+          // Boolean literal blocks are value blocks, not statement blocks
+          // They should only be used as inputs to condition sockets
+          console.warn("BooleanLiteral block executed directly - this should not happen");
+          continue;
+
+        case "logicBinary":
+        case "logicNot":
+        case "numberLiteral":
+        case "arithmetic":
+        case "getVariable":
+        case "compare":
+          // Logic expression blocks are value blocks, not statement blocks
+          console.warn("Logic expression block executed directly - this should not happen");
           continue;
       }
     }
@@ -267,22 +434,118 @@ export class StepExecutor {
       return this.conditionChecker(conditionNode.conditionType);
     }
 
+    if (conditionNode.type === "booleanLiteral") {
+      return conditionNode.value;
+    }
+
+    if (conditionNode.type === "logicBinary") {
+      const left = this.evaluateCondition(conditionNode.left);
+      const right = this.evaluateCondition(conditionNode.right);
+      return conditionNode.operator === "and" ? left && right : left || right;
+    }
+
+    if (conditionNode.type === "logicNot") {
+      return !this.evaluateCondition(conditionNode.value);
+    }
+
+    if (conditionNode.type === "compare") {
+      const left = this.evaluateNumber(conditionNode.left);
+      const right = this.evaluateNumber(conditionNode.right);
+      switch (conditionNode.operator) {
+        case ">":
+          return left > right;
+        case "<":
+          return left < right;
+        case "==":
+          return left === right;
+        case ">=":
+          return left >= right;
+        case "<=":
+          return left <= right;
+        case "!=":
+          return left !== right;
+        default:
+          return false;
+      }
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
     return false;
   }
 
-  /**
-   * Extract the condition type from a condition node
-   * Used to store condition type in while loop frames
-   * @param conditionNode The condition AST node
-   * @returns The condition type, or undefined if not extractable
-   */
-  private extractConditionType(conditionNode: ASTNode | null): ConditionType | undefined {
-    if (!conditionNode || conditionNode.type !== "condition") {
-      return undefined;
+  private evaluateNumber(node: ASTNode | null): number {
+    if (!node) {
+      return 0;
     }
-    return conditionNode.conditionType;
+
+    if (node.type === "numberLiteral") {
+      return node.value;
+    }
+
+    if (node.type === "arithmetic") {
+      const left = this.evaluateNumber(node.left);
+      const right = this.evaluateNumber(node.right);
+      switch (node.operator) {
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+        case "*":
+          return left * right;
+        case "/":
+          return right === 0 ? 0 : left / right;
+        default:
+          return 0;
+      }
+    }
+
+    if (node.type === "getVariable") {
+      return this.variables.get(node.name) ?? 0;
+    }
+
+    if (node.type === "booleanLiteral") {
+      return node.value ? 1 : 0;
+    }
+
+    if (node.type === "condition" || node.type === "logicBinary" || node.type === "logicNot") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    if (node.type === "compare") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    console.warn("Unsupported numeric expression node:", node.type);
+    return 0;
+  }
+
+  private expressionUsesVariable(node: ASTNode | null): boolean {
+    if (!node) {
+      return false;
+    }
+
+    if (node.type === "getVariable") {
+      return true;
+    }
+
+    if (node.type === "arithmetic") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "compare") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicBinary") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicNot") {
+      return this.expressionUsesVariable(node.value);
+    }
+
+    return false;
   }
 
   /**

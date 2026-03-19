@@ -24,52 +24,46 @@
       "frameIndex": 1
     },
     "4": {
-      "name": "enemy",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Free Chicken Sprites.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
+      "name": "chest",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
+      "frameWidth": 48,
+      "frameHeight": 48,
       "frameIndex": 0
     },
     "5": {
-      "name": "chest",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
+      "name": "door",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
-      "frameIndex": 0
+      "frameIndex": 1,
+      "columns": 1
     },
     "6": {
-      "name": "tree",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
-      "frameIndex": 2
+      "name": "box1",
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameIndex": 0
     },
     "7": {
-      "name": "rock",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
-      "frameIndex": 3
+      "name": "box2",
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
+      "frameWidth": 28,
+      "frameHeight": 28,
+      "frameIndex": 0
     },
     "8": {
-      "name": "flower",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
+      "name": "box3",
+      "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
+      "frameWidth": 28,
+      "frameHeight": 28,
       "frameIndex": 0
     },
     "9": {
-      "name": "bush",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
-      "frameIndex": 1
-    },
-    "10": {
-      "name": "egg",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Egg_item.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
+      "name": "trap",
+      "imagePath": "/assets/Pixel Adventure 1/Traps/Spike Head/Idle.png",
+      "frameWidth": 54,
+      "frameHeight": 52,
       "frameIndex": 0
     },
     "11": {
