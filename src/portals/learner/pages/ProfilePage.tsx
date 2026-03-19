@@ -1,8 +1,8 @@
 // src/portals/learner/pages/ProfilePage.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { learnerProfileApi, type ProfileResponse } from "@/services/api/learner/profile.api";
-import { ROUTES } from "@/lib/constants/routes";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./ProfilePage.module.css";
 import {
@@ -12,9 +12,6 @@ import {
   X,
   CheckCircle,
   AlertCircle,
-  Map,
-  Gamepad2,
-  Store,
   Mail,
   Calendar,
   VenusAndMars,
@@ -43,6 +40,10 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [playHistory, setPlayHistory] = useState<PaginationResult<MapPlayHistoryItem> | null>(null);
 
   const fullName = useMemo(() => {
     const fn = form.firstName?.trim();
@@ -94,29 +95,42 @@ export default function ProfilePage() {
     (async () => {
       setLoading(true);
       setError(null);
+      setHistoryLoading(true);
+      setHistoryError(null);
 
       try {
-        const res = await learnerProfileApi.getProfile();
+        const [profileRes, historyRes] = await Promise.all([
+          learnerProfileApi.getProfile(),
+          learnerGameplayApi.getMyPlayHistory({ pageNumber: 1, pageSize: 10 }),
+        ]);
+
         if (!alive) return;
 
-        if (!res.isSuccess) {
-          setError(res.message ?? t("failedLoadProfile"));
-          return;
+        if (profileRes.isSuccess) {
+          const p = profileRes.data ?? null;
+          setProfile(p);
+          setForm({
+            firstName: p?.firstName ?? "",
+            lastName: p?.lastName ?? "",
+            phoneNumber: p?.phoneNumber ?? "",
+            avatarFile: null,
+          });
+        } else {
+          setError(profileRes.message ?? t("failedLoadProfile"));
         }
 
-        const p = res.data ?? null;
-        setProfile(p);
-        setForm({
-          firstName: p?.firstName ?? "",
-          lastName: p?.lastName ?? "",
-          phoneNumber: p?.phoneNumber ?? "",
-          avatarFile: null,
-        });
+        if (historyRes.isSuccess) {
+          setPlayHistory(historyRes.data ?? null);
+        } else {
+          setHistoryError(historyRes.message ?? "Failed to load play history");
+        }
       } catch {
         if (!alive) return;
         setError("Failed to load profile");
+        setHistoryError("Failed to load play history");
       } finally {
         if (alive) setLoading(false);
+        if (alive) setHistoryLoading(false);
       }
     })();
 
@@ -198,9 +212,11 @@ export default function ProfilePage() {
                     className={styles.avatarImg}
                     onError={(e) => {
                       const img = e.currentTarget as HTMLImageElement;
-                      if (img.src !== "/brand/avatar-fallback.png") {
-                        img.src = "/brand/avatar-fallback.png";
-                      }
+                      const fallbackSrc = "/brand/avatar-fallback.png";
+                      if (img.dataset.fallbackTried === "1") return;
+                      img.dataset.fallbackTried = "1";
+                      // Guard against browsers turning the src into an absolute URL.
+                      if (!img.src.includes(fallbackSrc)) img.src = fallbackSrc;
                     }}
                   />
                   <div className={styles.avatarOverlay}>
@@ -222,9 +238,10 @@ export default function ProfilePage() {
                     className={styles.avatarImg}
                     onError={(e) => {
                       const img = e.currentTarget as HTMLImageElement;
-                      if (img.src !== "/brand/avatar-fallback.png") {
-                        img.src = "/brand/avatar-fallback.png";
-                      }
+                      const fallbackSrc = "/brand/avatar-fallback.png";
+                      if (img.dataset.fallbackTried === "1") return;
+                      img.dataset.fallbackTried = "1";
+                      if (!img.src.includes(fallbackSrc)) img.src = fallbackSrc;
                     }}
                   />
                 </div>
@@ -255,7 +272,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Two-column: Intro (left) + Contact/About (right) */}
+        {/* Intro + Game history */}
         <div className={styles.profileBody}>
           <section className={styles.cardFb}>
             <div className={styles.cardHead}>
@@ -318,35 +335,10 @@ export default function ProfilePage() {
                   )}
                 </div>
               )}
-            </div>
-          </section>
 
-          <section className={styles.cardFb}>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>{t("quickLinks")}</h2>
-            </div>
-            <nav className={styles.quickLinks}>
-              <Link to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} className={styles.quickLink}>
-                <Map size={18} />
-                <span>My Maps</span>
-              </Link>
-              <Link to={ROUTES.LEARNER_LEARN ?? "/app/browse"} className={styles.quickLink}>
-                <Gamepad2 size={18} />
-                <span>Browse games</span>
-              </Link>
-              <Link
-                to={ROUTES.LEARNER_MARKETPLACE ?? "/app/marketplace"}
-                className={styles.quickLink}
-              >
-                <Store size={18} />
-                <span>Marketplace</span>
-              </Link>
-            </nav>
-          </section>
+              <div style={{ height: 1, background: "var(--border)", margin: "12px 0" }} />
 
-          <aside className={styles.sidebar}>
-            <section className={styles.cardFb}>
-              <div className={styles.cardHead}>
+              <div className={styles.cardHead} style={{ marginBottom: 10 }}>
                 <h2 className={styles.cardTitleFb}>{t("contactDetails")}</h2>
                 {isEditMode ? (
                   <div className={styles.cardHeadActions}>
@@ -369,12 +361,7 @@ export default function ProfilePage() {
                       {saving ? t("saving") : t("save")}
                     </button>
                   </div>
-                ) : (
-                  <button type="button" onClick={enterEditMode} className={styles.btnEditSmall}>
-                    <Edit3 size={14} />
-                    {t("edit")}
-                  </button>
-                )}
+                ) : null}
               </div>
 
               {isEditMode ? (
@@ -422,8 +409,55 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </section>
-          </aside>
+            </div>
+          </section>
+
+          <section className={styles.cardFb}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitleFb}>Lịch sử đấu</h2>
+            </div>
+
+            {historyLoading ? (
+              <div className={styles.introPlaceholder}>Loading...</div>
+            ) : historyError ? (
+              <div className={styles.pillError}>{historyError}</div>
+            ) : playHistory?.items?.length ? (
+              <div className={styles.historyList}>
+                {playHistory.items.map((item) => (
+                  <div key={item.id} className={styles.historyItem}>
+                    <div className={styles.historyItemTop}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.historyTitle}>
+                          {item.mapTitle ?? `Map ${item.mapId.slice(0, 8)}...`}
+                        </div>
+                        <div className={styles.historyMeta}>
+                          {item.playMode} · {item.isCompleted ? "Completed" : "Not completed"}
+                        </div>
+                      </div>
+                      <div className={styles.historyScore}>
+                        {item.score != null ? `${item.score}` : "—"}
+                        {item.stars != null ? ` ★${item.stars}` : ""}
+                      </div>
+                    </div>
+                    <div className={styles.historyBottom}>
+                      <span>
+                        {new Date(item.startTime).toLocaleString("en-US", {
+                          month: "short",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.introPlaceholder}>No game history yet.</div>
+            )}
+          </section>
+
+          {/* quick links removed (space kept consistent with Facebook-style layout) */}
         </div>
       </div>
     </div>
