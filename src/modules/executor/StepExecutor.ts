@@ -53,7 +53,7 @@ interface StackFrame {
 export class StepExecutor {
   private stack: StackFrame[];
   private procedures: Map<string, ASTNode[]>;
-  private variables: Map<string, number>;
+  private variables: Map<string, RuntimeValue>;
   private context: { variables: RuntimeVariables };
   private stateChangeCallback: ((context: { variables: RuntimeVariables }) => void) | null;
   private lastRemoved: LastRemovedItem | null;
@@ -67,6 +67,7 @@ export class StepExecutor {
   private numberResolver: (sensorType: NumberSensorType) => number;
   private positionResolver: PositionResolver;
   private callback: ((result: ExecutionResult) => void) | null;
+  private onComplete: (() => void) | null;
   private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
 
@@ -98,6 +99,7 @@ export class StepExecutor {
       getNeighbors: () => [],
     };
     this.callback = null;
+    this.onComplete = null;
     this.warningCallback = null;
     this.intervalMs = 500;
   }
@@ -279,6 +281,21 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "moveToCell": {
+          const resolved = this.resolveCellString(this.evaluateAny(node.cell));
+          if (!resolved) {
+            this.warningCallback?.("Move To Cell requires a valid x,y string.", node.blockId);
+            continue;
+          }
+          return {
+            command: {
+              type: "moveToCell",
+              cell: resolved,
+            },
+            blockId: node.blockId,
+          };
+        }
+
         case "turn":
           return {
             command: {
@@ -439,17 +456,17 @@ export class StepExecutor {
         }
 
         case "setVariable": {
-          const numericValue = this.evaluateNumber(node.value);
-          this.variables.set(node.name, numericValue);
-          this.context.variables[node.name] = numericValue;
+          const assignedValue = this.evaluateAny(node.value);
+          this.variables.set(node.name, assignedValue);
+          this.context.variables[node.name] = assignedValue;
           this.notifyStateChange();
           continue;
         }
 
         case "changeVariable": {
-          const numericValue = this.evaluateNumber(node.value);
-          this.variables.set(node.name, numericValue);
-          this.context.variables[node.name] = numericValue;
+          const assignedValue = this.evaluateAny(node.value);
+          this.variables.set(node.name, assignedValue);
+          this.context.variables[node.name] = assignedValue;
           this.notifyStateChange();
           continue;
         }
@@ -717,7 +734,15 @@ export class StepExecutor {
     }
 
     if (node.type === "getVariable") {
-      return this.variables.get(node.name) ?? 0;
+      const value = this.context.variables[node.name] ?? this.variables.get(node.name);
+      if (typeof value === "number") {
+        return value;
+      }
+      if (typeof value === "boolean") {
+        return value ? 1 : 0;
+      }
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
     }
 
     if (node.type === "listLength") {
@@ -863,7 +888,9 @@ export class StepExecutor {
       this.timeoutId = window.setTimeout(() => this.tick(), this.intervalMs);
     } else {
       // Execution complete (result is null), stop immediately
+      const completeHandler = this.onComplete;
       this.stop();
+      completeHandler?.();
     }
   }
 
@@ -872,7 +899,11 @@ export class StepExecutor {
    * @param callback Function to call with each ExecutionResult (command + blockId)
    * @param intervalMs Delay between commands in milliseconds
    */
-  run(callback: (result: ExecutionResult) => void, intervalMs: number = 500): void {
+  run(
+    callback: (result: ExecutionResult) => void,
+    intervalMs: number = 500,
+    onComplete?: () => void,
+  ): void {
     if (this.isRunning && !this.isPaused) {
       return; // Already running and not paused
     }
@@ -887,6 +918,7 @@ export class StepExecutor {
     this.isRunning = true;
     this.isPaused = false;
     this.callback = callback;
+    this.onComplete = onComplete ?? null;
     this.intervalMs = intervalMs;
 
     // Start execution with first tick
@@ -924,6 +956,7 @@ export class StepExecutor {
     this.isRunning = false;
     this.isPaused = false;
     this.callback = null;
+    this.onComplete = null;
   }
 
   /**

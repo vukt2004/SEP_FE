@@ -17,6 +17,7 @@ import { generateAST } from "../../tools/block-editor/blocks/registerGenerators"
 import { ROUTES } from "@/lib/constants/routes";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { GameResultsModal } from "./GameResultsModal";
+import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
 import { MissionBar } from "./MissionBar";
 import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
@@ -82,6 +83,7 @@ export default function PlatformGameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
+  const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
@@ -428,7 +430,14 @@ export default function PlatformGameView() {
         if (engine) {
           engine.executeCommand(result.command);
         }
-      }, 500);
+      }, 500, () => {
+        setIsExecutorRunning(false);
+        const engine = engineRef.current;
+        if (!engine || engine.hasWon()) {
+          return;
+        }
+        setShowExecutionIncompleteModal(true);
+      });
     } catch (err) {
       console.error("Failed to run program:", err);
       alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
@@ -459,6 +468,7 @@ export default function PlatformGameView() {
     setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
+    setShowExecutionIncompleteModal(false);
     setExecVariables({});
     setLastRemoved(null);
     fruitCollectedPulseRef.current = false;
@@ -928,15 +938,6 @@ export default function PlatformGameView() {
             >
               <Info size={14} /> Mission
             </button>
-
-            <MissionBar
-              goal={missionGoal}
-              blockLimit={blockConstraints?.blockLimit ?? null}
-              requiredBlocks={requiredBlocks}
-              forbiddenBlocks={forbiddenBlocks}
-              width={mapConfig?.width}
-              height={mapConfig?.height}
-            />
             <div
               style={{
                 padding: "8px 12px",
@@ -988,6 +989,15 @@ export default function PlatformGameView() {
               🎯 {mapConfig?.winCondition === 1 ? "Reach Goal" : "Collect All Fruits"}
             </div> */}
           </div>
+
+          <MissionBar
+            goal={missionGoal}
+            blockLimit={blockConstraints?.blockLimit ?? null}
+            requiredBlocks={requiredBlocks}
+            forbiddenBlocks={forbiddenBlocks}
+            width={mapConfig?.width}
+            height={mapConfig?.height}
+          />
 
           <div
             style={{
@@ -1278,6 +1288,14 @@ export default function PlatformGameView() {
           setRevealedHints((prev) => Math.min(prev + 1, totalHints));
         }}
         onClose={() => setShowHintsModal(false)}
+      />
+
+      <ExecutionIncompleteModal
+        isOpen={showExecutionIncompleteModal}
+        onConfirm={() => {
+          setShowExecutionIncompleteModal(false);
+          handleReset();
+        }}
       />
 
       {/* Game Results Modal */}

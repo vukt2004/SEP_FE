@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useLanguageStore } from "@/stores/language.store";
-import { useMemo } from "react";
 
 export type LocaleId = "en" | "vi";
 

@@ -20,7 +20,7 @@ import type { EngineRuntimeState } from "./engineRuntimeState";
 import type { GameType } from "../../../shared/types/GameType";
 import { AudioSystem } from "../systems/audio/AudioSystem";
 import { SoundEffect } from "../systems/audio/types";
-import { getRawNeighbors, stringifyCell } from "@/shared/utils/cell";
+import { getRawNeighbors, parseCell, stringifyCell } from "@/shared/utils/cell";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -505,6 +505,41 @@ export class GameEngine {
         this.checkFruitCollection();
         this.checkWinCondition();
         break;
+      case "moveToCell": {
+        const target = parseCell(command.cell);
+        if (!target) {
+          this.emit({
+            type: "interactionFeedback",
+            message: "Move To Cell expects a valid x,y cell.",
+          });
+          break;
+        }
+
+        const dx = target.x - this.runtime.player.x;
+        const dy = target.y - this.runtime.player.y;
+        const isAdjacent = Math.abs(dx) + Math.abs(dy) === 1;
+        if (!isAdjacent) {
+          this.emit({
+            type: "interactionFeedback",
+            message: "Move To Cell can only move to an adjacent cell.",
+          });
+          break;
+        }
+
+        const direction: Direction =
+          dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up";
+        this.moveInDirection(direction);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
+        this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
+        break;
+      }
       case "turn": {
         const newDirection = this.resolveTurnDirection(
           this.runtime.player.facing,

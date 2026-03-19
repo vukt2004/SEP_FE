@@ -39,6 +39,15 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "move_to_cell": {
+      const cell = getValueInput(block, "CELL");
+      return {
+        type: "moveToCell",
+        cell,
+        blockId,
+      };
+    }
+
     case "turn_left":
       // Rotate 90 degrees counter-clockwise
       return {
@@ -252,6 +261,17 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       return {
         type: "numberSensor",
         sensorType: "boxHardnessAhead",
+        blockId,
+      };
+    }
+
+    case "create_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "cell";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "setVariable",
+        name,
+        value,
         blockId,
       };
     }

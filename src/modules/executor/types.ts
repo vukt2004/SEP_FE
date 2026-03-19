@@ -58,6 +58,15 @@ export interface MoveForwardNode {
 }
 
 /**
+ * Move one step to an adjacent target cell string "x,y"
+ */
+export interface MoveToCellNode {
+  type: "moveToCell";
+  cell: ASTNode | null;
+  blockId: string;
+}
+
+/**
  * Turn command - rotates facing direction
  */
 export interface TurnNode {
@@ -476,6 +485,7 @@ export interface PositionResolver {
 export type ASTNode =
   | MoveNode
   | MoveForwardNode
+  | MoveToCellNode
   | TurnNode
   | JumpNode
   | WaitNode
