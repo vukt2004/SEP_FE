@@ -1,17 +1,18 @@
 import type { AxiosError } from "axios";
 import { axiosBase } from "./axios.base";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { ROUTES } from "@/lib/constants/routes";
 import type { AuthResponseResult } from "@/types/api/learner/auth";
 
 export const learnerAxios = axiosBase.create();
 
-function isAuthEndpoint(url?: string): boolean {
-  return /auth\/login|auth\/refresh-token/.test(url ?? "");
+/** Endpoints that must not receive Bearer (e.g. login, register). Refresh-token should receive current token (even expired). */
+function isLoginOnlyEndpoint(url?: string): boolean {
+  return /auth\/login|auth\/register|auth\/verify-otp/.test(url ?? "");
 }
 
 learnerAxios.interceptors.request.use((config) => {
-  // Do not attach a possibly expired access token to login/refresh endpoints.
-  if (isAuthEndpoint(config.url)) {
+  if (isLoginOnlyEndpoint(config.url)) {
     config.withCredentials = true;
     return config;
   }
@@ -33,7 +34,9 @@ function doRefresh(): Promise<string> {
     })
     .then((res) => {
       refreshPromise = null;
-      const token = res.data?.data?.accessToken;
+      const token =
+        (res.data as { data?: { accessToken?: string }; accessToken?: string })?.data?.accessToken ??
+        (res.data as { accessToken?: string })?.accessToken;
       if (!token) throw new Error("No token in refresh response");
       tokenStorage.setLearnerToken(token);
       return token;
@@ -42,7 +45,7 @@ function doRefresh(): Promise<string> {
       refreshPromise = null;
       tokenStorage.removeLearnerToken();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = ROUTES.LEARNER_LOGIN;
       }
       throw err;
     });
@@ -56,7 +59,7 @@ learnerAxios.interceptors.response.use(
     if (!config || !error.response || error.response.status !== 401) {
       return Promise.reject(error);
     }
-    if (isAuthEndpoint(config.url)) {
+    if (isLoginOnlyEndpoint(config.url)) {
       return Promise.reject(error);
     }
     return doRefresh().then((newToken) => {

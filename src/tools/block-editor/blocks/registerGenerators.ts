@@ -95,19 +95,34 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
-    case "interact":
+    case "break": {
+      const power = getValueInput(block, "POWER");
       return {
-        type: "interact",
+        type: "break",
+        power,
+        blockId,
+      };
+    }
+
+    case "open_door":
+      return {
+        type: "openDoor",
+        blockId,
+      };
+
+    case "close_door":
+      return {
+        type: "closeDoor",
         blockId,
       };
 
     case "repeat": {
-      const timesValue = block.getFieldValue("TIMES");
-      const times = Math.max(0, Number(timesValue) || 0);
+      const timesValue = getValueInput(block, "TIMES");
+      const legacyTimes = Math.max(0, Number(block.getFieldValue("TIMES")) || 0);
       const body = getStatementBlocks(block, "DO");
       return {
         type: "repeat",
-        times,
+        times: timesValue ?? legacyTimes,
         body,
         blockId,
       };
@@ -156,6 +171,27 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "enemy_ahead":
+      return {
+        type: "condition",
+        conditionType: "enemyAhead",
+        blockId,
+      };
+
+    case "trap_ahead":
+      return {
+        type: "condition",
+        conditionType: "trapAhead",
+        blockId,
+      };
+
+    case "fruit_collected":
+      return {
+        type: "condition",
+        conditionType: "fruitCollected",
+        blockId,
+      };
+
     case "logic_true":
       return {
         type: "booleanLiteral",
@@ -199,6 +235,78 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       return {
         type: "logicNot",
         value,
+        blockId,
+      };
+    }
+
+    case "number_literal": {
+      const value = Number(block.getFieldValue("VALUE")) || 0;
+      return {
+        type: "numberLiteral",
+        value,
+        blockId,
+      };
+    }
+
+    case "set_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "setVariable",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "change_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "changeVariable",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "get_variable": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "score";
+      return {
+        type: "getVariable",
+        name,
+        blockId,
+      };
+    }
+
+    case "logic_compare": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      const rawOp = block.getFieldValue("OP") || "==";
+      const operator = [">", "<", "==", ">=", "<=", "!="].includes(rawOp)
+        ? (rawOp as ">" | "<" | "==" | ">=" | "<=" | "!=")
+        : "==";
+      return {
+        type: "compare",
+        operator,
+        left,
+        right,
+        blockId,
+      };
+    }
+
+    case "math_arithmetic": {
+      const left = getValueInput(block, "A");
+      const right = getValueInput(block, "B");
+      const rawOp = block.getFieldValue("OP") || "+";
+      const operator = ["+", "-", "*", "/"].includes(rawOp)
+        ? (rawOp as "+" | "-" | "*" | "/")
+        : "+";
+      return {
+        type: "arithmetic",
+        operator,
+        left,
+        right,
         blockId,
       };
     }

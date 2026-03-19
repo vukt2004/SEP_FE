@@ -7,6 +7,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { learnerLearningPathApi } from "@/services/api/learner/learningPath.api";
 import { ConceptMiniGame } from "@/portals/learner/components/ConceptMiniGame";
+import { getConceptContentComponent } from "@/portals/learner/concept-content";
 import type { ConceptDetailDto, ConceptCompletionDto } from "@/types/api/learner/learningPath";
 import styles from "./ConceptDetailPage.module.css";
 
@@ -47,6 +48,15 @@ function getNormalizedContentKey(contentKey: string | null | undefined): string 
     slug.includes("thc")
   )
     return "execution-order";
+  if (
+    k === "problem-solving" ||
+    k.includes("problem") ||
+    k.includes("solving") ||
+    slug.includes("phantich") ||
+    slug.includes("baitoan") ||
+    slug.includes("phan-tich")
+  )
+    return "problem-solving";
   return null;
 }
 
@@ -95,6 +105,14 @@ const TOC_BY_KEY: Record<string, { id: string; label: string }[]> = {
     { id: "section-3", label: "Ví dụ: Đếm 1 đến 3" },
     { id: "section-4", label: "Trong game" },
     { id: "section-5", label: "Lặp ngược và bước nhảy" },
+    { id: "section-summary", label: "Ôn lại nhanh" },
+  ],
+  "problem-solving": [
+    { id: "section-intro", label: "Bài này học gì?" },
+    { id: "section-1", label: "Đọc đề như checklist" },
+    { id: "section-2", label: "Chia nhỏ bài toán" },
+    { id: "section-3", label: "Thử tay bằng ví dụ" },
+    { id: "section-4", label: "Pseudo-code trước" },
     { id: "section-summary", label: "Ôn lại nhanh" },
   ],
 };
@@ -282,6 +300,7 @@ export default function ConceptDetailPage() {
   const isCompleted = completed || completion?.isCompleted;
   const contentKeyNorm = getNormalizedContentKey(concept?.contentKey ?? null);
   const toc = contentKeyNorm ? TOC_BY_KEY[contentKeyNorm] : undefined;
+  const contentNode = getConceptContentComponent(contentKeyNorm);
 
   return (
     <div className={styles.page}>
@@ -326,6 +345,8 @@ export default function ConceptDetailPage() {
               </header>
               {loadingContent && concept.contentKey ? (
                 <p className={styles.noContent}>{t("loading")}</p>
+              ) : contentNode ? (
+                <div className={styles.content}>{contentNode}</div>
               ) : contentHtml ? (
                 <div className={styles.content} dangerouslySetInnerHTML={{ __html: contentHtml }} />
               ) : concept.contentKey ? (

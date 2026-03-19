@@ -6,6 +6,7 @@ import type {
   MapDetailResult,
   ApproveMapParams,
   RejectMapParams,
+  MapTagsResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -37,6 +38,14 @@ export const cmsMapsApi = {
     return cmsAxios.get<MapDetailResult>(`/api/cms/maps/${id}`, {
       params: { includeEditorialForUser },
     });
+  },
+
+  /**
+   * Get available map tags
+   * GET /api/cms/maps/tags
+   */
+  getMapTags() {
+    return cmsAxios.get<MapTagsResult>("/api/cms/maps/tags");
   },
 
   /**

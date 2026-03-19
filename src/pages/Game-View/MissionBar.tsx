@@ -5,6 +5,8 @@ interface MissionBarProps {
   blockLimit: number | null;
   requiredBlocks: string[];
   forbiddenBlocks: string[];
+  width?: number;
+  height?: number;
 }
 
 function Badge({ label, value }: { label: string; value: string }) {
@@ -16,13 +18,21 @@ function Badge({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MissionBar({ goal, blockLimit, requiredBlocks, forbiddenBlocks }: MissionBarProps) {
+export function MissionBar({
+  goal,
+  blockLimit,
+  requiredBlocks,
+  forbiddenBlocks,
+  width,
+  height,
+}: MissionBarProps) {
   const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None";
   const forbiddenText = forbiddenBlocks.length > 0 ? forbiddenBlocks.join(", ") : "None";
 
   return (
     <div style={styles.container}>
       <Badge label="Goal" value={goal} />
+      {width && height && <Badge label="Size" value={`${width}x${height}`} />}
       <Badge label="Limit" value={blockLimit !== null ? `${blockLimit} blocks` : "No limit"} />
       <Badge label="Required" value={requiredText} />
       <Badge label="Forbidden" value={forbiddenText} />

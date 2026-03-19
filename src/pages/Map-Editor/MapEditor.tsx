@@ -25,6 +25,9 @@ type MapDetailLike = {
   timeLimitMs: number;
   winCondition: number;
   price: number;
+  hints?: Array<{ orderNo: number; content: string }>;
+  tagNames?: string[];
+  avatarUrl?: string | null;
   mapDetailJson?: unknown;
   activeSpec?: {
     gridSpec?: string;
@@ -176,6 +179,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         winCondition: clampWinCondition(
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
+        requiredFruits: Math.max(
+          0,
+          toNumber(
+            isRecord(sourceJson.metadata) ? sourceJson.metadata.requiredFruits : undefined,
+            toNumber(configRaw.requiredFruits, 0),
+          ),
+        ),
         price: Math.max(0, toNumber(detail.price, toNumber(configRaw.price, 0))),
       },
       layers: {
@@ -187,14 +197,28 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
       objects: {
         items: itemsRaw
           .filter(
-            (item): item is { id: number; type: string; x: number; y: number } =>
+            (
+              item,
+            ): item is {
+              id: number;
+              type: string;
+              x: number;
+              y: number;
+              metadata?: Record<string, unknown>;
+            } =>
               isRecord(item) &&
               typeof item.id === "number" &&
               typeof item.type === "string" &&
               typeof item.x === "number" &&
               typeof item.y === "number",
           )
-          .map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y })),
+          .map((item) => ({
+            id: item.id,
+            type: item.type,
+            x: item.x,
+            y: item.y,
+            ...(isRecord(item.metadata) ? { metadata: item.metadata } : {}),
+          })),
       },
       blockConstraints: normalizeBlockConstraints(
         isRecord(sourceJson.blockConstraints) ? sourceJson.blockConstraints : null,
@@ -212,7 +236,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
       ? sourceJson.blockConstraints
       : null;
 
-    const items: { id: number; type: string; x: number; y: number }[] = [];
+    const items: Array<{
+      id: number;
+      type: string;
+      x: number;
+      y: number;
+      metadata?: Record<string, unknown>;
+    }> = [];
 
     if (
       isRecord(sourceJson.startPosition) &&
@@ -258,7 +288,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
             isRecord(obj.metadata) && typeof obj.metadata.objectId === "number"
               ? obj.metadata.objectId
               : 5;
-          items.push({ id: metaId, type: obj.type, x: obj.position.col, y: obj.position.row });
+          items.push({
+            id: metaId,
+            type: obj.type,
+            x: obj.position.col,
+            y: obj.position.row,
+            ...(isRecord(obj.metadata) ? { metadata: obj.metadata } : {}),
+          });
         }
       }
     });
@@ -275,6 +311,13 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
         winCondition: clampWinCondition(detail.winCondition),
+        requiredFruits: Math.max(
+          0,
+          toNumber(
+            isRecord(sourceJson.metadata) ? sourceJson.metadata.requiredFruits : undefined,
+            0,
+          ),
+        ),
         price: Math.max(0, detail.price),
       },
       layers: {
@@ -299,7 +342,7 @@ interface EditorState {
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed to numeric ID
-  selectedTool: "paint" | "erase" | "fill" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -312,6 +355,9 @@ export default function MapEditor() {
   const [zoom, setZoom] = useState(1);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
+  const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
+  const [editingMapHints, setEditingMapHints] = useState<string[]>([]);
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const initialMap = createEmptyMap("platform", 20, 15, 32);
@@ -333,6 +379,9 @@ export default function MapEditor() {
 
   useEffect(() => {
     if (!mapId) {
+      setEditingMapTagNames([]);
+      setEditingMapAvatarUrl(null);
+      setEditingMapHints([]);
       return;
     }
 
@@ -356,8 +405,23 @@ export default function MapEditor() {
           throw new Error(response.data.message || "Failed to load map");
         }
 
-        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
         if (cancelled) return;
+
+        setEditingMapTagNames(
+          Array.isArray((response.data.data as MapDetailLike).tagNames)
+            ? ((response.data.data as MapDetailLike).tagNames ?? [])
+            : [],
+        );
+        setEditingMapAvatarUrl((response.data.data as MapDetailLike).avatarUrl ?? null);
+        setEditingMapHints(
+          Array.isArray((response.data.data as MapDetailLike).hints)
+            ? ((response.data.data as MapDetailLike).hints ?? [])
+                .map((hint) => hint.content)
+                .filter((content) => typeof content === "string" && content.trim().length > 0)
+            : [],
+        );
+
+        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
 
         const loadedStore = new EditorStore(loadedMapData);
         setEditorState({
@@ -423,7 +487,7 @@ export default function MapEditor() {
     store?.setSelectedObjectId(objectId);
   };
 
-  const handleToolSelect = (tool: "paint" | "erase" | "fill" | null) => {
+  const handleToolSelect = (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => {
     store?.setSelectedTool(tool);
   };
 
@@ -453,6 +517,10 @@ export default function MapEditor() {
 
   const handleWinConditionChange = (winCondition: 1 | 2) => {
     store?.setMapWinCondition(winCondition);
+  };
+
+  const handleRequiredFruitsChange = (requiredFruits: number) => {
+    store?.setMapRequiredFruits(requiredFruits);
   };
 
   const handlePriceChange = (price: number) => {
@@ -504,6 +572,9 @@ export default function MapEditor() {
               sectionMode="left"
               editingMapId={mapId}
               editorMode={routeState?.mode}
+              initialSelectedTagNames={editingMapTagNames}
+              initialAvatarUrl={editingMapAvatarUrl}
+              initialHints={editingMapHints}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
@@ -576,6 +647,9 @@ export default function MapEditor() {
               sectionMode="right"
               editingMapId={mapId}
               editorMode={routeState?.mode}
+              initialSelectedTagNames={editingMapTagNames}
+              initialAvatarUrl={editingMapAvatarUrl}
+              initialHints={editingMapHints}
               mapData={mapData}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
@@ -596,6 +670,7 @@ export default function MapEditor() {
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
               onWinConditionChange={handleWinConditionChange}
+              onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
               onBannedBlocksChange={handleBannedBlocksChange}

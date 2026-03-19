@@ -6,10 +6,13 @@ export type OrbitCoinBalanceResponse = {
   balance: number;
 };
 
-export enum CoinTransactionTypeEnum {
-  Credit = 0,
-  Debit = 1,
-}
+export const CoinTransactionTypeEnum = {
+  Credit: 0,
+  Debit: 1,
+} as const;
+
+export type CoinTransactionTypeEnum =
+  (typeof CoinTransactionTypeEnum)[keyof typeof CoinTransactionTypeEnum];
 
 export type OrbitCoinTransaction = {
   id: string;

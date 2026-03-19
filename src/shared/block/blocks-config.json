@@ -1,46 +1,6 @@
 {
   "blocks": [
     {
-      "type": "move_up",
-      "category": "movement",
-      "label": "Move Up",
-      "tooltip": "Move up one step",
-      "color": "#4CAF50",
-      "command": "MOVE_UP",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_down",
-      "category": "movement",
-      "label": "Move Down",
-      "tooltip": "Move down one step",
-      "color": "#4CAF50",
-      "command": "MOVE_DOWN",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_left",
-      "category": "movement",
-      "label": "Move Left",
-      "tooltip": "Move left one step",
-      "color": "#4CAF50",
-      "command": "MOVE_LEFT",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "move_right",
-      "category": "movement",
-      "label": "Move Right",
-      "tooltip": "Move right one step",
-      "color": "#4CAF50",
-      "command": "MOVE_RIGHT",
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
       "type": "move_forward",
       "category": "movement",
       "label": "Move Forward",
@@ -81,12 +41,40 @@
       "nextStatement": true
     },
     {
-      "type": "interact",
+      "type": "break",
       "category": "movement",
-      "label": "Interact",
-      "tooltip": "Interact with an object in front of you (e.g. break a box, open a chest, trigger a switch).",
+      "label": "Break",
+      "tooltip": "Break an object in front of you using a specified power",
       "color": "#4CAF50",
-      "command": "INTERACT",
+      "command": "BREAK",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "POWER",
+          "check": "Number",
+          "label": "power"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "open_door",
+      "category": "movement",
+      "label": "Open Door",
+      "tooltip": "Open a door in front of you",
+      "color": "#4CAF50",
+      "command": "OPEN_DOOR",
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "close_door",
+      "category": "movement",
+      "label": "Close Door",
+      "tooltip": "Close a door in front of you",
+      "color": "#4CAF50",
+      "command": "CLOSE_DOOR",
       "previousStatement": true,
       "nextStatement": true
     },
@@ -99,12 +87,11 @@
       "command": "REPEAT",
       "inputs": [
         {
-          "kind": "field_number",
+          "kind": "value",
           "name": "TIMES",
+          "check": "Number",
           "label": "times",
-          "value": 3,
-          "min": 1,
-          "max": 100
+          "value": 3
         }
       ],
       "statementInput": {
@@ -391,14 +378,183 @@
       "nextStatement": true
     },
     {
-      "type": "interact",
-      "category": "movement",
-      "label": "Interact",
-      "tooltip": "Interact with an object (e.g., open a door, break a box)",
-      "color": "#4CAF50",
-      "command": "INTERACT",
+      "type": "set_variable",
+      "category": "variables",
+      "label": "set",
+      "tooltip": "Set a variable to a numeric value",
+      "color": "#FF5722",
+      "command": "SET_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "=",
+          "text": "score"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Number",
+          "label": ""
+        }
+      ],
       "previousStatement": true,
       "nextStatement": true
+    },
+    {
+      "type": "change_variable",
+      "category": "variables",
+      "label": "change",
+      "tooltip": "Set a variable to a numeric value",
+      "color": "#FF5722",
+      "command": "CHANGE_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "to",
+          "text": "score"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "get_variable",
+      "category": "variables",
+      "label": "variable",
+      "tooltip": "Get the current numeric value of a variable",
+      "color": "#FF5722",
+      "command": "GET_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "",
+          "text": "score"
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "number_literal",
+      "category": "math",
+      "label": "",
+      "tooltip": "A numeric literal value",
+      "color": "#2196F3",
+      "command": "NUMBER_LITERAL",
+      "inputs": [
+        {
+          "kind": "field_number",
+          "name": "VALUE",
+          "label": "",
+          "value": 5
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "math_arithmetic",
+      "category": "math",
+      "label": "",
+      "tooltip": "Apply arithmetic operation to two numbers",
+      "color": "#2196F3",
+      "command": "MATH_ARITHMETIC",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Number",
+          "label": ""
+        },
+        {
+          "kind": "field_dropdown",
+          "name": "OP",
+          "label": "",
+          "options": [
+            ["+", "+"],
+            ["-", "-"],
+            ["*", "*"],
+            ["/", "/"]
+          ]
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "logic_compare",
+      "category": "logic",
+      "label": "",
+      "tooltip": "Compare two numbers and return true or false",
+      "color": "#5C81F6",
+      "command": "LOGIC_COMPARE",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "A",
+          "check": "Number",
+          "label": ""
+        },
+        {
+          "kind": "field_dropdown",
+          "name": "OP",
+          "label": "",
+          "options": [
+            [">", ">"],
+            ["<", "<"],
+            ["==", "=="],
+            [">=", ">="],
+            ["<=", "<="],
+            ["!=", "!="]
+          ]
+        },
+        {
+          "kind": "value",
+          "name": "B",
+          "check": "Number",
+          "label": ""
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "enemy_ahead",
+      "category": "logic",
+      "label": "enemy ahead?",
+      "tooltip": "Returns true if there is an enemy ahead",
+      "color": "#5C81F6",
+      "command": "ENEMY_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "trap_ahead",
+      "category": "logic",
+      "label": "trap ahead?",
+      "tooltip": "Returns true if there is a trap ahead",
+      "color": "#5C81F6",
+      "command": "TRAP_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "fruit_collected",
+      "category": "logic",
+      "label": "fruit collected?",
+      "tooltip": "Returns true if the character has collected at least one fruit",
+      "color": "#5C81F6",
+      "command": "FRUIT_COLLECTED",
+      "output": "Boolean"
     }
   ]
 }

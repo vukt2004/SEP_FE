@@ -42,7 +42,9 @@ interface StackFrame {
 export class StepExecutor {
   private stack: StackFrame[];
   private procedures: Map<string, ASTNode[]>;
+  private variables: Map<string, number>;
   private warnedMissingProcedures: Set<string>;
+  private warnedLiteralBreakBlocks: Set<string>;
   private originalProgram: BlockProgram;
   private timeoutId: number | null;
   private isRunning: boolean;
@@ -56,7 +58,9 @@ export class StepExecutor {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
     this.procedures = new Map();
+    this.variables = new Map();
     this.warnedMissingProcedures = new Set();
+    this.warnedLiteralBreakBlocks = new Set();
     this.preRegisterProcedures(program);
     this.timeoutId = null;
     this.isRunning = false;
@@ -74,7 +78,9 @@ export class StepExecutor {
     this.stop();
     this.stack = [{ nodes: this.originalProgram, index: 0 }];
     this.procedures.clear();
+    this.variables.clear();
     this.warnedMissingProcedures.clear();
+    this.warnedLiteralBreakBlocks.clear();
     this.preRegisterProcedures(this.originalProgram);
   }
 
@@ -240,10 +246,36 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
-        case "interact":
+        case "break":
+          if (node.power && !this.expressionUsesVariable(node.power)) {
+            if (!this.warnedLiteralBreakBlocks.has(node.blockId)) {
+              this.warnedLiteralBreakBlocks.add(node.blockId);
+              this.warningCallback?.(
+                "Tip: BREAK works best with variables or expressions, not only hardcoded numbers.",
+                node.blockId,
+              );
+            }
+          }
           return {
             command: {
-              type: "interact",
+              type: "break",
+              power: Math.max(0, this.evaluateNumber(node.power)),
+            },
+            blockId: node.blockId,
+          };
+
+        case "openDoor":
+          return {
+            command: {
+              type: "openDoor",
+            },
+            blockId: node.blockId,
+          };
+
+        case "closeDoor":
+          return {
+            command: {
+              type: "closeDoor",
             },
             blockId: node.blockId,
           };
@@ -251,8 +283,10 @@ export class StepExecutor {
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
-          // Defensive handling: ensure times is a valid positive number
-          const times = Math.max(0, node.times ?? 0);
+          // Defensive handling: evaluate dynamic expressions and ensure a valid positive integer
+          const rawTimes =
+            typeof node.times === "number" ? node.times : this.evaluateNumber(node.times);
+          const times = Math.max(0, Math.floor(rawTimes));
           if (times > 0) {
             this.stack.push({
               nodes: node.body,
@@ -346,6 +380,18 @@ export class StepExecutor {
           continue;
         }
 
+        case "setVariable": {
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
+          continue;
+        }
+
+        case "changeVariable": {
+          const numericValue = this.evaluateNumber(node.value);
+          this.variables.set(node.name, numericValue);
+          continue;
+        }
+
         case "condition":
           // Condition blocks shouldn't be executed directly in the main flow
           // They should only be evaluated as part of if/while blocks
@@ -360,6 +406,10 @@ export class StepExecutor {
 
         case "logicBinary":
         case "logicNot":
+        case "numberLiteral":
+        case "arithmetic":
+        case "getVariable":
+        case "compare":
           // Logic expression blocks are value blocks, not statement blocks
           console.warn("Logic expression block executed directly - this should not happen");
           continue;
@@ -398,8 +448,103 @@ export class StepExecutor {
       return !this.evaluateCondition(conditionNode.value);
     }
 
+    if (conditionNode.type === "compare") {
+      const left = this.evaluateNumber(conditionNode.left);
+      const right = this.evaluateNumber(conditionNode.right);
+      switch (conditionNode.operator) {
+        case ">":
+          return left > right;
+        case "<":
+          return left < right;
+        case "==":
+          return left === right;
+        case ">=":
+          return left >= right;
+        case "<=":
+          return left <= right;
+        case "!=":
+          return left !== right;
+        default:
+          return false;
+      }
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
+    return false;
+  }
+
+  private evaluateNumber(node: ASTNode | null): number {
+    if (!node) {
+      return 0;
+    }
+
+    if (node.type === "numberLiteral") {
+      return node.value;
+    }
+
+    if (node.type === "arithmetic") {
+      const left = this.evaluateNumber(node.left);
+      const right = this.evaluateNumber(node.right);
+      switch (node.operator) {
+        case "+":
+          return left + right;
+        case "-":
+          return left - right;
+        case "*":
+          return left * right;
+        case "/":
+          return right === 0 ? 0 : left / right;
+        default:
+          return 0;
+      }
+    }
+
+    if (node.type === "getVariable") {
+      return this.variables.get(node.name) ?? 0;
+    }
+
+    if (node.type === "booleanLiteral") {
+      return node.value ? 1 : 0;
+    }
+
+    if (node.type === "condition" || node.type === "logicBinary" || node.type === "logicNot") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    if (node.type === "compare") {
+      return this.evaluateCondition(node) ? 1 : 0;
+    }
+
+    console.warn("Unsupported numeric expression node:", node.type);
+    return 0;
+  }
+
+  private expressionUsesVariable(node: ASTNode | null): boolean {
+    if (!node) {
+      return false;
+    }
+
+    if (node.type === "getVariable") {
+      return true;
+    }
+
+    if (node.type === "arithmetic") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "compare") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicBinary") {
+      return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
+    }
+
+    if (node.type === "logicNot") {
+      return this.expressionUsesVariable(node.value);
+    }
+
     return false;
   }
 

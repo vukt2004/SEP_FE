@@ -18,6 +18,7 @@ import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
+import { HintModal, type GameplayHint } from "./HintModal";
 import {
   ArrowLeft,
   Play,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import blocksConfig from "../../shared/block/blocks-config.json";
 
 export default function GameView() {
@@ -69,6 +71,9 @@ export default function GameView() {
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
+  const [hints, setHints] = useState<GameplayHint[]>([]);
+  const [showHintsModal, setShowHintsModal] = useState(false);
+  const [revealedHints, setRevealedHints] = useState(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
 
   // Get level ID and multiplayer room from location state
@@ -97,6 +102,56 @@ export default function GameView() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMapHints = async () => {
+      if (!levelId) {
+        if (isMounted) {
+          setHints([]);
+          setRevealedHints(0);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setRevealedHints(0);
+      }
+
+      try {
+        const response = await learnerMapsApi.getMapHints(levelId);
+
+        if (!isMounted) return;
+
+        if (response.data.isSuccess && Array.isArray(response.data.data)) {
+          const nextHints = response.data.data
+            .filter(
+              (hint): hint is GameplayHint =>
+                typeof hint?.orderNo === "number" && typeof hint?.content === "string",
+            )
+            .map((hint) => ({ orderNo: hint.orderNo, content: hint.content.trim() }))
+            .filter((hint) => hint.content.length > 0);
+
+          setHints(nextHints);
+          return;
+        }
+
+        setHints([]);
+      } catch (hintError) {
+        console.error("Failed to load map hints:", hintError);
+        if (isMounted) {
+          setHints([]);
+        }
+      }
+    };
+
+    loadMapHints();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [levelId]);
 
   useEffect(() => {
     console.log("[useEffect] GameView useEffect triggered");
@@ -162,7 +217,9 @@ export default function GameView() {
         );
 
         // Create game config based on map type
-        const config = createGameConfig(levelType, { winCondition });
+        const requiredFruits =
+          levelResult.mapConfig?.requiredFruits ?? levelResult.level.metadata?.requiredFruits;
+        const config = createGameConfig(levelType, { winCondition, requiredFruits });
         const engine = new GameEngine(levelDefinition, tileSize, ctx, config, gameType);
         engineRef.current = engine;
 
@@ -232,11 +289,18 @@ export default function GameView() {
           }
         };
 
+        const handleInteractionFeedback = (event: EngineEvent) => {
+          if (event.type === "interactionFeedback") {
+            showWarningToast(event.message);
+          }
+        };
+
         engine.on("win", handleWin);
         engine.on("engine:failed", handleFailed);
         engine.on("objectStateChanged", handleObjectStateChanged);
         engine.on("fruitCollected", handleFruitCollected);
         engine.on("winConditionNotMet", handleWinConditionNotMet);
+        engine.on("interactionFeedback", handleInteractionFeedback);
 
         const handleKeyDown = (e: KeyboardEvent) => {
           const executor = executorRef.current;
@@ -272,6 +336,7 @@ export default function GameView() {
           engine.off("objectStateChanged", handleObjectStateChanged);
           engine.off("fruitCollected", handleFruitCollected);
           engine.off("winConditionNotMet", handleWinConditionNotMet);
+          engine.off("interactionFeedback", handleInteractionFeedback);
           if (executorRef.current) {
             executorRef.current.stop();
           }
@@ -369,6 +434,12 @@ export default function GameView() {
             return engine.isObstacleRight();
           case "goalReached":
             return engine.hasWon();
+          case "enemyAhead":
+            return engine.isEnemyAhead();
+          case "trapAhead":
+            return engine.isTrapAhead();
+          case "fruitCollected":
+            return engine.hasCollectedFruit();
           default:
             return false;
         }
@@ -471,12 +542,44 @@ export default function GameView() {
   const blockTypeLabelMap = new Map(blocksConfig.blocks.map((block) => [block.type, block.label]));
   const toBlockLabel = (type: string) => blockTypeLabelMap.get(type) || type;
 
-  const missionGoal = mapConfig?.winCondition === 2 ? "Collect All Fruits" : "Reach Goal";
+  const missionGoal =
+    mapConfig?.winCondition === 2
+      ? mapConfig.requiredFruits && mapConfig.requiredFruits > 0
+        ? `Collect ${mapConfig.requiredFruits} Fruits and reach goal`
+        : "Collect All Fruits and reach goal"
+      : "Reach Goal";
   const requiredBlocks = (blockConstraints?.requiredBlocks ?? []).map((rule) => {
     const label = toBlockLabel(rule.type);
     return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
   });
   const forbiddenBlocks = (blockConstraints?.bannedBlocks ?? []).map((type) => toBlockLabel(type));
+  const totalHints = hints.length;
+  const revealedHintCount = Math.min(revealedHints, totalHints);
+  const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
+
+  const hintButtonState: "empty" | "progress" | "complete" =
+    revealedHintCount === 0 ? "empty" : allHintsRevealed ? "complete" : "progress";
+
+  const hintButtonStyles: Record<
+    "empty" | "progress" | "complete",
+    { background: string; border: string; color: string }
+  > = {
+    empty: {
+      background: "color-mix(in srgb, var(--text-2) 15%, var(--surface))",
+      border: "1px solid color-mix(in srgb, var(--text-2) 35%, var(--border))",
+      color: "var(--text)",
+    },
+    progress: {
+      background: "color-mix(in srgb, var(--warning) 28%, var(--surface))",
+      border: "1px solid color-mix(in srgb, var(--warning) 52%, var(--border))",
+      color: "var(--text)",
+    },
+    complete: {
+      background: "linear-gradient(180deg, #fcd34d 0%, #f59e0b 100%)",
+      border: "1px solid #d97706",
+      color: "#422006",
+    },
+  };
 
   // Multiplayer: listen RankingUpdated, GameEnded
   useEffect(() => {
@@ -752,6 +855,10 @@ export default function GameView() {
         >
           <RotateCcw size={15} /> Reset
         </button>
+
+        <div style={{ marginLeft: "auto" }}>
+          <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
+        </div>
       </div>
 
       {isLoading && (
@@ -874,6 +981,30 @@ export default function GameView() {
             >
               🍎 Fruits: {collectedFruits}
             </div>
+            <button
+              onClick={() => setShowHintsModal(true)}
+              disabled={allHintsRevealed}
+              style={{
+                marginLeft: "auto",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderRadius: "12px",
+                ...hintButtonStyles[hintButtonState],
+                cursor: allHintsRevealed ? "not-allowed" : "pointer",
+                fontSize: "13px",
+                fontWeight: 800,
+                transition: "all 0.2s ease",
+                boxShadow: allHintsRevealed
+                  ? "none"
+                  : "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
+                opacity: allHintsRevealed ? 0.8 : 1,
+              }}
+              aria-label="Show map hints"
+            >
+              💡 {`Hints (${revealedHintCount}/${totalHints})`}
+            </button>
             {/* <div
               style={{
                 padding: "8px 12px",
@@ -894,6 +1025,8 @@ export default function GameView() {
             blockLimit={blockConstraints?.blockLimit ?? null}
             requiredBlocks={requiredBlocks}
             forbiddenBlocks={forbiddenBlocks}
+            width={mapConfig?.width}
+            height={mapConfig?.height}
           />
 
           <div
@@ -952,7 +1085,6 @@ export default function GameView() {
                     100%
                   </button>
                 </div>
-                <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
               </div>
             </div>
 
@@ -1118,6 +1250,16 @@ export default function GameView() {
         forbiddenBlocks={forbiddenBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
+      />
+
+      <HintModal
+        isOpen={showHintsModal}
+        hints={hints}
+        revealedHints={revealedHintCount}
+        onRevealNext={() => {
+          setRevealedHints((prev) => Math.min(prev + 1, totalHints));
+        }}
+        onClose={() => setShowHintsModal(false)}
       />
 
       {/* Game Results Modal */}

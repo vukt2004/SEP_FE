@@ -20,6 +20,39 @@ const GOAL_COLOR = "#22cc55";
 const DOOR_OPEN_COLOR = "#d4a574";
 const DOOR_CLOSED_COLOR = "#8b4513";
 
+const PLATFORMER_OBJECT_RENDER_OFFSETS: Partial<Record<string, { x: number; y: number }>> = {
+  // Pixel Adventure box sprites include top padding; nudge down to sit on tiles naturally.
+  box1: { x: 0, y: 0.25 },
+  box2: { x: 0, y: 0.25 },
+  box3: { x: 0, y: 0.25 },
+};
+
+function isBreakableBoxType(type: string): boolean {
+  return type === "box" || type === "box1" || type === "box2" || type === "box3";
+}
+
+function getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> }): number {
+  const metadataHardness =
+    typeof obj.metadata?.hardness === "number" && Number.isFinite(obj.metadata.hardness)
+      ? obj.metadata.hardness
+      : undefined;
+
+  if (metadataHardness !== undefined) {
+    return Math.max(1, Math.floor(metadataHardness));
+  }
+
+  switch (obj.type) {
+    case "box1":
+      return 1;
+    case "box2":
+      return 2;
+    case "box3":
+      return 3;
+    default:
+      return 1;
+  }
+}
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private animationSystem: AnimationSystem;
@@ -264,6 +297,11 @@ export class Renderer {
       const pixelX = obj.position.col * tileSize;
       const pixelY = obj.position.row * tileSize;
 
+      const objectOffset =
+        this.gameType === "platformer" ? PLATFORMER_OBJECT_RENDER_OFFSETS[obj.type] : undefined;
+      const renderX = pixelX + (objectOffset?.x ?? 0) * tileSize;
+      const renderY = pixelY + (objectOffset?.y ?? 0) * tileSize;
+
       if (anim) {
         // Sprite-based rendering
         const frameIndex = this.animationSystem.getCurrentFrame(obj.id, resolvedStateKey);
@@ -277,8 +315,8 @@ export class Renderer {
           sy,
           anim.frameWidth,
           anim.frameHeight,
-          pixelX,
-          pixelY,
+          renderX,
+          renderY,
           tileSize,
           tileSize,
         );
@@ -292,7 +330,18 @@ export class Renderer {
         } else {
           this.ctx.fillStyle = "#ff00ff";
         }
-        this.ctx.fillRect(pixelX, pixelY, tileSize, tileSize);
+        this.ctx.fillRect(renderX, renderY, tileSize, tileSize);
+      }
+
+      if (isBreakableBoxType(obj.type) && resolvedStateKey !== "break") {
+        const hardness = getBoxHardness(obj);
+        this.ctx.save();
+        this.ctx.fillStyle = "#ffffff";
+        this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.35))}px monospace`;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(String(hardness), renderX + tileSize / 2, renderY + tileSize / 2);
+        this.ctx.restore();
       }
     }
   }

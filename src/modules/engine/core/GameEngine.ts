@@ -3,7 +3,6 @@ import { isWinConditionMet } from "../../map-system/types";
 import type { Player, Direction } from "./types";
 import { Renderer } from "../rendering/Renderer";
 import type { EngineCommand } from "../../executor/commands";
-import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
 import { AnimationSystem } from "../systems/animation/AnimationSystem";
@@ -24,20 +23,6 @@ import { SoundEffect } from "../systems/audio/types";
 // Re-export for convenience
 export { EngineState } from "./engineState";
 export type { EngineState as EngineStateType } from "./engineState";
-
-const TURN_LEFT: Record<Direction, Direction> = {
-  up: "left",
-  left: "down",
-  down: "right",
-  right: "up",
-};
-
-const TURN_RIGHT: Record<Direction, Direction> = {
-  up: "right",
-  right: "down",
-  down: "left",
-  left: "up",
-};
 
 const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
@@ -99,8 +84,9 @@ export class GameEngine {
     const objectStates = new Map<string, string>();
     if (level.objects) {
       for (const obj of level.objects) {
-        if (obj.initialState) {
-          objectStates.set(obj.id, obj.initialState);
+        const initialState = this.getInitialObjectState(obj);
+        if (initialState) {
+          objectStates.set(obj.id, initialState);
         }
       }
     }
@@ -243,8 +229,9 @@ export class GameEngine {
     this.runtime.objectStates.clear();
     if (this.level.objects) {
       for (const obj of this.level.objects) {
-        if (obj.initialState) {
-          this.runtime.objectStates.set(obj.id, obj.initialState);
+        const initialState = this.getInitialObjectState(obj);
+        if (initialState) {
+          this.runtime.objectStates.set(obj.id, initialState);
         }
       }
     }
@@ -267,17 +254,6 @@ export class GameEngine {
    * State transition: Running → Failed
    * Only works if engine is currently running
    */
-
-  private fail(): void {
-    if (this.runtime.state === EngineState.Running) {
-      // Stop timer and save elapsed time
-      if (this.runtime.startTime !== null) {
-        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
-      }
-      this.runtime.state = EngineState.Failed;
-      this.emit({ type: "engine:failed" });
-    }
-  }
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
@@ -501,21 +477,37 @@ export class GameEngine {
         // Handle absolute directional movement
         this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "moveForward":
         // Move in the current facing direction
         this.moveInDirection(this.runtime.player.facing);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Update player collider after physics
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
       case "turn": {
-        // Rotate facing direction by 90 degrees
-        const newDirection = this.rotateFacing(this.runtime.player.facing, command.rotation);
+        const newDirection = this.resolveTurnDirection(
+          this.runtime.player.facing,
+          command.rotation,
+        );
         this.runtime.player.facing = newDirection;
         // Update sprite direction for rendering
         if (this.gameType === "topdown") {
@@ -531,21 +523,41 @@ export class GameEngine {
       }
       case "jump":
         // Execute jump — moves player up by jumpPower tiles (if grounded)
-        this.controller.jump(this.runtime.player, this.level, this.tileSize);
+        this.controller.jump(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         // Play jump sound
         this.audioSystem.play(SoundEffect.Jump);
         // Update player collider after jump
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
         break;
       case "wait":
         // Consume one turn without movement while still advancing physics.
-        this.controller.applyPhysics(this.runtime.player, this.level, this.tileSize);
+        this.controller.applyPhysics(
+          this.runtime.player,
+          this.level,
+          this.tileSize,
+          this.runtime.objectStates,
+        );
         this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkWinCondition();
         break;
-      case "interact":
-        this.interact();
+      case "break":
+        this.breakObject(command.power);
+        break;
+      case "openDoor":
+        this.openDoor();
+        break;
+      case "closeDoor":
+        this.closeDoor();
         break;
     }
 
@@ -573,6 +585,22 @@ export class GameEngine {
 
     // Execute movement in that direction
     this.moveForward();
+  }
+
+  /**
+   * Resolve turn behavior by game type.
+   * - Top-down: rotate facing by 90 degrees.
+   * - Platform: map turn blocks to absolute horizontal facing.
+   */
+  private resolveTurnDirection(
+    currentFacing: Direction,
+    rotation: "clockwise" | "counterclockwise",
+  ): Direction {
+    if (this.gameType === "platformer") {
+      return rotation === "clockwise" ? "right" : "left";
+    }
+
+    return this.rotateFacing(currentFacing, rotation);
   }
 
   /**
@@ -613,11 +641,21 @@ export class GameEngine {
       facing: lookDirection,
     };
 
-    return this.controller.isObstacleAhead(virtualPlayer, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      virtualPlayer,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleAhead(): boolean {
-    return this.controller.isObstacleAhead(this.runtime.player, this.level, this.tileSize);
+    return this.controller.isObstacleAhead(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
   }
 
   isObstacleLeft(): boolean {
@@ -626,6 +664,42 @@ export class GameEngine {
 
   isObstacleRight(): boolean {
     return this.isObstacleRelative("clockwise");
+  }
+
+  isEnemyAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["enemy"]);
+  }
+
+  isTrapAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["trap"]);
+  }
+
+  hasCollectedFruit(): boolean {
+    return this.runtime.collectedFruits.size > 0;
+  }
+
+  private hasObjectAt(x: number, y: number, objectTypes: string[]): boolean {
+    const typeSet = new Set(objectTypes);
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== x || obj.position.row !== y) {
+        continue;
+      }
+
+      if (!typeSet.has(obj.type)) {
+        continue;
+      }
+
+      // Collected fruits are no longer present as sensors.
+      if (obj.type === "fruit" && this.runtime.collectedFruits.has(obj.id)) {
+        continue;
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   hasWon(): boolean {
@@ -695,7 +769,12 @@ export class GameEngine {
 
   private moveForward(): void {
     // Delegate movement to controller
-    const moved = this.controller.moveForward(this.runtime.player, this.level, this.tileSize);
+    const moved = this.controller.moveForward(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
 
     if (moved) {
       // Play walk sound when player moves
@@ -707,52 +786,137 @@ export class GameEngine {
     }
   }
 
-  private turnLeft(): void {
-    this.runtime.player.facing = TURN_LEFT[this.runtime.player.facing];
-    // Update sprite direction
-    if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
-    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
-      this.runtime.player.direction = this.runtime.player.facing;
+  private getInitialObjectState(obj: {
+    type: string;
+    initialState?: string;
+    metadata?: Record<string, unknown>;
+  }): string | undefined {
+    if (obj.initialState) {
+      return obj.initialState;
     }
+
+    if (obj.type === "door") {
+      const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
+      return isOpen ? "open" : "closed";
+    }
+
+    return undefined;
   }
 
-  private turnRight(): void {
-    this.runtime.player.facing = TURN_RIGHT[this.runtime.player.facing];
-    // Update sprite direction
-    if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
-    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
-      this.runtime.player.direction = this.runtime.player.facing;
-    }
-  }
-
-  private interact(): void {
+  private getObjectInFront():
+    | {
+        id: string;
+        type: string;
+        initialState?: string;
+        metadata?: Record<string, unknown>;
+      }
+    | undefined {
     const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
     const targetX = this.runtime.player.x + dx;
     const targetY = this.runtime.player.y + dy;
-    const targetPixelX = targetX * this.tileSize;
-    const targetPixelY = targetY * this.tileSize;
 
     for (const obj of this.level.objects || []) {
-      const objPixelX = obj.position.col * this.tileSize;
-      const objPixelY = obj.position.row * this.tileSize;
-      if (objPixelX === targetPixelX && objPixelY === targetPixelY) {
-        const behavior = objectRegistry[obj.type];
-        if (behavior?.onInteract) {
-          const currentState = this.runtime.objectStates.get(obj.id) ?? obj.initialState;
-          const newState = behavior.onInteract(currentState);
-          if (newState) {
-            this.runtime.objectStates.set(obj.id, newState);
-            this.emit({
-              type: "objectStateChanged",
-              objectId: obj.id,
-              newState,
-            });
-          }
-        }
+      if (obj.position.col === targetX && obj.position.row === targetY) {
+        return obj;
       }
     }
+
+    return undefined;
+  }
+
+  private isBoxType(type: string): boolean {
+    return type === "box" || type === "box1" || type === "box2" || type === "box3";
+  }
+
+  private getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> }): number {
+    const metadataHardness =
+      typeof obj.metadata?.hardness === "number" && Number.isFinite(obj.metadata.hardness)
+        ? obj.metadata.hardness
+        : undefined;
+
+    if (metadataHardness !== undefined) {
+      return Math.max(1, Math.floor(metadataHardness));
+    }
+
+    switch (obj.type) {
+      case "box1":
+        return 1;
+      case "box2":
+        return 2;
+      case "box3":
+        return 3;
+      default:
+        return 1;
+    }
+  }
+
+  private breakObject(power: number): void {
+    const target = this.getObjectInFront();
+
+    if (!target) {
+      this.emit({ type: "interactionFeedback", message: "Nothing to break in front." });
+      return;
+    }
+
+    if (!this.isBoxType(target.type)) {
+      this.emit({ type: "interactionFeedback", message: "Target is not breakable." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "break") {
+      this.emit({ type: "interactionFeedback", message: "Box is already broken." });
+      return;
+    }
+
+    const hardness = this.getBoxHardness(target);
+    if (power >= hardness) {
+      this.runtime.objectStates.set(target.id, "break");
+      this.emit({ type: "objectStateChanged", objectId: target.id, newState: "break" });
+      return;
+    }
+
+    this.emit({
+      type: "interactionFeedback",
+      message: `Power too low (${Math.floor(power)}/${hardness}).`,
+    });
+  }
+
+  private openDoor(): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to open." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "open") {
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "open");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "open" });
+  }
+
+  private closeDoor(): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to close." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "closed") {
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "closed");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "closed" });
   }
 
   /**
@@ -760,6 +924,10 @@ export class GameEngine {
    * State transition: Running → Won
    */
   private checkWinCondition(): void {
+    if (this.runtime.state === EngineState.Won || this.runtime.hasPlayerWon) {
+      return;
+    }
+
     // Check if player reached goal position using level domain logic
     const playerPos = { row: this.runtime.player.y, col: this.runtime.player.x };
     const atGoal = isWinConditionMet(this.level, playerPos);
@@ -771,7 +939,11 @@ export class GameEngine {
 
     // WinCondition = 2 requires collecting all fruits before goal can complete the level.
     if (this.config.winCondition === 2) {
-      const requiredFruits = this.getTotalFruitsCount();
+      const mapFruitsCount = this.getTotalFruitsCount();
+      const requiredFruits =
+        this.config.requiredFruits !== undefined && this.config.requiredFruits > 0
+          ? Math.min(this.config.requiredFruits, mapFruitsCount)
+          : mapFruitsCount;
       const collectedFruits = this.runtime.collectedFruits.size;
 
       if (collectedFruits < requiredFruits) {
@@ -779,7 +951,7 @@ export class GameEngine {
           this.goalRequirementNotified = true;
           this.emit({
             type: "winConditionNotMet",
-            message: `Collect all fruits first (${collectedFruits}/${requiredFruits}).`,
+            message: `Collect fruits and reach goal (${collectedFruits}/${requiredFruits}).`,
             collectedFruits,
             requiredFruits,
           });

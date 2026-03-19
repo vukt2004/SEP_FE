@@ -11,6 +11,8 @@ import {
   Maximize2,
   FolderTree,
   Shapes,
+  Pencil,
+  ImagePlus,
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
@@ -29,6 +31,11 @@ import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToG
 import { ROUTES } from "../../lib/constants/routes";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 
+type MapTag = {
+  id: string;
+  name: string;
+};
+
 /**
  * Convert MapData config type to GameType
  */
@@ -41,13 +48,13 @@ interface MapEditorControlsProps {
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed from string enum to numeric ID
-  selectedTool: "paint" | "erase" | "fill" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
-  onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
+  onToolSelect: (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => void;
   onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -57,6 +64,7 @@ interface MapEditorControlsProps {
   onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
   onTimeLimitChange?: (seconds: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
+  onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
   onBannedBlocksChange?: (bannedBlocks: string[]) => void;
@@ -65,6 +73,9 @@ interface MapEditorControlsProps {
   sectionMode?: "left" | "right";
   editingMapId?: string;
   editorMode?: "edit" | "view";
+  initialSelectedTagNames?: string[];
+  initialAvatarUrl?: string | null;
+  initialHints?: string[];
 }
 
 interface ObjectSelectionButtonProps {
@@ -194,6 +205,7 @@ export function MapEditorControls({
   onDifficultyChange,
   onTimeLimitChange,
   onWinConditionChange,
+  onRequiredFruitsChange,
   onPriceChange,
   onBlockLimitChange,
   onBannedBlocksChange,
@@ -202,6 +214,9 @@ export function MapEditorControls({
   sectionMode = "right",
   editingMapId,
   editorMode,
+  initialSelectedTagNames = [],
+  initialAvatarUrl = null,
+  initialHints = [],
 }: MapEditorControlsProps) {
   const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
@@ -209,8 +224,37 @@ export function MapEditorControls({
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
   const [resizeTileSize, setResizeTileSize] = useState(mapData.config.tileSize);
-  const [hints, setHints] = useState<string[]>([""]);
+  const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const [activeInlineField, setActiveInlineField] = useState<
+    | "name"
+    | "description"
+    | "difficulty"
+    | "timeLimit"
+    | "winCondition"
+    | "requiredFruits"
+    | "price"
+    | "tags"
+    | "hints"
+    | null
+  >(null);
+  const [hoveredInlineField, setHoveredInlineField] = useState<
+    | "name"
+    | "description"
+    | "difficulty"
+    | "timeLimit"
+    | "winCondition"
+    | "requiredFruits"
+    | "price"
+    | "tags"
+    | "hints"
+    | null
+  >(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
 
@@ -281,7 +325,92 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache, showLeftPanel]);
+  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel]);
+
+  useEffect(() => {
+    if (!showRightPanel || userType === "unknown") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMapTags = async () => {
+      try {
+        setLoadingMapTags(true);
+        const response = isLearner
+          ? await learnerMapsApi.getMapTags()
+          : await cmsMapsApi.getMapTags();
+        if (!cancelled && response.data.isSuccess && Array.isArray(response.data.data)) {
+          setAvailableMapTags(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to load map tags:", error);
+      } finally {
+        if (!cancelled) {
+          setLoadingMapTags(false);
+        }
+      }
+    };
+
+    loadMapTags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showRightPanel, isLearner, userType]);
+
+  useEffect(() => {
+    if (!availableMapTags.length) {
+      return;
+    }
+
+    const selectedNameSet = new Set(initialSelectedTagNames.map((name) => name.toLowerCase()));
+    const initialTagIds = availableMapTags
+      .filter((tag) => selectedNameSet.has(tag.name.toLowerCase()))
+      .map((tag) => tag.id);
+
+    setSelectedTagIds(initialTagIds);
+  }, [availableMapTags, initialSelectedTagNames]);
+
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+    );
+  };
+
+  useEffect(() => {
+    setAvatarPreviewUrl(initialAvatarUrl ?? null);
+  }, [initialAvatarUrl, showMapInfoModal]);
+
+  useEffect(() => {
+    if (!showMapInfoModal) {
+      return;
+    }
+
+    setHints(initialHints.length > 0 ? initialHints : [""]);
+  }, [showMapInfoModal, initialHints]);
+
+  useEffect(() => {
+    if (!avatarFile) {
+      return;
+    }
+
+    const nextUrl = URL.createObjectURL(avatarFile);
+    setAvatarPreviewUrl(nextUrl);
+
+    return () => {
+      URL.revokeObjectURL(nextUrl);
+    };
+  }, [avatarFile]);
+
+  const selectedTagNames = availableMapTags
+    .filter((tag) => selectedTagIds.includes(tag.id))
+    .map((tag) => tag.name);
+
+  const difficultyLabel =
+    mapData.config.difficulty === 1 ? "Easy" : mapData.config.difficulty === 2 ? "Medium" : "Hard";
+
+  const winConditionLabel = mapData.config.winCondition === 2 ? "Collect Fruits" : "Reach Goal";
 
   const handleResizeConfirm = () => {
     // Validate map size (10-30)
@@ -373,6 +502,20 @@ export function MapEditorControls({
       return;
     }
 
+    if (
+      mapData.config.winCondition === 2 &&
+      mapData.config.requiredFruits !== undefined &&
+      mapData.config.requiredFruits > 0
+    ) {
+      const totalFruits = mapData.objects.items.filter((obj) => obj.type === "fruit").length;
+      if (mapData.config.requiredFruits > totalFruits) {
+        alert(
+          `Required fruits (${mapData.config.requiredFruits}) cannot exceed the total number of fruits on the map (${totalFruits}).`,
+        );
+        return;
+      }
+    }
+
     if (userType === "unknown") {
       alert("You must be logged in as a learner or CMS user to save maps");
       return;
@@ -382,6 +525,23 @@ export function MapEditorControls({
 
     try {
       setUploading(true);
+
+      const normalizedHints = hints
+        .map((h) => h.trim())
+        .filter((h) => h.length > 0)
+        .slice(0, 3)
+        .map((content, index) => {
+          const orderNo = index + 1;
+
+          return {
+            // Keep both naming styles to support strict backend JSON binders.
+            orderNo,
+            content,
+            OrderNo: orderNo,
+            Content: content,
+          };
+        });
+      const hintsJson = normalizedHints.length > 0 ? JSON.stringify(normalizedHints) : undefined;
 
       const gameLevelFormat = exportMapToGameFormat(mapData);
       const json = JSON.stringify(gameLevelFormat, null, 2);
@@ -402,6 +562,8 @@ export function MapEditorControls({
         TimeLimitMs: mapData.config.timeLimitSeconds * 1000,
         WinCondition: mapData.config.winCondition,
         Price: mapData.config.price,
+        HintsJson: hintsJson,
+        TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
         MapDetailFile: file,
         AvatarFile: avatarFile ?? undefined,
       };
@@ -414,6 +576,8 @@ export function MapEditorControls({
         TimeLimitMs: payload.TimeLimitMs,
         WinCondition: payload.WinCondition,
         Price: payload.Price,
+        HintsJson: payload.HintsJson,
+        TagIdsCsv: payload.TagIdsCsv,
         MapDetailFile: payload.MapDetailFile,
       };
 
@@ -938,221 +1102,427 @@ export function MapEditorControls({
       {/* Map Info Modal */}
       {showMapInfoModal && (
         <div style={styles.modal}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Edit Map Info</h3>
-            <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Name:</label>
-                <input
-                  type="text"
-                  value={mapData.config.name}
-                  onChange={(e) => onNameChange?.(e.target.value)}
-                  placeholder="Enter map name"
-                  style={styles.input}
-                />
-              </div>
+          <div style={{ ...styles.modalContent, ...styles.marketModalContent }}>
+            <h3 style={styles.modalTitle}>Map Details</h3>
+            <p style={{ ...styles.helpText, marginTop: -8, marginBottom: 18 }}>
+              Click a field to edit inline. Changes are previewed instantly.
+            </p>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Description:</label>
-                <textarea
-                  value={mapData.config.description}
-                  onChange={(e) => onDescriptionChange?.(e.target.value)}
-                  placeholder="Enter map description"
-                  style={{ ...styles.input, minHeight: "80px", resize: "vertical" }}
-                  rows={4}
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Difficulty:</label>
-                <select
-                  value={mapData.config.difficulty}
-                  onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
-                  style={styles.select}
-                >
-                  <option value={1}>Easy</option>
-                  <option value={2}>Normal</option>
-                  <option value={3}>Hard</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Time Limit (seconds):</label>
-                <input
-                  type="number"
-                  min="30"
-                  max="3600"
-                  value={mapData.config.timeLimitSeconds}
-                  onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Win Condition:</label>
-                <select
-                  value={mapData.config.winCondition}
-                  onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
-                  style={styles.select}
-                >
-                  <option value={1}>Reach Goal</option>
-                  <option value={2}>Collect All Fruits</option>
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Price:</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={mapData.config.price}
-                  onChange={(e) => onPriceChange?.(Number(e.target.value))}
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Hints (up to 3):</label>
-                <p style={styles.helpText}>Add helpful hints for players to solve the map</p>
-                {hints.map((hint, index) => (
-                  <div key={index} style={{ marginBottom: "12px" }}>
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      <input
-                        type="text"
-                        value={hint}
-                        onChange={(e) => {
-                          const newHints = [...hints];
-                          newHints[index] = e.target.value;
-                          setHints(newHints);
-                        }}
-                        placeholder={`Hint ${index + 1}`}
-                        style={{ ...styles.input, flex: 1 }}
-                      />
-                      {hint && (
-                        <button
-                          onClick={() => {
-                            const newHints = hints.filter((_, i) => i !== index);
-                            setHints(newHints);
-                          }}
-                          style={{
-                            padding: "6px 12px",
-                            background: "#ff6b6b",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {hints.length < 3 && (
-                  <button
-                    onClick={() => setHints([...hints, ""])}
-                    style={{
-                      padding: "8px 12px",
-                      background: "#4CAF50",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      marginTop: "8px",
-                    }}
-                  >
-                    + Add Hint
-                  </button>
-                )}
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Map Avatar (Optional):</label>
-                <p style={styles.helpText}>Upload an image to be displayed as the map thumbnail</p>
-                <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ ...styles.importLabel, display: "block" }}>
-                      Choose Image
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
-                        style={styles.fileInput}
-                      />
-                    </label>
-                    {avatarFile && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginTop: "8px",
-                        }}
-                      >
-                        <span style={styles.helpText}>{avatarFile.name}</span>
-                        <button
-                          onClick={() => setAvatarFile(null)}
-                          style={{
-                            padding: "6px 12px",
-                            background: "#ff6b6b",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Remove
-                        </button>
+            <div style={styles.detailLayout}>
+              <div style={styles.previewPanel}>
+                <div style={styles.previewFrame}>
+                  {avatarPreviewUrl ? (
+                    <img src={avatarPreviewUrl} alt="Map thumbnail" style={styles.previewImage} />
+                  ) : (
+                    <div style={styles.previewPlaceholder}>
+                      <div style={styles.previewPlaceholderTitle}>
+                        {mapData.config.name || "Untitled Map"}
                       </div>
-                    )}
-                  </div>
-                  {avatarFile && (
-                    <div
-                      style={{
-                        width: "120px",
-                        height: "120px",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        border: "2px solid var(--border)",
-                        backgroundColor: "var(--surface-2)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <img
-                        src={URL.createObjectURL(avatarFile)}
-                        alt="Avatar Preview"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
+                      <div style={styles.previewPlaceholderText}>
+                        Upload a thumbnail to showcase this map.
+                      </div>
                     </div>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    style={styles.previewOverlayButton}
+                  >
+                    <ImagePlus size={14} /> Change Image
+                  </button>
+
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
+                    style={styles.fileInput}
+                  />
+                </div>
+
+                {avatarFile && <p style={styles.helpText}>Selected: {avatarFile.name}</p>}
+
+                <div style={styles.mapInfoCard}>
+                  <div style={styles.mapInfoRow}>
+                    <span>Type</span>
+                    <strong>{mapData.config.type}</strong>
+                  </div>
+                  <div style={styles.mapInfoRow}>
+                    <span>Size</span>
+                    <strong>
+                      {mapData.config.width} x {mapData.config.height} tiles
+                    </strong>
+                  </div>
+                  <div style={styles.mapInfoRow}>
+                    <span>Tile Size</span>
+                    <strong>{mapData.config.tileSize}px</strong>
+                  </div>
                 </div>
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Map Info (Read-only):</label>
-                <p style={styles.infoText}>
-                  Type: <strong>{mapData.config.type}</strong>
-                </p>
-                <p style={styles.infoText}>
-                  Size:{" "}
-                  <strong>
-                    {mapData.config.width} × {mapData.config.height} tiles
-                  </strong>
-                </p>
-                <p style={styles.infoText}>
-                  Tile Size: <strong>{mapData.config.tileSize}px</strong>
-                </p>
+              <div style={styles.detailPanel}>
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "name" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("name")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("name")}
+                >
+                  <div style={styles.inlineFieldLabel}>Map Name</div>
+                  {activeInlineField === "name" ? (
+                    <input
+                      autoFocus
+                      value={mapData.config.name}
+                      onChange={(e) => onNameChange?.(e.target.value)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>
+                      {mapData.config.name || "Untitled Map"}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "name" || activeInlineField === "name") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "description" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("description")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("description")}
+                >
+                  <div style={styles.inlineFieldLabel}>Description</div>
+                  {activeInlineField === "description" ? (
+                    <textarea
+                      autoFocus
+                      rows={5}
+                      value={mapData.config.description}
+                      onChange={(e) => onDescriptionChange?.(e.target.value)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineTextarea}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValueMuted}>
+                      {mapData.config.description ||
+                        "Add a description to help players understand the challenge."}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "description" ||
+                    activeInlineField === "description") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "difficulty" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("difficulty")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("difficulty")}
+                >
+                  <div style={styles.inlineFieldLabel}>Difficulty</div>
+                  {activeInlineField === "difficulty" ? (
+                    <select
+                      autoFocus
+                      value={mapData.config.difficulty}
+                      onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    >
+                      <option value={1}>Easy</option>
+                      <option value={2}>Medium</option>
+                      <option value={3}>Hard</option>
+                    </select>
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{difficultyLabel}</div>
+                  )}
+                  {(hoveredInlineField === "difficulty" || activeInlineField === "difficulty") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "timeLimit" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("timeLimit")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("timeLimit")}
+                >
+                  <div style={styles.inlineFieldLabel}>Time Limit</div>
+                  {activeInlineField === "timeLimit" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={30}
+                      max={3600}
+                      value={mapData.config.timeLimitSeconds}
+                      onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{mapData.config.timeLimitSeconds}s</div>
+                  )}
+                  {(hoveredInlineField === "timeLimit" || activeInlineField === "timeLimit") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "winCondition" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("winCondition")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("winCondition")}
+                >
+                  <div style={styles.inlineFieldLabel}>Win Condition</div>
+                  {activeInlineField === "winCondition" ? (
+                    <select
+                      autoFocus
+                      value={mapData.config.winCondition}
+                      onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    >
+                      <option value={1}>Reach Goal</option>
+                      <option value={2}>Collect Fruits</option>
+                    </select>
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{winConditionLabel}</div>
+                  )}
+                  {(hoveredInlineField === "winCondition" ||
+                    activeInlineField === "winCondition") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                {mapData.config.winCondition === 2 && (
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "requiredFruits" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("requiredFruits")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("requiredFruits")}
+                  >
+                    <div style={styles.inlineFieldLabel}>Required Fruits</div>
+                    {activeInlineField === "requiredFruits" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={0}
+                        value={mapData.config.requiredFruits ?? 0}
+                        onChange={(e) =>
+                          onRequiredFruitsChange?.(
+                            Math.max(0, Number.parseInt(e.target.value) || 0),
+                          )
+                        }
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>
+                        {(mapData.config.requiredFruits ?? 0) === 0
+                          ? "All fruits"
+                          : `${mapData.config.requiredFruits} fruits`}
+                      </div>
+                    )}
+                    {(hoveredInlineField === "requiredFruits" ||
+                      activeInlineField === "requiredFruits") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "price" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("price")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("price")}
+                >
+                  <div style={styles.inlineFieldLabel}>Price</div>
+                  {activeInlineField === "price" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={0}
+                      value={mapData.config.price}
+                      onChange={(e) => onPriceChange?.(Number(e.target.value))}
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>
+                      {mapData.config.price > 0 ? `${mapData.config.price} OC` : "Free"}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "price" || activeInlineField === "price") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "tags" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("tags")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("tags")}
+                >
+                  <div style={styles.inlineFieldLabel}>Tags</div>
+                  {activeInlineField === "tags" ? (
+                    <div>
+                      {loadingMapTags ? (
+                        <p style={styles.helpText}>Loading tags...</p>
+                      ) : (
+                        <div style={styles.tagWrap}>
+                          {availableMapTags.map((tag) => {
+                            const selected = selectedTagIds.includes(tag.id);
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleTagSelection(tag.id);
+                                }}
+                                style={{
+                                  ...styles.tagChip,
+                                  ...(selected ? styles.tagChipSelected : {}),
+                                }}
+                              >
+                                {tag.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveInlineField(null);
+                        }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.tagWrap}>
+                      {selectedTagNames.length > 0 ? (
+                        selectedTagNames.map((name) => (
+                          <span key={name} style={{ ...styles.tagChip, ...styles.tagChipSelected }}>
+                            {name}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={styles.inlineFieldValueMuted}>No tags selected</span>
+                      )}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "tags" || activeInlineField === "tags") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "hints" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("hints")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("hints")}
+                >
+                  <div style={styles.inlineFieldLabel}>Hints</div>
+                  {activeInlineField === "hints" ? (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      {hints.map((hint, index) => (
+                        <div
+                          key={`hint-${index}`}
+                          style={{ display: "flex", gap: 8, marginBottom: 8 }}
+                        >
+                          <input
+                            type="text"
+                            value={hint}
+                            onChange={(e) => {
+                              const next = [...hints];
+                              next[index] = e.target.value;
+                              setHints(next);
+                            }}
+                            placeholder={`Hint ${index + 1}`}
+                            style={{ ...styles.inlineInput, flex: 1 }}
+                          />
+                          {hints.length > 1 && (
+                            <button
+                              type="button"
+                              style={{ ...styles.cancelButton, padding: "6px 10px" }}
+                              onClick={() => setHints(hints.filter((_, i) => i !== index))}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {hints.length < 3 && (
+                        <button
+                          type="button"
+                          style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 2 }}
+                          onClick={() => setHints([...hints, ""])}
+                        >
+                          + Add Hint
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                        onClick={() => setActiveInlineField(null)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.tagWrap}>
+                      {hints.filter((h) => h.trim().length > 0).length > 0 ? (
+                        hints
+                          .filter((h) => h.trim().length > 0)
+                          .map((hint, index) => (
+                            <span
+                              key={`hint-chip-${index}`}
+                              style={{ ...styles.tagChip, borderStyle: "dashed" }}
+                            >
+                              {hint}
+                            </span>
+                          ))
+                      ) : (
+                        <span style={styles.inlineFieldValueMuted}>No hints added</span>
+                      )}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "hints" || activeInlineField === "hints") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1165,13 +1535,14 @@ export function MapEditorControls({
                 onClick={handleSaveMapFromModal}
                 disabled={uploading}
               >
-                {uploading ? "Saving..." : "Save Map"}
+                {uploading ? "Saving..." : "Save Changes"}
               </button>
               <button
                 style={styles.cancelButton}
                 onClick={() => {
                   setShowMapInfoModal(false);
                   setAvatarFile(null);
+                  setActiveInlineField(null);
                 }}
                 disabled={uploading}
               >
@@ -1336,6 +1707,178 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "14px",
     boxShadow: "0 18px 38px rgba(0,0,0,0.25)",
     minWidth: "400px",
+  },
+  marketModalContent: {
+    width: "min(980px, 92vw)",
+    maxHeight: "88vh",
+    overflowY: "auto",
+    border: "1px solid #dbe3ef",
+    background:
+      "radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 35%), linear-gradient(180deg, #ffffff, #f8fafc)",
+  },
+  detailLayout: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "18px",
+    alignItems: "start",
+  },
+  previewPanel: {
+    display: "grid",
+    gap: "12px",
+  },
+  previewFrame: {
+    position: "relative",
+    borderRadius: "14px",
+    overflow: "hidden",
+    border: "1px solid #cbd5e1",
+    minHeight: "220px",
+    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    minHeight: "220px",
+    objectFit: "cover",
+    display: "block",
+  },
+  previewPlaceholder: {
+    minHeight: "220px",
+    padding: "18px",
+    color: "#e2e8f0",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+    gap: "6px",
+    background:
+      "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.4), transparent 35%), linear-gradient(140deg, #0f172a, #1e293b)",
+  },
+  previewPlaceholderTitle: {
+    fontSize: "18px",
+    fontWeight: 700,
+  },
+  previewPlaceholderText: {
+    fontSize: "12px",
+    opacity: 0.85,
+  },
+  previewOverlayButton: {
+    position: "absolute",
+    right: "10px",
+    bottom: "10px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 12px",
+    border: "1px solid rgba(255,255,255,0.4)",
+    borderRadius: "999px",
+    background: "rgba(15, 23, 42, 0.68)",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: 600,
+    transition: "transform 0.2s ease, background 0.2s ease",
+  },
+  mapInfoCard: {
+    border: "1px solid #dbe3ef",
+    borderRadius: "12px",
+    background: "#f8fafc",
+    padding: "10px 12px",
+    display: "grid",
+    gap: "8px",
+  },
+  mapInfoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: "13px",
+    color: "#334155",
+  },
+  detailPanel: {
+    display: "grid",
+    gap: "12px",
+  },
+  inlineField: {
+    position: "relative",
+    border: "1px solid #dbe3ef",
+    borderRadius: "12px",
+    background: "#ffffff",
+    padding: "12px",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
+    cursor: "pointer",
+  },
+  inlineFieldActive: {
+    border: "1px solid #93c5fd",
+    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.15)",
+    transform: "translateY(-1px)",
+  },
+  inlineFieldLabel: {
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    marginBottom: "6px",
+  },
+  inlineFieldValue: {
+    fontSize: "17px",
+    fontWeight: 700,
+    color: "#0f172a",
+    lineHeight: 1.3,
+  },
+  inlineFieldValueMuted: {
+    fontSize: "14px",
+    color: "#475569",
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+  },
+  inlineInput: {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: "15px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    color: "#0f172a",
+    boxSizing: "border-box",
+    outline: "none",
+  },
+  inlineTextarea: {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: "14px",
+    border: "1px solid #cbd5e1",
+    borderRadius: "10px",
+    color: "#0f172a",
+    boxSizing: "border-box",
+    resize: "vertical",
+    lineHeight: 1.5,
+    outline: "none",
+  },
+  inlineEditIcon: {
+    position: "absolute",
+    top: "10px",
+    right: "10px",
+    color: "#3b82f6",
+    opacity: 0.8,
+  },
+  tagWrap: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+  },
+  tagChip: {
+    padding: "6px 10px",
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#334155",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  tagChipSelected: {
+    border: "1px solid #2563eb",
+    background: "#dbeafe",
+    color: "#1e40af",
   },
   modalTitle: {
     fontSize: "20px",

@@ -77,6 +77,7 @@ export interface LevelDefinition {
     difficulty?: "easy" | "medium" | "hard";
     description?: string;
     targetAlgorithm?: string; // e.g., "DFS", "BFS", "backtracking"
+    requiredFruits?: number;
     [key: string]: unknown;
   };
 }

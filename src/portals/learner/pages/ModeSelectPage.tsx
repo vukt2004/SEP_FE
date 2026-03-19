@@ -47,9 +47,9 @@ export default function ModeSelectPage() {
     setLoading(true);
     try {
       const res = await learnerLobbyApi.getRooms();
-      const data = res.data?.data;
+      const data = res.data?.data as unknown;
       if (Array.isArray(data)) {
-        setRooms(data.map((r: Record<string, unknown>) => normalizeRoom(r)));
+        setRooms((data as unknown[]).map((r) => normalizeRoom(r as Record<string, unknown>)));
       } else {
         setRooms([]);
       }
@@ -326,7 +326,7 @@ export default function ModeSelectPage() {
               </button>
             </div>
             <div className={styles.modalBody}>
-              <label className={styles.modalLabel}>{t("maxPlayers", "Max players")}</label>
+              <label className={styles.modalLabel}>{t("maxPlayers")}</label>
               <div className={styles.slots}>
                 {MAX_PLAYER_OPTIONS.map((n) => (
                   <button
@@ -339,14 +339,14 @@ export default function ModeSelectPage() {
                   </button>
                 ))}
               </div>
-              <label className={styles.modalLabel}>{t("selectMap", "Select map (optional)")}</label>
+              <label className={styles.modalLabel}>{t("selectMap")}</label>
               <select
                 className={styles.modalSelect}
                 value={createMapId ?? ""}
                 onChange={(e) => setCreateMapId(e.target.value || null)}
                 disabled={mapsLoading}
               >
-                <option value="">{t("noMap", "— No map (choose later) —")}</option>
+                <option value="">{t("noMap")}</option>
                 {maps.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.title} ({m.type})
@@ -361,7 +361,7 @@ export default function ModeSelectPage() {
                 onClick={() => !creating && setCreateModalOpen(false)}
                 disabled={creating}
               >
-                {t("cancel", "Cancel")}
+                {t("cancel")}
               </button>
               <button
                 type="button"

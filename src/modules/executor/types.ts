@@ -56,7 +56,7 @@ export interface WaitNode {
  */
 export interface RepeatNode {
   type: "repeat";
-  times: number;
+  times: ASTNode | number | null;
   body: ASTNode[];
   blockId: string;
 }
@@ -70,7 +70,70 @@ export type ConditionType =
   | "obstacleAhead"
   | "wallLeft"
   | "wallRight"
-  | "goalReached";
+  | "goalReached"
+  | "enemyAhead"
+  | "trapAhead"
+  | "fruitCollected";
+
+/**
+ * Numeric literal node
+ */
+export interface NumberLiteralNode {
+  type: "numberLiteral";
+  value: number;
+  blockId: string;
+}
+
+/**
+ * Arithmetic expression node that evaluates to a number
+ */
+export interface ArithmeticNode {
+  type: "arithmetic";
+  operator: "+" | "-" | "*" | "/";
+  left: ASTNode | null;
+  right: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Variable assignment node
+ */
+export interface SetVariableNode {
+  type: "setVariable";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Variable assignment node (alternate variable block)
+ */
+export interface ChangeVariableNode {
+  type: "changeVariable";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Variable getter node
+ */
+export interface GetVariableNode {
+  type: "getVariable";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Number comparison node that evaluates to a boolean
+ */
+export interface CompareNode {
+  type: "compare";
+  operator: ">" | "<" | "==" | ">=" | "<=" | "!=";
+  left: ASTNode | null;
+  right: ASTNode | null;
+  blockId: string;
+}
 
 /**
  * Condition node representing a boolean expression
@@ -172,10 +235,27 @@ export interface CallProcedureNode {
 }
 
 /**
- * Interact command - interacts with an object in front of the player
+ * Break command - attempts to break the object in front using evaluated power
  */
-export interface InteractNode {
-  type: "interact";
+export interface BreakNode {
+  type: "break";
+  power: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Open door command - opens a door in front of the player
+ */
+export interface OpenDoorNode {
+  type: "openDoor";
+  blockId: string;
+}
+
+/**
+ * Close door command - closes a door in front of the player
+ */
+export interface CloseDoorNode {
+  type: "closeDoor";
   blockId: string;
 }
 
@@ -188,8 +268,16 @@ export type ASTNode =
   | TurnNode
   | JumpNode
   | WaitNode
-  | InteractNode
+  | BreakNode
+  | OpenDoorNode
+  | CloseDoorNode
   | RepeatNode
+  | NumberLiteralNode
+  | ArithmeticNode
+  | SetVariableNode
+  | ChangeVariableNode
+  | GetVariableNode
+  | CompareNode
   | ConditionNode
   | BooleanLiteralNode
   | LogicBinaryNode

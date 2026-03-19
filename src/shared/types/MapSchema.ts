@@ -27,6 +27,8 @@ export interface MapConfig {
   timeLimitSeconds: number;
   /** Win condition: 1 (reach goal), 2 (collect all fruits) */
   winCondition: 1 | 2;
+  /** Number of required fruits to collect for winCondition 2 (0 or undefined means all fruits) */
+  requiredFruits?: number;
   /** Map price */
   price: number;
 }
@@ -106,6 +108,8 @@ export interface PlacedObject {
   x: number;
   /** Tile y coordinate */
   y: number;
+  /** Optional object-specific data (e.g. door isOpen, box hardness) */
+  metadata?: Record<string, unknown>;
 }
 
 /**
