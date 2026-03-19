@@ -32,6 +32,9 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
   procedure: "Procedure",
   variables: "Variables",
   math: "Math",
+  array: "Array",
+  queue: "Queue",
+  stack: "Stack",
 };
 
 /**
@@ -68,6 +71,9 @@ export function generateToolbox(
     "control",
     "logic",
     "variables",
+    "array",
+    "queue",
+    "stack",
     "math",
     "procedure",
   ];

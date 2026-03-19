@@ -1,4 +1,13 @@
-export type BlockCategory = "movement" | "control" | "logic" | "procedure" | "variables" | "math";
+export type BlockCategory =
+  | "movement"
+  | "control"
+  | "logic"
+  | "procedure"
+  | "variables"
+  | "math"
+  | "array"
+  | "queue"
+  | "stack";
 
 /**
  * Configuration for a number field input
@@ -72,7 +81,7 @@ export interface BlockConfig {
   command: string;
   previousStatement?: boolean;
   nextStatement?: boolean;
-  output?: string; // For value blocks (e.g., "Boolean", "Number", "String")
+  output?: string | string[]; // For value blocks (e.g., "Boolean", "Number", "String")
   inputs?: BlockInputConfig[];
   statementInput?: StatementInputConfig;
   elseStatementInput?: StatementInputConfig; // For if-else blocks

@@ -151,7 +151,7 @@ function registerBlock(blockDef: BlockConfig): void {
         helpUrl: string;
         previousStatement?: boolean | null;
         nextStatement?: boolean | null;
-        output?: string | null;
+        output?: string | string[] | null;
         [key: string]: unknown;
       }
 

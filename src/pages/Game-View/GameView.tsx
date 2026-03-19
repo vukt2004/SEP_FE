@@ -2,7 +2,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
 import { GameEngine } from "../../modules/engine/core/GameEngine";
-import type { BlockProgram, ConditionType } from "../../modules/executor/types";
+import type {
+  BlockProgram,
+  ConditionType,
+  LastRemovedItem,
+  PositionResolver,
+  RuntimeVariables,
+} from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
@@ -75,6 +81,9 @@ export default function GameView() {
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
+  const fruitCollectedPulseRef = useRef(false);
+  const [execVariables, setExecVariables] = useState<RuntimeVariables>({});
+  const [lastRemoved, setLastRemoved] = useState<LastRemovedItem | null>(null);
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -280,6 +289,7 @@ export default function GameView() {
           if (event.type === "fruitCollected") {
             console.log("Fruit collected:", event);
             setCollectedFruits(event.totalCollected);
+            fruitCollectedPulseRef.current = true;
           }
         };
 
@@ -423,15 +433,15 @@ export default function GameView() {
 
         switch (condition) {
           case "pathAhead":
-            return !engine.isObstacleAhead();
+            return !engine.isWallAhead() && !engine.isObstacleAhead();
           case "wallAhead":
-            return engine.isObstacleAhead();
+            return engine.isWallAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
           case "wallLeft":
-            return engine.isObstacleLeft();
+            return engine.isWallLeft();
           case "wallRight":
-            return engine.isObstacleRight();
+            return engine.isWallRight();
           case "goalReached":
             return engine.hasWon();
           case "enemyAhead":
@@ -439,21 +449,67 @@ export default function GameView() {
           case "trapAhead":
             return engine.isTrapAhead();
           case "fruitCollected":
-            return engine.hasCollectedFruit();
+            if (fruitCollectedPulseRef.current) {
+              fruitCollectedPulseRef.current = false;
+              return true;
+            }
+            return false;
           default:
             return false;
         }
+      };
+
+      const numberResolver = (sensorType: "boxHardnessAhead"): number => {
+        const engine = engineRef.current;
+        if (!engine) return 0;
+
+        switch (sensorType) {
+          case "boxHardnessAhead":
+            return engine.getBoxHardnessAhead();
+          default:
+            return 0;
+        }
+      };
+
+      const positionResolver: PositionResolver = {
+        getStartCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getStartCell() : "0,0";
+        },
+        getGoalCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getGoalCell() : "0,0";
+        },
+        getCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getCurrentCell() : "0,0";
+        },
+        getNeighbors: (cell: string) => {
+          const engine = engineRef.current;
+          return engine ? engine.getNeighbors(cell) : [];
+        },
       };
 
       // Stop existing executor if running
       if (executorRef.current) {
         executorRef.current.stop();
       }
+      fruitCollectedPulseRef.current = false;
 
       // Create new executor with the generated program
-      const executor = new StepExecutor(program, conditionChecker);
+      const executor = new StepExecutor(
+        program,
+        conditionChecker,
+        numberResolver,
+        positionResolver,
+      );
       executor.setWarningCallback((message) => {
         showWarningToast(message);
+      });
+      executor.setStateChangeCallback(() => {
+        const ctx = executor.getExecutionContext();
+        setExecVariables({ ...ctx.variables });
+        setLastRemoved(ctx.lastRemoved);
       });
       executorRef.current = executor;
 
@@ -504,6 +560,9 @@ export default function GameView() {
     setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
+    setExecVariables({});
+    setLastRemoved(null);
+    fruitCollectedPulseRef.current = false;
   };
 
   const handleStepExecution = () => {
@@ -1219,6 +1278,64 @@ export default function GameView() {
               </span>
             </div>
             <BlockCounter used={blocksUsed} limit={blockConstraints?.blockLimit ?? null} />
+          </div>
+
+          <div
+            style={{
+              padding: "10px 12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: "12px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
+              <div style={{ fontWeight: 800, opacity: 0.9 }}>Data</div>
+              {lastRemoved && (
+                <div style={{ opacity: 0.8 }}>
+                  Took from{" "}
+                  <strong>
+                    {lastRemoved.name} ({lastRemoved.structure})
+                  </strong>
+                  : <code>{String(lastRemoved.value)}</code>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: "8px", display: "grid", gap: "6px" }}>
+              {Object.entries(execVariables)
+                .filter(([, v]) => Array.isArray(v))
+                .map(([name, v]) => {
+                  const items = v
+                    .slice(0, 20)
+                    .map((item) =>
+                      typeof item === "object" && item !== null
+                        ? JSON.stringify(item)
+                        : String(item),
+                    );
+                  return (
+                    <div key={name} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <div style={{ minWidth: "90px", fontWeight: 700 }}>{name}:</div>
+                      <div
+                        style={{
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                          opacity: 0.9,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1,
+                        }}
+                        title={items.join(" → ")}
+                      >
+                        [{items.join(" → ")}]
+                      </div>
+                    </div>
+                  );
+                })}
+              {Object.entries(execVariables).filter(([, v]) => Array.isArray(v)).length === 0 && (
+                <div style={{ opacity: 0.7 }}>Create an Array, Queue, or Stack to see it here.</div>
+              )}
+            </div>
           </div>
 
           <div

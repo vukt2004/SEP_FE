@@ -248,6 +248,14 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       };
     }
 
+    case "box_hardness_ahead": {
+      return {
+        type: "numberSensor",
+        sensorType: "boxHardnessAhead",
+        blockId,
+      };
+    }
+
     case "set_variable": {
       const name = (block.getFieldValue("NAME") || "").trim() || "score";
       const value = getValueInput(block, "VALUE");
@@ -374,6 +382,166 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       return {
         type: "callProcedure",
         name,
+        blockId,
+      };
+    }
+
+    // List (Array) blocks
+    case "create_list": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      return {
+        type: "createList",
+        name,
+        blockId,
+      };
+    }
+
+    case "list_add": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "listAdd",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "list_get": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      const index = getValueInput(block, "INDEX");
+      return {
+        type: "listGet",
+        name,
+        index,
+        blockId,
+      };
+    }
+
+    case "list_length": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      return {
+        type: "listLength",
+        name,
+        blockId,
+      };
+    }
+
+    case "list_contains": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "listContains",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    // Queue blocks
+    case "create_queue": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "queue";
+      return {
+        type: "createQueue",
+        name,
+        blockId,
+      };
+    }
+
+    case "queue_enqueue": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "queue";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "queueEnqueue",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "queue_dequeue": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "queue";
+      return {
+        type: "queueDequeue",
+        name,
+        blockId,
+      };
+    }
+
+    case "queue_is_empty": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "queue";
+      return {
+        type: "queueIsEmpty",
+        name,
+        blockId,
+      };
+    }
+
+    // Stack blocks
+    case "create_stack": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "stack";
+      return {
+        type: "createStack",
+        name,
+        blockId,
+      };
+    }
+
+    case "stack_push": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "stack";
+      const value = getValueInput(block, "VALUE");
+      return {
+        type: "stackPush",
+        name,
+        value,
+        blockId,
+      };
+    }
+
+    case "stack_pop": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "stack";
+      return {
+        type: "stackPop",
+        name,
+        blockId,
+      };
+    }
+
+    case "stack_is_empty": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "stack";
+      return {
+        type: "stackIsEmpty",
+        name,
+        blockId,
+      };
+    }
+
+    case "get_start_cell": {
+      return {
+        type: "getStartCell",
+        blockId,
+      };
+    }
+
+    case "get_goal_cell": {
+      return {
+        type: "getGoalCell",
+        blockId,
+      };
+    }
+
+    case "get_current_cell": {
+      return {
+        type: "getCurrentCell",
+        blockId,
+      };
+    }
+
+    case "get_neighbors": {
+      const cell = getValueInput(block, "CELL");
+      return {
+        type: "getNeighbors",
+        cell,
         blockId,
       };
     }
