@@ -24,20 +24,6 @@ import { SoundEffect } from "../systems/audio/types";
 export { EngineState } from "./engineState";
 export type { EngineState as EngineStateType } from "./engineState";
 
-const TURN_LEFT: Record<Direction, Direction> = {
-  up: "left",
-  left: "down",
-  down: "right",
-  right: "up",
-};
-
-const TURN_RIGHT: Record<Direction, Direction> = {
-  up: "right",
-  right: "down",
-  down: "left",
-  left: "up",
-};
-
 const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
   down: { dx: 0, dy: 1 },
@@ -268,17 +254,6 @@ export class GameEngine {
    * State transition: Running → Failed
    * Only works if engine is currently running
    */
-
-  private fail(): void {
-    if (this.runtime.state === EngineState.Running) {
-      // Stop timer and save elapsed time
-      if (this.runtime.startTime !== null) {
-        this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
-      }
-      this.runtime.state = EngineState.Failed;
-      this.emit({ type: "engine:failed" });
-    }
-  }
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
@@ -808,26 +783,6 @@ export class GameEngine {
       this.updatePlayerCollider();
       this.checkFruitCollection();
       this.checkWinCondition();
-    }
-  }
-
-  private turnLeft(): void {
-    this.runtime.player.facing = TURN_LEFT[this.runtime.player.facing];
-    // Update sprite direction
-    if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
-    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
-      this.runtime.player.direction = this.runtime.player.facing;
-    }
-  }
-
-  private turnRight(): void {
-    this.runtime.player.facing = TURN_RIGHT[this.runtime.player.facing];
-    // Update sprite direction
-    if (this.gameType === "topdown") {
-      this.runtime.player.direction = this.runtime.player.facing as "left" | "right";
-    } else if (this.runtime.player.facing === "left" || this.runtime.player.facing === "right") {
-      this.runtime.player.direction = this.runtime.player.facing;
     }
   }
 

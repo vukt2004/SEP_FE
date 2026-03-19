@@ -6,13 +6,13 @@ import type { AuthResponseResult } from "@/types/api/cms/auth";
 
 export const cmsAxios = axiosBase.create();
 
-function isAuthEndpoint(url?: string): boolean {
-  return /auth\/login|auth\/refresh-token/.test(url ?? "");
+/** Endpoints that must not receive Bearer (e.g. login). Refresh-token should receive current token (even expired). */
+function isLoginOnlyEndpoint(url?: string): boolean {
+  return /auth\/login/.test(url ?? "");
 }
 
 cmsAxios.interceptors.request.use((config) => {
-  // Do not attach a possibly expired access token to login/refresh endpoints.
-  if (isAuthEndpoint(config.url)) {
+  if (isLoginOnlyEndpoint(config.url)) {
     config.withCredentials = true;
     return config;
   }
@@ -59,7 +59,7 @@ cmsAxios.interceptors.response.use(
     if (!config || !error.response || error.response.status !== 401) {
       return Promise.reject(error);
     }
-    if (isAuthEndpoint(config.url)) {
+    if (isLoginOnlyEndpoint(config.url)) {
       return Promise.reject(error);
     }
 

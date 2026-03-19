@@ -48,13 +48,13 @@ interface MapEditorControlsProps {
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed from string enum to numeric ID
-  selectedTool: "paint" | "erase" | "fill" | null;
+  selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   canUndo: boolean;
   canRedo: boolean;
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
-  onToolSelect: (tool: "paint" | "erase" | "fill" | null) => void;
+  onToolSelect: (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => void;
   onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
   onRedo: () => void;

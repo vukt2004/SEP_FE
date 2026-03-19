@@ -81,12 +81,12 @@ export default function RoomCreatePage() {
           </button>
           <h1 className={styles.title}>{t("createRoom")}</h1>
           <p className={styles.subtitle}>
-            {t("createRoomSubtitle", "Choose max players. You will be the host.")}
+            {t("createRoomSubtitle")}
           </p>
         </header>
 
         <section className={styles.form}>
-          <label className={styles.label}>{t("maxPlayers", "Max players")}</label>
+          <label className={styles.label}>{t("maxPlayers")}</label>
           <div className={styles.slots}>
             {MAX_PLAYER_OPTIONS.map((n) => (
               <button

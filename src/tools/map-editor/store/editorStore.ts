@@ -19,7 +19,7 @@ export class EditorStore {
   private activeLayer: LayerType;
   private selectedTile: number | null;
   private selectedObjectId: number | null; // Numeric object ID from objects.json
-  private selectedTool: "paint" | "erase" | "fill" | null;
+  private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
   private layerVisibility: Record<LayerType, boolean>;
   private listeners: Set<() => void>;
   private undoStack: MapData[];
@@ -93,7 +93,7 @@ export class EditorStore {
   /**
    * Get the currently selected tool
    */
-  getSelectedTool(): "paint" | "erase" | "fill" | null {
+  getSelectedTool(): "paint" | "erase" | "fill" | "player" | "goal" | null {
     return this.selectedTool;
   }
 
@@ -239,7 +239,7 @@ export class EditorStore {
    *
    * @param tool - The tool to select (or null to deselect)
    */
-  setSelectedTool(tool: "paint" | "erase" | "fill" | null): void {
+  setSelectedTool(tool: "paint" | "erase" | "fill" | "player" | "goal" | null): void {
     this.selectedTool = tool;
     this.notify();
   }

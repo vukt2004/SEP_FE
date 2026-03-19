@@ -1,4 +1,3 @@
-import React from "react";
 import styles from "./LoginScene.module.css";
 
 export default function LoginLoadingOverlay({ show, step }: { show: boolean; step: number }) {
