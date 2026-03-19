@@ -20,6 +20,7 @@ import type { EngineRuntimeState } from "./engineRuntimeState";
 import type { GameType } from "../../../shared/types/GameType";
 import { AudioSystem } from "../systems/audio/AudioSystem";
 import { SoundEffect } from "../systems/audio/types";
+import { getRawNeighbors, stringifyCell } from "@/shared/utils/cell";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -816,6 +817,22 @@ export class GameEngine {
 
   hasWon(): boolean {
     return this.runtime.hasPlayerWon;
+  }
+
+  getStartCell(): string {
+    return stringifyCell(this.level.startPosition.col, this.level.startPosition.row);
+  }
+
+  getGoalCell(): string {
+    return stringifyCell(this.level.goalPosition.col, this.level.goalPosition.row);
+  }
+
+  getCurrentCell(): string {
+    return stringifyCell(this.runtime.player.x, this.runtime.player.y);
+  }
+
+  getNeighbors(cell: string): string[] {
+    return getRawNeighbors(cell);
   }
 
   /**
