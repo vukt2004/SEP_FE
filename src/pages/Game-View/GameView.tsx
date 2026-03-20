@@ -397,8 +397,15 @@ export default function GameView() {
     }
 
     if (!isLevelStarted) {
-      setShowMissionModal(true);
-      return;
+      try {
+        engineRef.current.start();
+        setIsLevelStarted(true);
+        setShowMissionModal(false);
+      } catch (err) {
+        console.error("Failed to start level before running program:", err);
+        setShowMissionModal(true);
+        return;
+      }
     }
 
     try {

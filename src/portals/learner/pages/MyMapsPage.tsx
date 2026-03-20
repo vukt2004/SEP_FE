@@ -13,8 +13,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { cmsMapsApi } from "@/services/api/cms/maps.api";
+import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { canPublishMapViaLearnerApi } from "@/lib/auth/learnerJwtRoles";
 import { learnerCommunityApi } from "@/services/api/learner/community.api";
-import type { Map } from "@/types/api/learner/maps";
+import type { Map, MapStatusEnum } from "@/types/api/learner/maps";
 import {
   Eye,
   Plus,
@@ -58,16 +61,24 @@ type MapFiltersProps = {
   onClearFilters: () => void;
 };
 
+/** Maps in "Pending review" are locked for editing; other statuses allow opening the editor (save may still be validated by API). */
+function mapStatusAllowsEdit(status: MapStatusEnum): boolean {
+  return status !== "PendingReview";
+}
+
 type MapCardProps = {
   map: Map;
   isAuthor: boolean;
+  /** Admin/Moderator: show Publish → POST .../publish for Approved maps */
+  canPublishCatalog: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  onPublish: (mapId: string) => void;
+  /** Draft → submit for review (Learner); Approved + staff → publish to catalog */
+  onPublishAction: (map: Map) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
 };
@@ -75,13 +86,14 @@ type MapCardProps = {
 type MapListProps = {
   maps: Map[];
   ownershipMap: OwnershipMap;
+  canPublishCatalog: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  onPublish: (mapId: string) => void;
+  onPublishAction: (map: Map) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
 };
@@ -395,13 +407,14 @@ const MapFilters: React.FC<MapFiltersProps> = ({
 const MapCard: React.FC<MapCardProps> = ({
   map,
   isAuthor,
+  canPublishCatalog,
   formatDate,
   formatTime,
   getMapStatusLabel,
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onPublish,
+  onPublishAction,
   onRate,
   onReport,
 }) => {
@@ -620,15 +633,22 @@ const MapCard: React.FC<MapCardProps> = ({
             <Eye size={14} /> {t("view")}
           </button>
 
-          {isAuthor && map.mapStatus === "Draft" && (
-            <>
-              <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
-                <Edit size={14} /> {t("edit")}
-              </button>
-              <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
-                <Send size={14} /> {t("publish")}
-              </button>
-            </>
+          {isAuthor && mapStatusAllowsEdit(map.mapStatus) && (
+            <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
+              <Edit size={14} /> {t("edit")}
+            </button>
+          )}
+
+          {isAuthor && map.mapStatus === "Draft" && !canPublishCatalog && (
+            <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
+              <Send size={14} /> {t("submitForReview")}
+            </button>
+          )}
+
+          {isAuthor && map.mapStatus === "Approved" && (
+            <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
+              <Send size={14} /> {t("publishToCatalog")}
+            </button>
           )}
 
           {!isAuthor && (
@@ -650,13 +670,14 @@ const MapCard: React.FC<MapCardProps> = ({
 export const MapList: React.FC<MapListProps> = ({
   maps,
   ownershipMap,
+  canPublishCatalog,
   formatDate,
   formatTime,
   getMapStatusLabel,
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onPublish,
+  onPublishAction,
   onRate,
   onReport,
 }) => {
@@ -667,13 +688,14 @@ export const MapList: React.FC<MapListProps> = ({
           key={map.id}
           map={map}
           isAuthor={ownershipMap[map.id]?.isAuthor || false}
+          canPublishCatalog={canPublishCatalog}
           formatDate={formatDate}
           formatTime={formatTime}
           getMapStatusLabel={getMapStatusLabel}
           getDifficultyLabel={getDifficultyLabel}
           onPreview={onPreview}
           onEdit={onEdit}
-          onPublish={onPublish}
+          onPublishAction={onPublishAction}
           onRate={onRate}
           onReport={onReport}
         />
@@ -723,6 +745,9 @@ export const MyMapsPage: React.FC = () => {
     "createdAt",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  /** Admin/Moderator JWT: can call POST /api/learner/maps/{id}/publish (Approved → Published). */
+  const canPublishCatalog = canPublishMapViaLearnerApi(tokenStorage.getLearnerToken());
 
   const fetchMaps = useCallback(async () => {
     try {
@@ -780,33 +805,70 @@ export const MyMapsPage: React.FC = () => {
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
   };
 
-  const handleSubmitForReview = async (mapId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to submit this map for review? You won't be able to edit it until it's reviewed.",
-      )
-    ) {
+  /**
+   * Draft → POST .../submit (Learner only).
+   * Approved → Admin/Mod + CMS token: POST /api/cms/maps/{id}/publish; else POST /api/learner/maps/{id}/publish (author Learner or staff without CMS).
+   */
+  const handleMapPublishFlow = async (map: Map) => {
+    const staff = canPublishMapViaLearnerApi(tokenStorage.getLearnerToken());
+
+    if (map.mapStatus === "Approved") {
+      if (
+        !confirm(
+          "Publish this approved map to the learner catalog?",
+        )
+      ) {
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const cmsToken = tokenStorage.getCmsToken();
+        const useCms =
+          Boolean(cmsToken) &&
+          staff;
+        const response = useCms
+          ? await cmsMapsApi.publishMap(map.id)
+          : await learnerMapsApi.publishMap(map.id);
+        if (response.data.isSuccess) {
+          alert("Map published successfully!");
+          fetchMaps();
+        } else {
+          setError(response.data.message || t("failedPublishMap"));
+        }
+      } catch (err) {
+        setError(t("failedPublishMap"));
+        console.error("Publish error:", err);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await learnerMapsApi.submitMapForReview(mapId);
-
-      if (response.data.isSuccess) {
-        alert("Map submitted for review successfully!");
-        // Refresh the maps list
-        fetchMaps();
-      } else {
-        setError(response.data.message || t("failedSubmitReview"));
+    if (map.mapStatus === "Draft" && !staff) {
+      if (
+        !confirm(
+          "Are you sure you want to submit this map for review? You won't be able to edit it until it's reviewed.",
+        )
+      ) {
+        return;
       }
-    } catch (err) {
-      setError(t("failedSubmitReview"));
-      console.error("Submit error:", err);
-    } finally {
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await learnerMapsApi.submitMapForReview(map.id);
+        if (response.data.isSuccess) {
+          alert("Map submitted for review successfully!");
+          fetchMaps();
+        } else {
+          setError(response.data.message || t("failedSubmitReview"));
+        }
+      } catch (err) {
+        setError(t("failedSubmitReview"));
+        console.error("Submit error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -945,7 +1007,11 @@ export const MyMapsPage: React.FC = () => {
   };
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
-    acc[map.id] = { isAuthor: Boolean(map.isAuthor) };
+    // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
+    // Boolean(undefined) was false and hid Edit / showed Rate/Report incorrectly.
+    const isAuthor =
+      activeTab === "author" ? map.isAuthor !== false : Boolean(map.isAuthor);
+    acc[map.id] = { isAuthor };
     return acc;
   }, {} as OwnershipMap);
 
@@ -1176,13 +1242,14 @@ export const MyMapsPage: React.FC = () => {
             <MapList
               maps={maps}
               ownershipMap={ownershipMap}
+              canPublishCatalog={canPublishCatalog}
               formatDate={formatDate}
               formatTime={formatTime}
               getMapStatusLabel={getMapStatusLabel}
               getDifficultyLabel={getDifficultyLabel}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
-              onPublish={handleSubmitForReview}
+              onPublishAction={handleMapPublishFlow}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
             />
