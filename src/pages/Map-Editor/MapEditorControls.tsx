@@ -68,7 +68,7 @@ interface MapEditorControlsProps {
   onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
-  onBannedBlocksChange?: (bannedBlocks: string[]) => void;
+  onAllowedBlocksChange?: (allowedBlocks: string[]) => void;
   onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
   onObjectDefinitionsLoaded?: (defs: Record<string, ObjectDefinition>) => void;
   sectionMode?: "left" | "right";
@@ -210,7 +210,7 @@ export function MapEditorControls({
   onRequiredFruitsChange,
   onPriceChange,
   onBlockLimitChange,
-  onBannedBlocksChange,
+  onAllowedBlocksChange,
   onRequiredBlocksChange,
   onObjectDefinitionsLoaded,
   sectionMode = "right",
@@ -276,6 +276,21 @@ export function MapEditorControls({
     ObjectDefinition
   > | null>(null);
   const availableBlocks = blocksConfig.blocks;
+  const blockTypeToLabel = new Map(availableBlocks.map((block) => [block.type, block.label]));
+  const normalizedAllowedBlocks = Array.from(
+    new Set(mapData.blockConstraints.allowedBlocks ?? []),
+  ).filter((type) => availableBlocks.some((block) => block.type === type));
+  const blocksAvailableForGameplay =
+    normalizedAllowedBlocks.length === 0
+      ? availableBlocks
+      : availableBlocks.filter((block) => normalizedAllowedBlocks.includes(block.type));
+  const normalizedRequiredBlocks = Array.from(
+    new Map(
+      mapData.blockConstraints.requiredBlocks
+        .filter((rule) => blocksAvailableForGameplay.some((block) => block.type === rule.type))
+        .map((rule) => [rule.type, { type: rule.type, minCount: Math.max(1, rule.minCount) }]),
+    ).values(),
+  );
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
   const showLeftPanel = sectionMode === "left";
   const showRightPanel = sectionMode === "right";
@@ -446,27 +461,43 @@ export function MapEditorControls({
     onBlockLimitChange(Math.max(1, Math.floor(parsed)));
   };
 
-  const updateBannedBlock = (index: number, nextType: string) => {
-    if (!onBannedBlocksChange) return;
+  const updateAllowedBlock = (index: number, nextType: string) => {
+    if (!onAllowedBlocksChange) return;
 
-    const next = [...mapData.blockConstraints.bannedBlocks];
+    const next = [...normalizedAllowedBlocks];
     next[index] = nextType;
-    onBannedBlocksChange(Array.from(new Set(next)));
+    const dedupedAllowed = Array.from(new Set(next));
+    onAllowedBlocksChange(dedupedAllowed);
+
+    if (onRequiredBlocksChange) {
+      const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
+        dedupedAllowed.length === 0 ? true : dedupedAllowed.includes(rule.type),
+      );
+      onRequiredBlocksChange(sanitizedRequired);
+    }
   };
 
-  const addBannedBlock = () => {
-    if (!onBannedBlocksChange) return;
+  const addAllowedBlock = () => {
+    if (!onAllowedBlocksChange) return;
 
-    const usedTypes = new Set(mapData.blockConstraints.bannedBlocks);
+    const usedTypes = new Set(normalizedAllowedBlocks);
     const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
     if (!candidate) return;
 
-    onBannedBlocksChange([...mapData.blockConstraints.bannedBlocks, candidate.type]);
+    onAllowedBlocksChange([...normalizedAllowedBlocks, candidate.type]);
   };
 
-  const removeBannedBlock = (index: number) => {
-    if (!onBannedBlocksChange) return;
-    onBannedBlocksChange(mapData.blockConstraints.bannedBlocks.filter((_, i) => i !== index));
+  const removeAllowedBlock = (index: number) => {
+    if (!onAllowedBlocksChange) return;
+
+    const nextAllowed = normalizedAllowedBlocks.filter((_, i) => i !== index);
+    onAllowedBlocksChange(nextAllowed);
+
+    if (!onRequiredBlocksChange) return;
+    const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
+      nextAllowed.length === 0 ? true : nextAllowed.includes(rule.type),
+    );
+    onRequiredBlocksChange(sanitizedRequired);
   };
 
   const updateRequiredBlock = (
@@ -475,29 +506,86 @@ export function MapEditorControls({
   ) => {
     if (!onRequiredBlocksChange) return;
 
-    const next = mapData.blockConstraints.requiredBlocks.map((rule, ruleIndex) =>
+    const next = normalizedRequiredBlocks.map((rule, ruleIndex) =>
       ruleIndex === index ? { ...rule, ...patch } : rule,
     );
-    onRequiredBlocksChange(next);
+    const deduped = Array.from(new Map(next.map((rule) => [rule.type, rule])).values()).filter(
+      (rule) =>
+        normalizedAllowedBlocks.length === 0 || normalizedAllowedBlocks.includes(rule.type),
+    );
+    onRequiredBlocksChange(deduped);
   };
 
   const addRequiredBlock = () => {
     if (!onRequiredBlocksChange) return;
 
-    const usedTypes = new Set(mapData.blockConstraints.requiredBlocks.map((rule) => rule.type));
-    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    const usedTypes = new Set(normalizedRequiredBlocks.map((rule) => rule.type));
+    const candidate = blocksAvailableForGameplay.find((block) => !usedTypes.has(block.type));
     if (!candidate) return;
 
     onRequiredBlocksChange([
-      ...mapData.blockConstraints.requiredBlocks,
+      ...normalizedRequiredBlocks,
       { type: candidate.type, minCount: 1 },
     ]);
   };
 
   const removeRequiredBlock = (index: number) => {
     if (!onRequiredBlocksChange) return;
-    onRequiredBlocksChange(mapData.blockConstraints.requiredBlocks.filter((_, i) => i !== index));
+    onRequiredBlocksChange(normalizedRequiredBlocks.filter((_, i) => i !== index));
   };
+
+  const validateBlockRules = (): string[] => {
+    const errors: string[] = [];
+    const allowedSet = new Set(normalizedAllowedBlocks);
+    const requiredTypes = normalizedRequiredBlocks.map((rule) => rule.type);
+    const requiredSet = new Set(requiredTypes);
+
+    if (allowedSet.size !== normalizedAllowedBlocks.length) {
+      errors.push("Allowed blocks contains duplicate block types.");
+    }
+
+    if (requiredSet.size !== requiredTypes.length) {
+      errors.push("Required blocks contains duplicate block types.");
+    }
+
+    if (normalizedAllowedBlocks.length > 0) {
+      const invalidRequired = normalizedRequiredBlocks.filter(
+        (rule) => !allowedSet.has(rule.type),
+      );
+      if (invalidRequired.length > 0) {
+        errors.push("Required blocks must be selected from Allowed Blocks.");
+      }
+    }
+
+    const blockLimit = mapData.blockConstraints.blockLimit;
+    if (
+      blockLimit !== null &&
+      (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit < 1)
+    ) {
+      errors.push("Block limit must be at least 1 or empty for unlimited.");
+    }
+
+    return errors;
+  };
+
+  const toBlockLabel = (type: string) => blockTypeToLabel.get(type) ?? type;
+  const allowedSummary =
+    normalizedAllowedBlocks.length === 0
+      ? "All blocks allowed"
+      : normalizedAllowedBlocks.map((type) => toBlockLabel(type)).join(", ");
+  const requiredSummary =
+    normalizedRequiredBlocks.length === 0
+      ? "No required blocks"
+      : normalizedRequiredBlocks
+          .map((rule) => `Use \"${toBlockLabel(rule.type)}\" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`)
+          .join("; ");
+  const limitSummary =
+    mapData.blockConstraints.blockLimit === null
+      ? "Unlimited"
+      : `${mapData.blockConstraints.blockLimit} blocks`;
+  const hasAllowedRequiredConflict =
+    normalizedAllowedBlocks.length > 0 &&
+    normalizedRequiredBlocks.some((rule) => !normalizedAllowedBlocks.includes(rule.type));
 
   const handleSaveMapFromModal = async () => {
     const mapName = mapData.config.name?.trim();
@@ -522,6 +610,12 @@ export function MapEditorControls({
 
     if (userType === "unknown") {
       alert("You must be logged in as a learner or CMS user to save maps");
+      return;
+    }
+
+    const ruleErrors = validateBlockRules();
+    if (ruleErrors.length > 0) {
+      alert(`Please fix block rules before saving:\n- ${ruleErrors.join("\n- ")}`);
       return;
     }
 
@@ -729,12 +823,16 @@ export function MapEditorControls({
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Banned Blocks:</label>
-              <p style={styles.helpText}>Players cannot use these block types</p>
+              <label style={styles.label}>Allowed Blocks:</label>
+              <p style={styles.helpText}>Leave empty to allow all blocks</p>
+              <p style={styles.helpText}>Only selected blocks will be available to the player</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {mapData.blockConstraints.bannedBlocks.map((type, index) => (
+                {normalizedAllowedBlocks.length === 0 && (
+                  <div style={styles.placeholderText}>No selection. All blocks are allowed.</div>
+                )}
+                {normalizedAllowedBlocks.map((type, index) => (
                   <div
-                    key={`panel-banned-row-${type}-${index}`}
+                    key={`panel-allowed-row-${type}-${index}`}
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
@@ -744,17 +842,17 @@ export function MapEditorControls({
                   >
                     <select
                       value={type}
-                      onChange={(e) => updateBannedBlock(index, e.target.value)}
+                      onChange={(e) => updateAllowedBlock(index, e.target.value)}
                       style={styles.select}
                     >
                       {availableBlocks.map((block) => (
-                        <option key={`panel-banned-option-${block.type}`} value={block.type}>
+                        <option key={`panel-allowed-option-${block.type}`} value={block.type}>
                           {block.label}
                         </option>
                       ))}
                     </select>
                     <button
-                      onClick={() => removeBannedBlock(index)}
+                      onClick={() => removeAllowedBlock(index)}
                       style={{
                         padding: "6px 8px",
                         background: "#ff6b6b",
@@ -772,34 +870,39 @@ export function MapEditorControls({
               </div>
 
               <button
-                onClick={addBannedBlock}
-                disabled={mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length}
+                onClick={addAllowedBlock}
+                disabled={normalizedAllowedBlocks.length >= availableBlocks.length}
                 style={{
                   marginTop: "8px",
                   padding: "8px 10px",
                   background:
-                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                    normalizedAllowedBlocks.length >= availableBlocks.length
                       ? "#cfd8dc"
                       : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
                   cursor:
-                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                    normalizedAllowedBlocks.length >= availableBlocks.length
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "12px",
                 }}
               >
-                + Add Banned Block
+                + Add Allowed Block
               </button>
             </div>
 
             <div style={styles.formGroup}>
               <label style={styles.label}>Required Blocks:</label>
               <p style={styles.helpText}>Players must use these blocks at least N times</p>
+              {hasAllowedRequiredConflict && (
+                <p style={styles.ruleWarningText}>
+                  Some required blocks are outside Allowed Blocks and must be fixed before saving.
+                </p>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {mapData.blockConstraints.requiredBlocks.map((rule, index) => (
+                {normalizedRequiredBlocks.map((rule, index) => (
                   <div
                     key={`panel-required-${rule.type}-${index}`}
                     style={{
@@ -813,8 +916,9 @@ export function MapEditorControls({
                       value={rule.type}
                       onChange={(e) => updateRequiredBlock(index, { type: e.target.value })}
                       style={styles.select}
+                      disabled={blocksAvailableForGameplay.length === 0}
                     >
-                      {availableBlocks.map((block) => (
+                      {blocksAvailableForGameplay.map((block) => (
                         <option key={`panel-required-option-${block.type}`} value={block.type}>
                           {block.label}
                         </option>
@@ -851,19 +955,24 @@ export function MapEditorControls({
 
               <button
                 onClick={addRequiredBlock}
-                disabled={mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length}
+                disabled={
+                  blocksAvailableForGameplay.length === 0 ||
+                  normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
+                }
                 style={{
                   marginTop: "8px",
                   padding: "8px 10px",
                   background:
-                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                    blocksAvailableForGameplay.length === 0 ||
+                    normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
                       ? "#cfd8dc"
                       : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
                   cursor:
-                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                    blocksAvailableForGameplay.length === 0 ||
+                    normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "12px",
@@ -871,6 +980,18 @@ export function MapEditorControls({
               >
                 + Add Required Block
               </button>
+              {blocksAvailableForGameplay.length === 0 && (
+                <p style={styles.ruleWarningText}>
+                  No blocks are currently available for requirement rules.
+                </p>
+              )}
+            </div>
+
+            <div style={styles.ruleSummaryPanel}>
+              <p style={styles.ruleSummaryTitle}>Rule Summary:</p>
+              <p style={styles.ruleSummaryItem}>- Allowed: {allowedSummary}</p>
+              <p style={styles.ruleSummaryItem}>- Required: {requiredSummary}</p>
+              <p style={styles.ruleSummaryItem}>- Limit: {limitSummary}</p>
             </div>
           </div>
 
@@ -1620,6 +1741,37 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "12px",
     color: "#64748b",
     marginBottom: "10px",
+  },
+  placeholderText: {
+    fontSize: "12px",
+    color: "#64748b",
+    padding: "8px 10px",
+    border: "1px dashed #cbd5e1",
+    borderRadius: "8px",
+    background: "#f8fafc",
+  },
+  ruleWarningText: {
+    fontSize: "12px",
+    color: "#b45309",
+    marginBottom: "8px",
+  },
+  ruleSummaryPanel: {
+    marginTop: "12px",
+    padding: "10px",
+    borderRadius: "10px",
+    border: "1px solid #dbe3ef",
+    background: "#f8fafc",
+  },
+  ruleSummaryTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  ruleSummaryItem: {
+    margin: "0 0 4px 0",
+    fontSize: "12px",
+    color: "#334155",
   },
   buttonGroup: {
     display: "flex",

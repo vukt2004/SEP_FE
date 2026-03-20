@@ -1,4 +1,5 @@
 import type { MapData } from "../../../shared/types/MapSchema";
+import blocksConfig from "../../../shared/block/blocks-config.json";
 import { createEmptyLayer } from "../utils/createEmptyLayer";
 import { createEmptyMap } from "../utils/createEmptyMap";
 
@@ -655,15 +656,23 @@ export class EditorStore {
   }
 
   /**
-   * Update the list of banned block types
+   * Update the list of allowed block types
    *
-   * @param bannedBlocks - Block type IDs that cannot be used
+   * @param allowedBlocks - Block type IDs that can be used. Empty means all are allowed.
    */
-  setBannedBlocks(bannedBlocks: string[]): void {
+  setAllowedBlocks(allowedBlocks: string[]): void {
     this.saveHistory();
-    this.mapData.blockConstraints.bannedBlocks = Array.from(
-      new Set(bannedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
+    const normalizedAllowed = Array.from(
+      new Set(allowedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
     );
+    this.mapData.blockConstraints.allowedBlocks = normalizedAllowed;
+
+    if (normalizedAllowed.length > 0) {
+      this.mapData.blockConstraints.requiredBlocks = this.mapData.blockConstraints.requiredBlocks.filter(
+        (rule) => normalizedAllowed.includes(rule.type),
+      );
+    }
+
     this.notify();
   }
 
@@ -674,13 +683,15 @@ export class EditorStore {
    */
   setRequiredBlocks(requiredBlocks: Array<{ type: string; minCount: number }>): void {
     this.saveHistory();
+    const normalizedAllowed = this.mapData.blockConstraints.allowedBlocks;
     this.mapData.blockConstraints.requiredBlocks = requiredBlocks
       .filter(
         (rule) =>
           typeof rule.type === "string" &&
           rule.type.trim().length > 0 &&
           typeof rule.minCount === "number" &&
-          Number.isFinite(rule.minCount),
+          Number.isFinite(rule.minCount) &&
+          (normalizedAllowed.length === 0 || normalizedAllowed.includes(rule.type)),
       )
       .map((rule) => ({
         type: rule.type,
@@ -797,15 +808,37 @@ export class EditorStore {
     if (!loadedMap.blockConstraints) {
       loadedMap.blockConstraints = {
         blockLimit: null,
-        bannedBlocks: [],
+        allowedBlocks: [],
         requiredBlocks: [],
       };
     }
-    if (!Array.isArray(loadedMap.blockConstraints.bannedBlocks)) {
-      loadedMap.blockConstraints.bannedBlocks = [];
+    if (!Array.isArray(loadedMap.blockConstraints.allowedBlocks)) {
+      loadedMap.blockConstraints.allowedBlocks = [];
+    }
+    if (
+      loadedMap.blockConstraints.allowedBlocks.length === 0 &&
+      Array.isArray(loadedMap.blockConstraints.bannedBlocks)
+    ) {
+      const legacyBanned = Array.from(
+        new Set(
+          loadedMap.blockConstraints.bannedBlocks.filter(
+            (type): type is string => typeof type === "string" && type.trim().length > 0,
+          ),
+        ),
+      );
+      const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+      loadedMap.blockConstraints.allowedBlocks = allBlockTypes.filter(
+        (type) => !legacyBanned.includes(type),
+      );
     }
     if (!Array.isArray(loadedMap.blockConstraints.requiredBlocks)) {
       loadedMap.blockConstraints.requiredBlocks = [];
+    }
+
+    if (loadedMap.blockConstraints.allowedBlocks.length > 0) {
+      loadedMap.blockConstraints.requiredBlocks = loadedMap.blockConstraints.requiredBlocks.filter(
+        (rule) => loadedMap.blockConstraints.allowedBlocks.includes(rule.type),
+      );
     }
     if (
       loadedMap.blockConstraints.blockLimit !== null &&

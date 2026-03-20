@@ -1,4 +1,4 @@
-import { Target, ShieldAlert, Boxes, Ban, X, Play } from "lucide-react";
+import { Target, ShieldAlert, Boxes, ListChecks, X, Play } from "lucide-react";
 import type { CSSProperties } from "react";
 
 interface LevelMissionModalProps {
@@ -7,7 +7,7 @@ interface LevelMissionModalProps {
   goal: string;
   blockLimit: number | null;
   requiredBlocks: string[];
-  forbiddenBlocks: string[];
+  allowedBlocks: string[];
   onStart: () => void;
   onClose?: () => void;
 }
@@ -18,7 +18,7 @@ export function LevelMissionModal({
   goal,
   blockLimit,
   requiredBlocks,
-  forbiddenBlocks,
+  allowedBlocks,
   onStart,
   onClose,
 }: LevelMissionModalProps) {
@@ -65,11 +65,11 @@ export function LevelMissionModal({
 
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <Ban size={16} />
-            <p style={styles.label}>Forbidden Blocks</p>
+            <ListChecks size={16} />
+            <p style={styles.label}>Allowed Blocks</p>
           </div>
           <p style={styles.value}>
-            {forbiddenBlocks.length > 0 ? forbiddenBlocks.join(", ") : "None"}
+            {allowedBlocks.length > 0 ? allowedBlocks.join(", ") : "All blocks allowed"}
           </p>
         </div>
 

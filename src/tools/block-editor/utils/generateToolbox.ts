@@ -3,8 +3,6 @@ import type { BlockConfig, BlockCategory } from "../types/blockDefinition";
 interface ToolboxBlock {
   kind: "block";
   type: string;
-  disabled?: boolean;
-  enabled?: boolean;
 }
 
 interface ToolboxSeparator {
@@ -46,10 +44,10 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
 export function generateToolbox(
   blockDefinitions: BlockConfig[],
   options?: {
-    disabledBlockTypes?: string[];
+    hiddenBlockTypes?: string[];
   },
 ): FlyoutToolbox {
-  const disabledTypes = new Set(options?.disabledBlockTypes ?? []);
+  const hiddenTypes = new Set(options?.hiddenBlockTypes ?? []);
 
   // Group blocks by category
   const blocksByCategory = new Map<BlockCategory, BlockConfig[]>();
@@ -92,12 +90,12 @@ export function generateToolbox(
 
       // Add blocks from this category
       blocks.forEach((block) => {
-        const isDisabled = disabledTypes.has(block.type);
+        if (hiddenTypes.has(block.type)) {
+          return;
+        }
         contents.push({
           kind: "block",
           type: block.type,
-          disabled: isDisabled,
-          enabled: !isDisabled,
         });
       });
     }
