@@ -52,8 +52,21 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 }) => {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const blocklyWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const blockDefinitionsRef = useRef<BlockConfig[] | null>(null);
+  const hiddenTypesKeyRef = useRef<string>("");
+  const onWorkspaceReadyRef = useRef(onWorkspaceReady);
+  const onConstraintViolationRef = useRef(onConstraintViolation);
+  const onBlockCountChangeRef = useRef(onBlockCountChange);
+  const blockLimitRef = useRef(blockLimit);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onWorkspaceReadyRef.current = onWorkspaceReady;
+    onConstraintViolationRef.current = onConstraintViolation;
+    onBlockCountChangeRef.current = onBlockCountChange;
+    blockLimitRef.current = blockLimit;
+  }, [onWorkspaceReady, onConstraintViolation, onBlockCountChange, blockLimit]);
 
   useEffect(() => {
     let mounted = true;
@@ -96,13 +109,16 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 
         // Load block definitions from JSON
         const blockDefinitions: BlockConfig[] = loadBlockRegistry();
+        blockDefinitionsRef.current = blockDefinitions;
 
         // Register blocks dynamically
         registerBlocks(blockDefinitions);
 
         // Generate dynamic toolbox
+        const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+        hiddenTypesKeyRef.current = hiddenTypes.join("|");
         const toolbox = generateToolbox(blockDefinitions, {
-          hiddenBlockTypes: bannedBlockTypes,
+          hiddenBlockTypes: hiddenTypes,
         });
 
         if (!mounted) return;
@@ -148,8 +164,8 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         }, 100);
 
         // Notify parent component that workspace is ready
-        if (onWorkspaceReady && blocklyWorkspaceRef.current) {
-          onWorkspaceReady(blocklyWorkspaceRef.current);
+        if (onWorkspaceReadyRef.current && blocklyWorkspaceRef.current) {
+          onWorkspaceReadyRef.current(blocklyWorkspaceRef.current);
         }
 
         const workspace = blocklyWorkspaceRef.current;
@@ -159,7 +175,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           const totalBlocks = workspace
             .getAllBlocks(false)
             .filter((block) => !block.isShadow()).length;
-          onBlockCountChange?.(totalBlocks);
+          onBlockCountChangeRef.current?.(totalBlocks);
         };
 
         reportBlockCount();
@@ -171,19 +187,20 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 
           if (event.type !== Blockly.Events.BLOCK_CREATE) return;
 
-          if (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit <= 0) {
+          const limit = blockLimitRef.current;
+          if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) {
             return;
           }
 
           const totalBlocks = workspace
             .getAllBlocks(false)
             .filter((block) => !block.isShadow()).length;
-          if (totalBlocks <= blockLimit) return;
+          if (totalBlocks <= limit) return;
 
           revertingCreate = true;
           workspace.undo(false);
           revertingCreate = false;
-          onConstraintViolation?.(`Block limit reached (${blockLimit}).`);
+          onConstraintViolationRef.current?.(`Block limit reached (${limit}).`);
         });
       } catch (err) {
         if (mounted) {
@@ -206,7 +223,24 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         blocklyWorkspaceRef.current = null;
       }
     };
-  }, [bannedBlockTypes, blockLimit, onBlockCountChange, onConstraintViolation, onWorkspaceReady]);
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const workspace = blocklyWorkspaceRef.current;
+    const blockDefinitions = blockDefinitionsRef.current;
+    if (!workspace || !blockDefinitions) return;
+
+    const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+    const nextKey = hiddenTypes.join("|");
+    if (nextKey === hiddenTypesKeyRef.current) return;
+
+    hiddenTypesKeyRef.current = nextKey;
+    workspace.updateToolbox(
+      generateToolbox(blockDefinitions, {
+        hiddenBlockTypes: hiddenTypes,
+      }),
+    );
+  }, [bannedBlockTypes]);
 
   // Handle container resize
   useEffect(() => {

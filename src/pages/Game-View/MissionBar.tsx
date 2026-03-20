@@ -54,6 +54,7 @@ export function MissionBar({
     }
     return { label: "Khối", value: "Được dùng mọi block" };
   })();
+  const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None";
 
   return (
     <div style={styles.container}>
