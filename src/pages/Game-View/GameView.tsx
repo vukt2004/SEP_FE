@@ -716,6 +716,7 @@ export default function GameView() {
       ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
       : blockConstraints?.bannedBlocks ?? [];
   const allowedBlocks = normalizedAllowedTypes.map((type) => toBlockLabel(type));
+  const bannedBlocks = derivedBannedTypesForWorkspace.map((type) => toBlockLabel(type));
   const totalHints = hints.length;
   const revealedHintCount = Math.min(revealedHints, totalHints);
   const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
@@ -1263,6 +1264,7 @@ export default function GameView() {
             timeLimitSeconds={mapConfig?.timeLimitSeconds}
             requiredBlocks={requiredBlocks}
             allowedBlocks={allowedBlocks}
+            bannedBlocks={bannedBlocks}
             width={mapConfig?.width}
             height={mapConfig?.height}
           />
@@ -1484,13 +1486,10 @@ export default function GameView() {
               {Object.entries(execVariables)
                 .filter(([, v]) => Array.isArray(v))
                 .map(([name, v]) => {
-                  const items = v
-                    .slice(0, 20)
-                    .map((item) =>
-                      typeof item === "object" && item !== null
-                        ? JSON.stringify(item)
-                        : String(item),
-                    );
+                  const arr = v as unknown[];
+                  const items = arr.slice(0, 20).map((item: unknown) =>
+                    typeof item === "object" && item !== null ? JSON.stringify(item) : String(item),
+                  );
                   return (
                     <div key={name} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <div style={{ minWidth: "90px", fontWeight: 700 }}>{name}:</div>
@@ -1544,6 +1543,7 @@ export default function GameView() {
         blockLimit={blockConstraints?.blockLimit ?? null}
         requiredBlocks={requiredBlocks}
         allowedBlocks={allowedBlocks}
+        bannedBlocks={bannedBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
       />
