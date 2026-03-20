@@ -50,7 +50,8 @@ export interface LevelLayers {
  */
 export interface LevelBlockConstraints {
   blockLimit: number | null;
-  bannedBlocks: string[];
+  allowedBlocks: string[];
+  bannedBlocks?: string[];
   requiredBlocks: Array<{
     type: string;
     minCount: number;

@@ -6,7 +6,7 @@ interface MissionBarProps {
   estimatedSteps?: number;
   timeLimitSeconds?: number;
   requiredBlocks: string[];
-  forbiddenBlocks: string[];
+  allowedBlocks: string[];
   width?: number;
   height?: number;
 }
@@ -26,12 +26,13 @@ export function MissionBar({
   estimatedSteps,
   timeLimitSeconds,
   requiredBlocks,
-  forbiddenBlocks,
+  allowedBlocks,
   width,
   height,
 }: MissionBarProps) {
   const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None";
-  const forbiddenText = forbiddenBlocks.length > 0 ? forbiddenBlocks.join(", ") : "None";
+  const allowedText =
+    allowedBlocks.length > 0 ? allowedBlocks.join(", ") : "All blocks allowed";
 
   return (
     <div style={styles.container}>
@@ -45,7 +46,7 @@ export function MissionBar({
         <Badge label="Time Limit" value={`${timeLimitSeconds}s`} />
       )}
       <Badge label="Required" value={requiredText} />
-      <Badge label="Forbidden" value={forbiddenText} />
+      <Badge label="Allowed" value={allowedText} />
     </div>
   );
 }

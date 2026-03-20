@@ -1,4 +1,5 @@
 import type { MapData } from "../../../shared/types/MapSchema";
+import blocksConfig from "../../../shared/block/blocks-config.json";
 
 /**
  * Game level format (matches public/mock-data/test-view/*.json)
@@ -41,7 +42,8 @@ export interface GameLevelFormat {
   };
   blockConstraints?: {
     blockLimit: number | null;
-    bannedBlocks: string[];
+    allowedBlocks: string[];
+    bannedBlocks?: string[];
     requiredBlocks: Array<{
       type: string;
       minCount: number;
@@ -153,6 +155,11 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     }
   });
 
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+  const allowedBlocks = Array.from(new Set(mapData.blockConstraints.allowedBlocks));
+  const bannedBlocks =
+    allowedBlocks.length === 0 ? [] : allBlockTypes.filter((type) => !allowedBlocks.includes(type));
+
   return {
     id,
     name,
@@ -177,7 +184,8 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     },
     blockConstraints: {
       blockLimit: mapData.blockConstraints.blockLimit,
-      bannedBlocks: mapData.blockConstraints.bannedBlocks,
+      allowedBlocks,
+      bannedBlocks,
       requiredBlocks: mapData.blockConstraints.requiredBlocks,
     },
   };

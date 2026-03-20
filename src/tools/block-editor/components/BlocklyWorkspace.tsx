@@ -95,24 +95,14 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         setError(null);
 
         // Load block definitions from JSON
-        const blockedTypes = new Set(bannedBlockTypes);
-        const blockDefinitions: BlockConfig[] = loadBlockRegistry().map((block) => {
-          if (!blockedTypes.has(block.type)) {
-            return block;
-          }
-
-          return {
-            ...block,
-            tooltip: "This block is not allowed in this level",
-          };
-        });
+        const blockDefinitions: BlockConfig[] = loadBlockRegistry();
 
         // Register blocks dynamically
         registerBlocks(blockDefinitions);
 
         // Generate dynamic toolbox
         const toolbox = generateToolbox(blockDefinitions, {
-          disabledBlockTypes: bannedBlockTypes,
+          hiddenBlockTypes: bannedBlockTypes,
         });
 
         if (!mounted) return;

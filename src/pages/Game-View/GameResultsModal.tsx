@@ -116,7 +116,12 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
             <span>{icon}</span>
             <strong>{label}</strong>
           </div>
-          <div style={{ ...styles.metricValue, color: passed ? "#047857" : "#b91c1c" }}>
+          <div
+            style={{
+              ...styles.metricValue,
+              color: passed ? "var(--success, #047857)" : "var(--danger, #b91c1c)",
+            }}
+          >
             {valueText} {passed ? "✅" : "❌"}
           </div>
         </div>
@@ -127,8 +132,8 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
               ...styles.progressFill,
               width: `${progress}%`,
               background: passed
-                ? "linear-gradient(90deg, #10b981, #34d399)"
-                : "linear-gradient(90deg, #ef4444, #f87171)",
+                ? "linear-gradient(90deg, var(--success, #10b981), color-mix(in srgb, var(--success, #10b981) 70%, white 30%))"
+                : "linear-gradient(90deg, var(--danger, #ef4444), color-mix(in srgb, var(--danger, #ef4444) 70%, white 30%))",
             }}
           />
         </div>
@@ -163,7 +168,12 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
 
         <div style={styles.header}>
           <div style={styles.headerIcon}>{isWin ? "🏆" : "😔"}</div>
-          <h2 style={{ ...styles.title, color: isWin ? "#059669" : "#dc2626" }}>
+          <h2
+            style={{
+              ...styles.title,
+              color: isWin ? "var(--success, #059669)" : "var(--danger, #dc2626)",
+            }}
+          >
             {isWin ? "Level Complete!" : "Game Over"}
           </h2>
           <p style={styles.subtitle}>{subtitle}</p>
@@ -177,7 +187,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
                 key={`star-${index}`}
                 style={{
                   ...styles.star,
-                  color: filled ? "#f59e0b" : "#cbd5e1",
+                  color: filled ? "var(--warning, #f59e0b)" : "var(--border, #cbd5e1)",
                   textShadow: filled ? "0 6px 14px rgba(245, 158, 11, 0.35)" : "none",
                   animation: `starPop 320ms ease ${(index + 1) * 80}ms both`,
                 }}
@@ -247,7 +257,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(2, 6, 23, 0.72)",
+    backgroundColor: "color-mix(in srgb, var(--bg, #0f172a) 70%, transparent)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -255,7 +265,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "16px",
   },
   modal: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--surface)",
     borderRadius: "18px",
     padding: "28px",
     maxWidth: "560px",
@@ -263,7 +273,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: "92vh",
     overflowY: "auto",
     boxShadow: "0 24px 52px rgba(2, 6, 23, 0.4)",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--border)",
     position: "relative",
     animation: "resultsModalFade 220ms ease",
   },
@@ -275,7 +285,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     fontSize: "24px",
     cursor: "pointer",
-    color: "#64748b",
+    color: "var(--text-2)",
     padding: "4px 8px",
   },
   header: {
@@ -294,7 +304,7 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     margin: "8px 0 0",
     fontSize: "15px",
-    color: "#475569",
+    color: "var(--text-2)",
     fontWeight: 700,
   },
   starsSection: {
@@ -312,15 +322,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
+    background: "var(--surface-2)",
+    border: "1px solid var(--border)",
     borderRadius: "12px",
     padding: "12px",
     marginBottom: "16px",
   },
   metricCard: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e5e7eb",
+    backgroundColor: "var(--surface)",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
     padding: "10px",
   },
@@ -334,13 +344,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     gap: "6px",
-    color: "#334155",
+    color: "var(--text)",
     fontSize: "15px",
   },
   metricValue: {
     fontSize: "18px",
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--text)",
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
   },
   progressTrack: {
@@ -348,7 +358,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: "8px",
     width: "100%",
     borderRadius: "999px",
-    background: "#e2e8f0",
+    background: "color-mix(in srgb, var(--border) 70%, transparent)",
     overflow: "hidden",
   },
   progressFill: {
@@ -359,7 +369,7 @@ const styles: Record<string, React.CSSProperties> = {
   progressCaption: {
     marginTop: "6px",
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--text-2)",
     fontWeight: 700,
     textAlign: "right",
   },
@@ -383,16 +393,16 @@ const styles: Record<string, React.CSSProperties> = {
   secondaryButton: {
     flex: "1 1 180px",
     padding: "12px 14px",
-    backgroundColor: "#f59e0b",
-    color: "white",
-    border: "1px solid #d97706",
+    backgroundColor: "var(--warning)",
+    color: "#ffffff",
+    border: "1px solid color-mix(in srgb, var(--warning) 70%, black 30%)",
     borderRadius: "10px",
     fontSize: "15px",
     fontWeight: 700,
     cursor: "pointer",
   },
   menuButton: {
-    backgroundColor: "#475569",
-    border: "1px solid #334155",
+    backgroundColor: "var(--text-2)",
+    border: "1px solid color-mix(in srgb, var(--text-2) 75%, black 25%)",
   },
 };

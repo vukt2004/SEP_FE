@@ -11,6 +11,7 @@ import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { tokenStorage } from "../../lib/storage/tokenStorage";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
+import blocksConfig from "../../shared/block/blocks-config.json";
 
 type MapEditorRouteState = {
   mapId?: string;
@@ -112,21 +113,35 @@ const normalizeBlockConstraints = (
   source: Record<string, unknown> | null,
 ): {
   blockLimit: number | null;
-  bannedBlocks: string[];
+  allowedBlocks: string[];
   requiredBlocks: RequiredBlockRule[];
 } => {
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
   if (!source) {
     return {
       blockLimit: null,
-      bannedBlocks: [],
+      allowedBlocks: [],
       requiredBlocks: [],
     };
   }
 
+  const explicitAllowed = normalizeStringList(source.allowedBlocks);
+  const legacyBanned = normalizeStringList(source.bannedBlocks);
+  const allowedBlocks =
+    explicitAllowed.length > 0
+      ? explicitAllowed
+      : legacyBanned.length > 0
+        ? allBlockTypes.filter((type) => !legacyBanned.includes(type))
+        : [];
+
+  const requiredBlocks = normalizeRequiredBlocks(source.requiredBlocks).filter(
+    (rule) => allowedBlocks.length === 0 || allowedBlocks.includes(rule.type),
+  );
+
   return {
     blockLimit: normalizeBlockLimit(source.blockLimit),
-    bannedBlocks: normalizeStringList(source.bannedBlocks),
-    requiredBlocks: normalizeRequiredBlocks(source.requiredBlocks),
+    allowedBlocks,
+    requiredBlocks,
   };
 };
 
@@ -557,8 +572,8 @@ export default function MapEditor() {
     store?.setBlockLimit(blockLimit);
   };
 
-  const handleBannedBlocksChange = (bannedBlocks: string[]) => {
-    store?.setBannedBlocks(bannedBlocks);
+  const handleAllowedBlocksChange = (allowedBlocks: string[]) => {
+    store?.setAllowedBlocks(allowedBlocks);
   };
 
   const handleRequiredBlocksChange = (requiredBlocks: RequiredBlockRule[]) => {
@@ -631,7 +646,7 @@ export default function MapEditor() {
               onWinConditionChange={handleWinConditionChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
-              onBannedBlocksChange={handleBannedBlocksChange}
+              onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
             />
@@ -708,7 +723,7 @@ export default function MapEditor() {
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
-              onBannedBlocksChange={handleBannedBlocksChange}
+              onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
             />

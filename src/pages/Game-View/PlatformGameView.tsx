@@ -339,18 +339,34 @@ export default function PlatformGameView() {
 
       const constraints = engineRef.current.getBlockConstraints();
       if (constraints) {
-        for (const bannedType of constraints.bannedBlocks || []) {
-          const used = blockUsage[bannedType] ?? 0;
-          if (used > 0) {
-            showWarningToast(`Forbidden block used: ${bannedType}.`);
-            return;
+        const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+        const allowedBlocks = Array.from(new Set(constraints.allowedBlocks ?? [])).filter((type) =>
+          allBlockTypes.includes(type),
+        );
+
+        if (allowedBlocks.length > 0) {
+          for (const usedType of Object.keys(blockUsage)) {
+            if (!allowedBlocks.includes(usedType)) {
+              showWarningToast(`Block not allowed: ${toBlockLabel(usedType)}.`);
+              return;
+            }
+          }
+        } else {
+          for (const bannedType of constraints.bannedBlocks || []) {
+            const used = blockUsage[bannedType] ?? 0;
+            if (used > 0) {
+              showWarningToast(`Block not allowed: ${toBlockLabel(bannedType)}.`);
+              return;
+            }
           }
         }
 
         for (const rule of constraints.requiredBlocks || []) {
           const used = blockUsage[rule.type] ?? 0;
           if (used < rule.minCount) {
-            showWarningToast(`Required block missing: ${rule.type} (${used}/${rule.minCount}).`);
+            showWarningToast(
+              `Required block missing: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`,
+            );
             return;
           }
         }
@@ -590,7 +606,15 @@ export default function PlatformGameView() {
     const label = toBlockLabel(rule.type);
     return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
   });
-  const forbiddenBlocks = (blockConstraints?.bannedBlocks ?? []).map((type) => toBlockLabel(type));
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+  const normalizedAllowedTypes = Array.from(new Set(blockConstraints?.allowedBlocks ?? [])).filter(
+    (type) => allBlockTypes.includes(type),
+  );
+  const derivedBannedTypesForWorkspace =
+    normalizedAllowedTypes.length > 0
+      ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
+      : blockConstraints?.bannedBlocks ?? [];
+  const allowedBlocks = normalizedAllowedTypes.map((type) => toBlockLabel(type));
   const totalHints = hints.length;
   const revealedHintCount = Math.min(revealedHints, totalHints);
   const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
@@ -1139,7 +1163,7 @@ export default function PlatformGameView() {
             estimatedSteps={mapConfig?.estimatedSteps}
             timeLimitSeconds={mapConfig?.timeLimitSeconds}
             requiredBlocks={requiredBlocks}
-            forbiddenBlocks={forbiddenBlocks}
+            allowedBlocks={allowedBlocks}
             width={mapConfig?.width}
             height={mapConfig?.height}
           />
@@ -1405,7 +1429,7 @@ export default function PlatformGameView() {
           >
             <BlocklyWorkspace
               onWorkspaceReady={handleWorkspaceReady}
-              bannedBlockTypes={blockConstraints?.bannedBlocks ?? []}
+              bannedBlockTypes={derivedBannedTypesForWorkspace}
               blockLimit={null}
               onConstraintViolation={showWarningToast}
               onBlockCountChange={setBlocksUsed}
@@ -1420,7 +1444,7 @@ export default function PlatformGameView() {
         goal={missionGoal}
         blockLimit={blockConstraints?.blockLimit ?? null}
         requiredBlocks={requiredBlocks}
-        forbiddenBlocks={forbiddenBlocks}
+        allowedBlocks={allowedBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
       />

@@ -50,7 +50,7 @@ export function createEmptyMap(
     },
     blockConstraints: {
       blockLimit: null,
-      bannedBlocks: [],
+      allowedBlocks: [],
       requiredBlocks: [],
     },
   };
