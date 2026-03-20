@@ -1471,7 +1471,7 @@ export default function PlatformGameView() {
       {gameResult && (
         <GameResultsModal
           isOpen={showResultsModal}
-          onClose={() => setShowResultsModal(false)}
+          onClose={gameResult?.isWin ? handlePlayAgainFromResults : () => setShowResultsModal(false)}
           isWin={gameResult.isWin}
           stepCount={gameResult.stepCount}
           blocksUsed={gameResult.blocksUsed}
