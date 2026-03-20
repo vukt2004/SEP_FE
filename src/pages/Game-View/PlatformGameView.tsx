@@ -324,6 +324,29 @@ export default function PlatformGameView() {
       return;
     }
 
+    const existingExecutor = executorRef.current;
+    if (existingExecutor && existingExecutor.hasNext()) {
+      setIsExecutorRunning(true);
+      existingExecutor.run(
+        (result) => {
+          const engine = engineRef.current;
+          if (engine) {
+            engine.executeCommand(result.command);
+          }
+        },
+        500,
+        () => {
+          setIsExecutorRunning(false);
+          const engine = engineRef.current;
+          if (!engine || engine.hasWon()) {
+            return;
+          }
+          setShowExecutionIncompleteModal(true);
+        },
+      );
+      return;
+    }
+
     try {
       // Count only learner-placed blocks (exclude Blockly shadow blocks).
       const placedBlocks = workspaceRef.current

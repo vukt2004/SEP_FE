@@ -67,6 +67,7 @@ type MapCardProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
+  onSubmitForReview: (mapId: string) => void;
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
@@ -81,6 +82,7 @@ type MapListProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
+  onSubmitForReview: (mapId: string) => void;
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
@@ -401,6 +403,7 @@ const MapCard: React.FC<MapCardProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
+  onSubmitForReview,
   onPublish,
   onRate,
   onReport,
@@ -625,6 +628,14 @@ const MapCard: React.FC<MapCardProps> = ({
               <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
                 <Edit size={14} /> {t("edit")}
               </button>
+              <button onClick={() => onSubmitForReview(map.id)} style={actionBtnStyle("success")}>
+                <Send size={14} /> {t("submitForReview")}
+              </button>
+            </>
+          )}
+
+          {isAuthor && map.mapStatus === "Approved" && (
+            <>
               <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
                 <Send size={14} /> {t("publish")}
               </button>
@@ -656,6 +667,7 @@ export const MapList: React.FC<MapListProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
+  onSubmitForReview,
   onPublish,
   onRate,
   onReport,
@@ -673,6 +685,7 @@ export const MapList: React.FC<MapListProps> = ({
           getDifficultyLabel={getDifficultyLabel}
           onPreview={onPreview}
           onEdit={onEdit}
+          onSubmitForReview={onSubmitForReview}
           onPublish={onPublish}
           onRate={onRate}
           onReport={onReport}
@@ -805,6 +818,31 @@ export const MyMapsPage: React.FC = () => {
     } catch (err) {
       setError(t("failedSubmitReview"));
       console.error("Submit error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePublishMap = async (mapId: string) => {
+    if (!confirm(t("confirmPublishMap"))) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await learnerMapsApi.publishMap(mapId);
+
+      if (response.data.isSuccess) {
+        alert(t("mapPublishedSuccess"));
+        fetchMaps();
+      } else {
+        setError(response.data.message || t("failedPublishMap"));
+      }
+    } catch (err) {
+      setError(t("failedPublishMap"));
+      console.error("Publish error:", err);
     } finally {
       setLoading(false);
     }
@@ -1182,7 +1220,8 @@ export const MyMapsPage: React.FC = () => {
               getDifficultyLabel={getDifficultyLabel}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
-              onPublish={handleSubmitForReview}
+              onSubmitForReview={handleSubmitForReview}
+              onPublish={handlePublishMap}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
             />

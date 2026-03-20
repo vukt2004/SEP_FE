@@ -400,6 +400,29 @@ export default function GameView() {
       return;
     }
 
+    const existingExecutor = executorRef.current;
+    if (existingExecutor && existingExecutor.hasNext()) {
+      setIsExecutorRunning(true);
+      existingExecutor.run(
+        (result) => {
+          const engine = engineRef.current;
+          if (engine) {
+            engine.executeCommand(result.command);
+          }
+        },
+        500,
+        () => {
+          setIsExecutorRunning(false);
+          const engine = engineRef.current;
+          if (!engine || engine.hasWon()) {
+            return;
+          }
+          setShowExecutionIncompleteModal(true);
+        },
+      );
+      return;
+    }
+
     try {
       // Generate AST from Blockly workspace (blocks remain in editor)
       // Note: This only reads the workspace, it does not modify or remove blocks

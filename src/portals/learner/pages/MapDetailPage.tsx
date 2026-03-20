@@ -1,14 +1,21 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { isAxiosError } from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map } from "@/types/api/learner/maps";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
+import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
+
+type PurchaseModalState = {
+  kind: "success" | "insufficient" | "error";
+  message: string;
+};
 
 export default function MapDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +27,8 @@ export default function MapDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [heroImageFailed, setHeroImageFailed] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -71,8 +80,47 @@ export default function MapDetailPage() {
     }
   };
 
-  const handleBuyMap = () => {
-    console.log("Buy map with OrbitCoin:", map?.id);
+  const handleBuyMap = async () => {
+    if (!map?.id) return;
+
+    try {
+      setIsPurchasing(true);
+      const response = await learnerMapsApi.purchaseMap(map.id);
+      if (response.data.isSuccess) {
+        setPurchaseModal({
+          kind: "success",
+          message: response.data.message || "Map purchased with OrbitCoin.",
+        });
+        const ownershipResponse = await learnerMapsApi.checkMapOwnership(map.id);
+        if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
+          setOwnership(ownershipResponse.data.data);
+        }
+        return;
+      }
+
+      setPurchaseModal({
+        kind: "error",
+        message: response.data.message || "Failed to purchase map.",
+      });
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const body = err.response?.data as ApiResult<null> | undefined;
+        const isInsufficientBalance =
+          body?.errorCode === "InvalidOperation" ||
+          (body?.message ?? "").toLowerCase().includes("insufficient");
+
+        setPurchaseModal({
+          kind: isInsufficientBalance ? "insufficient" : "error",
+          message: body?.message || "Failed to purchase map.",
+        });
+        return;
+      }
+
+      setPurchaseModal({ kind: "error", message: "Failed to purchase map." });
+      console.error(err);
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   const formatCreatedAt = (dateStr: string) => {
@@ -299,10 +347,11 @@ export default function MapDetailPage() {
               type="button"
               onClick={handleBuyMap}
               className={styles.steamFooterPrimary}
+              disabled={isPurchasing}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Lock size={18} /> {t("buyWithOrbitCoin")}
+              <Lock size={18} /> {isPurchasing ? "Purchasing..." : t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
             </motion.button>
           )}
@@ -331,6 +380,46 @@ export default function MapDetailPage() {
             <Share2 size={16} /> {t("share")}
           </motion.button>
         </motion.div>
+
+        {purchaseModal && (
+          <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3
+                className={`${styles.modalTitle} ${
+                  purchaseModal.kind === "success" ? styles.modalTitleSuccess : styles.modalTitleError
+                }`}
+              >
+                {purchaseModal.kind === "success"
+                  ? "Purchase successful"
+                  : purchaseModal.kind === "insufficient"
+                    ? "Insufficient balance"
+                    : "Purchase failed"}
+              </h3>
+              <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalBtn}
+                  onClick={() => setPurchaseModal(null)}
+                >
+                  {t("back")}
+                </button>
+                {purchaseModal.kind === "success" && (
+                  <button
+                    type="button"
+                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                    onClick={() => {
+                      setPurchaseModal(null);
+                      handleStartMap();
+                    }}
+                  >
+                    {t("play")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );
