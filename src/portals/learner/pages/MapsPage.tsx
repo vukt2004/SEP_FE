@@ -14,7 +14,10 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import type { MapPlayHistoryItem } from "@/types/api/learner/gameplay";
+import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
@@ -116,20 +119,66 @@ type MapStatus = "locked" | "available" | "in_progress" | "completed";
 type MainTab = "all" | "recommended" | "progress";
 type SortOption = "recommended" | "newest" | "most_played";
 
-// Mock progress: replace with API when available (e.g. learningPath or gameplay progress)
-function useMapProgress(mapIds: string[]) {
+function useMapProgressFromHistory(mapIds: string[]) {
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<MapPlayHistoryItem[] | null>(null);
+
+  const mapIdsKey = useMemo(() => mapIds.join(","), [mapIds]);
+
+  useEffect(() => {
+    // If maps haven't loaded yet, don't fetch.
+    if (!mapIdsKey) {
+      setHistory(null);
+      setLoading(false);
+      return;
+    }
+
+    let alive = true;
+    setLoading(true);
+
+    learnerGameplayApi
+      .getMyPlayHistory({ pageNumber: 1, pageSize: 50 })
+      .then((res) => {
+        if (!alive) return;
+        if (!res.isSuccess) {
+          setHistory([]);
+          return;
+        }
+        setHistory(res.data?.items ?? []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setHistory([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [mapIdsKey]);
+
   return useMemo(() => {
     const inProgress: Record<string, number> = {};
     const completed = new Set<string>();
     const locked = new Set<string>();
-    if (mapIds.length > 0) {
-      inProgress[mapIds[0]] = 45;
-      if (mapIds.length > 1) completed.add(mapIds[1]);
-      if (mapIds.length > 2) completed.add(mapIds[2]);
-      // Remaining maps: available (no lock) so users can browse and play; lock only far-future maps if needed
+
+    const mapIdSet = new Set(mapIds);
+    for (const item of history ?? []) {
+      if (!mapIdSet.has(item.mapId)) continue;
+      if (item.isCompleted) completed.add(item.mapId);
+      else inProgress[item.mapId] = 45; // constant fallback since we don't have progressPercent in history DTO
     }
-    return { inProgress, completed, locked };
-  }, [mapIds.join(",")]);
+
+    // If a map is completed at least once, don't keep it in "in progress".
+    for (const mapId of completed) {
+      delete inProgress[mapId];
+    }
+
+    return { inProgress, completed, locked, loading };
+  }, [mapIds, history, loading]);
 }
 
 function getMapStatus(
@@ -193,7 +242,92 @@ function MapsContent() {
   const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
 
   const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
-  const { inProgress, completed, locked } = useMapProgress(mapIds);
+  const { inProgress, completed, locked } = useMapProgressFromHistory(mapIds);
+
+  // Map ownership: used to sort playable maps to the top.
+  // Endpoint: GET /api/learner/maps/{id}/check-ownership
+  const [ownershipByMapId, setOwnershipByMapId] = useState<Record<string, boolean | undefined>>({});
+  const [ownershipLoading, setOwnershipLoading] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    const idsToFetch = maps
+      .filter((m) => m.price > 0)
+      .map((m) => m.id)
+      .filter((id) => ownershipByMapId[id] === undefined);
+
+    if (idsToFetch.length === 0) return;
+
+    setOwnershipLoading(true);
+
+    Promise.all(
+      idsToFetch.map(async (id) => {
+        try {
+          const res = await learnerMapsApi.checkMapOwnership(id);
+          if (!alive) return { id, isOwned: undefined as boolean | undefined };
+          const data: MapOwnershipData | undefined = res.data?.data;
+          return { id, isOwned: data?.isOwned ?? false };
+        } catch {
+          return { id, isOwned: false };
+        }
+      }),
+    )
+      .then((results) => {
+        if (!alive) return;
+        setOwnershipByMapId((prev) => {
+          const next = { ...prev };
+          for (const r of results) {
+            next[r.id] = r.isOwned;
+          }
+          return next;
+        });
+      })
+      .finally(() => {
+        if (!alive) return;
+        setOwnershipLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maps, ownershipByMapId]);
+
+  const lockedFromOwnership = useMemo(() => {
+    const s = new Set<string>();
+    for (const m of maps) {
+      if (m.price <= 0) continue;
+      if (completed.has(m.id) || m.id in inProgress) continue;
+      if (ownershipByMapId[m.id] === false) s.add(m.id);
+    }
+    return s;
+  }, [maps, ownershipByMapId, completed, inProgress]);
+
+  const lockedUnion = useMemo(() => new Set([...locked, ...lockedFromOwnership]), [locked, lockedFromOwnership]);
+
+  const isPlayableMap = (m: ApiMap): boolean => {
+    if (completed.has(m.id) || m.id in inProgress) return true;
+    if (m.price === 0) return true;
+
+    // While ownership is still loading/unknown, keep map order unchanged (don't push it down too early).
+    const owned = ownershipByMapId[m.id];
+    if (owned === undefined) return true;
+    return owned;
+  };
+
+  // Stable sort: playable maps first, keep existing order within each group.
+  const mapsSortedPlayable = useMemo(() => {
+    return maps
+      .map((m, i) => ({ m, i }))
+      .sort((a, b) => {
+        const ap = isPlayableMap(a.m);
+        const bp = isPlayableMap(b.m);
+        if (ap !== bp) return ap ? -1 : 1;
+        return a.i - b.i;
+      })
+      .map((x) => x.m);
+  }, [maps, ownershipByMapId, ownershipLoading, completed, inProgress]);
 
   const loadMaps = useCallback(async () => {
     try {
@@ -245,7 +379,7 @@ function MapsContent() {
   }, []);
 
   const filteredMaps = useMemo(() => {
-    let list = [...maps];
+    let list = [...mapsSortedPlayable];
     if (selectedKnowledgeConcepts.length > 0) {
       // Match-all semantics within each group.
       list = list.filter((m) => {
@@ -267,14 +401,11 @@ function MapsContent() {
       list = list.filter((m) => completed.has(m.id) || m.id in inProgress);
     }
     return list;
-  }, [maps, selectedKnowledgeConcepts, selectedMechanismConcepts, mainTab, completed, inProgress]);
+  }, [mapsSortedPlayable, selectedKnowledgeConcepts, selectedMechanismConcepts, mainTab, completed, inProgress]);
 
-  const inProgressMaps = useMemo(
-    () => maps.filter((m) => m.id in inProgress),
-    [maps, inProgress],
-  );
-  const recommendedMaps = useMemo(() => maps.slice(0, 2), [maps]);
-  const beginnerMaps = useMemo(() => maps.filter((m) => m.difficulty <= 2), [maps]);
+  const inProgressMaps = useMemo(() => mapsSortedPlayable.filter((m) => m.id in inProgress), [mapsSortedPlayable, inProgress]);
+  const recommendedMaps = useMemo(() => mapsSortedPlayable.slice(0, 2), [mapsSortedPlayable]);
+  const beginnerMaps = useMemo(() => mapsSortedPlayable.filter((m) => m.difficulty <= 2), [mapsSortedPlayable]);
   const allMapsForGrid = filteredMaps;
 
   const hasActiveFilters =
@@ -515,7 +646,7 @@ function MapsContent() {
               </h2>
               <div className={styles.continueGrid}>
                 {inProgressMaps.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
                   return (
                     <MapCard
                       key={map.id}
@@ -543,7 +674,7 @@ function MapsContent() {
               </h2>
               <div className={styles.recommendedGrid}>
                 {recommendedMaps.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
                   return (
                     <MapCard
                       key={map.id}
@@ -571,7 +702,7 @@ function MapsContent() {
               </h2>
               <div className={styles.beginnerGrid}>
                 {beginnerMaps.slice(0, 4).map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
                   return (
                     <MapCard
                       key={map.id}
@@ -603,7 +734,7 @@ function MapsContent() {
             ) : (
               <div className={styles.mapsGrid}>
                 {allMapsForGrid.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, locked);
+                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
                   return (
                     <MapCard
                       key={map.id}

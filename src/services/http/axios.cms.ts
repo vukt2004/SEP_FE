@@ -76,6 +76,10 @@ cmsAxios.interceptors.response.use(
 
     // Avoid infinite retry loops for the same request.
     if ((config as { _retry?: boolean })._retry) {
+      tokenStorage.removeCmsToken();
+      if (typeof window !== "undefined") {
+        window.location.href = ROUTES.CMS_LOGIN;
+      }
       return Promise.reject(error);
     }
     (config as { _retry?: boolean })._retry = true;
