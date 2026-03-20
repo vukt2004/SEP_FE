@@ -63,6 +63,7 @@ interface MapEditorControlsProps {
   onDescriptionChange?: (description: string) => void;
   onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
   onTimeLimitChange?: (seconds: number) => void;
+  onEstimatedStepsChange?: (steps: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
@@ -204,6 +205,7 @@ export function MapEditorControls({
   onDescriptionChange,
   onDifficultyChange,
   onTimeLimitChange,
+  onEstimatedStepsChange,
   onWinConditionChange,
   onRequiredFruitsChange,
   onPriceChange,
@@ -232,6 +234,7 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "estimatedSteps"
     | "winCondition"
     | "requiredFruits"
     | "price"
@@ -244,6 +247,7 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "estimatedSteps"
     | "winCondition"
     | "requiredFruits"
     | "price"
@@ -1276,6 +1280,38 @@ export function MapEditorControls({
                     <div style={styles.inlineFieldValue}>{mapData.config.timeLimitSeconds}s</div>
                   )}
                   {(hoveredInlineField === "timeLimit" || activeInlineField === "timeLimit") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "estimatedSteps" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("estimatedSteps")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("estimatedSteps")}
+                >
+                  <div style={styles.inlineFieldLabel}>Estimated Steps</div>
+                  {activeInlineField === "estimatedSteps" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={mapData.config.estimatedSteps}
+                      onChange={(e) =>
+                        onEstimatedStepsChange?.(Math.max(1, Number.parseInt(e.target.value) || 1))
+                      }
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{mapData.config.estimatedSteps} steps</div>
+                  )}
+                  {(hoveredInlineField === "estimatedSteps" ||
+                    activeInlineField === "estimatedSteps") && (
                     <Pencil size={14} style={styles.inlineEditIcon} />
                   )}
                 </div>

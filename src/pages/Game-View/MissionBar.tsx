@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 interface MissionBarProps {
   goal: string;
   blockLimit: number | null;
+  estimatedSteps?: number;
+  timeLimitSeconds?: number;
   requiredBlocks: string[];
   forbiddenBlocks: string[];
   width?: number;
@@ -21,6 +23,8 @@ function Badge({ label, value }: { label: string; value: string }) {
 export function MissionBar({
   goal,
   blockLimit,
+  estimatedSteps,
+  timeLimitSeconds,
   requiredBlocks,
   forbiddenBlocks,
   width,
@@ -34,6 +38,12 @@ export function MissionBar({
       <Badge label="Goal" value={goal} />
       {width && height && <Badge label="Size" value={`${width}x${height}`} />}
       <Badge label="Limit" value={blockLimit !== null ? `${blockLimit} blocks` : "No limit"} />
+      {typeof estimatedSteps === "number" && estimatedSteps > 0 && (
+        <Badge label="Estimated" value={`${estimatedSteps} steps`} />
+      )}
+      {typeof timeLimitSeconds === "number" && timeLimitSeconds > 0 && (
+        <Badge label="Time Limit" value={`${timeLimitSeconds}s`} />
+      )}
       <Badge label="Required" value={requiredText} />
       <Badge label="Forbidden" value={forbiddenText} />
     </div>

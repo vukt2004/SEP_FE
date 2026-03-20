@@ -25,6 +25,8 @@ export interface MapConfig {
   difficulty: 1 | 2 | 3;
   /** Time limit in seconds */
   timeLimitSeconds: number;
+  /** Estimated algorithm steps to complete the level */
+  estimatedSteps: number;
   /** Win condition: 1 (reach goal), 2 (collect all fruits) */
   winCondition: 1 | 2;
   /** Number of required fruits to collect for winCondition 2 (0 or undefined means all fruits) */

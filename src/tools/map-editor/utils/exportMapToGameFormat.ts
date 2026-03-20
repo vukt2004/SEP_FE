@@ -172,7 +172,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       difficulty: "medium",
       description: description,
       targetAlgorithm: "manual",
-      estimatedSteps: 50,
+      estimatedSteps: mapData.config.estimatedSteps,
       requiredFruits: mapData.config.requiredFruits,
     },
     blockConstraints: {
