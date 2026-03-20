@@ -594,6 +594,13 @@ export function MapEditorControls({
       return;
     }
 
+    const hasPlayer = mapData.objects.items.some((item) => item.type === "player");
+    const hasGoal = mapData.objects.items.some((item) => item.type === "goal");
+    if (!hasPlayer || !hasGoal) {
+      alert("Please place both a Player start and a Goal before saving the map.");
+      return;
+    }
+
     if (
       mapData.config.winCondition === 2 &&
       mapData.config.requiredFruits !== undefined &&

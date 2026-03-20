@@ -31,8 +31,6 @@ export function MissionBar({
   height,
 }: MissionBarProps) {
   const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None";
-  const allowedText =
-    allowedBlocks.length > 0 ? allowedBlocks.join(", ") : "All blocks allowed";
 
   return (
     <div style={styles.container}>
@@ -46,7 +44,7 @@ export function MissionBar({
         <Badge label="Time Limit" value={`${timeLimitSeconds}s`} />
       )}
       <Badge label="Required" value={requiredText} />
-      <Badge label="Allowed" value={allowedText} />
+      {/* Allowed blocks intentionally hidden in the mission bar UI */}
     </div>
   );
 }
