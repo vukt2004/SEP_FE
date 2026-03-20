@@ -48,6 +48,8 @@ export function generateToolbox(
   },
 ): FlyoutToolbox {
   const hiddenTypes = new Set(options?.hiddenBlockTypes ?? []);
+  // User request: hide only category headers (not the blocks) for these sections.
+  const hiddenCategoryLabels = new Set<BlockCategory>(["movement", "control"]);
 
   // Group blocks by category
   const blocksByCategory = new Map<BlockCategory, BlockConfig[]>();
@@ -78,21 +80,24 @@ export function generateToolbox(
 
   categoryOrder.forEach((category, index) => {
     const blocks = blocksByCategory.get(category);
-    if (blocks && blocks.length > 0) {
+    const visibleBlocks =
+      blocks?.filter((block) => !hiddenTypes.has(block.type)) ?? [];
+
+    if (visibleBlocks.length > 0) {
       // Add category label
-      if (index > 0) {
-        contents.push({ kind: "sep", gap: "32" });
+      const shouldShowLabel = !hiddenCategoryLabels.has(category);
+      if (shouldShowLabel) {
+        if (index > 0) {
+          contents.push({ kind: "sep", gap: "32" });
+        }
+        contents.push({
+          kind: "label",
+          text: CATEGORY_NAMES[category],
+        });
       }
-      contents.push({
-        kind: "label",
-        text: CATEGORY_NAMES[category],
-      });
 
       // Add blocks from this category
-      blocks.forEach((block) => {
-        if (hiddenTypes.has(block.type)) {
-          return;
-        }
+      visibleBlocks.forEach((block) => {
         contents.push({
           kind: "block",
           type: block.type,

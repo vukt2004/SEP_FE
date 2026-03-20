@@ -20,7 +20,6 @@ import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
 import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
-import { MissionBar } from "./MissionBar";
 import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
@@ -35,7 +34,6 @@ import {
   Eraser,
   Send,
   Flag,
-  Info,
 } from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
@@ -90,6 +88,9 @@ export default function GameView() {
   const fruitCollectedPulseRef = useRef(false);
   const [execVariables, setExecVariables] = useState<RuntimeVariables>({});
   const [lastRemoved, setLastRemoved] = useState<LastRemovedItem | null>(null);
+  // Data panel is hidden from learner UI, keep runtime state for executor internals.
+  void execVariables;
+  void lastRemoved;
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -716,6 +717,7 @@ export default function GameView() {
       ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
       : blockConstraints?.bannedBlocks ?? [];
   const allowedBlocks = normalizedAllowedTypes.map((type) => toBlockLabel(type));
+  const bannedBlocks = derivedBannedTypesForWorkspace.map((type) => toBlockLabel(type));
   const totalHints = hints.length;
   const revealedHintCount = Math.min(revealedHints, totalHints);
   const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
@@ -992,7 +994,8 @@ export default function GameView() {
           display: "flex",
           flexWrap: "wrap",
           gap: "10px",
-          alignItems: "center",
+          alignItems: "stretch",
+          justifyContent: "space-between",
           padding: "12px",
           borderRadius: "16px",
           border: "1px solid var(--border)",
@@ -1001,92 +1004,96 @@ export default function GameView() {
           boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
         }}
       >
-        <button
-          onClick={() =>
-            navigate(multiplayerRoomId ? ROUTES.LEARNER_LEARN : ROUTES.LEARNER_MAPS_BROWSE)
-          }
-          style={controlButtonStyle("neutral", false, hoveredControl === "back")}
-          onMouseEnter={() => setHoveredControl("back")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <ArrowLeft size={15} /> {multiplayerRoomId ? "Leave" : "Back to Maps"}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={() =>
+              navigate(multiplayerRoomId ? ROUTES.LEARNER_LEARN : ROUTES.LEARNER_MAPS_BROWSE)
+            }
+            style={controlButtonStyle("neutral", false, hoveredControl === "back")}
+            onMouseEnter={() => setHoveredControl("back")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <ArrowLeft size={15} /> {multiplayerRoomId ? "Leave" : "Back to Maps"}
+          </button>
 
-        {multiplayerRoomId && (
-          <>
-            <button
-              onClick={handleMultiplayerSubmit}
-              disabled={isLoading || !!error || submitLoading || submitted}
-              style={controlButtonStyle(
-                "primary",
-                isLoading || !!error || submitLoading || submitted,
-                hoveredControl === "submit",
-              )}
-              onMouseEnter={() => setHoveredControl("submit")}
-              onMouseLeave={() => setHoveredControl(null)}
-            >
-              <Send size={15} /> {submitted ? "Submitted" : "Submit solution"}
-            </button>
-            <button
-              onClick={handleEndMultiplayerGame}
-              style={controlButtonStyle("warning", false, hoveredControl === "end")}
-              onMouseEnter={() => setHoveredControl("end")}
-              onMouseLeave={() => setHoveredControl(null)}
-            >
-              <Flag size={15} /> End game
-            </button>
-          </>
-        )}
-
-        <button
-          onClick={handleRunProgram}
-          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
-          style={controlButtonStyle(
-            "primary",
-            isLoading || !!error || isExecutorRunning || !isLevelStarted,
-            hoveredControl === "run",
+          {multiplayerRoomId && (
+            <>
+              <button
+                onClick={handleMultiplayerSubmit}
+                disabled={isLoading || !!error || submitLoading || submitted}
+                style={controlButtonStyle(
+                  "primary",
+                  isLoading || !!error || submitLoading || submitted,
+                  hoveredControl === "submit",
+                )}
+                onMouseEnter={() => setHoveredControl("submit")}
+                onMouseLeave={() => setHoveredControl(null)}
+              >
+                <Send size={15} /> {submitted ? "Submitted" : "Submit solution"}
+              </button>
+              <button
+                onClick={handleEndMultiplayerGame}
+                style={controlButtonStyle("warning", false, hoveredControl === "end")}
+                onMouseEnter={() => setHoveredControl("end")}
+                onMouseLeave={() => setHoveredControl(null)}
+              >
+                <Flag size={15} /> End game
+              </button>
+            </>
           )}
-          onMouseEnter={() => setHoveredControl("run")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <Play size={15} /> Run Program
-        </button>
+        </div>
 
-        <button
-          onClick={handleStepExecution}
-          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
-          style={controlButtonStyle(
-            "primary",
-            isLoading || !!error || isExecutorRunning || !isLevelStarted,
-            hoveredControl === "step",
-          )}
-          onMouseEnter={() => setHoveredControl("step")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <SkipForward size={15} /> Step Execution
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={handleRunProgram}
+            disabled={isLoading || !!error || isExecutorRunning}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || isExecutorRunning,
+              hoveredControl === "run",
+            )}
+            onMouseEnter={() => setHoveredControl("run")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <Play size={15} /> Run Program
+          </button>
 
-        <button
-          onClick={handleStopProgram}
-          disabled={!isExecutorRunning}
-          style={controlButtonStyle("danger", !isExecutorRunning, hoveredControl === "stop")}
-          onMouseEnter={() => setHoveredControl("stop")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <Pause size={15} /> Stop
-        </button>
+          <button
+            onClick={handleStepExecution}
+            disabled={isLoading || !!error || isExecutorRunning}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || isExecutorRunning,
+              hoveredControl === "step",
+            )}
+            onMouseEnter={() => setHoveredControl("step")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <SkipForward size={15} /> Step Execution
+          </button>
 
-        <button
-          onClick={handleReset}
-          disabled={isLoading || !!error}
-          style={controlButtonStyle("warning", isLoading || !!error, hoveredControl === "reset")}
-          onMouseEnter={() => setHoveredControl("reset")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <RotateCcw size={15} /> Reset
-        </button>
+          <button
+            onClick={handleStopProgram}
+            disabled={isLoading || !!error}
+            style={controlButtonStyle("danger", isLoading || !!error, hoveredControl === "stop")}
+            onMouseEnter={() => setHoveredControl("stop")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <Pause size={15} /> Stop
+          </button>
 
-        <div style={{ marginLeft: "auto" }}>
+          <button
+            onClick={handleReset}
+            disabled={isLoading || !!error}
+            style={controlButtonStyle("warning", isLoading || !!error, hoveredControl === "reset")}
+            onMouseEnter={() => setHoveredControl("reset")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <RotateCcw size={15} /> Reset
+          </button>
+        </div>
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
           <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
         </div>
       </div>
@@ -1177,33 +1184,6 @@ export default function GameView() {
               />
             </div>
 
-            <button
-              onClick={() => setShowMissionModal(true)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                color: "var(--text)",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 700,
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "color-mix(in srgb, var(--primary) 18%, var(--surface))";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)";
-              }}
-            >
-              <Info size={14} /> Mission
-            </button>
-
             <div
               style={{
                 padding: "8px 12px",
@@ -1219,7 +1199,7 @@ export default function GameView() {
             </div>
             <button
               onClick={() => setShowHintsModal(true)}
-              disabled={allHintsRevealed}
+              disabled={false}
               style={{
                 marginLeft: "auto",
                 display: "inline-flex",
@@ -1228,14 +1208,12 @@ export default function GameView() {
                 padding: "8px 12px",
                 borderRadius: "12px",
                 ...hintButtonStyles[hintButtonState],
-                cursor: allHintsRevealed ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: 800,
                 transition: "all 0.2s ease",
-                boxShadow: allHintsRevealed
-                  ? "none"
-                  : "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
-                opacity: allHintsRevealed ? 0.8 : 1,
+                boxShadow: "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
+                opacity: 1,
               }}
               aria-label="Show map hints"
             >
@@ -1255,17 +1233,6 @@ export default function GameView() {
               🎯 {mapConfig?.winCondition === 1 ? "Reach Goal" : "Collect All Fruits"}
             </div> */}
           </div>
-
-          <MissionBar
-            goal={missionGoal}
-            blockLimit={blockConstraints?.blockLimit ?? null}
-            estimatedSteps={mapConfig?.estimatedSteps}
-            timeLimitSeconds={mapConfig?.timeLimitSeconds}
-            requiredBlocks={requiredBlocks}
-            allowedBlocks={allowedBlocks}
-            width={mapConfig?.width}
-            height={mapConfig?.height}
-          />
 
           <div
             style={{
@@ -1428,93 +1395,7 @@ export default function GameView() {
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  background: "color-mix(in srgb, var(--primary) 20%, var(--surface))",
-                  border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
-                  borderRadius: "999px",
-                  padding: "4px 10px",
-                }}
-              >
-                Movement
-              </span>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  background: "color-mix(in srgb, var(--accent) 20%, var(--surface))",
-                  border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
-                  borderRadius: "999px",
-                  padding: "4px 10px",
-                }}
-              >
-                Control
-              </span>
-            </div>
             <BlockCounter used={blocksUsed} limit={blockConstraints?.blockLimit ?? null} />
-          </div>
-
-          <div
-            style={{
-              padding: "10px 12px",
-              borderBottom: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: "12px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
-              <div style={{ fontWeight: 800, opacity: 0.9 }}>Data</div>
-              {lastRemoved && (
-                <div style={{ opacity: 0.8 }}>
-                  Took from{" "}
-                  <strong>
-                    {lastRemoved.name} ({lastRemoved.structure})
-                  </strong>
-                  : <code>{String(lastRemoved.value)}</code>
-                </div>
-              )}
-            </div>
-            <div style={{ marginTop: "8px", display: "grid", gap: "6px" }}>
-              {Object.entries(execVariables)
-                .filter(([, v]) => Array.isArray(v))
-                .map(([name, v]) => {
-                  const items = v
-                    .slice(0, 20)
-                    .map((item) =>
-                      typeof item === "object" && item !== null
-                        ? JSON.stringify(item)
-                        : String(item),
-                    );
-                  return (
-                    <div key={name} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      <div style={{ minWidth: "90px", fontWeight: 700 }}>{name}:</div>
-                      <div
-                        style={{
-                          fontFamily:
-                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                          opacity: 0.9,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                        }}
-                        title={items.join(" → ")}
-                      >
-                        [{items.join(" → ")}]
-                      </div>
-                    </div>
-                  );
-                })}
-              {Object.entries(execVariables).filter(([, v]) => Array.isArray(v)).length === 0 && (
-                <div style={{ opacity: 0.7 }}>Create an Array, Queue, or Stack to see it here.</div>
-              )}
-            </div>
           </div>
 
           <div
@@ -1544,6 +1425,7 @@ export default function GameView() {
         blockLimit={blockConstraints?.blockLimit ?? null}
         requiredBlocks={requiredBlocks}
         allowedBlocks={allowedBlocks}
+        bannedBlocks={bannedBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
       />
