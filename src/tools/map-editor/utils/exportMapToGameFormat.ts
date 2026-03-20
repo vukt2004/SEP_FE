@@ -1,6 +1,54 @@
 import type { MapData } from "../../../shared/types/MapSchema";
 
 /**
+ * Portal validation error
+ */
+export class PortalValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PortalValidationError";
+  }
+}
+
+/**
+ * Validate portal placements
+ * Each color must have exactly 0 or 2 portals (no orphaned portals)
+ *
+ * @throws PortalValidationError if validation fails
+ */
+function validatePortals(mapData: MapData): void {
+  const portalsByColor: Record<string, number> = {
+    blue: 0,
+    green: 0,
+    orange: 0,
+    purple: 0,
+  };
+
+  mapData.objects.items?.forEach((item) => {
+    if (item.type === "portal") {
+      const color = (item.metadata?.color as string) || "blue";
+      if (color in portalsByColor) {
+        portalsByColor[color]++;
+      }
+    }
+  });
+
+  // Check that each color has 0 or exactly 2 portals
+  const invalidColors: string[] = [];
+  for (const [color, count] of Object.entries(portalsByColor)) {
+    if (count !== 0 && count !== 2) {
+      invalidColors.push(`${color} (${count} portal${count !== 1 ? "s" : ""})`);
+    }
+  }
+
+  if (invalidColors.length > 0) {
+    throw new PortalValidationError(
+      `Portal validation failed: ${invalidColors.join(", ")}. Each color must have exactly 0 or 2 portals.`,
+    );
+  }
+}
+
+/**
  * Game level format (matches public/mock-data/test-view/*.json)
  */
 export interface GameLevelFormat {
@@ -60,6 +108,9 @@ export interface GameLevelFormat {
  * @returns Game level format
  */
 export function exportMapToGameFormat(mapData: MapData, levelName?: string): GameLevelFormat {
+  // Validate portals before exporting
+  validatePortals(mapData);
+
   const timestamp = Date.now();
   const id = `level-${mapData.config.type}-${timestamp}`;
   const name = levelName || mapData.config.name || `${mapData.config.type} Level`;
@@ -154,18 +205,33 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
   });
 
   // Add sliding and disappearing blocks
-  mapData.objects.decorativeObjects.forEach((obj, index) => {
-    let type = obj.id.toString();
-    if (obj.id === 13) type = "sliding_block";
-    else if (obj.id === 14) type = "disappearing_block";
-    objects.push({
-      id: `block-${index + 1}`,
-      type,
-      position: {
-        row: obj.y,
-        col: obj.x,
-      },
-    });
+  mapData.objects.items.forEach((obj, index) => {
+    if (obj.type === "sliding_block" || obj.type === "disappearing_block") {
+      objects.push({
+        id: `block-${index + 1}`,
+        type: obj.type,
+        position: {
+          row: obj.y,
+          col: obj.x,
+        },
+      });
+    }
+  });
+
+  // Add portals with color metadata
+  let portalCount = 1;
+  mapData.objects.items.forEach((obj) => {
+    if (obj.type === "portal") {
+      objects.push({
+        id: `portal-${portalCount++}`,
+        type: "portal",
+        position: {
+          row: obj.y,
+          col: obj.x,
+        },
+        metadata: { color: (obj.metadata?.color as string) || "blue" },
+      });
+    }
   });
 
   return {

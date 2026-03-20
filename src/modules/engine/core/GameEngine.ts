@@ -13,6 +13,7 @@ import { BoxCollider } from "../physics/BoxCollider";
 import type { GameConfig } from "./GameConfig";
 import type { IPlayerController } from "../controllers/IPlayerController";
 import { PlayerControllerFactory } from "../controllers/PlayerControllerFactory";
+import { objectRegistry } from "../object/objectRegistry";
 import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
@@ -1049,7 +1050,7 @@ export class GameEngine {
       if (obj.position.col === playerX && obj.position.row === playerY) {
         const behavior = objectRegistry[obj.type];
         if (behavior?.onPlayerEnter) {
-          const result = behavior.onPlayerEnter(obj.initialState, this.level, this.runtime.player);
+          const result = behavior.onPlayerEnter(obj.initialState, this.level, this.runtime.player, obj);
           if (result) {
             if (result.newState) {
               this.emit({

@@ -88,7 +88,8 @@ export const objectRegistry: Record<string, ObjectBehavior> = {
         return { newState: "disappearing", delayRemove: 1000 };
       }
       return undefined;
-    },
+    }
+  },
   chest: {
     isCollidable: () => true,
     // Open once; subsequent interactions do nothing
@@ -119,5 +120,37 @@ export const objectRegistry: Record<string, ObjectBehavior> = {
   trap: {
     isCollidable: () => false, // Spikes are usually walked over to take damage, etc
     onInteract: (state) => (state === "blink" ? "idle" : "blink"),
+  },
+
+  portal: {
+    isCollidable: () => false, // Player walks through
+    onPlayerEnter: (
+      _state: string | undefined,
+      level: LevelDefinition | undefined,
+      _player: Player | undefined,
+      currentObject?: GridObjectDefinition,
+    ) => {
+      if (!level || !currentObject) return undefined;
+
+      // Get the color of the current portal from metadata
+      const portalColor = (currentObject.metadata as { color?: string })?.color;
+      if (!portalColor) return undefined;
+
+      // Find the partner portal with the same color
+      const partnerPortal = (level.objects as GridObjectDefinition[])?.find(
+        (obj: GridObjectDefinition) =>
+          obj.type === "portal" &&
+          obj.id !== currentObject.id && // Different portal
+          (obj.metadata as { color?: string })?.color === portalColor,
+      );
+
+      if (!partnerPortal) {
+        console.warn(`Portal missing partner for color: ${portalColor}`);
+        return undefined;
+      }
+
+      // Teleport to partner portal
+      return { moveTo: { row: partnerPortal.position.row, col: partnerPortal.position.col } };
+    },
   },
 };

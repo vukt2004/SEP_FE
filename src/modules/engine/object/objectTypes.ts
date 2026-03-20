@@ -1,5 +1,5 @@
 import type { Player } from "../core/types";
-import type { LevelDefinition } from "../../map-system/types";
+import type { LevelDefinition, GridObjectDefinition } from "../../map-system/types";
 
 export interface ObjectBehavior {
   isCollidable?: (state?: string) => boolean;
@@ -8,6 +8,7 @@ export interface ObjectBehavior {
     state?: string,
     level?: LevelDefinition,
     player?: Player,
+    currentObject?: GridObjectDefinition,
   ) =>
     | {
         newState?: string;

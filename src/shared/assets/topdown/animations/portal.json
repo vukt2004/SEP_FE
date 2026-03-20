@@ -1,0 +1,37 @@
+{
+  "objectType": "portal",
+  "states": {
+    "blue": {
+      "sprite": "../../Portal/PORTAL_BLUE.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "frameDuration": 150,
+      "loop": true
+    },
+    "green": {
+      "sprite": "../../Portal/PORTAL_GREEN.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "frameDuration": 150,
+      "loop": true
+    },
+    "orange": {
+      "sprite": "../../Portal/PORTAL_ORANGE.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "frameDuration": 150,
+      "loop": true
+    },
+    "purple": {
+      "sprite": "../../Portal/PORTAL_PURPLE.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 8,
+      "frameDuration": 150,
+      "loop": true
+    }
+  }
+}

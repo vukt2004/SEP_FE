@@ -54,6 +54,7 @@ interface MapEditorControlsProps {
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
+  onPortalColorChange?: (color: "blue" | "green" | "orange" | "purple") => void;
   onToolSelect: (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => void;
   onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
@@ -195,6 +196,7 @@ export function MapEditorControls({
   onLayerChange,
   onTileSelect,
   onObjectSelect,
+  onPortalColorChange,
   onToolSelect,
   onResize,
   onUndo,
@@ -257,6 +259,13 @@ export function MapEditorControls({
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
+  const [selectedPortalColor, setSelectedPortalColor] = useState<"blue" | "green" | "orange" | "purple">("blue");
+  const [portalColorCounts, setPortalColorCounts] = useState<Record<string, number>>({
+    blue: 0,
+    green: 0,
+    orange: 0,
+    purple: 0,
+  });
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
@@ -402,6 +411,27 @@ export function MapEditorControls({
       URL.revokeObjectURL(nextUrl);
     };
   }, [avatarFile]);
+
+  // Update portal color counts when mapData changes
+  useEffect(() => {
+    const counts: Record<string, number> = {
+      blue: 0,
+      green: 0,
+      orange: 0,
+      purple: 0,
+    };
+
+    mapData.objects.items?.forEach((item) => {
+      if (item.type === "portal") {
+        const color = (item.metadata?.color as string) || "blue";
+        if (color in counts) {
+          counts[color]++;
+        }
+      }
+    });
+
+    setPortalColorCounts(counts);
+  }, [mapData.objects.items]);
 
   const selectedTagNames = availableMapTags
     .filter((tag) => selectedTagIds.includes(tag.id))
@@ -1042,6 +1072,85 @@ export function MapEditorControls({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {selectedObjectId === 15 && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Portal Color</h3>
+              <p style={styles.helpText}>Select a color for the portal (max 2 per color)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                {(["blue", "green", "orange", "purple"] as const).map((color) => {
+                  const colorMap: Record<string, string> = {
+                    blue: "#2196F3",
+                    green: "#4CAF50",
+                    orange: "#FF9800",
+                    purple: "#9C27B0",
+                  };
+                  const count = portalColorCounts[color] || 0;
+                  const canPlace = count < 2;
+
+                  return (
+                    <button
+                      key={color}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "12px",
+                        borderRadius: "6px",
+                        backgroundColor:
+                          selectedPortalColor === color ? colorMap[color] + "30" : "#f5f5f5",
+                        border:
+                          selectedPortalColor === color
+                            ? `2px solid ${colorMap[color]}`
+                            : "2px solid #ddd",
+                        cursor: canPlace ? "pointer" : "not-allowed",
+                        opacity: canPlace ? 1 : 0.5,
+                        transition: "all 0.2s",
+                      }}
+                      onClick={() => {
+                        if (canPlace) {
+                          setSelectedPortalColor(color);
+                          onPortalColorChange?.(color);
+                        }
+                      }}
+                      disabled={!canPlace}
+                      title={
+                        canPlace
+                          ? `Select ${color} portal`
+                          : `Cannot place more ${color} portals (already 2)`
+                      }
+                    >
+                      <div
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          backgroundColor: colorMap[color],
+                          borderRadius: "4px",
+                        }}
+                      />
+                      <span style={{ fontSize: "13px", fontWeight: "500", textTransform: "capitalize" }}>
+                        {color}
+                      </span>
+                      <span style={{ fontSize: "11px", color: "#666" }}>
+                        {count}/2
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Portal Recolor Mode */}
+          {selectedObjectId === 15 && mapData.objects.items?.some(
+            (obj) => obj.type === "portal" && obj.x !== undefined && obj.y !== undefined
+          ) && ( 
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Recolor Portal</h3>
+              <p style={styles.helpText}>Click a placed portal to change its color</p>
             </div>
           )}
         </>

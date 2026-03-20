@@ -82,14 +82,21 @@
     },
     "13": {
       "name": "sliding_block",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
-      "frameIndex": 4
+      "imagePath": "/assets/Temporator Asset/Sliding Block.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
     },
     "14": {
       "name": "disappearing_block",
-      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Basic_Grass_Biom_Tileset.png",
+      "imagePath": "/assets/Temporator Asset/Disappearing Block.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameIndex": 0
+    },
+    "15": {
+      "name": "portal",
+      "imagePath": "/assets/Portal/PORTAL BLUE-Sheet.png",
       "frameWidth": 16,
       "frameHeight": 16,
       "frameIndex": 0
