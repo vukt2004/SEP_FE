@@ -204,6 +204,14 @@ export const learnerMapsApi = {
   },
 
   /**
+   * Publish an Approved map to the learner catalog (Admin / Moderator only).
+   * POST /api/learner/maps/{id}/publish
+   */
+  publishMap(id: string) {
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/maps/${id}/publish`);
+  },
+
+  /**
    * Add free map to user's collection (published maps with price = 0 or null)
    * POST /api/learner/maps/{id}/add-to-my-maps
    *

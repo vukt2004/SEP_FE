@@ -73,6 +73,14 @@ export const cmsMapsApi = {
   },
 
   /**
+   * Publish an Approved map to the learner catalog (Admin / Moderator).
+   * POST /api/cms/maps/{id}/publish
+   */
+  publishMap(id: string) {
+    return cmsAxios.post<ApiResult>(`/api/cms/maps/${id}/publish`);
+  },
+
+  /**
    * Upload a new map from JSON file (creates draft map)
    * POST /api/cms/maps/upload-json
    *

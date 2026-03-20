@@ -94,6 +94,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     noDescription: "No description provided",
     view: "View",
     publish: "Publish",
+    submitForReview: "Submit for review",
+    publishToCatalog: "Publish to catalog",
     rate: "Rate",
     report: "Report",
     loadingMaps: "Loading maps...",
@@ -112,6 +114,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     of: "of",
     failedLoadMaps: "Failed to load maps",
     failedSubmitReview: "Failed to submit map for review",
+    failedPublishMap: "Failed to publish map",
     failedSubmitRating: "Failed to submit rating",
     failedSubmitReport: "Failed to submit report",
 
@@ -505,6 +508,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     noDescription: "Chưa có mô tả",
     view: "Xem",
     publish: "Xuất bản",
+    submitForReview: "Gửi duyệt",
+    publishToCatalog: "Xuất bản lên kho map",
     rate: "Đánh giá",
     report: "Báo cáo",
     loadingMaps: "Đang tải bản đồ...",
@@ -523,6 +528,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     of: "của",
     failedLoadMaps: "Không tải được bản đồ",
     failedSubmitReview: "Không gửi được để duyệt",
+    failedPublishMap: "Không xuất bản được map",
     failedSubmitRating: "Không gửi được đánh giá",
     failedSubmitReport: "Không gửi được báo cáo",
 
