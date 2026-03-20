@@ -3,7 +3,6 @@ import {
   ShieldAlert,
   Boxes,
   ListChecks,
-  X,
   Play,
   Hand,
   Trophy,
@@ -12,7 +11,7 @@ import {
   Minimize2,
   Lightbulb,
 } from "lucide-react";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "@/lib/i18n/translations";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import blocksConfig from "../../shared/block/blocks-config.json";
@@ -45,18 +44,124 @@ export function LevelMissionModal({
   // `levelTitle` được truyền từ caller, nhưng UI tutorial hiện không hiển thị dòng title nữa.
   // Dùng `void` để tránh cảnh báo biến chưa được dùng.
   void levelTitle;
+  // Nút đóng đã bỏ theo yêu cầu UX, giữ prop để tương thích caller cũ.
+  void onClose;
   // 0..5 represent 6 tutorial screens (matches 6 dots).
   const [screen, setScreen] = useState<number>(0);
   const [isShrunk, setIsShrunk] = useState(false);
+  const [bubblePos, setBubblePos] = useState({ x: 24, y: 120 });
+  const [isDraggingBubble, setIsDraggingBubble] = useState(false);
+  const bubbleDragOffsetRef = useRef({ x: 0, y: 0 });
+  const bubbleMovedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
       setScreen(0);
       setIsShrunk(false);
+      if (typeof window !== "undefined") {
+        setBubblePos({
+          x: Math.max(12, window.innerWidth - 88),
+          y: Math.max(12, window.innerHeight - 120),
+        });
+      }
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isDraggingBubble) return;
+
+    const bubbleSize = 64;
+    const margin = 8;
+
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+    const moveBubble = (clientX: number, clientY: number) => {
+      const nextX = clamp(
+        clientX - bubbleDragOffsetRef.current.x,
+        margin,
+        Math.max(margin, window.innerWidth - bubbleSize - margin),
+      );
+      const nextY = clamp(
+        clientY - bubbleDragOffsetRef.current.y,
+        margin,
+        Math.max(margin, window.innerHeight - bubbleSize - margin),
+      );
+      setBubblePos({ x: nextX, y: nextY });
+      bubbleMovedRef.current = true;
+    };
+
+    const handleMouseMove = (event: MouseEvent) => moveBubble(event.clientX, event.clientY);
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      moveBubble(touch.clientX, touch.clientY);
+    };
+    const handleDragEnd = () => {
+      setIsDraggingBubble(false);
+      setTimeout(() => {
+        bubbleMovedRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleDragEnd);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleDragEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+  }, [isDraggingBubble]);
+
   if (!isOpen) return null;
+
+  const startBubbleDrag = (clientX: number, clientY: number) => {
+    bubbleDragOffsetRef.current = {
+      x: clientX - bubblePos.x,
+      y: clientY - bubblePos.y,
+    };
+    bubbleMovedRef.current = false;
+    setIsDraggingBubble(true);
+  };
+
+  if (isShrunk) {
+    return (
+      <div style={styles.overlayShrunk}>
+        <div
+          style={{
+            ...styles.shrunkBubble,
+            left: bubblePos.x,
+            top: bubblePos.y,
+            cursor: isDraggingBubble ? "grabbing" : "grab",
+          }}
+          onMouseDown={(event) => startBubbleDrag(event.clientX, event.clientY)}
+          onTouchStart={(event) => {
+            const touch = event.touches[0];
+            if (!touch) return;
+            startBubbleDrag(touch.clientX, touch.clientY);
+          }}
+          onClick={() => {
+            if (bubbleMovedRef.current) return;
+            setIsShrunk(false);
+          }}
+          role="button"
+          aria-label={isVi ? "Mở lại hướng dẫn" : "Open tutorial"}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              setIsShrunk(false);
+            }
+          }}
+        >
+          <Lightbulb size={22} />
+          <span style={styles.shrunkBubbleDot} />
+        </div>
+      </div>
+    );
+  }
 
   const formatGoal = (rawGoal: string): string => {
     // PlatformGameView/GameView currently pass goal as English phrases like "Reach Goal".
@@ -171,13 +276,6 @@ export function LevelMissionModal({
               <Minimize2 size={18} style={{ color: "rgba(255,255,255,0.95)" }} aria-hidden />
               <span style={styles.headerActionText}>{isVi ? "Thu gọn" : "Shrink"}</span>
             </button>
-
-            {onClose && (
-              <button type="button" style={styles.headerAction} onClick={onClose} aria-label="Close tutorial">
-                <X size={18} style={{ color: "rgba(255,255,255,0.95)" }} aria-hidden />
-                <span style={styles.headerActionText}>{isVi ? "Đóng" : "Close"}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -547,6 +645,37 @@ export function LevelMissionModal({
 }
 
 const styles: Record<string, CSSProperties> = {
+  overlayShrunk: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 1200,
+    pointerEvents: "none",
+  },
+  shrunkBubble: {
+    position: "fixed",
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    border: "1px solid color-mix(in srgb, var(--success) 55%, var(--border))",
+    background: "linear-gradient(180deg, var(--success) 0%, color-mix(in srgb, var(--success) 72%, var(--primary)) 100%)",
+    color: "rgba(255,255,255,0.98)",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 14px 28px rgba(16, 185, 129, 0.3)",
+    pointerEvents: "auto",
+    userSelect: "none",
+  },
+  shrunkBubbleDot: {
+    position: "absolute",
+    top: 9,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.95)",
+    boxShadow: "0 0 0 4px rgba(255,255,255,0.2)",
+  },
   overlay: {
     position: "fixed",
     inset: 0,
