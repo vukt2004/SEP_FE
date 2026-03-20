@@ -178,7 +178,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapCompleted: "Completed",
     mapInProgress: "In progress",
     mapAvailable: "Available",
-    mapLocked: "Locked",
+    mapLocked: "Not purchased. View & buy!",
     continue: "Continue",
     minutes: "min",
 
@@ -589,7 +589,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapCompleted: "Đã hoàn thành",
     mapInProgress: "Đang chơi",
     mapAvailable: "Có thể chơi",
-    mapLocked: "Đang khóa",
+    mapLocked: "Chưa mua. Bấm để xem & mua!",
     continue: "Tiếp tục",
     minutes: "phút",
 

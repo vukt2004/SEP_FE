@@ -14,8 +14,10 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import { learnerRecommendationsApi } from "@/services/api/learner/recommendations.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import type { RecommendationResultDto } from "@/types/api/learner/recommendations";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import type { MapPlayHistoryItem } from "@/types/api/learner/gameplay";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -240,6 +242,7 @@ function MapsContent() {
   const [mainTab, setMainTab] = useState<MainTab>("all");
   const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
   const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationResultDto | null>(null);
 
   const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
   const { inProgress, completed, locked } = useMapProgressFromHistory(mapIds);
@@ -329,6 +332,20 @@ function MapsContent() {
       .map((x) => x.m);
   }, [maps, ownershipByMapId, ownershipLoading, completed, inProgress]);
 
+  const recommendedIdOrder = useMemo(() => {
+    const r: any = recommendations;
+    const recommendedMaps = r?.recommendedMaps ?? r?.RecommendedMaps ?? [];
+    const ids: string[] = (recommendedMaps ?? []).map((x: any) => x.mapId ?? x.MapId);
+    // Normalize for stable matching (Guid comparison is case-insensitive).
+    return ids.filter(Boolean).map((id) => String(id).toLowerCase());
+  }, [recommendations]);
+
+  const recommendedIdIndex = useMemo(() => {
+    const idx = new Map<string, number>();
+    recommendedIdOrder.forEach((id, i) => idx.set(id, i));
+    return idx;
+  }, [recommendedIdOrder]);
+
   const loadMaps = useCallback(async () => {
     try {
       setLoading(true);
@@ -378,6 +395,25 @@ function MapsContent() {
     });
   }, []);
 
+  // Fetch BE recommendations once for the current user.
+  useEffect(() => {
+    let alive = true;
+    learnerRecommendationsApi
+      .getRecommendations()
+      .then((res) => {
+        if (!alive) return;
+        if (res.data.isSuccess) setRecommendations(res.data.data ?? null);
+        else setRecommendations(null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setRecommendations(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const filteredMaps = useMemo(() => {
     let list = [...mapsSortedPlayable];
     if (selectedKnowledgeConcepts.length > 0) {
@@ -395,17 +431,58 @@ function MapsContent() {
       });
     }
     if (mainTab === "recommended") {
-      list = list.slice(0, 6);
+      const recommendedSet = new Set(recommendedIdOrder);
+      list = list
+        .filter((m) => recommendedSet.has(m.id.toLowerCase()))
+        .sort(
+          (a, b) => {
+            // In "recommended" tab: unlocked/available first, then locked at the end.
+            const aLocked = lockedUnion.has(a.id);
+            const bLocked = lockedUnion.has(b.id);
+            if (aLocked !== bLocked) return aLocked ? 1 : -1;
+
+            return (
+              (recommendedIdIndex.get(a.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER) -
+              (recommendedIdIndex.get(b.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER)
+            );
+          },
+        )
+        .slice(0, 6);
     }
     if (mainTab === "progress") {
       list = list.filter((m) => completed.has(m.id) || m.id in inProgress);
     }
     return list;
-  }, [mapsSortedPlayable, selectedKnowledgeConcepts, selectedMechanismConcepts, mainTab, completed, inProgress]);
+  }, [
+    mapsSortedPlayable,
+    selectedKnowledgeConcepts,
+    selectedMechanismConcepts,
+    mainTab,
+    completed,
+    inProgress,
+    recommendedIdOrder,
+    recommendedIdIndex,
+    lockedUnion,
+  ]);
 
-  const inProgressMaps = useMemo(() => mapsSortedPlayable.filter((m) => m.id in inProgress), [mapsSortedPlayable, inProgress]);
-  const recommendedMaps = useMemo(() => mapsSortedPlayable.slice(0, 2), [mapsSortedPlayable]);
-  const beginnerMaps = useMemo(() => mapsSortedPlayable.filter((m) => m.difficulty <= 2), [mapsSortedPlayable]);
+  const inProgressMaps = useMemo(
+    () => mapsSortedPlayable.filter((m) => m.id in inProgress),
+    [mapsSortedPlayable, inProgress],
+  );
+
+  const recommendedMaps = useMemo(() => {
+    if (!recommendedIdOrder.length) return mapsSortedPlayable.slice(0, 2);
+    const byId = new Map(mapsSortedPlayable.map((m) => [m.id.toLowerCase(), m]));
+    return recommendedIdOrder
+      .map((id) => byId.get(id))
+      .filter((m): m is ApiMap => m != null)
+      .slice(0, 2);
+  }, [mapsSortedPlayable, recommendedIdOrder]);
+
+  const beginnerMaps = useMemo(
+    () => mapsSortedPlayable.filter((m) => m.difficulty <= 2),
+    [mapsSortedPlayable],
+  );
   const allMapsForGrid = filteredMaps;
 
   const hasActiveFilters =
@@ -657,6 +734,7 @@ function MapsContent() {
                       progressPercent={progressPercent}
                       size="large"
                       onPlay={() => navigate(`/app/map/${map.id}`)}
+                      onLocked={() => navigate(`/app/map/${map.id}`)}
                       showContinue
                     />
                   );
@@ -666,7 +744,7 @@ function MapsContent() {
           )}
 
           {/* Recommended for you */}
-          {recommendedMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
+          {recommendedMaps.length > 0 && mainTab === "recommended" && !hasActiveFilters && (
             <section className={styles.block}>
               <h2 className={styles.blockTitle}>
                 <Sparkles size={20} className={styles.blockTitleIcon} aria-hidden />
@@ -686,6 +764,7 @@ function MapsContent() {
                       size="large"
                       badge="recommended"
                       onPlay={() => navigate(`/app/map/${map.id}`)}
+                      onLocked={() => navigate(`/app/map/${map.id}`)}
                     />
                   );
                 })}
@@ -714,6 +793,7 @@ function MapsContent() {
                       size="medium"
                       badge="start_here"
                       onPlay={() => navigate(`/app/map/${map.id}`)}
+                      onLocked={() => navigate(`/app/map/${map.id}`)}
                     />
                   );
                 })}
@@ -722,35 +802,40 @@ function MapsContent() {
           )}
 
           {/* All maps grid */}
-          <section className={styles.block}>
-            <h2 className={styles.blockTitle}>
-              <LayoutGrid size={20} className={styles.blockTitleIcon} aria-hidden />
-              {mainTab === "all" ? t("allMaps") : mainTab === "recommended" ? t("recommended") : t("myProgress")}
-            </h2>
-            {allMapsForGrid.length === 0 ? (
-              <div className={styles.empty}>
-                <p>{t("noMapsPublished")}</p>
-              </div>
-            ) : (
-              <div className={styles.mapsGrid}>
-                {allMapsForGrid.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
-                  return (
-                    <MapCard
-                      key={map.id}
-                      map={map}
-                      t={t}
-                      locale={locale}
-                      status={status}
-                      progressPercent={progressPercent}
-                      size="default"
-                      onPlay={() => navigate(`/app/map/${map.id}`)}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          {mainTab === "recommended" && !hasActiveFilters ? null : (
+            <section className={styles.block}>
+              {mainTab === "all" ? (
+                <h2 className={styles.blockTitle}>
+                  <LayoutGrid size={20} className={styles.blockTitleIcon} aria-hidden />
+                  {t("allMaps")}
+                </h2>
+              ) : null}
+              {allMapsForGrid.length === 0 ? (
+                <div className={styles.empty}>
+                  <p>{t("noMapsPublished")}</p>
+                </div>
+              ) : (
+                <div className={styles.mapsGrid}>
+                  {allMapsForGrid.map((map) => {
+                    const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
+                    return (
+                      <MapCard
+                        key={map.id}
+                        map={map}
+                        t={t}
+                        locale={locale}
+                        status={status}
+                        progressPercent={progressPercent}
+                        size="default"
+                        onPlay={() => navigate(`/app/map/${map.id}`)}
+                        onLocked={() => navigate(`/app/map/${map.id}`)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
     </div>
@@ -769,6 +854,7 @@ function MapCard({
   badge,
   showContinue,
   onPlay,
+  onLocked,
 }: {
   map: ApiMap;
   t: (key: string) => string;
@@ -779,6 +865,7 @@ function MapCard({
   badge?: "recommended" | "start_here";
   showContinue?: boolean;
   onPlay: () => void;
+  onLocked?: () => void;
 }) {
   const [hover, setHover] = useState(false);
   const isLocked = status === "locked";
@@ -858,17 +945,29 @@ function MapCard({
           {t("prerequisiteKnowledge")}: {prerequisites}
         </p>
         <div className={styles.statusRow}>
-          {status !== "in_progress" && (
-            <span className={styles.statusBadge}>
-              {status === "completed" && (
-                <>
-                  <Check size={12} aria-hidden /> {t("mapCompleted")}
-                </>
-              )}
-              {status === "available" && t("mapAvailable")}
-              {status === "locked" && t("mapLocked")}
-            </span>
-          )}
+          {status !== "in_progress" &&
+            (status === "locked" ? (
+              <button
+                type="button"
+                className={styles.lockedBuyBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLocked?.();
+                }}
+              >
+                <Lock size={12} aria-hidden />
+                {t("mapLocked")}
+              </button>
+            ) : (
+              <span className={styles.statusBadge}>
+                {status === "completed" && (
+                  <>
+                    <Check size={12} aria-hidden /> {t("mapCompleted")}
+                  </>
+                )}
+                {status === "available" && t("mapAvailable")}
+              </span>
+            ))}
           {showContinue && status === "in_progress" && (
             <button
               type="button"
