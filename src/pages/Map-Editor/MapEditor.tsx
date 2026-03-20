@@ -23,6 +23,7 @@ type MapDetailLike = {
   type: "Topdown" | "Platform";
   difficulty: number;
   timeLimitMs: number;
+  estimatedSteps?: number;
   winCondition: number;
   price: number;
   hints?: Array<{ orderNo: number; content: string }>;
@@ -176,6 +177,18 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
             toNumber(detail.timeLimitMs, toNumber(configRaw.timeLimitSeconds, 60) * 1000) / 1000,
           ),
         ),
+        estimatedSteps: Math.max(
+          1,
+          Math.floor(
+            toNumber(
+              detail.estimatedSteps,
+              toNumber(
+                isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined,
+                toNumber(configRaw.estimatedSteps, 50),
+              ),
+            ),
+          ),
+        ),
         winCondition: clampWinCondition(
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
@@ -310,6 +323,15 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         description: detail.description || "",
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
+        estimatedSteps: Math.max(
+          1,
+          Math.floor(
+            toNumber(
+              detail.estimatedSteps,
+              toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined, 50),
+            ),
+          ),
+        ),
         winCondition: clampWinCondition(detail.winCondition),
         requiredFruits: Math.max(
           0,
@@ -515,6 +537,10 @@ export default function MapEditor() {
     store?.setMapTimeLimitSeconds(seconds);
   };
 
+  const handleEstimatedStepsChange = (steps: number) => {
+    store?.setMapEstimatedSteps(steps);
+  };
+
   const handleWinConditionChange = (winCondition: 1 | 2) => {
     store?.setMapWinCondition(winCondition);
   };
@@ -601,6 +627,7 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
@@ -676,6 +703,7 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}

@@ -590,6 +590,17 @@ export class EditorStore {
   }
 
   /**
+   * Update the estimated steps for solving the map
+   *
+   * @param steps - Estimated number of steps
+   */
+  setMapEstimatedSteps(steps: number): void {
+    this.saveHistory();
+    this.mapData.config.estimatedSteps = Math.max(1, Math.floor(steps));
+    this.notify();
+  }
+
+  /**
    * Update the map win condition
    *
    * @param winCondition - Win condition (1=reach goal, 2=collect all fruits)
@@ -719,6 +730,9 @@ export class EditorStore {
     }
     if (loadedMap.config.timeLimitSeconds === undefined) {
       loadedMap.config.timeLimitSeconds = 300; // Default: 5 minutes
+    }
+    if (loadedMap.config.estimatedSteps === undefined) {
+      loadedMap.config.estimatedSteps = 50; // Default estimated steps
     }
     if (loadedMap.config.winCondition === undefined) {
       loadedMap.config.winCondition = 1; // Default: Reach goal

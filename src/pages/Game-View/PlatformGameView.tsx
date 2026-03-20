@@ -92,6 +92,8 @@ export default function PlatformGameView() {
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [timerResetSignal, setTimerResetSignal] = useState(0);
+  const timerElapsedRef = useRef(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
   const fruitCollectedPulseRef = useRef(false);
   const [execVariables, setExecVariables] = useState<RuntimeVariables>({});
@@ -114,6 +116,10 @@ export default function PlatformGameView() {
       setWarningToast(null);
       warningToastTimeoutRef.current = null;
     }, 3500);
+  }, []);
+
+  const handleTimerElapsedChange = useCallback((seconds: number) => {
+    timerElapsedRef.current = seconds;
   }, []);
 
   useEffect(() => {
@@ -233,7 +239,7 @@ export default function PlatformGameView() {
             isWin: true,
             stepCount: engine.getStepCount(),
             blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: engine.getElapsedTime(),
+            elapsedTime: timerElapsedRef.current,
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
           setShowResultsModal(true);
@@ -248,7 +254,7 @@ export default function PlatformGameView() {
             isWin: false,
             stepCount: engine.getStepCount(),
             blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: engine.getElapsedTime(),
+            elapsedTime: timerElapsedRef.current,
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
           setShowResultsModal(true);
@@ -331,10 +337,31 @@ export default function PlatformGameView() {
         return acc;
       }, {});
 
-      const constraintsValidation = engineRef.current.validateBlockUsage(blockUsage);
-      if (!constraintsValidation.isValid) {
-        showWarningToast(constraintsValidation.message || "Block constraints are not satisfied.");
-        return;
+      const constraints = engineRef.current.getBlockConstraints();
+      if (constraints) {
+        for (const bannedType of constraints.bannedBlocks || []) {
+          const used = blockUsage[bannedType] ?? 0;
+          if (used > 0) {
+            showWarningToast(`Forbidden block used: ${bannedType}.`);
+            return;
+          }
+        }
+
+        for (const rule of constraints.requiredBlocks || []) {
+          const used = blockUsage[rule.type] ?? 0;
+          if (used < rule.minCount) {
+            showWarningToast(`Required block missing: ${rule.type} (${used}/${rule.minCount}).`);
+            return;
+          }
+        }
+
+        const blockLimit = constraints.blockLimit;
+        if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
+          const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
+          if (totalUsed > blockLimit) {
+            showWarningToast(`Block limit exceeded (${totalUsed}/${blockLimit}). Running anyway.`);
+          }
+        }
       }
 
       const program: BlockProgram = generateAST(workspaceRef.current);
@@ -476,6 +503,44 @@ export default function PlatformGameView() {
     setExecVariables({});
     setLastRemoved(null);
     fruitCollectedPulseRef.current = false;
+  };
+
+  const handlePlayAgainFromResults = () => {
+    historyRecordedRef.current = false;
+    setSubmitted(false);
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current.reset();
+    }
+
+    if (workspaceRef.current) {
+      workspaceRef.current.clear();
+    }
+
+    if (engineRef.current) {
+      try {
+        // New game style restart: reset world and wait for Start Level
+        engineRef.current.reset();
+      } catch (err) {
+        console.error("Error resetting engine for play again:", err);
+        window.location.reload();
+        return;
+      }
+    }
+
+    setIsExecutorRunning(false);
+    setCollectedFruits(0);
+    setShowResultsModal(false);
+    setShowExecutionIncompleteModal(false);
+    setExecVariables({});
+    setLastRemoved(null);
+    setBlocksUsed(0);
+    setRevealedHints(0);
+    setIsLevelStarted(false);
+    setShowMissionModal(true);
+    fruitCollectedPulseRef.current = false;
+    setTimerResetSignal((prev) => prev + 1);
   };
 
   const handleStepExecution = () => {
@@ -981,7 +1046,13 @@ export default function PlatformGameView() {
               ⏱ Time
             </div> */}
             <div style={{ minWidth: "120px" }}>
-              <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
+              <GameTimer
+                engineRef={engineRef}
+                isLoading={isLoading}
+                error={error}
+                resetSignal={timerResetSignal}
+                onElapsedTimeChange={handleTimerElapsedChange}
+              />
             </div>
 
             <button
@@ -1065,6 +1136,8 @@ export default function PlatformGameView() {
           <MissionBar
             goal={missionGoal}
             blockLimit={blockConstraints?.blockLimit ?? null}
+            estimatedSteps={mapConfig?.estimatedSteps}
+            timeLimitSeconds={mapConfig?.timeLimitSeconds}
             requiredBlocks={requiredBlocks}
             forbiddenBlocks={forbiddenBlocks}
             width={mapConfig?.width}
@@ -1333,7 +1406,7 @@ export default function PlatformGameView() {
             <BlocklyWorkspace
               onWorkspaceReady={handleWorkspaceReady}
               bannedBlockTypes={blockConstraints?.bannedBlocks ?? []}
-              blockLimit={blockConstraints?.blockLimit ?? null}
+              blockLimit={null}
               onConstraintViolation={showWarningToast}
               onBlockCountChange={setBlocksUsed}
             />
@@ -1380,9 +1453,11 @@ export default function PlatformGameView() {
           blocksUsed={gameResult.blocksUsed}
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
+          timeLimitSeconds={mapConfig?.timeLimitSeconds ?? null}
+          stepEstimated={mapConfig?.estimatedSteps ?? null}
+          blockLimit={blockConstraints?.blockLimit ?? null}
           onReset={() => {
-            setShowResultsModal(false);
-            handleReset();
+            handlePlayAgainFromResults();
           }}
           onBackToMenu={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
         />
