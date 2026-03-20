@@ -14,7 +14,9 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerRecommendationsApi } from "@/services/api/learner/recommendations.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import type { RecommendationResultDto } from "@/types/api/learner/recommendations";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
@@ -191,9 +193,24 @@ function MapsContent() {
   const [mainTab, setMainTab] = useState<MainTab>("all");
   const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
   const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<RecommendationResultDto | null>(null);
 
   const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
   const { inProgress, completed, locked } = useMapProgress(mapIds);
+
+  const recommendedIdOrder = useMemo(() => {
+    const r: any = recommendations;
+    const recommendedMaps = r?.recommendedMaps ?? r?.RecommendedMaps ?? [];
+    const ids: string[] = (recommendedMaps ?? []).map((x: any) => x.mapId ?? x.MapId);
+    // Normalize for stable matching (Guid comparison is case-insensitive).
+    return ids.filter(Boolean).map((id) => String(id).toLowerCase());
+  }, [recommendations]);
+
+  const recommendedIdIndex = useMemo(() => {
+    const idx = new Map<string, number>();
+    recommendedIdOrder.forEach((id, i) => idx.set(id, i));
+    return idx;
+  }, [recommendedIdOrder]);
 
   const loadMaps = useCallback(async () => {
     try {
@@ -244,6 +261,25 @@ function MapsContent() {
     });
   }, []);
 
+  // Fetch BE recommendations once for the current user.
+  useEffect(() => {
+    let alive = true;
+    learnerRecommendationsApi
+      .getRecommendations()
+      .then((res) => {
+        if (!alive) return;
+        if (res.data.isSuccess) setRecommendations(res.data.data ?? null);
+        else setRecommendations(null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setRecommendations(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const filteredMaps = useMemo(() => {
     let list = [...maps];
     if (selectedKnowledgeConcepts.length > 0) {
@@ -261,19 +297,43 @@ function MapsContent() {
       });
     }
     if (mainTab === "recommended") {
-      list = list.slice(0, 6);
+      const recommendedSet = new Set(recommendedIdOrder);
+      list = list
+        .filter((m) => recommendedSet.has(m.id.toLowerCase()))
+        .sort(
+          (a, b) =>
+            (recommendedIdIndex.get(a.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER) -
+            (recommendedIdIndex.get(b.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER),
+        )
+        .slice(0, 6);
     }
     if (mainTab === "progress") {
       list = list.filter((m) => completed.has(m.id) || m.id in inProgress);
     }
     return list;
-  }, [maps, selectedKnowledgeConcepts, selectedMechanismConcepts, mainTab, completed, inProgress]);
+  }, [
+    maps,
+    selectedKnowledgeConcepts,
+    selectedMechanismConcepts,
+    mainTab,
+    completed,
+    inProgress,
+    recommendedIdOrder,
+    recommendedIdIndex,
+  ]);
 
   const inProgressMaps = useMemo(
     () => maps.filter((m) => m.id in inProgress),
     [maps, inProgress],
   );
-  const recommendedMaps = useMemo(() => maps.slice(0, 2), [maps]);
+  const recommendedMaps = useMemo(() => {
+    if (!recommendedIdOrder.length) return maps.slice(0, 2);
+    const byId = new Map(maps.map((m) => [m.id.toLowerCase(), m]));
+    return recommendedIdOrder
+      .map((id) => byId.get(id))
+      .filter((m): m is ApiMap => m != null)
+      .slice(0, 2);
+  }, [maps, recommendedIdOrder]);
   const beginnerMaps = useMemo(() => maps.filter((m) => m.difficulty <= 2), [maps]);
   const allMapsForGrid = filteredMaps;
 
