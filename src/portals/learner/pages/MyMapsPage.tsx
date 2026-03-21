@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
@@ -98,7 +99,8 @@ type MapListProps = {
 };
 
 const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
-  if (difficulty === 1) {
+  const tier = getDifficultyTier(difficulty);
+  if (tier === "easy") {
     return {
       background: "rgba(34, 197, 94, 0.14)",
       color: "#166534",
@@ -106,7 +108,7 @@ const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
     };
   }
 
-  if (difficulty === 2) {
+  if (tier === "medium") {
     return {
       background: "rgba(245, 158, 11, 0.16)",
       color: "#9a6700",
@@ -114,18 +116,10 @@ const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
     };
   }
 
-  if (difficulty === 3) {
-    return {
-      background: "rgba(239, 68, 68, 0.14)",
-      color: "#991b1b",
-      border: "1px solid rgba(239, 68, 68, 0.38)",
-    };
-  }
-
   return {
-    background: "var(--surface-2)",
-    color: "var(--text-2)",
-    border: "1px solid var(--border)",
+    background: "rgba(239, 68, 68, 0.14)",
+    color: "#991b1b",
+    border: "1px solid rgba(239, 68, 68, 0.38)",
   };
 };
 
@@ -961,16 +955,10 @@ export const MyMapsPage: React.FC = () => {
   };
 
   const getDifficultyLabel = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return t("easy");
-      case 2:
-        return t("medium");
-      case 3:
-        return t("hard");
-      default:
-        return t("unknown");
-    }
+    const tier = getDifficultyTier(difficulty);
+    if (tier === "easy") return t("easy");
+    if (tier === "medium") return t("medium");
+    return t("hard");
   };
 
   const formatDate = (dateString: string | null) => {

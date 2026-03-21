@@ -23,6 +23,7 @@ import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 
 /** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
 const DIFFICULTY_TAG_NAMES = new Set(
@@ -202,8 +203,9 @@ function formatTime(timeLimitMs: number, t: (k: string) => string): string {
 }
 
 function getDifficultyLabel(d: number, t: (k: string) => string): string {
-  if (d <= 2) return t("easy");
-  if (d <= 5) return t("medium");
+  const tier = getDifficultyTier(d);
+  if (tier === "easy") return t("easy");
+  if (tier === "medium") return t("medium");
   return t("hard");
 }
 
@@ -480,7 +482,7 @@ function MapsContent() {
   }, [mapsSortedPlayable, recommendedIdOrder]);
 
   const beginnerMaps = useMemo(
-    () => mapsSortedPlayable.filter((m) => m.difficulty <= 2),
+    () => mapsSortedPlayable.filter((m) => getDifficultyTier(m.difficulty) === "easy"),
     [mapsSortedPlayable],
   );
   const allMapsForGrid = filteredMaps;
@@ -869,8 +871,9 @@ function MapCard({
 }) {
   const [hover, setHover] = useState(false);
   const isLocked = status === "locked";
+  const diffTier = getDifficultyTier(map.difficulty);
   const difficultyClass =
-    map.difficulty <= 2 ? styles.difficultyEasy : map.difficulty <= 5 ? styles.difficultyMedium : styles.difficultyHard;
+    diffTier === "easy" ? styles.difficultyEasy : diffTier === "medium" ? styles.difficultyMedium : styles.difficultyHard;
   const tagNames = map.tagNames ?? [];
   const conceptTags = tagNames.filter((name) => !isDifficultyTag(name));
   const prerequisites =

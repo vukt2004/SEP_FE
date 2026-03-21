@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import styles from "./LobbyMapPickerGrid.module.css";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 
 export type LobbyMapPickerGridProps = {
   maps: ApiMap[];
@@ -14,9 +15,10 @@ export type LobbyMapPickerGridProps = {
   disabled?: boolean;
 };
 
-function difficultyClass(d: number): string {
-  if (d <= 3) return styles.diffEasy;
-  if (d <= 6) return styles.diffMedium;
+function difficultyClassFromTier(d: number): string {
+  const tier = getDifficultyTier(d);
+  if (tier === "easy") return styles.diffEasy;
+  if (tier === "medium") return styles.diffMedium;
   return styles.diffHard;
 }
 
@@ -96,7 +98,7 @@ export function LobbyMapPickerGrid({
                 <h3 className={styles.title}>{m.title}</h3>
                 {m.description ? <p className={styles.desc}>{m.description}</p> : null}
                 <div className={styles.meta}>
-                  <span className={difficultyClass(m.difficulty)}>
+                  <span className={difficultyClassFromTier(m.difficulty)}>
                     {t("difficulty")}: {m.difficulty}/10
                   </span>
                   <span>⏱ {formatMinutes(m.timeLimitMs, t("minutes"))}</span>
