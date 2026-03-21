@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
-import { GameEngine } from "../../modules/engine/core/GameEngine";
+import { EngineState, GameEngine } from "../../modules/engine/core/GameEngine";
 import type {
   BlockProgram,
   ConditionType,
@@ -20,6 +20,7 @@ import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
 import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
+import { TrapFailedModal } from "./TrapFailedModal";
 import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
@@ -76,6 +77,7 @@ export default function GameView() {
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
+  const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
@@ -278,16 +280,8 @@ export default function GameView() {
             executorRef.current.stop();
           }
           setIsExecutorRunning(false);
-
-          // Show results modal
-          setGameResult({
-            isWin: false,
-            stepCount: engine.getStepCount(),
-            blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: timerElapsedRef.current,
-            fruitsCollected: engine.getCollectedFruitsCount(),
-          });
-          setShowResultsModal(true);
+          setShowExecutionIncompleteModal(false);
+          setShowTrapFailedModal(true);
         };
 
         const handleObjectStateChanged = (event: EngineEvent) => {
@@ -579,7 +573,7 @@ export default function GameView() {
       }, 500, () => {
         setIsExecutorRunning(false);
         const engine = engineRef.current;
-        if (!engine || engine.hasWon()) {
+        if (!engine || engine.hasWon() || engine.getState() === EngineState.Failed) {
           return;
         }
         setShowExecutionIncompleteModal(true);
@@ -625,6 +619,7 @@ export default function GameView() {
     setCollectedFruits(0);
     setShowResultsModal(false);
     setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
     setExecVariables({});
     setLastRemoved(null);
     fruitCollectedPulseRef.current = false;
@@ -658,6 +653,7 @@ export default function GameView() {
     setCollectedFruits(0);
     setShowResultsModal(false);
     setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
     setExecVariables({});
     setLastRemoved(null);
     setBlocksUsed(0);
@@ -1451,6 +1447,14 @@ export default function GameView() {
         isOpen={showExecutionIncompleteModal}
         onConfirm={() => {
           setShowExecutionIncompleteModal(false);
+          handleReset();
+        }}
+      />
+
+      <TrapFailedModal
+        isOpen={showTrapFailedModal}
+        onReplay={() => {
+          setShowTrapFailedModal(false);
           handleReset();
         }}
       />
