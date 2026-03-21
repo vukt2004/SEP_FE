@@ -26,8 +26,8 @@ export function getRolesFromLearnerJwt(token: string | null | undefined): string
   }
 }
 
-/** Admin / Moderator may call POST /api/learner/maps/{id}/publish (Approved → Published). */
-export function canPublishMapViaLearnerApi(token: string | null | undefined): boolean {
+/** Admin / Moderator roles decoded from learner JWT (UI hints). Publish from learner app uses learner maps API. */
+export function isAdminOrModeratorLearnerJwt(token: string | null | undefined): boolean {
   const roles = getRolesFromLearnerJwt(token);
   return roles.some((r) => {
     const x = r.trim().toLowerCase();

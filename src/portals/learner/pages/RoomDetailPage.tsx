@@ -23,6 +23,7 @@ import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import type { LobbyRoomDetailResponse, LobbyPlayerDto } from "@/types/api/learner/lobby";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
 import styles from "./RoomDetailPage.module.css";
+import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
 
 const ROOM_STATUS_MAP: Record<number | string, LobbyRoomDetailResponse["status"]> = {
   0: "Waiting",
@@ -37,13 +38,25 @@ const ROOM_STATUS_MAP: Record<number | string, LobbyRoomDetailResponse["status"]
 
 function normalizeDetail(raw: Record<string, unknown>): LobbyRoomDetailResponse {
   const players = (raw.players ?? raw.Players) as unknown[];
+  const parsedPlayers: LobbyPlayerDto[] = Array.isArray(players)
+    ? (players.map((p: unknown) => {
+        const r = p as Record<string, unknown>;
+        return {
+          playerId: String(r.playerId ?? r.PlayerId ?? ""),
+          isReady: Boolean(r.isReady ?? r.IsReady),
+          isHost: Boolean(r.isHost ?? r.IsHost),
+        };
+      }) as LobbyPlayerDto[])
+    : [];
+  const fromList = parsedPlayers.length;
+  const fromApi = Number(raw.currentPlayerCount ?? raw.CurrentPlayerCount ?? 0);
   const statusRaw = raw.status ?? raw.Status ?? 0;
   const status = ROOM_STATUS_MAP[statusRaw as number] ?? "Waiting";
   return {
     roomId: String(raw.roomId ?? raw.RoomId ?? ""),
     roomCode: String(raw.roomCode ?? raw.RoomCode ?? ""),
     hostId: String(raw.hostId ?? raw.HostId ?? ""),
-    currentPlayerCount: Number(raw.currentPlayerCount ?? raw.CurrentPlayerCount ?? 0),
+    currentPlayerCount: fromList > 0 ? fromList : fromApi,
     maxPlayers: Number(raw.maxPlayers ?? raw.MaxPlayers ?? 8),
     status,
     isLocked: Boolean(raw.isLocked ?? raw.IsLocked),
@@ -53,16 +66,7 @@ function normalizeDetail(raw: Record<string, unknown>): LobbyRoomDetailResponse 
         : raw.SelectedMapId != null
           ? String(raw.SelectedMapId)
           : null,
-    players: Array.isArray(players)
-      ? (players.map((p: unknown) => {
-          const r = p as Record<string, unknown>;
-          return {
-            playerId: String(r.playerId ?? r.PlayerId ?? ""),
-            isReady: Boolean(r.isReady ?? r.IsReady),
-            isHost: Boolean(r.isHost ?? r.IsHost),
-          };
-        }) as LobbyPlayerDto[])
-      : [],
+    players: parsedPlayers,
   };
 }
 
@@ -104,6 +108,8 @@ export default function RoomDetailPage() {
   const leftViaButton = useRef(false);
   const mountedAt = useRef<number>(0);
   mountedAt.current = mountedAt.current || Date.now();
+  const roomCodeRef = useRef<string | undefined>(room?.roomCode);
+  roomCodeRef.current = room?.roomCode;
 
   /** ID dùng cho API/SignalR: ưu tiên room.roomId (từ state hoặc GET) để tránh URL param bị sai (nhiều segment). */
   const roomId = room?.roomId ?? roomIdParam ?? "";
@@ -127,20 +133,28 @@ export default function RoomDetailPage() {
 
   useEffect(() => {
     fetchRoom();
-    const interval = setInterval(fetchRoom, 4000);
+    const interval = setInterval(fetchRoom, 15000);
     return () => clearInterval(interval);
   }, [fetchRoom]);
 
-  // SignalR: join room group, listen RoomUpdated, GameStarted, KickedFromRoom
+  // SignalR: join room group ngay khi có roomId (không chờ roomCode — realtime số người)
   useEffect(() => {
-    if (!roomId || !room?.roomCode) return;
+    if (!roomId) return;
     let unsubUpdated: (() => void) | undefined;
     let unsubStarted: (() => void) | undefined;
     let unsubKicked: (() => void) | undefined;
+    let unsubReconnect: (() => void) | undefined;
+
+    const joinHubRoom = () => {
+      const code = roomCodeRef.current?.trim();
+      void gameLobbyHub.joinRoom(roomId, code || null);
+    };
+
     gameLobbyHub
       .connect()
       .then(() => {
-        gameLobbyHub.joinRoom(roomId, room.roomCode);
+        joinHubRoom();
+        unsubReconnect = gameLobbyHub.onReconnected(joinHubRoom);
         unsubUpdated = gameLobbyHub.on("RoomUpdated", (data: unknown) => {
           if (data && typeof data === "object")
             setRoom(normalizeDetail(data as unknown as Record<string, unknown>));
@@ -180,6 +194,7 @@ export default function RoomDetailPage() {
       unsubUpdated?.();
       unsubStarted?.();
       unsubKicked?.();
+      unsubReconnect?.();
     };
   }, [roomId, room?.roomCode, navigate]);
 
@@ -400,9 +415,13 @@ export default function RoomDetailPage() {
               </button>
             </div>
           </div>
-          <div className={styles.meta}>
+          <div className={styles.meta} aria-live="polite" title={t("playersInRoomLive")}>
             <Users size={18} aria-hidden />
-            {room.currentPlayerCount}/{room.maxPlayers} · {room.status}
+            <span className={styles.playerCountLive}>
+              {room.players.length > 0 ? room.players.length : room.currentPlayerCount}/{room.maxPlayers}
+            </span>
+            <span aria-hidden> · </span>
+            {room.status}
           </div>
         </header>
 
@@ -500,7 +519,7 @@ export default function RoomDetailPage() {
 
       {mapModalOpen && (
         <div className={styles.modalOverlay} onClick={() => !actioning && setMapModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={`${styles.modal} ${styles.modalMapPick}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{t("selectMap")}</h2>
               <button
@@ -512,25 +531,18 @@ export default function RoomDetailPage() {
                 ×
               </button>
             </div>
-            <div className={styles.modalBody}>
-              {mapsLoading ? (
-                <p>{t("loading")}</p>
-              ) : (
-                <ul className={styles.mapList}>
-                  {maps.map((m) => (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        className={styles.mapItem}
-                        onClick={() => handleSetMap(m.id)}
-                        disabled={actioning}
-                      >
-                        {m.title} ({m.type})
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className={styles.modalBodyMapPick}>
+              <div className={styles.mapPickerScroll}>
+                <LobbyMapPickerGrid
+                  maps={maps}
+                  loading={mapsLoading}
+                  selectedMapId={room?.selectedMapId ?? null}
+                  onSelectMap={(id) => {
+                    if (id) void handleSetMap(id);
+                  }}
+                  disabled={actioning}
+                />
+              </div>
             </div>
           </div>
         </div>

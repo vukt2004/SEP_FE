@@ -13,9 +13,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
-import { canPublishMapViaLearnerApi } from "@/lib/auth/learnerJwtRoles";
+import { isAdminOrModeratorLearnerJwt } from "@/lib/auth/learnerJwtRoles";
 import { learnerCommunityApi } from "@/services/api/learner/community.api";
 import type { Map, MapStatusEnum } from "@/types/api/learner/maps";
 import {
@@ -69,15 +68,15 @@ function mapStatusAllowsEdit(status: MapStatusEnum): boolean {
 type MapCardProps = {
   map: Map;
   isAuthor: boolean;
-  /** Admin/Moderator: show Publish → POST .../publish for Approved maps */
-  canPublishCatalog: boolean;
+  /** Admin/Mod: có thể xuất bản map Approved (của ai) — cùng token learner, gọi learner API */
+  canPublishAnyApprovedMap: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  /** Draft → submit for review (Learner); Approved + staff → publish to catalog */
+  /** Draft → submit; Approved → publish lên catalog (learner API) */
   onPublishAction: (map: Map) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
@@ -86,7 +85,7 @@ type MapCardProps = {
 type MapListProps = {
   maps: Map[];
   ownershipMap: OwnershipMap;
-  canPublishCatalog: boolean;
+  canPublishAnyApprovedMap: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
@@ -407,7 +406,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
 const MapCard: React.FC<MapCardProps> = ({
   map,
   isAuthor,
-  canPublishCatalog,
+  canPublishAnyApprovedMap,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -639,13 +638,13 @@ const MapCard: React.FC<MapCardProps> = ({
             </button>
           )}
 
-          {isAuthor && map.mapStatus === "Draft" && !canPublishCatalog && (
+          {isAuthor && map.mapStatus === "Draft" && (
             <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
-              <Send size={14} /> {t("submitForReview")}
+              <Send size={14} /> {t("publish")}
             </button>
           )}
 
-          {isAuthor && map.mapStatus === "Approved" && (
+          {(isAuthor || canPublishAnyApprovedMap) && map.mapStatus === "Approved" && (
             <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
               <Send size={14} /> {t("publishToCatalog")}
             </button>
@@ -670,7 +669,7 @@ const MapCard: React.FC<MapCardProps> = ({
 export const MapList: React.FC<MapListProps> = ({
   maps,
   ownershipMap,
-  canPublishCatalog,
+  canPublishAnyApprovedMap,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -688,7 +687,7 @@ export const MapList: React.FC<MapListProps> = ({
           key={map.id}
           map={map}
           isAuthor={ownershipMap[map.id]?.isAuthor || false}
-          canPublishCatalog={canPublishCatalog}
+          canPublishAnyApprovedMap={canPublishAnyApprovedMap}
           formatDate={formatDate}
           formatTime={formatTime}
           getMapStatusLabel={getMapStatusLabel}
@@ -707,6 +706,7 @@ export const MapList: React.FC<MapListProps> = ({
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const canPublishAnyApprovedMap = isAdminOrModeratorLearnerJwt(tokenStorage.getLearnerToken());
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -745,9 +745,6 @@ export const MyMapsPage: React.FC = () => {
     "createdAt",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-  /** Admin/Moderator JWT: can call POST /api/learner/maps/{id}/publish (Approved → Published). */
-  const canPublishCatalog = canPublishMapViaLearnerApi(tokenStorage.getLearnerToken());
 
   const fetchMaps = useCallback(async () => {
     try {
@@ -806,12 +803,10 @@ export const MyMapsPage: React.FC = () => {
   };
 
   /**
-   * Draft → POST .../submit (Learner only).
-   * Approved → Admin/Mod + CMS token: POST /api/cms/maps/{id}/publish; else POST /api/learner/maps/{id}/publish (author Learner or staff without CMS).
+   * Draft → POST .../submit (tác giả; Learner/Admin/Moderator).
+   * Approved → POST /api/learner/maps/{id}/publish (một token learner): tác giả chỉ map của mình; Admin/Mod map Approved bất kỳ — không cần đăng nhập CMS riêng.
    */
   const handleMapPublishFlow = async (map: Map) => {
-    const staff = canPublishMapViaLearnerApi(tokenStorage.getLearnerToken());
-
     if (map.mapStatus === "Approved") {
       if (
         !confirm(
@@ -823,13 +818,7 @@ export const MyMapsPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const cmsToken = tokenStorage.getCmsToken();
-        const useCms =
-          Boolean(cmsToken) &&
-          staff;
-        const response = useCms
-          ? await cmsMapsApi.publishMap(map.id)
-          : await learnerMapsApi.publishMap(map.id);
+        const response = await learnerMapsApi.publishMap(map.id);
         if (response.data.isSuccess) {
           alert("Map published successfully!");
           fetchMaps();
@@ -845,11 +834,9 @@ export const MyMapsPage: React.FC = () => {
       return;
     }
 
-    if (map.mapStatus === "Draft" && !staff) {
+    if (map.mapStatus === "Draft") {
       if (
-        !confirm(
-          "Are you sure you want to submit this map for review? You won't be able to edit it until it's reviewed.",
-        )
+        !confirm(t("confirmSubmitMapForReview"))
       ) {
         return;
       }
@@ -1242,7 +1229,7 @@ export const MyMapsPage: React.FC = () => {
             <MapList
               maps={maps}
               ownershipMap={ownershipMap}
-              canPublishCatalog={canPublishCatalog}
+              canPublishAnyApprovedMap={canPublishAnyApprovedMap}
               formatDate={formatDate}
               formatTime={formatTime}
               getMapStatusLabel={getMapStatusLabel}
