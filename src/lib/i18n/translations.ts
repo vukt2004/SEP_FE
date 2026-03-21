@@ -113,6 +113,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     showingPage: "Showing page",
     of: "of",
     failedLoadMaps: "Failed to load maps",
+    confirmSubmitMapForReview:
+      "Submit this map for review? You may not be able to edit until it is reviewed.",
     failedSubmitReview: "Failed to submit map for review",
     failedPublishMap: "Failed to publish map",
     failedSubmitRating: "Failed to submit rating",
@@ -201,6 +203,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     noOpenRooms: "No open rooms right now. Create one or try again later.",
     joinRoomAction: "Join",
     loadingRooms: "Loading rooms…",
+    playersInRoomLive: "Player count updates in real time",
     createRoomSubtitle: "Choose max players. You will be the host.",
     maxPlayers: "Max players",
     selectMap: "Select map (optional)",
@@ -210,6 +213,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     roomCodeCopied: "Room code copied!",
     copyCode: "Copy code",
     mapSelected: "Map selected",
+    lobbyMapTypePlatform: "Platform",
+    lobbyMapTypeTopdown: "Top-down",
     changeMap: "Change map",
     lockRoom: "Lock room",
     unlockRoom: "Unlock room",
@@ -231,6 +236,9 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     leaveRoom: "Leave room",
     rankingTitle: "Ranking",
     rankingSubtitle: "All players have submitted. Here are the results.",
+    multiplayerWaitOthers:
+      "Your run is submitted. Please wait until all other players finish — results will appear automatically.",
+    gameTimeUpToast: "Time's up — submitting your result automatically.",
     backToBrowse: "Back to browse",
 
     goalSelectTitle: "Choose your learning goal",
@@ -527,6 +535,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     showingPage: "Trang",
     of: "của",
     failedLoadMaps: "Không tải được bản đồ",
+    confirmSubmitMapForReview:
+      "Gửi map này để duyệt? Bạn có thể không chỉnh sửa được cho đến khi được xử lý.",
     failedSubmitReview: "Không gửi được để duyệt",
     failedPublishMap: "Không xuất bản được map",
     failedSubmitRating: "Không gửi được đánh giá",
@@ -615,6 +625,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     noOpenRooms: "Chưa có phòng nào. Hãy tạo phòng hoặc thử lại sau.",
     joinRoomAction: "Vào phòng",
     loadingRooms: "Đang tải phòng…",
+    playersInRoomLive: "Số người cập nhật theo thời gian thực",
     createRoomSubtitle: "Chọn số người tối đa. Bạn sẽ là chủ phòng.",
     maxPlayers: "Số người tối đa",
     selectMap: "Chọn bản đồ (tùy chọn)",
@@ -624,6 +635,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     roomCodeCopied: "Đã sao chép mã phòng!",
     copyCode: "Sao chép mã",
     mapSelected: "Đã chọn bản đồ",
+    lobbyMapTypePlatform: "Platform",
+    lobbyMapTypeTopdown: "Top-down",
     changeMap: "Đổi bản đồ",
     lockRoom: "Khóa phòng",
     unlockRoom: "Mở khóa phòng",
@@ -645,6 +658,9 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     leaveRoom: "Rời phòng",
     rankingTitle: "Bảng xếp hạng",
     rankingSubtitle: "Tất cả đã nộp bài. Đây là kết quả.",
+    multiplayerWaitOthers:
+      "Bạn đã hoàn thành và đã gửi kết quả. Vui lòng chờ các người chơi khác — bảng xếp hạng sẽ hiện khi mọi người xong.",
+    gameTimeUpToast: "Hết giờ — hệ thống tự gửi kết quả của bạn.",
     backToBrowse: "Quay lại chọn chế độ",
 
     goalSelectTitle: "Chọn mục tiêu học tập",
