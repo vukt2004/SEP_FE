@@ -13,6 +13,7 @@ export interface Player {
   isMoving: boolean;
   animationState: string;
   isJumping: boolean;
+  isFalling: boolean;
   jumpPower: number; // tiles to jump up
   isGrounded: boolean;
 }

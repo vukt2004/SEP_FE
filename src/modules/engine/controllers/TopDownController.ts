@@ -49,13 +49,14 @@ export class TopDownController implements IPlayerController {
     level: LevelDefinition,
     tileSize: number,
     objectStates: ReadonlyMap<string, string>,
-  ): void {
+  ): number {
     void player;
     void level;
     void tileSize;
     void objectStates;
     // Top-down games have no gravity
     // This method intentionally does nothing
+    return 0;
   }
 
   isObstacleAhead(

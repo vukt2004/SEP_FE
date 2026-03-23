@@ -620,7 +620,7 @@ export default function GameView() {
     // Stop and reset executor
     if (executorRef.current) {
       executorRef.current.stop();
-      executorRef.current.reset();
+      executorRef.current = null;
     }
 
     // Reset game engine to initial state
@@ -651,7 +651,7 @@ export default function GameView() {
 
     if (executorRef.current) {
       executorRef.current.stop();
-      executorRef.current.reset();
+      executorRef.current = null;
     }
 
     if (workspaceRef.current) {
@@ -1507,9 +1507,10 @@ export default function GameView() {
               {Object.entries(execVariables)
                 .filter(([, v]) => Array.isArray(v))
                 .map(([name, v]) => {
-                  const items = v
+                  const arr = v as any[];
+                  const items = arr
                     .slice(0, 20)
-                    .map((item) =>
+                    .map((item: any) =>
                       typeof item === "object" && item !== null
                         ? JSON.stringify(item)
                         : String(item),

@@ -25,4 +25,8 @@ export type EngineEvent =
   | {
       type: "interactionFeedback";
       message: string;
+    }
+  | {
+      type: "playerLanded";
+      fallDistance: number;
     };
