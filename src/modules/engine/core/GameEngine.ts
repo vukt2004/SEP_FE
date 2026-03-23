@@ -802,6 +802,11 @@ export class GameEngine {
       return isOpen ? "open" : "closed";
     }
 
+    if (obj.type === "portal") {
+      const color = (obj.metadata?.color as string) || "blue";
+      return color;
+    }
+
     return undefined;
   }
 
@@ -1050,7 +1055,9 @@ export class GameEngine {
       if (obj.position.col === playerX && obj.position.row === playerY) {
         const behavior = objectRegistry[obj.type];
         if (behavior?.onPlayerEnter) {
-          const result = behavior.onPlayerEnter(obj.initialState, this.level, this.runtime.player, obj);
+          // Get current object state from runtime, fallback to initial state
+          const currentState = this.runtime.objectStates.get(obj.id) ?? this.getInitialObjectState(obj);
+          const result = behavior.onPlayerEnter(currentState, this.level, this.runtime.player, obj);
           if (result) {
             if (result.newState) {
               this.emit({
@@ -1070,8 +1077,22 @@ export class GameEngine {
               }, result.delayRemove);
             }
             if (result.moveTo) {
-              // Move object to new position
-              obj.position = result.moveTo;
+              // Teleport player to new position
+              const newX = result.moveTo.col;
+              const newY = result.moveTo.row;
+              const newPixelX = newX * this.tileSize; 
+              const newPixelY = newY * this.tileSize;
+
+
+              this.runtime.player.x = newX;
+              this.runtime.player.y = newY;
+
+              this.runtime.player.pixelX = newPixelX;
+              this.runtime.player.pixelY = newPixelY;
+
+              this.runtime.player.targetPixelX = newPixelX;
+              this.runtime.player.targetPixelY = newPixelY;
+              return;
             }
           }
         }

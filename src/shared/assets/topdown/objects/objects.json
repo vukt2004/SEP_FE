@@ -82,9 +82,9 @@
     },
     "13": {
       "name": "sliding_block",
-      "imagePath": "/assets/Temporator Asset/Sliding Block.png",
-      "frameWidth": 32,
-      "frameHeight": 32,
+      "imagePath": "/assets/MovementBlock/Sliding Block.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
       "frameIndex": 0
     },
     "14": {
@@ -96,9 +96,9 @@
     },
     "15": {
       "name": "portal",
-      "imagePath": "/assets/Portal/PORTAL BLUE-Sheet.png",
-      "frameWidth": 16,
-      "frameHeight": 16,
+      "imagePath": "/assets/Portal/PORTAL_BLUE.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
       "frameIndex": 0
     }
   }

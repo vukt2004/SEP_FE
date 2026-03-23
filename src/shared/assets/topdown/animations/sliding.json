@@ -1,0 +1,13 @@
+{
+  "objectType": "sliding_block",
+  "states": {
+    "default": {
+      "sprite": "../MovementBlock/Sliding Block.png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 2,
+      "frameDuration": 400,
+      "loop": true
+    }
+  }
+}

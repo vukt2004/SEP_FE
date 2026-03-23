@@ -129,6 +129,20 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     row.map((tile) => tile !== 0),
   );
 
+  mapData.objects.items?.forEach((item) => {
+    const isSensor = 
+      item.type === "sliding_block" || 
+      item.type === "disappearing_block" || 
+      item.type === "portal" ||
+      [13, 14, 15].includes(item.id);
+
+    if (isSensor) {     
+      if (collisionLayer[item.y] !== undefined && collisionLayer[item.y][item.x] !== undefined) {
+        collisionLayer[item.y][item.x] = false; 
+      }
+    }
+  });
+
   // Find player and goal for specific positions if any
   const playerItem = mapData.objects.items?.find((item) => item.type === "player" || item.id === 1);
   const goalItem = mapData.objects.items?.find((item) => item.type === "goal" || item.id === 2);
