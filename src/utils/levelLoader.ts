@@ -70,10 +70,10 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
       type: mapDetail.type === "Platform" ? "platform" : "topdown", // Convert API format to MapConfig format
       difficulty: mapDetail.difficulty as 1 | 2 | 3,
       timeLimitSeconds: Math.floor(mapDetail.timeLimitMs / 1000), // Convert ms to seconds
-      estimatedSteps: (levelData as LevelDefinition).metadata?.estimatedSteps,
+      estimatedSteps: (levelData as LevelDefinition).metadata?.estimatedSteps as number | undefined,
       winCondition: mapDetail.winCondition as 1 | 2,
       price: mapDetail.price,
-      requiredFruits: (levelData as LevelDefinition).metadata?.requiredFruits,
+      requiredFruits: (levelData as LevelDefinition).metadata?.requiredFruits as number | undefined,
       width: (levelData as LevelDefinition).width,
       height: (levelData as LevelDefinition).height,
     };

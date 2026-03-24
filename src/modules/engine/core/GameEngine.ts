@@ -259,11 +259,7 @@ export class GameEngine {
    * Only works if engine is currently running
    */
   private markFailed(): void {
-    if (
-      this.runtime.state !== EngineState.Running ||
-      this.runtime.state === EngineState.Won ||
-      this.runtime.state === EngineState.Failed
-    ) {
+    if (this.runtime.state !== EngineState.Running) {
       return;
     }
 
@@ -675,20 +671,7 @@ export class GameEngine {
     }
   }
 
-  private isObstacleRelative(rotation: "clockwise" | "counterclockwise"): boolean {
-    const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
-    const virtualPlayer = {
-      ...this.runtime.player,
-      facing: lookDirection,
-    };
 
-    return this.controller.isObstacleAhead(
-      virtualPlayer,
-      this.level,
-      this.tileSize,
-      this.runtime.objectStates,
-    );
-  }
 
   private isWallRelative(rotation: "clockwise" | "counterclockwise"): boolean {
     const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);

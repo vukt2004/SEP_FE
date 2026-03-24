@@ -59,7 +59,6 @@ const GOAL_META_BY_ORDER: Record<number, GoalMeta> = {
   },
 };
 
-const RECOMMENDED_SORT_ORDER = 1;
 
 export default function GoalSelectPage() {
   const navigate = useNavigate();
