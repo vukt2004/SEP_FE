@@ -407,7 +407,6 @@ const MapFilters: React.FC<MapFiltersProps> = ({
 const MapCard: React.FC<MapCardProps> = ({
   map,
   isAuthor,
-  canPublishAnyApprovedMap,
   formatDate,
   formatTime,
   getMapStatusLabel,

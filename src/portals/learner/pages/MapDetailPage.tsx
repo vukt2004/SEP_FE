@@ -4,7 +4,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import { learnerMarketplaceApi } from "@/services/api/learner/marketplace.api";
 import type { Map } from "@/types/api/learner/maps";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";

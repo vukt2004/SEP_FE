@@ -95,7 +95,6 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     view: "View",
     submitForReview: "Submit for Review",
     publish: "Publish",
-    submitForReview: "Submit for review",
     publishToCatalog: "Publish to catalog",
     rate: "Rate",
     report: "Report",
@@ -520,7 +519,6 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     view: "Xem",
     submitForReview: "Gửi duyệt",
     publish: "Xuất bản",
-    submitForReview: "Gửi duyệt",
     publishToCatalog: "Xuất bản lên kho map",
     rate: "Đánh giá",
     report: "Báo cáo",
@@ -545,8 +543,6 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     failedPublishMap: "Không xuất bản được bản đồ",
     confirmSubmitMapForReview:
       "Gửi map này để duyệt? Bạn có thể không chỉnh sửa được cho đến khi được xử lý.",
-    failedSubmitReview: "Không gửi được để duyệt",
-    failedPublishMap: "Không xuất bản được map",
     failedSubmitRating: "Không gửi được đánh giá",
     failedSubmitReport: "Không gửi được báo cáo",
 
