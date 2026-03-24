@@ -139,8 +139,6 @@ export default function MapDetailPage() {
 
   useEffect(() => {
     setHeroImageFailed(false);
-    setBuyError(null);
-    setBuyLoading(false);
   }, [id]);
 
   const handleStartMap = () => {
@@ -463,8 +461,6 @@ export default function MapDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          {buyError ? <div className={styles.buyErrorCard}>{buyError}</div> : null}
-
           {canPlay ? (
             <motion.button
               type="button"

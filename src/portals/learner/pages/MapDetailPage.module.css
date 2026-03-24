@@ -460,6 +460,8 @@
 
 .modalBtnPrimary:hover {
   filter: brightness(1.08);
+}
+
 .buyErrorCard {
   margin: 0 auto 12px auto;
   max-width: 560px;

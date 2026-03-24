@@ -813,60 +813,25 @@ export const MyMapsPage: React.FC = () => {
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
   };
 
-  /**
-   * Draft → POST .../submit (tác giả; Learner/Admin/Moderator).
-   * Approved → POST /api/learner/maps/{id}/publish (một token learner): tác giả chỉ map của mình; Admin/Mod map Approved bất kỳ — không cần đăng nhập CMS riêng.
-   */
-  const handleMapPublishFlow = async (map: Map) => {
-    if (map.mapStatus === "Approved") {
-      if (
-        !confirm(
-          "Publish this approved map to the learner catalog?",
-        )
-      ) {
-        return;
-      }
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await learnerMapsApi.publishMap(map.id);
-        if (response.data.isSuccess) {
-          alert("Map published successfully!");
-          fetchMaps();
-        } else {
-          setError(response.data.message || t("failedPublishMap"));
-        }
-      } catch (err) {
-        setError(t("failedPublishMap"));
-        console.error("Publish error:", err);
-      } finally {
-        setLoading(false);
-      }
+  const handleSubmitForReview = async (mapId: string) => {
+    if (!confirm(t("confirmSubmitMapForReview"))) {
       return;
     }
-
-    if (map.mapStatus === "Draft") {
-      if (
-        !confirm(t("confirmSubmitMapForReview"))
-      ) {
-        return;
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await learnerMapsApi.submitMapForReview(mapId);
+      if (response.data.isSuccess) {
+        alert("Map submitted for review successfully!");
+        fetchMaps();
+      } else {
+        setError(response.data.message || t("failedSubmitReview"));
       }
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await learnerMapsApi.submitMapForReview(map.id);
-        if (response.data.isSuccess) {
-          alert("Map submitted for review successfully!");
-          fetchMaps();
-        } else {
-          setError(response.data.message || t("failedSubmitReview"));
-        }
-      } catch (err) {
-        setError(t("failedSubmitReview"));
-        console.error("Submit error:", err);
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      setError(t("failedSubmitReview"));
+      console.error("Submit error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
