@@ -107,6 +107,7 @@ export class GameEngine {
         isMoving: false,
         animationState: "idle",
         isJumping: false,
+        isFalling: false,
         jumpPower: 2,
         isGrounded: true,
       },
@@ -214,6 +215,7 @@ export class GameEngine {
       | "right";
     this.runtime.player.isMoving = false;
     this.runtime.player.isJumping = false;
+    this.runtime.player.isFalling = false;
     this.runtime.player.isGrounded = true;
     this.runtime.player.isMoving = false;
     this.runtime.player.animationState = this.resolvePlayerAnimationState(this.runtime.player);
@@ -496,12 +498,7 @@ export class GameEngine {
         // Handle absolute directional movement
         this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
@@ -512,12 +509,7 @@ export class GameEngine {
         // Move in the current facing direction
         this.moveInDirection(this.runtime.player.facing);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
@@ -548,12 +540,7 @@ export class GameEngine {
         const direction: Direction =
           dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up";
         this.moveInDirection(direction);
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         this.updatePlayerCollider();
         this.checkFruitCollection();
         this.checkTrapCollision();
@@ -598,12 +585,7 @@ export class GameEngine {
         break;
       case "wait":
         // Consume one turn without movement while still advancing physics.
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         this.updatePlayerCollider();
         this.checkFruitCollection();
         this.checkTrapCollision();
@@ -945,6 +927,25 @@ export class GameEngine {
       this.checkFruitCollection();
       this.checkTrapCollision();
       this.checkWinCondition();
+    }
+  }
+
+  /**
+   * Apply physics via the controller and emit a playerLanded event
+   * when the player lands after falling.
+   */
+  private applyPhysicsAndCheckLanding(): void {
+    const wasFalling = this.runtime.player.isFalling;
+    const tilesFallen = this.controller.applyPhysics(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
+
+    // Emit landing event when the player was falling and is now grounded
+    if ((wasFalling || tilesFallen > 0) && this.runtime.player.isGrounded) {
+      this.emit({ type: "playerLanded", fallDistance: tilesFallen });
     }
   }
 

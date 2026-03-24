@@ -76,8 +76,8 @@ type MapCardProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  /** Draft → submit; Approved → publish lên catalog (learner API) */
-  onPublishAction: (map: Map) => void;
+  onSubmitForReview: (mapId: string) => void;
+  onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
 };
@@ -92,7 +92,8 @@ type MapListProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  onPublishAction: (map: Map) => void;
+  onSubmitForReview: (mapId: string) => void;
+  onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
 };
@@ -413,7 +414,8 @@ const MapCard: React.FC<MapCardProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onPublishAction,
+  onSubmitForReview,
+  onPublish,
   onRate,
   onReport,
 }) => {
@@ -639,15 +641,22 @@ const MapCard: React.FC<MapCardProps> = ({
           )}
 
           {isAuthor && map.mapStatus === "Draft" && (
-            <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
-              <Send size={14} /> {t("publish")}
-            </button>
+            <>
+              <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
+                <Edit size={14} /> {t("edit")}
+              </button>
+              <button onClick={() => onSubmitForReview(map.id)} style={actionBtnStyle("success")}>
+                <Send size={14} /> {t("submitForReview")}
+              </button>
+            </>
           )}
 
-          {(isAuthor || canPublishAnyApprovedMap) && map.mapStatus === "Approved" && (
-            <button onClick={() => onPublishAction(map)} style={actionBtnStyle("success")}>
-              <Send size={14} /> {t("publishToCatalog")}
-            </button>
+          {isAuthor && map.mapStatus === "Approved" && (
+            <>
+              <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
+                <Send size={14} /> {t("publish")}
+              </button>
+            </>
           )}
 
           {!isAuthor && (
@@ -676,7 +685,8 @@ export const MapList: React.FC<MapListProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onPublishAction,
+  onSubmitForReview,
+  onPublish,
   onRate,
   onReport,
 }) => {
@@ -694,7 +704,8 @@ export const MapList: React.FC<MapListProps> = ({
           getDifficultyLabel={getDifficultyLabel}
           onPreview={onPreview}
           onEdit={onEdit}
-          onPublishAction={onPublishAction}
+          onSubmitForReview={onSubmitForReview}
+          onPublish={onPublish}
           onRate={onRate}
           onReport={onReport}
         />
@@ -802,60 +813,50 @@ export const MyMapsPage: React.FC = () => {
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
   };
 
-  /**
-   * Draft → POST .../submit (tác giả; Learner/Admin/Moderator).
-   * Approved → POST /api/learner/maps/{id}/publish (một token learner): tác giả chỉ map của mình; Admin/Mod map Approved bất kỳ — không cần đăng nhập CMS riêng.
-   */
-  const handleMapPublishFlow = async (map: Map) => {
-    if (map.mapStatus === "Approved") {
-      if (
-        !confirm(
-          "Publish this approved map to the learner catalog?",
-        )
-      ) {
-        return;
+  const handleSubmitForReview = async (mapId: string) => {
+    if (!confirm(t("confirmSubmitMapForReview"))) {
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await learnerMapsApi.submitMapForReview(mapId);
+      if (response.data.isSuccess) {
+        alert("Map submitted for review successfully!");
+        fetchMaps();
+      } else {
+        setError(response.data.message || t("failedSubmitReview"));
       }
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await learnerMapsApi.publishMap(map.id);
-        if (response.data.isSuccess) {
-          alert("Map published successfully!");
-          fetchMaps();
-        } else {
-          setError(response.data.message || t("failedPublishMap"));
-        }
-      } catch (err) {
-        setError(t("failedPublishMap"));
-        console.error("Publish error:", err);
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      setError(t("failedSubmitReview"));
+      console.error("Submit error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePublishMap = async (mapId: string) => {
+    if (!confirm(t("confirmPublishMap"))) {
       return;
     }
 
-    if (map.mapStatus === "Draft") {
-      if (
-        !confirm(t("confirmSubmitMapForReview"))
-      ) {
-        return;
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await learnerMapsApi.publishMap(mapId);
+
+      if (response.data.isSuccess) {
+        alert(t("mapPublishedSuccess"));
+        fetchMaps();
+      } else {
+        setError(response.data.message || t("failedPublishMap"));
       }
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await learnerMapsApi.submitMapForReview(map.id);
-        if (response.data.isSuccess) {
-          alert("Map submitted for review successfully!");
-          fetchMaps();
-        } else {
-          setError(response.data.message || t("failedSubmitReview"));
-        }
-      } catch (err) {
-        setError(t("failedSubmitReview"));
-        console.error("Submit error:", err);
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      setError(t("failedPublishMap"));
+      console.error("Publish error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1236,7 +1237,8 @@ export const MyMapsPage: React.FC = () => {
               getDifficultyLabel={getDifficultyLabel}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
-              onPublishAction={handleMapPublishFlow}
+              onSubmitForReview={handleSubmitForReview}
+              onPublish={handlePublishMap}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
             />

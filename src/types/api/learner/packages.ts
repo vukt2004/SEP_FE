@@ -26,3 +26,4 @@ export type PackagesListData = {
 
 export type PackagesListResult = ApiResult<PackagesListData>;
 export type PackageDetailResult = ApiResult<Package>;
+export type PurchasePackageResult = ApiResult<string>;

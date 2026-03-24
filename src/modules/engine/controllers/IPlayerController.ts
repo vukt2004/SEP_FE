@@ -20,13 +20,14 @@ export interface IPlayerController {
   /**
    * Apply physics/gravity if needed for this controller type
    * Called after each movement command
+   * @returns number of tiles the player fell this step
    */
   applyPhysics(
     player: Player,
     level: LevelDefinition,
     tileSize: number,
     objectStates: ReadonlyMap<string, string>,
-  ): void;
+  ): number;
 
   /**
    * Check if there's an obstacle ahead in the facing direction
