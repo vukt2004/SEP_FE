@@ -13,6 +13,10 @@ export interface ValidateSolutionRequest {
   playMode?: PlayMode;
   roomId?: string | null;
   matchId?: string | null;
+  isWin?: boolean;
+  clientStepsUsed?: number;
+  clientBlocksUsed?: number;
+  clientElapsedSeconds?: number;
 }
 
 export interface ValidateSolutionResponse {

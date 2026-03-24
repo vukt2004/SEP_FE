@@ -9,6 +9,16 @@ import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import type { LobbyRoomListItem } from "@/types/api/learner/lobby";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
+
+/** BE JSON thường serialize enum thành số (0=Waiting, …) — không dùng ?? vì 0 là falsy nhưng hợp lệ. */
+function normalizeStatus(raw: unknown): LobbyRoomListItem["status"] {
+  if (raw === 0 || raw === "Waiting") return "Waiting";
+  if (raw === 1 || raw === "Playing") return "Playing";
+  if (raw === 2 || raw === "Finished") return "Finished";
+  if (raw === 3 || raw === "Cancelled") return "Cancelled";
+  return "Waiting";
+}
 
 function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
   return {
@@ -17,7 +27,7 @@ function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
     hostId: String(item.hostId ?? item.HostId ?? ""),
     currentPlayerCount: Number(item.currentPlayerCount ?? item.CurrentPlayerCount ?? 0),
     maxPlayers: Number(item.maxPlayers ?? item.MaxPlayers ?? 8),
-    status: (item.status ?? item.Status ?? "Waiting") as LobbyRoomListItem["status"],
+    status: normalizeStatus(item.status ?? item.Status),
     isLocked: Boolean(item.isLocked ?? item.IsLocked),
     selectedMapId:
       item.selectedMapId != null
@@ -43,8 +53,8 @@ export default function ModeSelectPage() {
   const [mapsLoading, setMapsLoading] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
+  const fetchRooms = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await learnerLobbyApi.getRooms();
       const data = res.data?.data as unknown;
@@ -56,38 +66,53 @@ export default function ModeSelectPage() {
     } catch {
       setRooms([]);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
-  // SignalR: connect and listen LobbyRoomList, AlreadyInRoom
+  // SignalR: đăng ký listener TRƯỚC connect — server gửi LobbyRoomList ngay trong OnConnectedAsync.
   useEffect(() => {
-    let unsubList: (() => void) | undefined;
-    let unsubAlready: (() => void) | undefined;
+    const unsubList = gameLobbyHub.on("LobbyRoomList", (list: unknown) => {
+      const arr = Array.isArray(list) ? list : [];
+      setRooms(arr.map((r: Record<string, unknown>) => normalizeRoom(r)));
+      setLoading(false);
+    });
+    const unsubAlready = gameLobbyHub.on("AlreadyInRoom", (data: unknown) => {
+      const d = data as { roomId?: string };
+      if (d?.roomId) navigate(ROUTES.LEARNER_ROOM_DETAIL(d.roomId));
+    });
     gameLobbyHub
       .connect()
       .then(() => {
-        gameLobbyHub.getLobbyRooms();
-        unsubList = gameLobbyHub.on("LobbyRoomList", (list: unknown) => {
-          const arr = Array.isArray(list) ? list : [];
-          setRooms(arr.map((r: Record<string, unknown>) => normalizeRoom(r)));
-          setLoading(false);
-        });
-        unsubAlready = gameLobbyHub.on("AlreadyInRoom", (data: unknown) => {
-          const d = data as { roomId?: string };
-          if (d?.roomId) navigate(ROUTES.LEARNER_ROOM_DETAIL(d.roomId));
-        });
+        void gameLobbyHub.getLobbyRooms();
       })
       .catch(() => setLoading(false));
     return () => {
-      unsubList?.();
-      unsubAlready?.();
+      unsubList();
+      unsubAlready();
     };
   }, [navigate]);
 
   // Initial fetch (fallback if SignalR not ready)
   useEffect(() => {
     fetchRooms();
+  }, [fetchRooms]);
+
+  /** Polling nhẹ khi tab đang mở — bù trường hợp SignalR miss hoặc REST join/leave không kịp. */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void fetchRooms({ silent: true });
+    }, 12_000);
+    return () => window.clearInterval(id);
+  }, [fetchRooms]);
+
+  /** Khi quay lại tab: cập nhật số người trong phòng ngay */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") void fetchRooms({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, [fetchRooms]);
 
   // Load maps when create modal opens
@@ -313,7 +338,7 @@ export default function ModeSelectPage() {
       {/* Create room modal */}
       {createModalOpen && (
         <div className={styles.modalOverlay} onClick={() => !creating && setCreateModalOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={`${styles.modal} ${styles.modalMapPick}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{t("createRoom")}</h2>
               <button
@@ -340,19 +365,17 @@ export default function ModeSelectPage() {
                 ))}
               </div>
               <label className={styles.modalLabel}>{t("selectMap")}</label>
-              <select
-                className={styles.modalSelect}
-                value={createMapId ?? ""}
-                onChange={(e) => setCreateMapId(e.target.value || null)}
-                disabled={mapsLoading}
-              >
-                <option value="">{t("noMap")}</option>
-                {maps.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.title} ({m.type})
-                  </option>
-                ))}
-              </select>
+              <div className={styles.mapPickerScroll}>
+                <LobbyMapPickerGrid
+                  maps={maps}
+                  loading={mapsLoading}
+                  selectedMapId={createMapId}
+                  onSelectMap={(id) => setCreateMapId(id)}
+                  allowNoMap
+                  noMapLabel={t("noMap")}
+                  disabled={creating}
+                />
+              </div>
             </div>
             <div className={styles.modalFooter}>
               <button

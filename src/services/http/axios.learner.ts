@@ -74,6 +74,11 @@ learnerAxios.interceptors.response.use(
 
     // Avoid infinite retry loops for the same request.
     if ((config as { _retry?: boolean })._retry) {
+      // If we already tried refresh once and still got 401, treat it as an auth failure.
+      tokenStorage.removeLearnerToken();
+      if (typeof window !== "undefined") {
+        window.location.href = ROUTES.LEARNER_LOGIN;
+      }
       return Promise.reject(error);
     }
     (config as { _retry?: boolean })._retry = true;

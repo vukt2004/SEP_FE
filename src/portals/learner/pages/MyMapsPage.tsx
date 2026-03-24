@@ -13,8 +13,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { isAdminOrModeratorLearnerJwt } from "@/lib/auth/learnerJwtRoles";
 import { learnerCommunityApi } from "@/services/api/learner/community.api";
-import type { Map } from "@/types/api/learner/maps";
+import type { Map, MapStatusEnum } from "@/types/api/learner/maps";
 import {
   Eye,
   Plus,
@@ -58,9 +60,16 @@ type MapFiltersProps = {
   onClearFilters: () => void;
 };
 
+/** Maps in "Pending review" are locked for editing; other statuses allow opening the editor (save may still be validated by API). */
+function mapStatusAllowsEdit(status: MapStatusEnum): boolean {
+  return status !== "PendingReview";
+}
+
 type MapCardProps = {
   map: Map;
   isAuthor: boolean;
+  /** Admin/Mod: có thể xuất bản map Approved (của ai) — cùng token learner, gọi learner API */
+  canPublishAnyApprovedMap: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
@@ -76,6 +85,7 @@ type MapCardProps = {
 type MapListProps = {
   maps: Map[];
   ownershipMap: OwnershipMap;
+  canPublishAnyApprovedMap: boolean;
   formatDate: (dateString: string | null) => string;
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
@@ -397,6 +407,7 @@ const MapFilters: React.FC<MapFiltersProps> = ({
 const MapCard: React.FC<MapCardProps> = ({
   map,
   isAuthor,
+  canPublishAnyApprovedMap,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -623,6 +634,12 @@ const MapCard: React.FC<MapCardProps> = ({
             <Eye size={14} /> {t("view")}
           </button>
 
+          {isAuthor && mapStatusAllowsEdit(map.mapStatus) && (
+            <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
+              <Edit size={14} /> {t("edit")}
+            </button>
+          )}
+
           {isAuthor && map.mapStatus === "Draft" && (
             <>
               <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
@@ -661,6 +678,7 @@ const MapCard: React.FC<MapCardProps> = ({
 export const MapList: React.FC<MapListProps> = ({
   maps,
   ownershipMap,
+  canPublishAnyApprovedMap,
   formatDate,
   formatTime,
   getMapStatusLabel,
@@ -679,6 +697,7 @@ export const MapList: React.FC<MapListProps> = ({
           key={map.id}
           map={map}
           isAuthor={ownershipMap[map.id]?.isAuthor || false}
+          canPublishAnyApprovedMap={canPublishAnyApprovedMap}
           formatDate={formatDate}
           formatTime={formatTime}
           getMapStatusLabel={getMapStatusLabel}
@@ -698,6 +717,7 @@ export const MapList: React.FC<MapListProps> = ({
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const canPublishAnyApprovedMap = isAdminOrModeratorLearnerJwt(tokenStorage.getLearnerToken());
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -793,33 +813,60 @@ export const MyMapsPage: React.FC = () => {
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
   };
 
-  const handleSubmitForReview = async (mapId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to submit this map for review? You won't be able to edit it until it's reviewed.",
-      )
-    ) {
+  /**
+   * Draft → POST .../submit (tác giả; Learner/Admin/Moderator).
+   * Approved → POST /api/learner/maps/{id}/publish (một token learner): tác giả chỉ map của mình; Admin/Mod map Approved bất kỳ — không cần đăng nhập CMS riêng.
+   */
+  const handleMapPublishFlow = async (map: Map) => {
+    if (map.mapStatus === "Approved") {
+      if (
+        !confirm(
+          "Publish this approved map to the learner catalog?",
+        )
+      ) {
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await learnerMapsApi.publishMap(map.id);
+        if (response.data.isSuccess) {
+          alert("Map published successfully!");
+          fetchMaps();
+        } else {
+          setError(response.data.message || t("failedPublishMap"));
+        }
+      } catch (err) {
+        setError(t("failedPublishMap"));
+        console.error("Publish error:", err);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await learnerMapsApi.submitMapForReview(mapId);
-
-      if (response.data.isSuccess) {
-        alert("Map submitted for review successfully!");
-        // Refresh the maps list
-        fetchMaps();
-      } else {
-        setError(response.data.message || t("failedSubmitReview"));
+    if (map.mapStatus === "Draft") {
+      if (
+        !confirm(t("confirmSubmitMapForReview"))
+      ) {
+        return;
       }
-    } catch (err) {
-      setError(t("failedSubmitReview"));
-      console.error("Submit error:", err);
-    } finally {
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await learnerMapsApi.submitMapForReview(map.id);
+        if (response.data.isSuccess) {
+          alert("Map submitted for review successfully!");
+          fetchMaps();
+        } else {
+          setError(response.data.message || t("failedSubmitReview"));
+        }
+      } catch (err) {
+        setError(t("failedSubmitReview"));
+        console.error("Submit error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -983,7 +1030,11 @@ export const MyMapsPage: React.FC = () => {
   };
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
-    acc[map.id] = { isAuthor: Boolean(map.isAuthor) };
+    // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
+    // Boolean(undefined) was false and hid Edit / showed Rate/Report incorrectly.
+    const isAuthor =
+      activeTab === "author" ? map.isAuthor !== false : Boolean(map.isAuthor);
+    acc[map.id] = { isAuthor };
     return acc;
   }, {} as OwnershipMap);
 
@@ -1214,6 +1265,7 @@ export const MyMapsPage: React.FC = () => {
             <MapList
               maps={maps}
               ownershipMap={ownershipMap}
+              canPublishAnyApprovedMap={canPublishAnyApprovedMap}
               formatDate={formatDate}
               formatTime={formatTime}
               getMapStatusLabel={getMapStatusLabel}

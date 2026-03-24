@@ -1,9 +1,11 @@
 // src/portals/learner/pages/RoomResultPage.tsx
 // Trang kết quả xếp hạng sau khi tất cả người chơi đã submit (multiplayer).
+import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Trophy } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
+import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import type { PlayerRankingDto } from "@/types/api/learner/lobby";
 import styles from "./RoomResultPage.module.css";
 
@@ -14,6 +16,35 @@ export default function RoomResultPage() {
 
   const state = location.state as { ranking?: PlayerRankingDto[]; roomId?: string } | null;
   const ranking = state?.ranking;
+  const roomId = state?.roomId?.trim() || "";
+
+  const leftViaAction = useRef(false);
+  const mountedAt = useRef(0);
+  mountedAt.current = mountedAt.current || Date.now();
+
+  const leaveRoomSilently = useCallback(async () => {
+    await leaveLobbyRoom(roomId);
+  }, [roomId]);
+
+  const leaveAndNavigate = useCallback(
+    async (to: string) => {
+      leftViaAction.current = true;
+      await leaveRoomSilently();
+      navigate(to, { replace: true });
+    },
+    [leaveRoomSilently, navigate],
+  );
+
+  // Khi rời trang (Back, đóng tab, chuyển route) mà chưa gọi leaveAndNavigate — gửi leave.
+  useEffect(() => {
+    if (!roomId) return;
+    return () => {
+      if (leftViaAction.current) return;
+      const elapsed = Date.now() - mountedAt.current;
+      if (elapsed < 1000) return;
+      void leaveLobbyRoom(roomId);
+    };
+  }, [roomId]);
 
   if (!ranking || !Array.isArray(ranking) || ranking.length === 0) {
     navigate(ROUTES.LEARNER_LEARN, { replace: true });
@@ -27,7 +58,7 @@ export default function RoomResultPage() {
         <button
           type="button"
           className={styles.backBtn}
-          onClick={() => navigate(ROUTES.LEARNER_LEARN)}
+          onClick={() => void leaveAndNavigate(ROUTES.LEARNER_LEARN)}
           aria-label={t("back")}
         >
           <ChevronLeft size={20} />
@@ -53,7 +84,7 @@ export default function RoomResultPage() {
         <button
           type="button"
           className={styles.primaryBtn}
-          onClick={() => navigate(ROUTES.LEARNER_LEARN)}
+          onClick={() => void leaveAndNavigate(ROUTES.LEARNER_LEARN)}
         >
           {t("backToBrowse")}
         </button>

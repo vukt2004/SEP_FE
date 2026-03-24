@@ -463,7 +463,7 @@
     {
       "type": "number_literal",
       "category": "math",
-      "label": "",
+      "label": "number",
       "tooltip": "A numeric literal value",
       "color": "#2196F3",
       "command": "NUMBER_LITERAL",
@@ -480,7 +480,7 @@
     {
       "type": "math_arithmetic",
       "category": "math",
-      "label": "",
+      "label": "math",
       "tooltip": "Apply arithmetic operation to two numbers",
       "color": "#2196F3",
       "command": "MATH_ARITHMETIC",
@@ -514,7 +514,7 @@
     {
       "type": "logic_compare",
       "category": "logic",
-      "label": "",
+      "label": "compare",
       "tooltip": "Compare two numbers and return true or false",
       "color": "#5C81F6",
       "command": "LOGIC_COMPARE",

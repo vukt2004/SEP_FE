@@ -35,6 +35,8 @@ interface GameResultsModalProps {
   blockLimit: number | null;
   onReset: () => void;
   onBackToMenu: () => void;
+  /** Multiplayer: shown after auto/manual submit while waiting for other players */
+  multiplayerFooterNote?: string | null;
 }
 
 export const GameResultsModal: React.FC<GameResultsModalProps> = ({
@@ -50,6 +52,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   blockLimit,
   onReset,
   onBackToMenu,
+  multiplayerFooterNote,
 }) => {
   if (!isOpen) return null;
 
@@ -236,6 +239,25 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
             </div>
           </div>
         </div>
+
+        {multiplayerFooterNote ? (
+          <div
+            style={{
+              marginBottom: "14px",
+              padding: "12px 14px",
+              borderRadius: "12px",
+              background: "color-mix(in srgb, var(--info, #2563eb) 14%, var(--surface-2, #f1f5f9))",
+              border: "1px solid color-mix(in srgb, var(--info, #2563eb) 35%, var(--border, #e2e8f0))",
+              fontSize: "14px",
+              fontWeight: 700,
+              color: "var(--text)",
+              lineHeight: 1.45,
+            }}
+            role="status"
+          >
+            {multiplayerFooterNote}
+          </div>
+        ) : null}
 
         <div style={styles.actions}>
           <button onClick={onReset} style={styles.secondaryButton}>

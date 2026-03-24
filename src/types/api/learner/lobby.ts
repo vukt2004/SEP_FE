@@ -77,6 +77,12 @@ export interface LobbySubmitSolutionRequest {
   language?: string;
   astSpec?: string | null;
   bytecodeSpec?: string | null;
+  /** Thắng/thua theo engine — server chấm điểm theo isWin + metrics (không còn chỉ đo độ dài AST). */
+  isWin?: boolean;
+  stepsUsed?: number;
+  blocksUsed?: number;
+  /** Thời gian chơi (giây), khớp timer màn chơi */
+  time?: number;
 }
 
 /** One row in ranking after all submitted */

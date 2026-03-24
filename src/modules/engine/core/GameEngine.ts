@@ -258,6 +258,23 @@ export class GameEngine {
    * State transition: Running → Failed
    * Only works if engine is currently running
    */
+  private markFailed(): void {
+    if (
+      this.runtime.state !== EngineState.Running ||
+      this.runtime.state === EngineState.Won ||
+      this.runtime.state === EngineState.Failed
+    ) {
+      return;
+    }
+
+    if (this.runtime.startTime !== null) {
+      this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+    }
+
+    this.runtime.state = EngineState.Failed;
+    this.executionEnabled = false;
+    this.emit({ type: "engine:failed" });
+  }
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
@@ -485,6 +502,7 @@ export class GameEngine {
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       case "moveForward":
@@ -495,6 +513,7 @@ export class GameEngine {
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       case "moveToCell": {
@@ -524,6 +543,7 @@ export class GameEngine {
         this.applyPhysicsAndCheckLanding();
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       }
@@ -558,6 +578,7 @@ export class GameEngine {
         // Update player collider after jump
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
@@ -567,6 +588,7 @@ export class GameEngine {
         this.applyPhysicsAndCheckLanding();
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       case "break":
@@ -903,6 +925,7 @@ export class GameEngine {
       // Update player collider position if registered
       this.updatePlayerCollider();
       this.checkFruitCollection();
+      this.checkTrapCollision();
       this.checkWinCondition();
     }
   }
@@ -1064,7 +1087,11 @@ export class GameEngine {
    * State transition: Running → Won
    */
   private checkWinCondition(): void {
-    if (this.runtime.state === EngineState.Won || this.runtime.hasPlayerWon) {
+    if (
+      this.runtime.state === EngineState.Won ||
+      this.runtime.state === EngineState.Failed ||
+      this.runtime.hasPlayerWon
+    ) {
       return;
     }
 
@@ -1140,6 +1167,24 @@ export class GameEngine {
           fruitId: obj.id,
           totalCollected: this.runtime.collectedFruits.size,
         });
+      }
+    }
+  }
+
+  private checkTrapCollision(): void {
+    if (this.runtime.state !== EngineState.Running) {
+      return;
+    }
+
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.type !== "trap") continue;
+
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        this.markFailed();
+        return;
       }
     }
   }

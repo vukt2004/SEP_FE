@@ -265,6 +265,27 @@
   gap: 6px;
 }
 
+.steamTagGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.steamTagGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.steamSubTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .steamTag {
   padding: 4px 10px;
   background: color-mix(in srgb, var(--primary) 18%, transparent);
@@ -439,6 +460,16 @@
 
 .modalBtnPrimary:hover {
   filter: brightness(1.08);
+.buyErrorCard {
+  margin: 0 auto 12px auto;
+  max-width: 560px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 70%, var(--border));
+  color: var(--danger);
+  font-weight: 600;
+  text-align: center;
 }
 
 /* Responsive */

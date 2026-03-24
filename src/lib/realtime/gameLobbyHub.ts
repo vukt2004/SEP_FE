@@ -60,6 +60,8 @@ type Handler = (...args: unknown[]) => void;
 class GameLobbyHubClient {
   private connection: signalR.HubConnection | null = null;
   private handlers: Map<string, Set<Handler>> = new Map();
+  /** Gọi lại sau khi SignalR reconnect (ví dụ join lại group phòng). */
+  private reconnectHandlers = new Set<() => void>();
 
   private getBaseUrl(): string {
     const base = import.meta.env.VITE_API_BASE_URL;
@@ -117,6 +119,23 @@ class GameLobbyHubClient {
     }
 
     await this.connection.start();
+
+    this.connection.onreconnected(() => {
+      void this.getLobbyRooms();
+      this.reconnectHandlers.forEach((h) => {
+        try {
+          h();
+        } catch (e) {
+          console.warn("[GameLobbyHub] reconnect handler error", e);
+        }
+      });
+    });
+  }
+
+  /** Đăng ký callback chạy mỗi khi kết nối hub được khôi phục (join lại room group, v.v.). */
+  onReconnected(handler: () => void): () => void {
+    this.reconnectHandlers.add(handler);
+    return () => this.reconnectHandlers.delete(handler);
   }
 
   async disconnect(): Promise<void> {
@@ -125,6 +144,7 @@ class GameLobbyHubClient {
       this.connection = null;
     }
     this.handlers.clear();
+    this.reconnectHandlers.clear();
   }
 
   on(event: string, handler: Handler): () => void {
