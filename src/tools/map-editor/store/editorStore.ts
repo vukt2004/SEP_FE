@@ -31,6 +31,30 @@ export class EditorStore {
     import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
   > | null = null;
 
+  private getDefaultObjectMetadata(type: string): Record<string, unknown> | undefined {
+    if (type === "door") {
+      return {
+        isOpen: false,
+        isLocked: false,
+        unlockCode: "",
+      };
+    }
+
+    if (type === "box1") {
+      return { hardness: 1 };
+    }
+
+    if (type === "box2") {
+      return { hardness: 2 };
+    }
+
+    if (type === "box3" || type === "box") {
+      return { hardness: 3 };
+    }
+
+    return undefined;
+  }
+
   /**
    * Initialize the editor store with a map
    *
@@ -453,7 +477,14 @@ export class EditorStore {
         (item) => item.id !== objectId,
       );
       // Place the new one
-      this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
+      const metadata = this.getDefaultObjectMetadata(objectType);
+      this.mapData.objects.items.push({
+        id: objectId,
+        type: objectType,
+        x,
+        y,
+        ...(metadata ? { metadata } : {}),
+      });
     } else {
       // For multiple-placement items (fruits, enemies, decorative)
       // Toggle at position
@@ -466,10 +497,31 @@ export class EditorStore {
         this.mapData.objects.items.splice(existingIndex, 1);
       } else {
         // Add new object
-        this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
+        const metadata = this.getDefaultObjectMetadata(objectType);
+        this.mapData.objects.items.push({
+          id: objectId,
+          type: objectType,
+          x,
+          y,
+          ...(metadata ? { metadata } : {}),
+        });
       }
     }
 
+    this.notify();
+  }
+
+  /**
+   * Update metadata for a placed object by its index in objects.items
+   */
+  updateObjectMetadataByIndex(index: number, metadata: Record<string, unknown>): void {
+    if (index < 0 || index >= this.mapData.objects.items.length) {
+      return;
+    }
+
+    this.saveHistory();
+    const target = this.mapData.objects.items[index];
+    target.metadata = { ...metadata };
     this.notify();
   }
 

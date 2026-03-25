@@ -97,6 +97,8 @@ export class StepExecutor {
       getGoalCell: () => "0,0",
       getCurrentCell: () => "0,0",
       getNeighbors: () => [],
+      getCharacterAtCurrentCell: () => "",
+      hasCharacterAtCurrentCell: () => false,
     };
     this.callback = null;
     this.onComplete = null;
@@ -355,6 +357,17 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "unlockDoor": {
+          const key = this.toUnlockKey(this.evaluateAny(node.key));
+          return {
+            command: {
+              type: "unlockDoor",
+              key,
+            },
+            blockId: node.blockId,
+          };
+        }
+
         case "repeat": {
           // Push ONE frame with repeatLeft counter
           // The frame will automatically loop when exhausted
@@ -527,11 +540,14 @@ export class StepExecutor {
         case "numberLiteral":
         case "arithmetic":
         case "getVariable":
+        case "getList":
         case "compare":
         case "listContains":
         case "getStartCell":
         case "getGoalCell":
         case "getCurrentCell":
+        case "collectCharacter":
+        case "isCharacter":
         case "getNeighbors":
           // Logic expression blocks are value blocks, not statement blocks
           console.warn("Logic expression block executed directly - this should not happen");
@@ -606,6 +622,10 @@ export class StepExecutor {
       return !!this.evaluateAny(conditionNode);
     }
 
+    if (conditionNode.type === "isCharacter") {
+      return this.positionResolver.hasCharacterAtCurrentCell();
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
     return false;
@@ -637,6 +657,10 @@ export class StepExecutor {
         const rawIndex = this.evaluateNumber(node.index);
         const index = Math.max(0, Math.floor(rawIndex));
         return list[index];
+      }
+      case "getList": {
+        const list = this.ensureArrayVariable(node.name);
+        return [...list];
       }
       case "listLength": {
         const list = this.ensureArrayVariable(node.name);
@@ -675,6 +699,10 @@ export class StepExecutor {
         return this.positionResolver.getGoalCell();
       case "getCurrentCell":
         return this.positionResolver.getCurrentCell();
+      case "collectCharacter":
+        return this.positionResolver.getCharacterAtCurrentCell();
+      case "isCharacter":
+        return this.positionResolver.hasCharacterAtCurrentCell();
       case "getNeighbors": {
         const rawCell = this.evaluateAny(node.cell);
         const cell = this.resolveCellString(rawCell);
@@ -787,6 +815,7 @@ export class StepExecutor {
       node.type === "getStartCell" ||
       node.type === "getGoalCell" ||
       node.type === "getCurrentCell" ||
+      node.type === "collectCharacter" ||
       node.type === "getNeighbors"
     ) {
       const value = this.evaluateAny(node);
@@ -823,6 +852,7 @@ export class StepExecutor {
 
     if (
       node.type === "createList" ||
+      node.type === "getList" ||
       node.type === "listAdd" ||
       node.type === "listGet" ||
       node.type === "listLength" ||
@@ -838,6 +868,7 @@ export class StepExecutor {
       node.type === "getStartCell" ||
       node.type === "getGoalCell" ||
       node.type === "getCurrentCell" ||
+      node.type === "collectCharacter" ||
       node.type === "getNeighbors"
     ) {
       return true;
@@ -860,6 +891,23 @@ export class StepExecutor {
     }
 
     return false;
+  }
+
+  private toUnlockKey(value: RuntimeValue): string {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => {
+          if (item === null || item === undefined) return "";
+          return String(item);
+        })
+        .join("");
+    }
+
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    return String(value);
   }
 
   /**

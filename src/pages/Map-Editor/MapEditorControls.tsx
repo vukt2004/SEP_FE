@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brush,
@@ -28,6 +28,10 @@ import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
 import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
+import {
+  getSupportedUnlockCharacters,
+  sanitizeUnlockCode,
+} from "../../tools/map-editor/utils/unlockCode";
 import { ROUTES } from "../../lib/constants/routes";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 
@@ -71,6 +75,7 @@ interface MapEditorControlsProps {
   onAllowedBlocksChange?: (allowedBlocks: string[]) => void;
   onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
   onObjectDefinitionsLoaded?: (defs: Record<string, ObjectDefinition>) => void;
+  onObjectMetadataChange?: (index: number, metadata: Record<string, unknown>) => void;
   sectionMode?: "left" | "right";
   editingMapId?: string;
   editorMode?: "edit" | "view";
@@ -213,6 +218,7 @@ export function MapEditorControls({
   onAllowedBlocksChange,
   onRequiredBlocksChange,
   onObjectDefinitionsLoaded,
+  onObjectMetadataChange,
   sectionMode = "right",
   editingMapId,
   editorMode,
@@ -261,6 +267,69 @@ export function MapEditorControls({
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
+
+  const isBoxType = (type: string): boolean =>
+    type === "box" || type === "box1" || type === "box2" || type === "box3";
+
+  const configurableObjects = mapData.objects.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.type === "door" || isBoxType(item.type));
+
+  const supportedUnlockCharactersLabel = useMemo(() => {
+    const chars = getSupportedUnlockCharacters(mapData.config.type);
+    return chars.join(" ");
+  }, [mapData.config.type]);
+
+  const getDoorMetadata = (metadata: Record<string, unknown> | undefined) => {
+    const isOpen = typeof metadata?.isOpen === "boolean" ? metadata.isOpen : false;
+    const isLocked = typeof metadata?.isLocked === "boolean" ? metadata.isLocked : false;
+    const unlockCodeRaw = typeof metadata?.unlockCode === "string" ? metadata.unlockCode : "";
+    const unlockCode = sanitizeUnlockCode(unlockCodeRaw, mapData.config.type);
+    return { isOpen, isLocked, unlockCode };
+  };
+
+  const getBoxHardness = (type: string, metadata: Record<string, unknown> | undefined): number => {
+    if (typeof metadata?.hardness === "number" && Number.isFinite(metadata.hardness)) {
+      return Math.max(1, Math.floor(metadata.hardness));
+    }
+    if (type === "box1") return 1;
+    if (type === "box2") return 2;
+    if (type === "box3" || type === "box") return 3;
+    return 1;
+  };
+
+  const updateDoorMetadata = (
+    index: number,
+    currentMetadata: Record<string, unknown> | undefined,
+    changes: Partial<{ isOpen: boolean; isLocked: boolean; unlockCode: string }>,
+  ) => {
+    if (!onObjectMetadataChange) return;
+    const current = getDoorMetadata(currentMetadata);
+    const next = {
+      ...current,
+      ...changes,
+      unlockCode:
+        changes.unlockCode !== undefined
+          ? sanitizeUnlockCode(changes.unlockCode, mapData.config.type)
+          : current.unlockCode,
+    };
+    onObjectMetadataChange(index, {
+      ...(currentMetadata ?? {}),
+      ...next,
+    });
+  };
+
+  const updateBoxMetadata = (
+    index: number,
+    currentMetadata: Record<string, unknown> | undefined,
+    hardness: number,
+  ) => {
+    if (!onObjectMetadataChange) return;
+    onObjectMetadataChange(index, {
+      ...(currentMetadata ?? {}),
+      hardness: Math.max(1, Math.floor(hardness)),
+    });
+  };
 
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
@@ -1000,6 +1069,77 @@ export function MapEditorControls({
               <p style={styles.ruleSummaryItem}>- Required: {requiredSummary}</p>
               <p style={styles.ruleSummaryItem}>- Limit: {limitSummary}</p>
             </div>
+          </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Object Metadata</h3>
+            <p style={styles.helpText}>Configure metadata for placed doors and boxes.</p>
+
+            {configurableObjects.length === 0 && (
+              <p style={styles.placeholderText}>Place a door or box object to configure metadata.</p>
+            )}
+
+            {configurableObjects.map(({ item, index }) => {
+              if (item.type === "door") {
+                const door = getDoorMetadata(item.metadata);
+                return (
+                  <div key={`door-meta-${index}`} style={styles.objectMetadataCard}>
+                    <p style={styles.objectMetadataTitle}>Door at ({item.x}, {item.y})</p>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={door.isOpen}
+                        onChange={(e) =>
+                          updateDoorMetadata(index, item.metadata, { isOpen: e.target.checked })
+                        }
+                      />
+                      Open by default
+                    </label>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={door.isLocked}
+                        onChange={(e) =>
+                          updateDoorMetadata(index, item.metadata, { isLocked: e.target.checked })
+                        }
+                      />
+                      Locked
+                    </label>
+                    <label style={styles.label}>Unlock Code</label>
+                    <input
+                      type="text"
+                      value={door.unlockCode}
+                      onChange={(e) =>
+                        updateDoorMetadata(index, item.metadata, { unlockCode: e.target.value })
+                      }
+                      placeholder="e.g. AB1"
+                      style={styles.input}
+                    />
+                    <p style={styles.helpText}>Supported characters: {supportedUnlockCharactersLabel}</p>
+                  </div>
+                );
+              }
+
+              const hardness = getBoxHardness(item.type, item.metadata);
+              return (
+                <div key={`box-meta-${index}`} style={styles.objectMetadataCard}>
+                  <p style={styles.objectMetadataTitle}>
+                    {item.type} at ({item.x}, {item.y})
+                  </p>
+                  <label style={styles.label}>Hardness</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={hardness}
+                    onChange={(e) =>
+                      updateBoxMetadata(index, item.metadata, Number(e.target.value) || hardness)
+                    }
+                    style={styles.input}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <div style={styles.section}>
@@ -1839,6 +1979,29 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: "280px",
     overflowY: "auto",
     padding: "4px",
+  },
+  objectMetadataCard: {
+    border: "1px solid #dbe3ef",
+    borderRadius: "10px",
+    background: "#f8fafc",
+    padding: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    marginBottom: "10px",
+  },
+  objectMetadataTitle: {
+    margin: 0,
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#1e293b",
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "12px",
+    color: "#334155",
   },
   infoText: {
     margin: 0,

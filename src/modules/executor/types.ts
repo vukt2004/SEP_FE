@@ -315,10 +315,28 @@ export interface CloseDoorNode {
 }
 
 /**
+ * Unlock door command - unlocks a locked door in front using a key string
+ */
+export interface UnlockDoorNode {
+  type: "unlockDoor";
+  key: ASTNode | null;
+  blockId: string;
+}
+
+/**
  * Create a named list (array)
  */
 export interface CreateListNode {
   type: "createList";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Get the full named list (array)
+ */
+export interface GetListNode {
+  type: "getList";
   name: string;
   blockId: string;
 }
@@ -451,6 +469,22 @@ export interface GetCurrentCellNode {
 }
 
 /**
+ * Returns the character object value on the player's current cell
+ */
+export interface CollectCharacterNode {
+  type: "collectCharacter";
+  blockId: string;
+}
+
+/**
+ * Returns whether a character object exists on the player's current cell
+ */
+export interface IsCharacterNode {
+  type: "isCharacter";
+  blockId: string;
+}
+
+/**
  * Returns raw 4-direction neighbors of a cell string
  */
 export interface GetNeighborsNode {
@@ -477,6 +511,10 @@ export interface PositionResolver {
   getGoalCell: () => CellString;
   getCurrentCell: () => CellString;
   getNeighbors: (cell: CellString) => CellString[];
+  /** Collect and return character at current player cell; empty string when none. */
+  getCharacterAtCurrentCell: () => string;
+  /** Check whether current player cell has an uncollected character object. */
+  hasCharacterAtCurrentCell: () => boolean;
 }
 
 /**
@@ -492,7 +530,9 @@ export type ASTNode =
   | BreakNode
   | OpenDoorNode
   | CloseDoorNode
+  | UnlockDoorNode
   | CreateListNode
+  | GetListNode
   | ListAddNode
   | ListGetNode
   | ListLengthNode
@@ -508,6 +548,8 @@ export type ASTNode =
   | GetStartCellNode
   | GetGoalCellNode
   | GetCurrentCellNode
+  | CollectCharacterNode
+  | IsCharacterNode
   | GetNeighborsNode
   | RepeatNode
   | NumberLiteralNode

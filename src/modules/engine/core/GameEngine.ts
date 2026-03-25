@@ -116,6 +116,7 @@ export class GameEngine {
       hasPlayerWon: false,
       state: EngineState.Idle,
       collectedFruits: new Set<string>(),
+      collectedCharacters: new Set<string>(),
       timeElapsed: 0,
       startTime: null,
     };
@@ -225,6 +226,7 @@ export class GameEngine {
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
     this.runtime.collectedFruits.clear();
+    this.runtime.collectedCharacters.clear();
     this.runtime.startTime = null;
     this.runtime.timeElapsed = 0;
     this.goalRequirementNotified = false;
@@ -248,7 +250,7 @@ export class GameEngine {
       this.level,
       this.tileSize,
       this.runtime.player,
-      this.runtime.collectedFruits,
+      new Set<string>([...this.runtime.collectedFruits, ...this.runtime.collectedCharacters]),
       this.runtime.objectStates,
     );
   }
@@ -294,6 +296,15 @@ export class GameEngine {
 
   getConfig(): GameConfig {
     return this.config;
+  }
+
+  setDoorKeyHintVisible(visible: boolean): void {
+    this.renderer.setDoorKeyHintVisible(visible);
+
+    const canvasWidth = this.level.width * this.tileSize;
+    const canvasHeight = this.level.height * this.tileSize;
+    this.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    this.render();
   }
 
   /**
@@ -454,7 +465,7 @@ export class GameEngine {
       this.level,
       this.tileSize,
       this.runtime.player,
-      this.runtime.collectedFruits,
+      new Set<string>([...this.runtime.collectedFruits, ...this.runtime.collectedCharacters]),
       this.runtime.objectStates,
     );
   }
@@ -595,6 +606,9 @@ export class GameEngine {
         break;
       case "closeDoor":
         this.closeDoor();
+        break;
+      case "unlockDoor":
+        this.unlockDoor(command.key);
         break;
     }
 
@@ -828,6 +842,72 @@ export class GameEngine {
     return stringifyCell(this.runtime.player.x, this.runtime.player.y);
   }
 
+  hasCharacterAtCurrentCell(): boolean {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== playerX || obj.position.row !== playerY) {
+        continue;
+      }
+
+      if (this.runtime.collectedCharacters.has(obj.id)) {
+        continue;
+      }
+
+      if (/^letter_([a-z])$/i.test(obj.type)) {
+        return true;
+      }
+
+      if (/^digit_([0-9])$/.test(obj.type)) {
+        return true;
+      }
+
+      if (/^punctuation_([1-8])$/.test(obj.type)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  getCharacterAtCurrentCell(): string {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== playerX || obj.position.row !== playerY) {
+        continue;
+      }
+
+      if (this.runtime.collectedCharacters.has(obj.id)) {
+        continue;
+      }
+
+      const letterMatch = /^letter_([a-z])$/i.exec(obj.type);
+      if (letterMatch) {
+        this.runtime.collectedCharacters.add(obj.id);
+        return letterMatch[1].toUpperCase();
+      }
+
+      const digitMatch = /^digit_([0-9])$/.exec(obj.type);
+      if (digitMatch) {
+        this.runtime.collectedCharacters.add(obj.id);
+        return digitMatch[1];
+      }
+
+      const punctuationMatch = /^punctuation_([1-8])$/.exec(obj.type);
+      if (punctuationMatch) {
+        const punctuationByIndex = [".", ",", "!", "?", ":", ";", "'", '"'];
+        const index = Number(punctuationMatch[1]) - 1;
+        this.runtime.collectedCharacters.add(obj.id);
+        return punctuationByIndex[index] ?? "";
+      }
+    }
+
+    return "";
+  }
+
   getNeighbors(cell: string): string[] {
     return getRawNeighbors(cell);
   }
@@ -942,6 +1022,10 @@ export class GameEngine {
     }
 
     if (obj.type === "door") {
+      const isLocked = typeof obj.metadata?.isLocked === "boolean" ? obj.metadata.isLocked : false;
+      if (isLocked) {
+        return "locked";
+      }
       const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
       return isOpen ? "open" : "closed";
     }
@@ -1039,6 +1123,10 @@ export class GameEngine {
 
     const currentState =
       this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is locked. Unlock it first." });
+      return;
+    }
     if (currentState === "open") {
       return;
     }
@@ -1057,12 +1145,59 @@ export class GameEngine {
 
     const currentState =
       this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is locked." });
+      return;
+    }
     if (currentState === "closed") {
       return;
     }
 
     this.runtime.objectStates.set(target.id, "closed");
     this.emit({ type: "objectStateChanged", objectId: target.id, newState: "closed" });
+  }
+
+  private unlockDoor(key: string): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to unlock." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+
+    if (currentState === "open") {
+      return;
+    }
+
+    if (currentState !== "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is already unlocked." });
+      return;
+    }
+
+    const requiredCodeRaw =
+      (typeof target.metadata?.unlockCode === "string" && target.metadata.unlockCode) ||
+      (typeof target.metadata?.requiredCode === "string" && target.metadata.requiredCode) ||
+      (typeof target.metadata?.code === "string" && target.metadata.code) ||
+      "";
+
+    const provided = key.trim().toUpperCase();
+    const required = requiredCodeRaw.trim().toUpperCase();
+
+    if (required && provided !== required) {
+      this.emit({ type: "interactionFeedback", message: "Incorrect key for this door." });
+      return;
+    }
+
+    if (!required && !provided) {
+      this.emit({ type: "interactionFeedback", message: "Provide a key to unlock the door." });
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "open");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "open" });
   }
 
   /**

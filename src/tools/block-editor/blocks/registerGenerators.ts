@@ -125,6 +125,15 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "unlock_door": {
+      const key = getValueInput(block, "KEY");
+      return {
+        type: "unlockDoor",
+        key,
+        blockId,
+      };
+    }
+
     case "repeat": {
       const timesValue = getValueInput(block, "TIMES");
       const legacyTimes = Math.max(0, Number(block.getFieldValue("TIMES")) || 0);
@@ -416,6 +425,15 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
       };
     }
 
+    case "get_array": {
+      const name = (block.getFieldValue("NAME") || "").trim() || "myList";
+      return {
+        type: "getList",
+        name,
+        blockId,
+      };
+    }
+
     case "list_add": {
       const name = (block.getFieldValue("NAME") || "").trim() || "myList";
       const value = getValueInput(block, "VALUE");
@@ -553,6 +571,20 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
     case "get_current_cell": {
       return {
         type: "getCurrentCell",
+        blockId,
+      };
+    }
+
+    case "collect_character": {
+      return {
+        type: "collectCharacter",
+        blockId,
+      };
+    }
+
+    case "is_character": {
+      return {
+        type: "isCharacter",
         blockId,
       };
     }

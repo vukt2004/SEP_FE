@@ -95,6 +95,7 @@ export default function PlatformGameView() {
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const timerElapsedRef = useRef(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
@@ -145,6 +146,10 @@ export default function PlatformGameView() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    engineRef.current?.setDoorKeyHintVisible(showDoorKeyHints);
+  }, [showDoorKeyHints]);
 
   useEffect(() => {
     let isMounted = true;
@@ -487,6 +492,14 @@ export default function PlatformGameView() {
         getNeighbors: (cell: string) => {
           const engine = engineRef.current;
           return engine ? engine.getNeighbors(cell) : [];
+        },
+        getCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getCharacterAtCurrentCell() : "";
+        },
+        hasCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.hasCharacterAtCurrentCell() : false;
         },
       };
 
@@ -1117,6 +1130,24 @@ export default function PlatformGameView() {
             onMouseLeave={() => setHoveredControl(null)}
           >
             <RotateCcw size={15} /> Reset
+          </button>
+
+          <button
+            onClick={() => setShowDoorKeyHints((prev) => !prev)}
+            disabled={isLoading || !!error}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "1px solid var(--border)",
+              background: showDoorKeyHints ? "var(--primary)" : "var(--surface-2)",
+              color: showDoorKeyHints ? "#fff" : "var(--text)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: isLoading || !!error ? "not-allowed" : "pointer",
+            }}
+            title="Toggle door key message"
+          >
+            {showDoorKeyHints ? "Hide Door Key" : "Show Door Key"}
           </button>
         </div>
 

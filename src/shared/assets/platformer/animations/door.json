@@ -1,0 +1,32 @@
+{
+  "objectType": "door",
+  "states": {
+    "idle": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameCount": 1,
+      "frameDuration": 200,
+      "loop": false,
+      "row": 1
+    },
+    "closed": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameCount": 2,
+      "frameDuration": 100,
+      "loop": false,
+      "columns": 1
+    },
+    "open": {
+      "sprite": "../Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameCount": 1,
+      "frameDuration": 100,
+      "loop": false,
+      "columns": 1
+    }
+  }
+}

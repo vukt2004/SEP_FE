@@ -2,7 +2,14 @@ import type { LevelDefinition } from "../../map-system/types";
 import type { Player } from "../core/types";
 import { animationRegistry } from "../systems/animation/animationRegistry";
 import type { AnimationSystem } from "../systems/animation/AnimationSystem";
-import { type TileDefinition, TilesetCache, TilesetLoader } from "../assets";
+import {
+  ObjectSpriteCache,
+  ObjectSpriteLoader,
+  type ObjectDefinition,
+  type TileDefinition,
+  TilesetCache,
+  TilesetLoader,
+} from "../assets";
 import type { GameType } from "../../../shared/types/GameType";
 
 const TILE_COLORS: Record<number, string> = {
@@ -19,6 +26,7 @@ const PLAYER_COLOR = "#2255cc";
 const GOAL_COLOR = "#22cc55";
 const DOOR_OPEN_COLOR = "#d4a574";
 const DOOR_CLOSED_COLOR = "#8b4513";
+const DOOR_LOCKED_COLOR = "#5c5c5c";
 
 const PLATFORMER_OBJECT_RENDER_OFFSETS: Partial<Record<string, { x: number; y: number }>> = {
   // Pixel Adventure box sprites include top padding; nudge down to sit on tiles naturally.
@@ -26,6 +34,10 @@ const PLATFORMER_OBJECT_RENDER_OFFSETS: Partial<Record<string, { x: number; y: n
   box2: { x: 0, y: 0.25 },
   box3: { x: 0, y: 0.25 },
 };
+
+function isCharacterObjectType(type: string): boolean {
+  return type.startsWith("letter_") || type.startsWith("digit_") || type.startsWith("punctuation_");
+}
 
 function isBreakableBoxType(type: string): boolean {
   return type === "box" || type === "box1" || type === "box2" || type === "box3";
@@ -53,6 +65,37 @@ function getBoxHardness(obj: { type: string; metadata?: Record<string, unknown> 
   }
 }
 
+function getDoorState(
+  obj: { initialState?: string; metadata?: Record<string, unknown> },
+  runtimeState?: string,
+): "open" | "closed" | "locked" {
+  if (runtimeState === "open" || runtimeState === "closed" || runtimeState === "locked") {
+    return runtimeState;
+  }
+
+  if (obj.initialState === "open" || obj.initialState === "closed" || obj.initialState === "locked") {
+    return obj.initialState;
+  }
+
+  const isLocked = typeof obj.metadata?.isLocked === "boolean" ? obj.metadata.isLocked : false;
+  if (isLocked) {
+    return "locked";
+  }
+
+  const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
+  return isOpen ? "open" : "closed";
+}
+
+function getDoorUnlockCode(metadata?: Record<string, unknown>): string {
+  const raw =
+    (typeof metadata?.unlockCode === "string" && metadata.unlockCode) ||
+    (typeof metadata?.requiredCode === "string" && metadata.requiredCode) ||
+    (typeof metadata?.code === "string" && metadata.code) ||
+    "";
+
+  return raw.trim().toUpperCase();
+}
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private animationSystem: AnimationSystem;
@@ -60,7 +103,11 @@ export class Renderer {
   private tilesetCache: TilesetCache;
   private tilesetLoader: TilesetLoader;
   private currentTileset: Record<number, TileDefinition> | null = null;
+  private objectSpriteCache: ObjectSpriteCache;
+  private objectSpriteLoader: ObjectSpriteLoader;
+  private objectDefinitionsByName: Map<string, ObjectDefinition> = new Map();
   private gameType: GameType;
+  private showDoorKeyHints: boolean = true;
 
   /**
    * @param ctx - Canvas rendering context
@@ -80,6 +127,8 @@ export class Renderer {
     this.gameType = gameType;
     this.tilesetCache = new TilesetCache();
     this.tilesetLoader = new TilesetLoader(gameType);
+    this.objectSpriteCache = new ObjectSpriteCache();
+    this.objectSpriteLoader = new ObjectSpriteLoader(gameType);
   }
 
   /**
@@ -125,6 +174,37 @@ export class Renderer {
       }
     }
 
+    // Load object definitions and preload object sprite sheets used by this level.
+    try {
+      const objectDefs = await this.objectSpriteLoader.loadObjectDefinitions();
+      this.objectDefinitionsByName.clear();
+
+      for (const objectDef of Object.values(objectDefs)) {
+        this.objectDefinitionsByName.set(objectDef.name, objectDef);
+      }
+
+      const objectImagePaths = new Set<string>();
+      for (const object of level.objects || []) {
+        const objectDef = this.objectDefinitionsByName.get(object.type);
+        if (objectDef) {
+          objectImagePaths.add(objectDef.imagePath);
+        }
+      }
+
+      for (const imagePath of objectImagePaths) {
+        loadPromises.push(
+          this.objectSpriteCache
+            .loadSprite(imagePath)
+            .catch((error) => {
+              console.warn(`Failed to load object sprite ${imagePath}:`, error);
+            })
+            .then(() => {}),
+        );
+      }
+    } catch (error) {
+      console.warn("Failed to preload object definitions for renderer:", error);
+    }
+
     await Promise.all(loadPromises);
   }
 
@@ -132,7 +212,7 @@ export class Renderer {
     level: LevelDefinition,
     tileSize: number,
     player: Player,
-    collectedFruits: Set<string> = new Set(),
+    collectedObjectIds: Set<string> = new Set(),
     objectStates?: Map<string, string>,
   ): void {
     // Layer rendering order for proper depth:
@@ -145,7 +225,7 @@ export class Renderer {
     // 3. Start/Goal markers
     this.drawStartGoalMarkers(level, tileSize);
     // 4. Objects (fruits, etc.)
-    this.drawObjects(level, tileSize, collectedFruits, objectStates);
+    this.drawObjects(level, tileSize, collectedObjectIds, objectStates);
     // 5. Player character
     this.drawPlayer(player, tileSize);
     // 6. Foreground layer (renders ABOVE player for depth effect)
@@ -265,14 +345,14 @@ export class Renderer {
   private drawObjects(
     level: LevelDefinition,
     tileSize: number,
-    collectedFruits: Set<string> = new Set(),
+    collectedObjectIds: Set<string> = new Set(),
     objectStates?: Map<string, string>,
   ): void {
     const { objects } = level;
 
     for (const obj of objects || []) {
-      // Skip collected fruits
-      if (obj.type === "fruit" && collectedFruits.has(obj.id)) {
+      // Skip collected objects (fruits, characters, and other consumables).
+      if (collectedObjectIds.has(obj.id)) {
         continue;
       }
 
@@ -301,6 +381,12 @@ export class Renderer {
         this.gameType === "platformer" ? PLATFORMER_OBJECT_RENDER_OFFSETS[obj.type] : undefined;
       const renderX = pixelX + (objectOffset?.x ?? 0) * tileSize;
       const renderY = pixelY + (objectOffset?.y ?? 0) * tileSize;
+      const objectScale = isCharacterObjectType(obj.type) ? 0.4 : 1;
+      const renderWidth = tileSize * objectScale;
+      const renderHeight = tileSize * objectScale;
+      const drawX = renderX + (tileSize - renderWidth) / 2;
+      const drawY = renderY + (tileSize - renderHeight) / 2;
+      const doorState = obj.type === "door" ? getDoorState(obj, runtimeState) : undefined;
 
       if (anim) {
         // Sprite-based rendering
@@ -315,22 +401,47 @@ export class Renderer {
           sy,
           anim.frameWidth,
           anim.frameHeight,
-          renderX,
-          renderY,
-          tileSize,
-          tileSize,
+          drawX,
+          drawY,
+          renderWidth,
+          renderHeight,
         );
       } else {
-        // Fallback: colored square
-        if (obj.type === "goal") {
-          this.ctx.fillStyle = GOAL_COLOR;
-        } else if (obj.type === "door") {
-          const doorState = runtimeState ?? obj.initialState;
-          this.ctx.fillStyle = doorState === "open" ? DOOR_OPEN_COLOR : DOOR_CLOSED_COLOR;
+        const objectDef = this.objectDefinitionsByName.get(obj.type);
+        const objectSprite = objectDef ? this.objectSpriteCache.getSprite(objectDef.imagePath) : undefined;
+
+        if (objectDef && objectSprite) {
+          const columns = objectDef.columns ?? Math.max(1, Math.floor(objectSprite.width / objectDef.frameWidth));
+          const sx = (objectDef.frameIndex % columns) * objectDef.frameWidth;
+          const sy = Math.floor(objectDef.frameIndex / columns) * objectDef.frameHeight;
+
+          this.ctx.drawImage(
+            objectSprite,
+            sx,
+            sy,
+            objectDef.frameWidth,
+            objectDef.frameHeight,
+            drawX,
+            drawY,
+            renderWidth,
+            renderHeight,
+          );
         } else {
-          this.ctx.fillStyle = "#ff00ff";
+          // Fallback: colored square
+          if (obj.type === "goal") {
+            this.ctx.fillStyle = GOAL_COLOR;
+          } else if (obj.type === "door") {
+            this.ctx.fillStyle =
+              doorState === "open"
+                ? DOOR_OPEN_COLOR
+                : doorState === "locked"
+                  ? DOOR_LOCKED_COLOR
+                  : DOOR_CLOSED_COLOR;
+          } else {
+            this.ctx.fillStyle = "#ff00ff";
+          }
+          this.ctx.fillRect(drawX, drawY, renderWidth, renderHeight);
         }
-        this.ctx.fillRect(renderX, renderY, tileSize, tileSize);
       }
 
       if (isBreakableBoxType(obj.type) && resolvedStateKey !== "break") {
@@ -343,7 +454,36 @@ export class Renderer {
         this.ctx.fillText(String(hardness), renderX + tileSize / 2, renderY + tileSize / 2);
         this.ctx.restore();
       }
+
+      if (this.showDoorKeyHints && obj.type === "door" && doorState === "locked") {
+        const unlockCode = getDoorUnlockCode(obj.metadata);
+        if (unlockCode) {
+          const label = `Key: ${unlockCode}`;
+          this.ctx.save();
+          this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.28))}px monospace`;
+          this.ctx.textAlign = "center";
+          this.ctx.textBaseline = "middle";
+
+          const textWidth = this.ctx.measureText(label).width;
+          const paddingX = 6;
+          const bubbleWidth = textWidth + paddingX * 2;
+          const bubbleHeight = Math.max(16, Math.floor(tileSize * 0.34));
+          const bubbleX = renderX + tileSize / 2 - bubbleWidth / 2;
+          const bubbleY = renderY - bubbleHeight - 4;
+
+          this.ctx.fillStyle = "rgba(25, 25, 25, 0.82)";
+          this.ctx.fillRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
+
+          this.ctx.fillStyle = "#f8f8f8";
+          this.ctx.fillText(label, renderX + tileSize / 2, bubbleY + bubbleHeight / 2);
+          this.ctx.restore();
+        }
+      }
     }
+  }
+
+  setDoorKeyHintVisible(visible: boolean): void {
+    this.showDoorKeyHints = visible;
   }
 
   private drawPlayer(player: Player, tileSize: number): void {
