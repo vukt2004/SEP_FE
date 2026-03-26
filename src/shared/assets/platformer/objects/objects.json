@@ -67,6 +67,8 @@
     },
     "8": {
       "name": "door",
+      "name_EN": "Door",
+      "name_VI": "Cửa",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
@@ -76,6 +78,8 @@
     
     "11": {
       "name": "letter_a",
+      "name_EN": "Letter A",
+      "name_VI": "Kí tự A",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -84,6 +88,8 @@
     },
     "12": {
       "name": "letter_b",
+      "name_EN": "Letter B",
+      "name_VI": "Kí tự B",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -92,6 +98,8 @@
     },
     "13": {
       "name": "letter_c",
+      "name_EN": "Letter C",
+      "name_VI": "Kí tự C",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -100,6 +108,8 @@
     },
     "14": {
       "name": "letter_d",
+      "name_EN": "Letter D",
+      "name_VI": "Kí tự D",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -108,6 +118,8 @@
     },
     "15": {
       "name": "letter_e",
+      "name_EN": "Letter E",
+      "name_VI": "Kí tự E",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -116,6 +128,8 @@
     },
     "16": {
       "name": "letter_f",
+      "name_EN": "Letter F",
+      "name_VI": "Kí tự F",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -124,6 +138,8 @@
     },
     "17": {
       "name": "letter_g",
+      "name_EN": "Letter G",
+      "name_VI": "Kí tự G",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -132,6 +148,8 @@
     },
     "18": {
       "name": "letter_h",
+      "name_EN": "Letter H",
+      "name_VI": "Kí tự H",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -140,6 +158,8 @@
     },
     "19": {
       "name": "letter_i",
+      "name_EN": "Letter I",
+      "name_VI": "Kí tự I",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -148,6 +168,8 @@
     },
     "20": {
       "name": "letter_j",
+      "name_EN": "Letter J",
+      "name_VI": "Kí tự J",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -156,6 +178,8 @@
     },
     "21": {
       "name": "letter_k",
+      "name_EN": "Letter K", 
+      "name_VI": "Kí tự K",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -164,6 +188,8 @@
     },
     "22": {
       "name": "letter_l",
+      "name_EN": "Letter L",
+      "name_VI": "Kí tự L",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -172,6 +198,8 @@
     },
     "23": {
       "name": "letter_m",
+      "name_EN": "Letter M",
+      "name_VI": "Kí tự M",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -180,6 +208,8 @@
     },
     "24": {
       "name": "letter_n",
+      "name_EN": "Letter N",
+      "name_VI": "Kí tự N",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -188,6 +218,8 @@
     },
     "25": {
       "name": "letter_o",
+      "name_EN": "Letter O",
+      "name_VI": "Kí tự O",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -196,6 +228,8 @@
     },
     "26": {
       "name": "letter_p",
+      "name_EN": "Letter P",
+      "name_VI": "Kí tự P",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -204,6 +238,8 @@
     },
     "27": {
       "name": "letter_q",
+      "name_EN": "Letter Q",
+      "name_VI": "Kí tự Q",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -212,6 +248,8 @@
     },
     "28": {
       "name": "letter_r",
+      "name_EN": "Letter R",
+      "name_VI": "Kí tự R",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -220,6 +258,8 @@
     },
     "29": {
       "name": "letter_s",
+      "name_EN": "Letter S",
+      "name_VI": "Kí tự S",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -228,6 +268,8 @@
     },
     "30": {
       "name": "letter_t",
+      "name_EN": "Letter T",
+      "name_VI": "Kí tự T",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -236,6 +278,8 @@
     },
     "31": {
       "name": "letter_u",
+      "name_EN": "Letter U",
+      "name_VI": "Kí tự U",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -244,6 +288,8 @@
     },
     "32": {
       "name": "letter_v",
+      "name_EN": "Letter V",
+      "name_VI": "Kí tự V",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -252,6 +298,8 @@
     },
     "33": {
       "name": "letter_w",
+      "name_EN": "Letter W",
+      "name_VI": "Kí tự W",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -260,6 +308,8 @@
     },
     "34": {
       "name": "letter_x",
+      "name_EN": "Letter X",
+      "name_VI": "Kí tự X",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -268,6 +318,8 @@
     },
     "35": {
       "name": "digit_0",
+      "name_EN": "Digit 0",
+      "name_VI": "Số 0",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -276,6 +328,8 @@
     },
     "36": {
       "name": "digit_1",
+      "name_EN": "Digit 1",
+      "name_VI": "Số 1",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -284,6 +338,8 @@
     },
     "37": {
       "name": "digit_2",
+      "name_EN": "Digit 2",
+      "name_VI": "Số 2",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -292,6 +348,8 @@
     },
     "38": {
       "name": "digit_3",
+      "name_EN": "Digit 3",
+      "name_VI": "Số 3",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -300,6 +358,8 @@
     },
     "39": {
       "name": "digit_4",
+      "name_EN": "Digit 4",
+      "name_VI": "Số 4",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -308,6 +368,8 @@
     },
     "40": {
       "name": "digit_5",
+      "name_EN": "Digit 5",
+      "name_VI": "Số 5",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -316,6 +378,8 @@
     },
     "41": {
       "name": "digit_6",
+      "name_EN": "Digit 6",
+      "name_VI": "Số 6",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -324,6 +388,8 @@
     },
     "42": {
       "name": "digit_7",
+      "name_EN": "Digit 7",
+      "name_VI": "Số 7",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -332,6 +398,8 @@
     },
     "43": {
       "name": "digit_8",
+      "name_EN": "Digit 8",
+      "name_VI": "Số 8",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -340,6 +408,8 @@
     },
     "44": {
       "name": "digit_9",
+      "name_EN": "Digit 9",
+      "name_VI": "Số 9",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -348,6 +418,8 @@
     },
     "45": {
       "name": "punctuation_1",
+      "name_EN": "Punctuation .",
+      "name_VI": "Dấu .",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -356,6 +428,8 @@
     },
     "46": {
       "name": "punctuation_2",
+      "name_EN": "Punctuation ,",
+      "name_VI": "Dấu ,",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -364,6 +438,8 @@
     },
     "47": {
       "name": "punctuation_3",
+      "name_EN": "Punctuation :",
+      "name_VI": "Dấu :",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -372,6 +448,8 @@
     },
     "48": {
       "name": "punctuation_4",
+      "name_EN": "Punctuation ?",
+      "name_VI": "Dấu ?",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -380,6 +458,8 @@
     },
     "49": {
       "name": "punctuation_5",
+      "name_EN": "Punctuation !",
+      "name_VI": "Dấu !",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -388,6 +468,8 @@
     },
     "50": {
       "name": "punctuation_6",
+      "name_EN": "Punctuation (",
+      "name_VI": "Dấu (",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -396,6 +478,8 @@
     },
     "51": {
       "name": "punctuation_7",
+      "name_EN": "Punctuation )",
+      "name_VI": "Dấu )",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -404,6 +488,8 @@
     },
     "52": {
       "name": "punctuation_8",
+      "name_EN": "Punctuation +",
+      "name_VI": "Dấu +",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -412,6 +498,8 @@
     },
     "53": {
       "name": "letter_y",
+      "name_EN": "Letter Y",
+      "name_VI": "Kí tự Y",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
@@ -420,6 +508,8 @@
     },
     "54": {
       "name": "letter_z",
+      "name_EN": "Letter Z",
+      "name_VI": "Kí tự Z",
       "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
       "frameWidth": 8,
       "frameHeight": 10,
