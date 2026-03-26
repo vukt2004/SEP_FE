@@ -44,10 +44,10 @@ const toNumber = (value: unknown, fallback: number): number => {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 };
 
-const clampDifficulty = (value: number): 1 | 2 | 3 => {
+const clampDifficulty = (value: number): 1 | 2 | 3 | 4 | 5 => {
   if (value <= 1) return 1;
-  if (value >= 3) return 3;
-  return value as 1 | 2 | 3;
+  if (value >= 5) return 5;
+  return value as 1 | 2 | 3 | 4 | 5;
 };
 
 const clampWinCondition = (value: number): 1 | 2 => {
@@ -548,7 +548,7 @@ export default function MapEditor() {
     store?.setMapDescription(description);
   };
 
-  const handleDifficultyChange = (difficulty: 1 | 2 | 3) => {
+  const handleDifficultyChange = (difficulty: 1 | 2 | 3 | 4 | 5) => {
     store?.setMapDifficulty(difficulty);
   };
 

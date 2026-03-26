@@ -180,8 +180,17 @@ UserLearningGoal (user A đang chọn goal "Logic cơ bản")
 
 ### Concept và LearningPathItem
 
-1. **Concept** – mỗi goal vài concept (Name, Description, Content, SortOrder). Hiện chưa seed tự động; có thể thêm block seed tương tự trong `SeedingExtension` (idempotent theo LearningGoalId + Name) hoặc dùng CMS/sql.
-2. **LearningPathItem** – với từng goal, thêm các dòng ItemType = Concept hoặc Map, ConceptId/MapId tương ứng, SortOrder tăng dần. Có thể seed sau khi đã có Concept và Map, hoặc thêm CMS API để tạo/sửa.
+1. **Concept** – seed trong `SeedingExtension` (idempotent theo LearningGoalId + Name).
+2. **LearningPathItem** – seed trong `SeedingExtension`; **Map** gán theo `Maps.Title` (khớp `script_clean.sql` / map đã publish). Bảng gợi ý (map mới + fallback legacy):
+
+| Mục tiêu | Concept → Map thử thách (ưu tiên) |
+| -------- | -------------------------------- |
+| **Logic cơ bản** | Biến → *Introduce variable* · Phép toán → *Mathematical operation* · Thứ tự thực thi → *Platform movement tutorial* |
+| **Điều kiện** | If-else → *Introduce trap* · So sánh → *More Box* |
+| **Vòng lặp** | For → *Introduce for loop* · While → *Introduce while/do while loop* |
+| **Giải quyết vấn đề** | Phân tích → *Basic top down map* · Thuật toán → *Maze map* |
+
+Nếu DB chỉ có map cũ (`level-platform-01`, …), seed tự **fallback** sang title legacy. Seed path item **chỉ chạy khi chưa có dòng (LearningGoalId, SortOrder)** — DB đã seed trước đó sẽ **không** tự đổi map; cần xóa bảng `LearningPathItems` (hoặc chỉ các dòng map) rồi chạy lại API seed, hoặc cập nhật `MapId` thủ công/CMS.
 
 ## Migration
 

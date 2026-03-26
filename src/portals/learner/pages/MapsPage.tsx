@@ -23,6 +23,7 @@ import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 
 /** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
 const DIFFICULTY_TAG_NAMES = new Set(
@@ -202,9 +203,11 @@ function formatTime(timeLimitMs: number, t: (k: string) => string): string {
 }
 
 function getDifficultyLabel(d: number, t: (k: string) => string): string {
-  if (d <= 2) return t("easy");
-  if (d <= 5) return t("medium");
-  return t("hard");
+  const tier = getDifficultyTier(d);
+  const level = Math.min(5, Math.max(1, Math.round(d)));
+  if (tier === "easy") return `${t("easy")} (${level}/5)`;
+  if (tier === "medium") return `${t("medium")} (${level}/5)`;
+  return `${t("hard")} (${level}/5)`;
 }
 
 export default function MapsPage() {
@@ -480,7 +483,7 @@ function MapsContent() {
   }, [mapsSortedPlayable, recommendedIdOrder]);
 
   const beginnerMaps = useMemo(
-    () => mapsSortedPlayable.filter((m) => m.difficulty <= 2),
+    () => mapsSortedPlayable.filter((m) => getDifficultyTier(m.difficulty) === "easy"),
     [mapsSortedPlayable],
   );
   const allMapsForGrid = filteredMaps;
@@ -559,9 +562,11 @@ function MapsContent() {
                 aria-label={t("difficulty")}
               >
                 <option value="all">{t("filterAll")}</option>
-                <option value={1}>{t("easy")}</option>
-                <option value={2}>{t("medium")}</option>
-                <option value={3}>{t("hard")}</option>
+                <option value={1}>1/5</option>
+                <option value={2}>2/5</option>
+                <option value={3}>3/5</option>
+                <option value={4}>4/5</option>
+                <option value={5}>5/5</option>
               </select>
             </div>
 
@@ -869,8 +874,9 @@ function MapCard({
 }) {
   const [hover, setHover] = useState(false);
   const isLocked = status === "locked";
+  const diffTier = getDifficultyTier(map.difficulty);
   const difficultyClass =
-    map.difficulty <= 2 ? styles.difficultyEasy : map.difficulty <= 5 ? styles.difficultyMedium : styles.difficultyHard;
+    diffTier === "easy" ? styles.difficultyEasy : diffTier === "medium" ? styles.difficultyMedium : styles.difficultyHard;
   const tagNames = map.tagNames ?? [];
   const conceptTags = tagNames.filter((name) => !isDifficultyTag(name));
   const prerequisites =

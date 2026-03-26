@@ -66,7 +66,7 @@ interface MapEditorControlsProps {
   onTypeChange?: (type: "platform" | "topdown") => void;
   onNameChange?: (name: string) => void;
   onDescriptionChange?: (description: string) => void;
-  onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
+  onDifficultyChange?: (difficulty: 1 | 2 | 3 | 4 | 5) => void;
   onTimeLimitChange?: (seconds: number) => void;
   onEstimatedStepsChange?: (steps: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
@@ -528,8 +528,7 @@ export function MapEditorControls({
     .filter((tag) => selectedTagIds.includes(tag.id))
     .map((tag) => tag.name);
 
-  const difficultyLabel =
-    mapData.config.difficulty === 1 ? "Easy" : mapData.config.difficulty === 2 ? "Medium" : "Hard";
+  const difficultyLabel = `${mapData.config.difficulty}/5`;
 
   const winConditionLabel = mapData.config.winCondition === 2 ? "Collect Fruits" : "Reach Goal";
 
@@ -1635,13 +1634,17 @@ export function MapEditorControls({
                     <select
                       autoFocus
                       value={mapData.config.difficulty}
-                      onChange={(e) => onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3)}
+                      onChange={(e) =>
+                        onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)
+                      }
                       onBlur={() => setActiveInlineField(null)}
                       style={styles.inlineInput}
                     >
-                      <option value={1}>Easy</option>
-                      <option value={2}>Medium</option>
-                      <option value={3}>Hard</option>
+                      <option value={1}>1/5</option>
+                      <option value={2}>2/5</option>
+                      <option value={3}>3/5</option>
+                      <option value={4}>4/5</option>
+                      <option value={5}>5/5</option>
                     </select>
                   ) : (
                     <div style={styles.inlineFieldValue}>{difficultyLabel}</div>

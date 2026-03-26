@@ -218,29 +218,14 @@ export const MapsPage: React.FC = () => {
   };
 
   const getDifficultyLabel = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "Easy";
-      case 2:
-        return "Medium";
-      case 3:
-        return "Hard";
-      default:
-        return "Unknown";
-    }
+    const level = Math.min(5, Math.max(1, Math.round(difficulty)));
+    return `${level}/5`;
   };
 
   const getDifficultyColor = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return "var(--success)";
-      case 2:
-        return "var(--warning)";
-      case 3:
-        return "var(--danger)";
-      default:
-        return "var(--text-2)";
-    }
+    if (difficulty <= 2) return "var(--success)";
+    if (difficulty === 3) return "var(--warning)";
+    return "var(--danger)";
   };
 
   const formatDate = (dateString: string | null) => {
@@ -467,9 +452,11 @@ export const MapsPage: React.FC = () => {
           }}
         >
           <option value="">All Difficulties</option>
-          <option value="1">Easy</option>
-          <option value="2">Medium</option>
-          <option value="3">Hard</option>
+          <option value="1">1/5</option>
+          <option value="2">2/5</option>
+          <option value="3">3/5</option>
+          <option value="4">4/5</option>
+          <option value="5">5/5</option>
         </select>
 
         {/* Sort By */}

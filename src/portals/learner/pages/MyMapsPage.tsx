@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
@@ -99,7 +100,8 @@ type MapListProps = {
 };
 
 const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
-  if (difficulty === 1) {
+  const tier = getDifficultyTier(difficulty);
+  if (tier === "easy") {
     return {
       background: "rgba(34, 197, 94, 0.14)",
       color: "#166534",
@@ -107,7 +109,7 @@ const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
     };
   }
 
-  if (difficulty === 2) {
+  if (tier === "medium") {
     return {
       background: "rgba(245, 158, 11, 0.16)",
       color: "#9a6700",
@@ -115,18 +117,10 @@ const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
     };
   }
 
-  if (difficulty === 3) {
-    return {
-      background: "rgba(239, 68, 68, 0.14)",
-      color: "#991b1b",
-      border: "1px solid rgba(239, 68, 68, 0.38)",
-    };
-  }
-
   return {
-    background: "var(--surface-2)",
-    color: "var(--text-2)",
-    border: "1px solid var(--border)",
+    background: "rgba(239, 68, 68, 0.14)",
+    color: "#991b1b",
+    border: "1px solid rgba(239, 68, 68, 0.38)",
   };
 };
 
@@ -329,9 +323,11 @@ const MapFilters: React.FC<MapFiltersProps> = ({
         }}
       >
         <option value="">All Difficulty</option>
-        <option value="1">{t("easy")}</option>
-        <option value="2">{t("medium")}</option>
-        <option value="3">{t("hard")}</option>
+        <option value="1">1/5</option>
+        <option value="2">2/5</option>
+        <option value="3">3/5</option>
+        <option value="4">4/5</option>
+        <option value="5">5/5</option>
       </select>
 
       <div style={{ position: "relative", display: "inline-flex", flex: "0 1 190px" }}>
@@ -956,16 +952,11 @@ export const MyMapsPage: React.FC = () => {
   };
 
   const getDifficultyLabel = (difficulty: number) => {
-    switch (difficulty) {
-      case 1:
-        return t("easy");
-      case 2:
-        return t("medium");
-      case 3:
-        return t("hard");
-      default:
-        return t("unknown");
-    }
+    const tier = getDifficultyTier(difficulty);
+    const level = Math.min(5, Math.max(1, Math.round(difficulty)));
+    if (tier === "easy") return `${t("easy")} (${level}/5)`;
+    if (tier === "medium") return `${t("medium")} (${level}/5)`;
+    return `${t("hard")} (${level}/5)`;
   };
 
   const formatDate = (dateString: string | null) => {

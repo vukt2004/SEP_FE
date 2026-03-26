@@ -6,6 +6,7 @@ import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
+import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
@@ -67,9 +68,10 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
     color: apiMap.type === "Platform" ? "blue" : "orange",
   };
 
+  const tier = getDifficultyTier(apiMap.difficulty);
   const difficultyTag: MapTag = {
     label: `Difficulty ${apiMap.difficulty}`,
-    color: apiMap.difficulty <= 2 ? "green" : apiMap.difficulty <= 5 ? "yellow" : "purple",
+    color: tier === "easy" ? "green" : tier === "medium" ? "yellow" : "purple",
   };
 
   const categoryTags: MapTag[] = [typeTag, difficultyTag];

@@ -693,9 +693,9 @@ export class EditorStore {
   /**
    * Update the map difficulty
    *
-   * @param difficulty - Difficulty level (1=easy, 2=normal, 3=hard)
+   * @param difficulty - Difficulty level (1..5)
    */
-  setMapDifficulty(difficulty: 1 | 2 | 3): void {
+  setMapDifficulty(difficulty: 1 | 2 | 3 | 4 | 5): void {
     this.saveHistory();
     this.mapData.config.difficulty = difficulty;
     this.notify();

@@ -13,7 +13,7 @@ export interface UploadMapFromJsonParams {
   Description: string;
   /** Map type: Topdown or Platform */
   Type: "Topdown" | "Platform";
-  /** Difficulty level (1-10) */
+  /** Difficulty level (1-5) */
   Difficulty: number;
   /** Time limit in milliseconds */
   TimeLimitMs: number;
