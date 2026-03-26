@@ -82,19 +82,16 @@ export class AnimationLoader {
 
     for (const [, config] of animationConfigs.entries()) {
       const { objectType, states } = config;
-
       // Initialize state map for this object type
       if (!this.registry[objectType]) {
         this.registry[objectType] = {};
       }
-
       // Load all states for this object type
       for (const stateName in states) {
         const stateConfig = states[stateName];
 
         // Build the full image path using game type
         const imagePath = buildImagePath(this.gameType, stateConfig.sprite);
-
         const loadPromise = loadImage(imagePath)
           .then((image) => {
             // Generate frames array from frameCount
@@ -113,7 +110,6 @@ export class AnimationLoader {
               row: stateConfig.row ?? 0,
               columns: stateConfig.columns,
             };
-
             this.registry[objectType][stateName] = animDef;
           })
           .catch((error) => {

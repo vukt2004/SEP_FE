@@ -6,1465 +6,1954 @@
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "1": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "2": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "3": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "4": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Plant",
+      "group_VI": "Cây"
     },
     "5": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Structure",
+      "group_VI": "Công trình"
     },
     "6": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Wood_Bridge.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Structure",
+      "group_VI": "Công trình"
     },
     "7": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass Decoration",
+      "group_VI": "Ngoại cảnh"
     },
     "8": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Grass_Biom_things.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass Decoration",
+      "group_VI": "Ngoại cảnh"
     },
     "9": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Basic_Plants.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass Decoration",
+      "group_VI": "Ngoại cảnh"
     },
     "10": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Water.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Water",
+      "group_VI": "Nước"
     },
     "11": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Water.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Water",
+      "group_VI": "Nước"
     },
     "12": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled_Dirt.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "13": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "14": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Paths.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "15": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "16": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 2,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "17": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 3,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "18": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 0,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "19": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 1,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "20": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 2,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "21": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 3,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "22": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 0,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "23": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 1,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "24": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 2,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "25": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 3,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "26": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 0,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "27": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 1,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "28": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 2,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "29": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Fences.png",
       "tileX": 3,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Fence",
+      "group_VI": "Hàng rào"
     },
     "30": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "31": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "32": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "33": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "34": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "35": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "36": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "37": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "38": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "39": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "40": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "41": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "42": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
-      "tileX": 6,
+      "tileX": 6, 
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "43": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "44": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "45": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "46": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "47": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "48": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "49": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "50": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "51": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "52": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "53": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "54": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "55": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "56": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 10,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "57": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "58": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "59": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "60": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "61": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "62": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "63": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "64": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "65": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "66": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "67": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 10,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "68": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
-      "tileY": 4,
-      "tileSize": 16
+      "tileY": 4, 
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "69": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "70": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "71": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "72": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "73": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "74": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "75": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "76": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "77": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "78": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "79": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "80": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "81": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "82": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "83": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "84": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "85": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "86": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "87": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 9,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "88": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 0,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "89": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 1,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "90": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 2,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "91": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 3,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "92": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 4,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "93": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 5,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "94": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 6,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "95": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 7,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "96": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Grass.png",
       "tileX": 8,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Grass",
+      "group_VI": "Cỏ"
     },
     "97": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "98": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "99": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "100": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "101": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "102": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "103": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "104": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "105": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "106": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "107": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "108": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "109": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "110": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "111": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "112": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "113": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
-      "tileY": 1,
-      "tileSize": 16
+      "tileY": 1, 
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
+
     },
     "114": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "115": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "116": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "117": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "118": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "119": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "120": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "121": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "122": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "123": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "124": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "125": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "126": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "127": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 10,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "128": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "129": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "130": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "131": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "132": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "133": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "134": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "135": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "136": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "137": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "138": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 10,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "139": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "140": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "141": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "142": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "143": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "144": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "145": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 10,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "146": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "147": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
-      "tileX": 1,
+      "tileX": 1, 
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "148": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "149": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "150": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "151": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "152": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "153": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "154": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "155": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "156": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 10,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "157": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "158": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "159": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "160": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "161": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "162": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "163": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "164": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "165": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 8,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "166": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 9,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "167": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 10,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "168": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "169": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 1,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "170": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "171": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "172": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "173": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "174": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 0,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "175": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
-      "tileX": 1,
+      "tileX": 1, 
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "176": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 2,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "177": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 3,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "178": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 4,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "179": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 5,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "180": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 6,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "181": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Hills.png",
       "tileX": 7,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Hills",
+      "group_VI": "Đồi núi"
     },
     "182": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "183": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "184": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "185": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "186": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "187": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "188": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "189": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "190": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "191": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "192": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "193": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "194": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "195": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
-      "tileX": 5,
+      "tileX": 5, 
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "196": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "197": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "198": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "199": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "200": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "201": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "202": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "203": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "204": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "205": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "206": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "207": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "208": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "209": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "210": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "211": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "212": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 3,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "213": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "214": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "215": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "216": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "217": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
-      "tileX": 4,
+      "tileX": 4, 
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "218": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "219": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "220": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "221": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "222": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "223": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "224": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "225": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "226": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "227": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "228": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "229": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 0,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "230": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "231": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "232": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "233": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "234": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "235": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "236": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "237": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 1,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "238": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 2,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "239": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 3,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "240": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 4,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "241": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 5,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "242": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 6,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     },
     "243": {
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Tilled Dirt.png",
       "tileX": 7,
       "tileY": 7,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Road",
+      "group_VI": "Đường"
     }
   }
 }

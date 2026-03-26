@@ -524,6 +524,10 @@ export default function MapEditor() {
     store?.setSelectedObjectId(objectId);
   };
 
+  const handlePortalColorChange = (color: "blue" | "green" | "orange" | "purple") => {
+    store?.setSelectedPortalColor(color);
+  };
+
   const handleToolSelect = (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => {
     store?.setSelectedTool(tool);
   };
@@ -640,6 +644,7 @@ export default function MapEditor() {
               onLayerChange={handleLayerChange}
               onTileSelect={handleTileSelect}
               onObjectSelect={handleObjectSelect}
+              onPortalColorChange={handlePortalColorChange}
               onToolSelect={handleToolSelect}
               onResize={handleResize}
               onUndo={handleUndo}
@@ -717,6 +722,7 @@ export default function MapEditor() {
               onLayerChange={handleLayerChange}
               onTileSelect={handleTileSelect}
               onObjectSelect={handleObjectSelect}
+              onPortalColorChange={handlePortalColorChange}
               onToolSelect={handleToolSelect}
               onResize={handleResize}
               onUndo={handleUndo}

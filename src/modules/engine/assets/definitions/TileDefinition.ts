@@ -11,4 +11,6 @@ export interface TileDefinition {
   tileY: number;
   /** Width of a single tile in pixels */
   tileSize: number;
+  group_EN: string;
+  group_VI: string;
 }

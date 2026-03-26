@@ -4,7 +4,8 @@
  */
 export interface ObjectDefinition {
   /** Object name (used for identification and display) */
-  name: string;
+  name_EN: string;
+  name_VI: string;
   /** Path to the sprite image */
   imagePath: string;
   /** Width of a single frame in pixels */

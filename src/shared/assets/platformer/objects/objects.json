@@ -4,6 +4,8 @@
   "objects": {
     "1": {
       "name": "player",
+      "name_EN": "Player",
+      "name_VI": "Người chơi",
       "imagePath": "/assets/Pixel Adventure 1/Main Characters/Virtual Guy/Idle (32x32).png",
       "frameWidth": 32,
       "frameHeight": 32,
@@ -11,6 +13,8 @@
     },
     "2": {
       "name": "goal",
+      "name_EN": "Goal",
+      "name_VI": "Đích",
       "imagePath": "/assets/Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
       "frameWidth": 64,
       "frameHeight": 64,
@@ -18,6 +22,8 @@
     },
     "3": {
       "name": "fruit",
+      "name_EN": "Fruit",
+      "name_VI": "Trái cây",
       "imagePath": "/assets/Pixel Adventure 1/Items/Fruits/Apple.png",
       "frameWidth": 32,
       "frameHeight": 32,
@@ -25,6 +31,8 @@
     },
     "4": {
       "name": "box1",
+      "name_EN": "Box 1",
+      "name_VI": "Hộp 1",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -32,6 +40,8 @@
     },
     "5": {
       "name": "box2",
+      "name_EN": "Box 2",
+      "name_VI": "Hộp 2",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -39,6 +49,8 @@
     },
     "6": {
       "name": "box3",
+      "name_EN": "Box 3",
+      "name_VI": "Hộp 3",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -46,6 +58,8 @@
     },
     "7": {
       "name": "trap",
+      "name_EN": "Trap",
+      "name_VI": "Bẫy",
       "imagePath": "/assets/Pixel Adventure 1/Traps/Spike Head/Idle.png",
       "frameWidth": 54,
       "frameHeight": 52,

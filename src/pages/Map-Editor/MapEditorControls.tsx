@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
-import { TilePalette } from "./TilePalette";
+import { useLanguageStore } from "@/stores/language.store";
+import { TilePalette} from "./TilePalette";
 import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
@@ -58,6 +59,7 @@ interface MapEditorControlsProps {
   onLayerChange: (layer: "background" | "ground" | "foreground" | "collision") => void;
   onTileSelect: (tileId: number | null) => void;
   onObjectSelect: (objectId: number | null) => void; // Changed to numeric ID
+  onPortalColorChange?: (color: "blue" | "green" | "orange" | "purple") => void;
   onToolSelect: (tool: "paint" | "erase" | "fill" | "player" | "goal" | null) => void;
   onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
@@ -85,12 +87,13 @@ interface MapEditorControlsProps {
 }
 
 interface ObjectSelectionButtonProps {
-  objectId: number; // Numeric object ID
+  objectId: number;
   label: string;
   objectDef: ObjectDefinition;
   cache: ObjectSpriteCache;
   selectedObjectId: number | null;
-  onObjectSelect: (objectId: number | null) => void;
+  isSelected: boolean;
+  onObjectSelect: (id: number|null) => void;
 }
 
 function ObjectSelectionButton({
@@ -201,6 +204,7 @@ export function MapEditorControls({
   onLayerChange,
   onTileSelect,
   onObjectSelect,
+  onPortalColorChange,
   onToolSelect,
   onResize,
   onUndo,
@@ -235,6 +239,9 @@ export function MapEditorControls({
   const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const { locale } = useLanguageStore(); // 'en' hoặc 'vi'
+  const [availableTileGroups, setAvailableTileGroups] = useState<string[]>([]);
+  const [selectedTileGroup, setSelectedTileGroup] = useState("all");
   const [activeInlineField, setActiveInlineField] = useState<
     | "name"
     | "description"
@@ -267,6 +274,13 @@ export function MapEditorControls({
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
+  const [selectedPortalColor, setSelectedPortalColor] = useState<"blue" | "green" | "orange" | "purple">("blue");
+  const [portalColorCounts, setPortalColorCounts] = useState<Record<string, number>>({
+    blue: 0,
+    green: 0,
+    orange: 0,
+    purple: 0,
+  });
 
   const isBoxType = (type: string): boolean =>
     type === "box" || type === "box1" || type === "box2" || type === "box3";
@@ -490,6 +504,27 @@ export function MapEditorControls({
       URL.revokeObjectURL(nextUrl);
     };
   }, [avatarFile]);
+
+  // Update portal color counts when mapData changes
+  useEffect(() => {
+    const counts: Record<string, number> = {
+      blue: 0,
+      green: 0,
+      orange: 0,
+      purple: 0,
+    };
+
+    mapData.objects.items?.forEach((item) => {
+      if (item.type === "portal") {
+        const color = (item.metadata?.color as string) || "blue";
+        if (color in counts) {
+          counts[color]++;
+        }
+      }
+    });
+
+    setPortalColorCounts(counts);
+  }, [mapData.objects.items]);
 
   const selectedTagNames = availableMapTags
     .filter((tag) => selectedTagIds.includes(tag.id))
@@ -1284,36 +1319,155 @@ export function MapEditorControls({
             activeLayer === "ground" ||
             activeLayer === "foreground") && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Tile Selection</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
+                  {locale === "vi" ? "Ô gạch" : "Tile Selection"}
+                </h3>
+                
+                <select 
+                  value={selectedTileGroup} 
+                  onChange={(e) => setSelectedTileGroup(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    border: '1px solid #ddd'
+                  }}
+                >
+                  <option value="all">{locale === "vi" ? "Tất cả" : "All Groups"}</option>
+                  {availableTileGroups.map(group => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+              </div>
+
               <TilePalette
                 selectedTile={selectedTile}
                 onTileSelect={onTileSelect}
                 mapData={mapData}
+                currentLang={locale} 
+                filterGroup={selectedTileGroup}
+                onGroupsLoaded={setAvailableTileGroups}
               />
             </div>
           )}
 
           {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
-            <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Object Palette</h3>
-              <p style={styles.helpText}>Pick an object and paint it into the map.</p>
-              <div style={styles.objectToolGrid}>
+          <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                {locale === "vi" ? "Vật thể" : "Objects"}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))",
+                  gap: "8px",
+                  maxHeight: "300px",
+                  overflowY: "auto",
+                  padding: "4px",
+                }}
+              >
                 {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
                   const objectId = parseInt(idStr, 10);
-                  const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+                  
+                  const data = objDef as ObjectDefinition;
+                  const langKey = locale.toUpperCase() as "EN" | "VI";
+                  const nameKey = `name_${langKey}` as keyof ObjectDefinition;
+                  const displayName = String(data[nameKey]);
+
                   return (
                     <ObjectSelectionButton
-                      key={objectId}
+                      key={idStr}
                       objectId={objectId}
-                      label={label}
-                      objectDef={objDef}
-                      cache={objectCache}
+                      label={displayName}
+                      objectDef={data} // Truyền dữ liệu Object chuẩn
+                      cache={objectCache} 
                       selectedObjectId={selectedObjectId}
+                      isSelected={selectedObjectId === objectId}
                       onObjectSelect={onObjectSelect}
                     />
                   );
                 })}
               </div>
+          </div>
+          )}
+
+          {selectedObjectId === 15 && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Portal Color</h3>
+              <p style={styles.helpText}>Select a color for the portal (max 2 per color)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                {(["blue", "green", "orange", "purple"] as const).map((color) => {
+                  const colorMap: Record<string, string> = {
+                    blue: "#2196F3",
+                    green: "#4CAF50",
+                    orange: "#FF9800",
+                    purple: "#9C27B0",
+                  };
+                  const count = portalColorCounts[color] || 0;
+                  const canPlace = count < 2;
+
+                  return (
+                    <button
+                      key={color}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "12px",
+                        borderRadius: "6px",
+                        backgroundColor:
+                          selectedPortalColor === color ? colorMap[color] + "30" : "#f5f5f5",
+                        border:
+                          selectedPortalColor === color
+                            ? `2px solid ${colorMap[color]}`
+                            : "2px solid #ddd",
+                        cursor: canPlace ? "pointer" : "not-allowed",
+                        opacity: canPlace ? 1 : 0.5,
+                        transition: "all 0.2s",
+                      }}
+                      onClick={() => {
+                        if (canPlace) {
+                          setSelectedPortalColor(color);
+                          onPortalColorChange?.(color);
+                        }
+                      }}
+                      disabled={!canPlace}
+                      title={
+                        canPlace
+                          ? `Select ${color} portal`
+                          : `Cannot place more ${color} portals (already 2)`
+                      }
+                    >
+                      <div
+                        style={{
+                          width: "40px",
+                          height: "40px",
+                          backgroundColor: colorMap[color],
+                          borderRadius: "4px",
+                        }}
+                      />
+                      <span style={{ fontSize: "13px", fontWeight: "500", textTransform: "capitalize" }}>
+                        {color}
+                      </span>
+                      <span style={{ fontSize: "11px", color: "#666" }}>
+                        {count}/2
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Portal Recolor Mode */}
+          {selectedObjectId === 15 && mapData.objects.items?.some(
+            (obj) => obj.type === "portal" && obj.x !== undefined && obj.y !== undefined
+          ) && ( 
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Recolor Portal</h3>
+              <p style={styles.helpText}>Click a placed portal to change its color</p>
             </div>
           )}
         </>

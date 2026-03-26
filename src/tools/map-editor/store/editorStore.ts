@@ -9,6 +9,11 @@ import { createEmptyMap } from "../utils/createEmptyMap";
 type LayerType = "background" | "ground" | "foreground" | "collision";
 
 /**
+ * Portal color type
+ */
+type PortalColor = "blue" | "green" | "orange" | "purple";
+
+/**
  * Editor Store
  *
  * Manages the state of the map editor without external libraries.
@@ -21,6 +26,7 @@ export class EditorStore {
   private selectedTile: number | null;
   private selectedObjectId: number | null; // Numeric object ID from objects.json
   private selectedTool: "paint" | "erase" | "fill" | "player" | "goal" | null;
+  private selectedPortalColor: PortalColor = "blue"; // Current portal color selection
   private layerVisibility: Record<LayerType, boolean>;
   private listeners: Set<() => void>;
   private undoStack: MapData[];
@@ -120,6 +126,47 @@ export class EditorStore {
    */
   getSelectedTool(): "paint" | "erase" | "fill" | "player" | "goal" | null {
     return this.selectedTool;
+  }
+
+  /**
+   * Get the currently selected portal color
+   */
+  getSelectedPortalColor(): PortalColor {
+    return this.selectedPortalColor;
+  }
+
+  /**
+   * Set the selected portal color
+   *
+   * @param color - The portal color to select
+   */
+  setSelectedPortalColor(color: PortalColor): void {
+    this.selectedPortalColor = color;
+    this.notify();
+  }
+
+  /**
+   * Get available portal colors (colors that can still have more portals placed)
+   * Returns colors that have less than 2 portals
+   */
+  getAvailablePortalColors(): PortalColor[] {
+    const colorCounts: Record<PortalColor, number> = {
+      blue: 0,
+      green: 0,
+      orange: 0,
+      purple: 0,
+    };
+
+    this.mapData.objects.items?.forEach((item) => {
+      if (item.type === "portal") {
+        const color = (item.metadata?.color as PortalColor) || "blue";
+        colorCounts[color]++;
+      }
+    });
+
+    return Object.entries(colorCounts)
+      .filter(([_, count]) => count < 2)
+      .map(([color]) => color as PortalColor);
   }
 
   /**
@@ -467,6 +514,7 @@ export class EditorStore {
       if (objectId === 1) objectType = "player";
       else if (objectId === 2) objectType = "goal";
       else if (objectId === 3) objectType = "fruit";
+      else if (objectId === 15) objectType = "portal"; // Portal object
       else objectType = "decorative";
     }
 
@@ -486,17 +534,37 @@ export class EditorStore {
         ...(metadata ? { metadata } : {}),
       });
     } else {
-      // For multiple-placement items (fruits, enemies, decorative)
+      // For multiple-placement items (fruits, enemies, decorative, portals)
       // Toggle at position
       const existingIndex = this.mapData.objects.items.findIndex(
         (obj) => obj.x === x && obj.y === y && obj.id === objectId,
       );
-
       if (existingIndex !== -1) {
         // Remove existing object
         this.mapData.objects.items.splice(existingIndex, 1);
       } else {
-        // Add new object
+        // For portals, check if we can place another
+        if (objectType === "portal") {
+          const portalCountForColor = this.mapData.objects.items.filter(
+            (obj) => obj.type === "portal" && (obj.metadata?.color as PortalColor) === this.selectedPortalColor,
+          ).length;
+
+          if (portalCountForColor >= 2) {
+            console.warn(
+              `Cannot place more portals of color ${this.selectedPortalColor} (max 2 per color)`,
+            );
+            this.undoStack.pop(); // Remove the saveHistory call since we're not making changes
+            return;
+          }
+          // Add new portal with color metadata
+          this.mapData.objects.items.push({
+            id: objectId,
+            type: objectType,
+            x,
+            y,
+            metadata: { color: this.selectedPortalColor },
+          });
+        } else {
         const metadata = this.getDefaultObjectMetadata(objectType);
         this.mapData.objects.items.push({
           id: objectId,

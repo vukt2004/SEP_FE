@@ -14,6 +14,7 @@ import { BoxCollider } from "../physics/BoxCollider";
 import type { GameConfig } from "./GameConfig";
 import type { IPlayerController } from "../controllers/IPlayerController";
 import { PlayerControllerFactory } from "../controllers/PlayerControllerFactory";
+import { objectRegistry } from "../object/objectRegistry";
 import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
@@ -990,6 +991,7 @@ export class GameEngine {
       this.checkFruitCollection();
       this.checkTrapCollision();
       this.checkWinCondition();
+      this.handlePlayerEnterTile();
     }
   }
 
@@ -1028,6 +1030,11 @@ export class GameEngine {
       }
       const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
       return isOpen ? "open" : "closed";
+    }
+
+    if (obj.type === "portal") {
+      const color = (obj.metadata?.color as string) || "blue";
+      return color;
     }
 
     return undefined;
@@ -1340,6 +1347,59 @@ export class GameEngine {
       this.runtime.player.pixelY += step;
     } else {
       this.runtime.player.pixelY = this.runtime.player.targetPixelY;
+    }
+  }
+
+  private handlePlayerEnterTile(): void {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        const behavior = objectRegistry[obj.type];
+        if (behavior?.onPlayerEnter) {
+          // Get current object state from runtime, fallback to initial state
+          const currentState = this.runtime.objectStates.get(obj.id) ?? this.getInitialObjectState(obj);
+          const result = behavior.onPlayerEnter(currentState, this.level, this.runtime.player, obj);
+          if (result) {
+            if (result.newState) {
+              this.emit({
+                type: "objectStateChanged",
+                objectId: obj.id,
+                newState: result.newState,
+              });
+            }
+            if (result.remove) {
+              // Remove object from level
+              this.level.objects = this.level.objects?.filter((o) => o.id !== obj.id);
+            }
+            if (result.delayRemove) {
+              // Remove after delay
+              setTimeout(() => {
+                this.level.objects = this.level.objects?.filter((o) => o.id !== obj.id);
+              }, result.delayRemove);
+            }
+            if (result.moveTo) {
+              // Teleport player to new position
+              const newX = result.moveTo.col;
+              const newY = result.moveTo.row;
+              const newPixelX = newX * this.tileSize; 
+              const newPixelY = newY * this.tileSize;
+
+
+              this.runtime.player.x = newX;
+              this.runtime.player.y = newY;
+
+              this.runtime.player.pixelX = newPixelX;
+              this.runtime.player.pixelY = newPixelY;
+
+              this.runtime.player.targetPixelX = newPixelX;
+              this.runtime.player.targetPixelY = newPixelY;
+              return;
+            }
+          }
+        }
+      }
     }
   }
 }

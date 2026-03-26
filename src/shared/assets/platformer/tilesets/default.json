@@ -6,709 +6,947 @@
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "1": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "2": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "3": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "4": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "5": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "7": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "8": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "9": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "10": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "11": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "12": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "13": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "15": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "16": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "17": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "18": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 0,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "19": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "20": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "22": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "23": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "24": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "25": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "26": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "28": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "29": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "30": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "31": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 1,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "32": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "33": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "34": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "38": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "39": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "40": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "45": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "46": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "47": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 2,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "64": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "65": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "66": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "67": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "68": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "70": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "71": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "72": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "73": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "74": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "76": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
-      "tileY": 4,
-      "tileSize": 16
+      "tileY": 4, 
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "77": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "78": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "79": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 4,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "80": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "81": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "82": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "83": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "84": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "86": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "87": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "88": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
-      "tileY": 5,
-      "tileSize": 16
+      "tileY": 5, 
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "89": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "90": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "92": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "93": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "94": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "95": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 5,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "96": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "97": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "98": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "102": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "103": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "104": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "109": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "110": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "111": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 6,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "128": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "129": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "130": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "131": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "132": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
-      "tileY": 8,
-      "tileSize": 16
+      "tileY": 8, 
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
+
     },
     "134": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "135": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "136": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "137": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "138": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "140": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "141": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "142": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
-      "tileY": 8,
-      "tileSize": 16
+      "tileY": 8, 
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "143": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 8,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "144": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "145": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "146": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "147": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 3,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "148": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 4,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "150": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
-      "tileY": 9,
-      "tileSize": 16
+      "tileY": 9, 
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
+
     },
     "151": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "152": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "153": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 9,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "154": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 10,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "156": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 12,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "157": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "158": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "159": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 9,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "160": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 0,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "161": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 1,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "162": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 2,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "166": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 6,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "167": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 7,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "168": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 8,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "173": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 13,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "174": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 14,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "175": {
       "imagePath": "/assets/Pixel Adventure 1/Terrain/Terrain (16x16).png",
       "tileX": 15,
       "tileY": 10,
-      "tileSize": 16
+      "tileSize": 16,
+      "group_EN": "Terrain",
+      "group_VI": "Địa hình"
     },
     "176": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Blue.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "177": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Brown.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "178": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Gray.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "179": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Green.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "180": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Pink.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "181": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Purple.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     },
     "182": {
       "imagePath": "/assets/Pixel Adventure 1/Background/Yellow.png",
       "tileX": 0,
       "tileY": 0,
-      "tileSize": 64
+      "tileSize": 64,
+      "group_EN": "Background",
+      "group_VI": "Phông nền"
     }
   }
 }
