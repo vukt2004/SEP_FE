@@ -141,20 +141,20 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "grid", gap: 24, maxWidth: 640, margin: "0 auto" }}>
+      <div style={{ ...styles.container, maxWidth: 980 }}>
         <div style={card()}>
-          <div style={{ height: 16, width: 120, background: "var(--surface-hover, var(--border))", borderRadius: 4 }} />
-          <div style={{ height: 48, width: 240, background: "var(--surface-hover, var(--border))", borderRadius: 8, marginTop: 12 }} />
+          <div style={styles.skeletonLine(120)} />
+          <div style={{ ...styles.skeletonLine(240), height: 46, marginTop: 12 }} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ height: 56, background: "var(--surface)", borderRadius: 12 }} />
-          <div style={{ height: 56, background: "var(--surface)", borderRadius: 12 }} />
+        <div style={styles.topGrid}>
+          <div style={{ ...styles.skeletonBlock, height: 56 }} />
+          <div style={{ ...styles.skeletonBlock, height: 56 }} />
         </div>
         <div style={card()}>
-          <div style={{ height: 28, width: 100, background: "var(--surface-hover, var(--border))", borderRadius: 6, marginBottom: 20 }} />
+          <div style={{ ...styles.skeletonLine(100), height: 28, marginBottom: 20 }} />
           <div style={{ display: "grid", gap: 12 }}>
             {[1, 2, 3].map((i) => (
-              <div key={i} style={{ height: 72, background: "var(--surface-hover, var(--border))", borderRadius: 12 }} />
+              <div key={i} style={{ ...styles.skeletonBlock, height: 72 }} />
             ))}
           </div>
         </div>
@@ -163,64 +163,59 @@ export default function WalletPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 24, maxWidth: 640, margin: "0 auto", paddingBottom: 40 }}>
-      {/* 1. BalanceCard */}
-      <div style={{ ...card(), background: "var(--background)", border: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 500, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          {t("currentBalance")}
+    <div style={styles.container}>
+      <div style={styles.pageBackdrop} aria-hidden="true" />
+      <div style={styles.pageHeader}>
+        <h1 style={styles.pageTitle}>{t("wallet")}</h1>
+        <p style={styles.pageSubtitle}>
+          {t("currentBalance")} • {t("transactionHistory")}
+        </p>
+      </div>
+
+      <div style={styles.heroGrid}>
+        <div style={{ ...card(), ...styles.announceCard }}>
+          <div style={styles.announceGlow} />
+          <div style={styles.announceBadge}>Announcement</div>
+          <div style={styles.announceTitle}>Manage your OrbitCoin smartly</div>
+          <div style={styles.announceDesc}>Track balance, top up quickly, and review transactions in one place.</div>
         </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <div style={{ fontSize: 44, fontWeight: 600, letterSpacing: -1, color: "var(--foreground)" }}>
-            {balance?.toLocaleString("en-US") ?? 0}
+
+        <div style={{ ...card(), ...styles.accountCard }}>
+          <div style={styles.balanceLabel}>{t("currentBalance")}</div>
+          <div style={styles.balanceRow}>
+            <div style={styles.balanceValue}>{balance?.toLocaleString("en-US") ?? 0}</div>
+            <div style={styles.balanceUnit}>{t("orbitCoins")}</div>
           </div>
-          <div style={{ fontSize: 16, color: "var(--muted)", fontWeight: 500 }}>
-            OrbitCoins
-          </div>
-        </div>
-        <div style={{ marginTop: 24 }}>
           <button style={primaryBtn(false, false)} onClick={() => scrollToSection(topUpRef)}>
             {t("topUp")}
           </button>
         </div>
       </div>
 
-      {/* 2. QuickActions */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <button style={quickActionBtn()} onClick={() => scrollToSection(topUpRef)}>
-          <span style={{ fontSize: 18 }}>➕</span>
-          <span>{t("topUp")}</span>
-        </button>
-        <button style={quickActionBtn()} onClick={() => scrollToSection(historyRef)}>
-          <span style={{ fontSize: 18 }}>📄</span>
-          <span>{t("transactionHistory")}</span>
-        </button>
-      </div>
+      <div style={styles.bottomGrid}>
+        <div ref={topUpRef} style={card()}>
+          <div style={styles.sectionTitle}>{t("topUp")}</div>
+          <div style={styles.sectionHint}>{t("topUpInstruction")}</div>
 
-      {/* 3. TopUpSection */}
-      <div ref={topUpRef} style={{ ...card(), background: "var(--surface)" }}>
-        <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 20, color: "var(--foreground)" }}>
-          {t("topUp")}
-        </div>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-          {[10, 50, 100, 500].map((preset) => {
-            const isActive = numericTopUp === preset;
-            return (
-              <button
-                key={preset}
-                onClick={() => handlePresetClick(preset)}
-                style={presetBtn(isActive)}
-              >
-                {preset.toLocaleString("en-US")}
-              </button>
-            );
-          })}
-        </div>
+          <CashflowMiniChart
+            transactions={transactions}
+            note={`Based on ${transactions.length} transactions currently loaded`}
+          />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ position: "relative" }}>
+          <div style={styles.presetGrid}>
+            {[10, 50, 100, 500].map((preset) => {
+              const isActive = numericTopUp === preset;
+              return (
+                <button key={preset} onClick={() => handlePresetClick(preset)} style={presetBtn(isActive)}>
+                  {preset.toLocaleString("en-US")}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.inputWrap}>
             <input
-              type="text" // using text to handle commas
+              type="text"
               inputMode="numeric"
               value={formatNumberWithCommas(topUpAmount)}
               onChange={handleTopUpInputChange}
@@ -228,9 +223,7 @@ export default function WalletPage() {
               style={inputStyle()}
               disabled={isToppingUp}
             />
-            <span style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontWeight: 500, fontSize: 14 }}>
-              OrbitCoins
-            </span>
+            <span style={styles.inputSuffix}>{t("orbitCoins")}</span>
           </div>
 
           <button
@@ -240,150 +233,98 @@ export default function WalletPage() {
           >
             {isToppingUp ? t("redirectingToPayment") : t("topUp")}
           </button>
+          {topUpError && <div style={styles.errorText}>{topUpError}</div>}
         </div>
 
-        {topUpError && (
-          <div style={{ color: "var(--danger)", fontSize: 14, marginTop: 16, fontWeight: 500 }}>
-            {topUpError}
+        <div ref={historyRef} style={card()}>
+          <div style={styles.historyHeader}>
+            <div style={styles.sectionTitle}>{t("transactionHistory")}</div>
+            {error && <span style={pill("rgba(239,68,68,0.14)", "var(--danger)")}>{error}</span>}
           </div>
-        )}
-      </div>
 
-      {/* 4. TransactionHistory */}
-      <div ref={historyRef} style={{ ...card(), background: "var(--background)", border: "none", padding: "0", boxShadow: "none" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: 16, color: "var(--foreground)" }}>{t("transactionHistory")}</div>
-          {error && <span style={pill("var(--danger-weak)", "var(--danger)")}>{error}</span>}
-        </div>
-
-        {loadingTransactions && transactions.length === 0 ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            {[1, 2, 3].map((i) => (
-              <div key={i} style={{ height: 72, background: "var(--surface)", borderRadius: 12 }} />
-            ))}
-          </div>
-        ) : transactions.length === 0 ? (
-          <div
-            style={{
-              padding: "48px 0",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 16,
-              background: "var(--surface)",
-              borderRadius: 16,
-              border: "1px dashed var(--border)"
-            }}
-          >
-             <div style={{ fontSize: 32, opacity: 0.5 }}>📄</div>
-             <div style={{ color: "var(--muted)", fontSize: 14, fontWeight: 500 }}>
-               {t("noTransactionsYet")}
-             </div>
-          </div>
-        ) : (
-          <>
+          {loadingTransactions && transactions.length === 0 ? (
             <div style={{ display: "grid", gap: 12 }}>
-              {transactions.map((tx) => (
-                <TransactionRow key={tx.id} transaction={tx} />
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ ...styles.skeletonBlock, height: 72 }} />
               ))}
             </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginTop: 24,
-                  paddingTop: 24,
-                  borderTop: "1px solid var(--border)",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => loadPage(pageNumber - 1)}
-                  disabled={pageNumber === 1 || loadingTransactions}
-                  style={secondaryBtn(pageNumber === 1 || loadingTransactions)}
-                >
-                  {t("previous")}
-                </button>
-                <span style={{ color: "var(--muted)", fontSize: 14, fontWeight: 500 }}>
-                  {pageNumber} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => loadPage(pageNumber + 1)}
-                  disabled={pageNumber === totalPages || loadingTransactions}
-                  style={secondaryBtn(pageNumber === totalPages || loadingTransactions)}
-                >
-                  {t("next")}
-                </button>
+          ) : transactions.length === 0 ? (
+            <div style={styles.emptyState}>
+              <div style={{ fontSize: 28, opacity: 0.55 }}>🧾</div>
+              <div style={{ color: "var(--muted)", fontSize: 14, fontWeight: 500 }}>{t("noTransactionsYet")}</div>
+            </div>
+          ) : (
+            <>
+              <div style={styles.txHead}>
+                <span>Details</span>
+                <span>Amount</span>
               </div>
-            )}
-          </>
-        )}
+              <div style={{ display: "grid", gap: 12 }}>
+                {transactions.map((tx) => (
+                  <TransactionRow key={tx.id} transaction={tx} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div style={styles.paginationBar}>
+                  <button
+                    type="button"
+                    onClick={() => loadPage(pageNumber - 1)}
+                    disabled={pageNumber === 1 || loadingTransactions}
+                    style={secondaryBtn(pageNumber === 1 || loadingTransactions)}
+                  >
+                    {t("previous")}
+                  </button>
+                  <span style={styles.pageText}>
+                    {t("page")} {pageNumber} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => loadPage(pageNumber + 1)}
+                    disabled={pageNumber === totalPages || loadingTransactions}
+                    style={secondaryBtn(pageNumber === totalPages || loadingTransactions)}
+                  >
+                    {t("next")}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// TransactionRow component (Minimal styling)
 function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) {
   const isCredit = transaction.transactionType === CoinTransactionTypeEnum.Credit;
   const sign = isCredit ? "+" : "-";
-  const color = isCredit ? "var(--ok)" : "var(--foreground)";
+  const color = isCredit ? "var(--success)" : "var(--warning)";
+  const tagBg = isCredit ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.14)";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "16px",
-        borderRadius: 12,
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-      }}
-    >
+    <div style={styles.txRow}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0, flex: 1 }}>
-        <div
-          style={{
-            fontWeight: 500,
-            fontSize: 14,
-            color: "var(--foreground)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {transaction.note || "Transaction"}
-        </div>
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>
-          {new Date(transaction.createdAt).toLocaleString(undefined, { 
-            year: "numeric", 
-            month: "short", 
-            day: "numeric", 
-            hour: "2-digit", 
-            minute: "2-digit" 
+        <div style={styles.txTitle}>{transaction.note || "Transaction"}</div>
+        <div style={styles.txDate}>
+          {new Date(transaction.createdAt).toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
           })}
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color }}>
-          {sign}{Math.abs(transaction.amount).toLocaleString("en-US")}
+        <span style={pill(tagBg, color)}>{isCredit ? "Credit" : "Debit"}</span>
+        <div style={{ fontWeight: 700, fontSize: 15, color }}>
+          {sign}
+          {Math.abs(transaction.amount).toLocaleString("en-US")}
         </div>
         {transaction.balanceAfter !== undefined && transaction.balanceAfter !== null && (
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
-            Balance: {transaction.balanceAfter.toLocaleString("en-US")}
+            {tBalanceLabel()}: {transaction.balanceAfter.toLocaleString("en-US")}
           </div>
         )}
       </div>
@@ -391,46 +332,102 @@ function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) 
   );
 }
 
-/** Styles */
-function card(): React.CSSProperties {
-  return {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 16,
-    padding: 24,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-  };
+function tBalanceLabel() {
+  return "Balance";
 }
 
-function quickActionBtn(): React.CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: "16px",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 12,
-    color: "var(--foreground)",
-    fontWeight: 500,
-    fontSize: 15,
-    cursor: "pointer",
-    transition: "background 0.2s, border-color 0.2s",
-  };
+function card(): React.CSSProperties {
+  return styles.panelCard;
+}
+
+function CashflowMiniChart({
+  transactions,
+  note,
+}: {
+  transactions: OrbitCoinTransaction[];
+  note: string;
+}) {
+  // Group by date (YYYY-MM-DD), compute net flow.
+  const map = new Map<string, number>();
+  for (const tx of transactions) {
+    const d = new Date(tx.createdAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = d.toISOString().slice(0, 10);
+    const signed = tx.transactionType === CoinTransactionTypeEnum.Credit ? Math.abs(tx.amount) : -Math.abs(tx.amount);
+    map.set(key, (map.get(key) ?? 0) + signed);
+  }
+
+  const keys = Array.from(map.keys()).sort();
+  const lastKeys = keys.slice(-12); // show last 12 days we have in current page
+  const values = lastKeys.map((k) => map.get(k) ?? 0);
+  const maxAbs = Math.max(1, ...values.map((v) => Math.abs(v)));
+
+  const width = 560;
+  const height = 120;
+  const padX = 10;
+  const padY = 12;
+  const baselineY = Math.round(height / 2);
+  const barGap = 8;
+  const barW = lastKeys.length > 0 ? Math.max(10, Math.floor((width - padX * 2 - barGap * (lastKeys.length - 1)) / lastKeys.length)) : 18;
+
+  return (
+    <div style={styles.chartWrap}>
+      <div style={styles.chartHeaderRow}>
+        <div style={styles.chartTitle}>Cashflow</div>
+        <div style={styles.chartLegend}>
+          <span style={{ ...styles.legendDot, background: "var(--success)" }} />
+          <span>In</span>
+          <span style={{ width: 10 }} />
+          <span style={{ ...styles.legendDot, background: "var(--warning)" }} />
+          <span>Out</span>
+        </div>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        width="100%"
+        height={height}
+        role="img"
+        aria-label="Cashflow chart"
+        style={{ display: "block" }}
+      >
+        <line
+          x1={padX}
+          x2={width - padX}
+          y1={baselineY}
+          y2={baselineY}
+          stroke="var(--border)"
+          strokeWidth="1"
+          opacity="0.8"
+        />
+
+        {values.map((v, i) => {
+          const x = padX + i * (barW + barGap);
+          const h = Math.round(((height / 2 - padY) * Math.abs(v)) / maxAbs);
+          const isIn = v >= 0;
+          const y = isIn ? baselineY - h : baselineY;
+          const fill = isIn ? "rgba(34,197,94,0.75)" : "rgba(245,158,11,0.75)";
+          return (
+            <g key={lastKeys[i]}>
+              <rect x={x} y={y} width={barW} height={Math.max(2, h)} rx={8} fill={fill} />
+            </g>
+          );
+        })}
+      </svg>
+      <div style={styles.chartNote}>{note}</div>
+    </div>
+  );
 }
 
 function presetBtn(active: boolean): React.CSSProperties {
   return {
-    padding: "12px 0",
-    borderRadius: 8,
+    padding: "10px 0",
+    borderRadius: 10,
     border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
-    background: active ? "var(--primary-weak, rgba(0,0,0,0.05))" : "var(--background)",
-    color: active ? "var(--primary)" : "var(--foreground)",
-    fontWeight: 500,
+    background: active ? "color-mix(in srgb, var(--primary) 14%, transparent)" : "var(--surface)",
+    color: active ? "var(--primary)" : "var(--text)",
+    fontWeight: 600,
     fontSize: 14,
     cursor: "pointer",
-    transition: "all 0.2s",
     textAlign: "center",
     width: "100%",
   };
@@ -439,12 +436,12 @@ function presetBtn(active: boolean): React.CSSProperties {
 function inputStyle(): React.CSSProperties {
   return {
     width: "100%",
-    padding: "16px 100px 16px 16px", // right padding for the absolute text
+    padding: "14px 110px 14px 14px",
     borderRadius: 12,
     border: "1px solid var(--border)",
-    background: "var(--background)",
-    color: "var(--foreground)",
-    fontSize: 16,
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontSize: 15,
     fontWeight: 500,
     outline: "none",
     boxSizing: "border-box",
@@ -454,15 +451,14 @@ function inputStyle(): React.CSSProperties {
 function primaryBtn(disabled: boolean, fullWidth: boolean): React.CSSProperties {
   return {
     cursor: disabled ? "not-allowed" : "pointer",
-    padding: "14px 24px",
+    padding: "12px 20px",
     borderRadius: 12,
     border: "none",
-    background: disabled ? "var(--surface-hover, #e0e0e0)" : "var(--primary, #000)",
-    color: disabled ? "var(--muted)" : "var(--on-primary, #fff)",
-    fontWeight: 600,
-    fontSize: 15,
-    opacity: disabled ? 0.7 : 1,
-    transition: "opacity 0.2s ease, transform 0.1s ease",
+    background: disabled ? "color-mix(in srgb, var(--surface-2) 85%, transparent)" : "var(--primary)",
+    color: disabled ? "var(--muted)" : "#fff",
+    fontWeight: 700,
+    fontSize: 14,
+    opacity: disabled ? 0.78 : 1,
     width: fullWidth ? "100%" : "auto",
   };
 }
@@ -470,14 +466,14 @@ function primaryBtn(disabled: boolean, fullWidth: boolean): React.CSSProperties 
 function secondaryBtn(disabled: boolean): React.CSSProperties {
   return {
     cursor: disabled ? "not-allowed" : "pointer",
-    padding: "10px 16px",
-    borderRadius: 8,
+    padding: "9px 14px",
+    borderRadius: 10,
     border: "1px solid var(--border)",
     background: "var(--surface)",
-    color: disabled ? "var(--muted)" : "var(--foreground)",
-    fontWeight: 500,
-    fontSize: 14,
-    opacity: disabled ? 0.5 : 1,
+    color: disabled ? "var(--muted)" : "var(--text)",
+    fontWeight: 600,
+    fontSize: 13,
+    opacity: disabled ? 0.56 : 1,
   };
 }
 
@@ -487,7 +483,290 @@ function pill(bg: string, fg: string): React.CSSProperties {
     borderRadius: 999,
     background: bg,
     color: fg,
-    fontWeight: 500,
+    fontWeight: 600,
     fontSize: 12,
   };
 }
+
+const styles: Record<string, any> = {
+  container: {
+    position: "relative",
+    display: "grid",
+    gap: 20,
+    maxWidth: 1240,
+    margin: "0 auto",
+    paddingBottom: 36,
+    paddingInline: 20,
+  },
+  pageBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background:
+      "radial-gradient(900px 520px at 12% 12%, rgba(37,99,235,0.16), transparent 62%), radial-gradient(780px 520px at 86% 18%, rgba(249,115,22,0.12), transparent 64%), radial-gradient(680px 520px at 70% 86%, rgba(56,189,248,0.10), transparent 66%), linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, #ffffff) 0%, var(--bg) 100%)",
+    pointerEvents: "none",
+    zIndex: 0,
+    filter: "blur(0.2px)",
+  },
+  pageHeader: {
+    position: "relative",
+    zIndex: 1,
+    display: "grid",
+    gap: 6,
+    marginTop: 2,
+  },
+  pageTitle: {
+    margin: 0,
+    fontSize: 28,
+    color: "var(--text)",
+    fontWeight: 800,
+    letterSpacing: -0.3,
+  },
+  pageSubtitle: {
+    margin: 0,
+    color: "var(--text-2)",
+    fontSize: 14,
+  },
+  topGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr",
+    gap: 16,
+  },
+  heroGrid: {
+    position: "relative",
+    zIndex: 1,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 16,
+  },
+  announceCard: {
+    background:
+      "linear-gradient(135deg, color-mix(in srgb, var(--primary) 24%, transparent) 0%, color-mix(in srgb, var(--surface) 86%, transparent) 100%)",
+    position: "relative",
+    overflow: "hidden",
+  },
+  announceGlow: {
+    position: "absolute",
+    inset: -80,
+    background:
+      "radial-gradient(420px 240px at 20% 20%, rgba(37,99,235,0.22), transparent 70%), radial-gradient(360px 220px at 80% 60%, rgba(249,115,22,0.16), transparent 70%)",
+    pointerEvents: "none",
+    filter: "blur(2px)",
+  },
+  announceBadge: {
+    display: "inline-flex",
+    fontSize: 11,
+    fontWeight: 700,
+    padding: "4px 10px",
+    borderRadius: 999,
+    background: "color-mix(in srgb, var(--primary) 24%, transparent)",
+    color: "var(--primary)",
+    marginBottom: 10,
+  },
+  announceTitle: {
+    fontWeight: 800,
+    fontSize: 20,
+    color: "var(--text)",
+    marginBottom: 8,
+  },
+  announceDesc: {
+    color: "var(--text-2)",
+    fontSize: 14,
+    lineHeight: 1.55,
+  },
+  accountCard: {
+    display: "grid",
+    gap: 14,
+    background:
+      "linear-gradient(135deg, color-mix(in srgb, var(--info) 10%, transparent) 0%, var(--surface) 55%)",
+  },
+  panelCard: {
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 16,
+    padding: 20,
+    boxShadow: "0 10px 26px rgba(2,6,23,0.08)",
+  },
+  balanceCard: {
+    background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, var(--surface)) 0%, var(--surface) 75%)",
+  },
+  balanceLabel: {
+    fontSize: 12,
+    color: "var(--muted)",
+    fontWeight: 700,
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+  balanceRow: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  balanceValue: {
+    fontSize: 42,
+    fontWeight: 800,
+    letterSpacing: -0.9,
+    color: "var(--text)",
+    lineHeight: 1,
+  },
+  balanceUnit: {
+    fontSize: 14,
+    color: "var(--text-2)",
+    fontWeight: 600,
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    fontSize: 17,
+    marginBottom: 6,
+    color: "var(--text)",
+  },
+  sectionHint: {
+    color: "var(--muted)",
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  bottomGrid: {
+    position: "relative",
+    zIndex: 1,
+    display: "grid",
+    gridTemplateColumns: "0.9fr 1.1fr",
+    gap: 16,
+  },
+  chartWrap: {
+    border: "1px solid var(--border)",
+    borderRadius: 14,
+    padding: 14,
+    background:
+      "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, transparent) 0%, color-mix(in srgb, var(--surface-2) 26%, transparent) 100%)",
+    marginBottom: 14,
+  },
+  chartHeaderRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  chartTitle: {
+    fontWeight: 800,
+    color: "var(--text)",
+    fontSize: 14,
+    letterSpacing: 0.2,
+  },
+  chartLegend: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    color: "var(--muted)",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    display: "inline-block",
+  },
+  chartNote: {
+    marginTop: 8,
+    color: "var(--muted)",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  presetGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 10,
+    marginBottom: 16,
+  },
+  inputWrap: {
+    position: "relative",
+    marginBottom: 14,
+  },
+  inputSuffix: {
+    position: "absolute",
+    right: 14,
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "var(--muted)",
+    fontWeight: 600,
+    fontSize: 13,
+  },
+  historyHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  emptyState: {
+    padding: "42px 0",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 12,
+    background: "color-mix(in srgb, var(--surface-2) 40%, transparent)",
+    borderRadius: 14,
+    border: "1px dashed var(--border)",
+  },
+  txRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 15px",
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "color-mix(in srgb, var(--surface-2) 22%, transparent)",
+  },
+  txTitle: {
+    fontWeight: 600,
+    fontSize: 14,
+    color: "var(--text)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  txDate: {
+    color: "var(--muted)",
+    fontSize: 12,
+  },
+  txHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    color: "var(--muted)",
+    fontSize: 12,
+    fontWeight: 700,
+    marginBottom: 8,
+    padding: "0 4px",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  paginationBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 18,
+    paddingTop: 16,
+    borderTop: "1px solid var(--border)",
+  },
+  pageText: {
+    color: "var(--muted)",
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  errorText: {
+    color: "var(--danger)",
+    fontSize: 13,
+    marginTop: 12,
+    fontWeight: 600,
+  },
+  skeletonLine: (w: number) => ({
+    height: 14,
+    width: w,
+    background: "color-mix(in srgb, var(--surface-2) 78%, transparent)",
+    borderRadius: 6,
+  }),
+  skeletonBlock: {
+    background: "color-mix(in srgb, var(--surface-2) 78%, transparent)",
+    borderRadius: 12,
+  },
+};
