@@ -165,7 +165,7 @@ export class EditorStore {
     });
 
     return Object.entries(colorCounts)
-      .filter(([_, count]) => count < 2)
+      .filter(([, count]) => count < 2)
       .map(([color]) => color as PortalColor);
   }
 
@@ -565,14 +565,16 @@ export class EditorStore {
             metadata: { color: this.selectedPortalColor },
           });
         } else {
-        const metadata = this.getDefaultObjectMetadata(objectType);
-        this.mapData.objects.items.push({
-          id: objectId,
-          type: objectType,
-          x,
-          y,
-          ...(metadata ? { metadata } : {}),
-        });
+          // Add new object
+          const metadata = this.getDefaultObjectMetadata(objectType);
+          this.mapData.objects.items.push({
+            id: objectId,
+            type: objectType,
+            x,
+            y,
+            ...(metadata ? { metadata } : {}),
+          });
+        }
       }
     }
 

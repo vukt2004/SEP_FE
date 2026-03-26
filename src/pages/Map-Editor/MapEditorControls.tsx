@@ -9,7 +9,6 @@ import {
   Settings2,
   Save,
   Maximize2,
-  FolderTree,
   Shapes,
   Pencil,
   ImagePlus,
@@ -239,7 +238,7 @@ export function MapEditorControls({
   const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
-  const { locale } = useLanguageStore(); // 'en' hoặc 'vi'
+  const { locale } = useLanguageStore();
   const [availableTileGroups, setAvailableTileGroups] = useState<string[]>([]);
   const [selectedTileGroup, setSelectedTileGroup] = useState("all");
   const [activeInlineField, setActiveInlineField] = useState<
@@ -273,7 +272,6 @@ export function MapEditorControls({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [tileCategory, setTileCategory] = useState<"all" | "terrain" | "decor">("all");
   const [selectedPortalColor, setSelectedPortalColor] = useState<"blue" | "green" | "orange" | "purple">("blue");
   const [portalColorCounts, setPortalColorCounts] = useState<Record<string, number>>({
     blue: 0,
@@ -681,7 +679,7 @@ export function MapEditorControls({
     normalizedRequiredBlocks.length === 0
       ? "No required blocks"
       : normalizedRequiredBlocks
-          .map((rule) => `Use \"${toBlockLabel(rule.type)}\" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`)
+          .map((rule) => `Use "${toBlockLabel(rule.type)}" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`)
           .join("; ");
   const limitSummary =
     mapData.blockConstraints.blockLimit === null
@@ -1211,30 +1209,6 @@ export function MapEditorControls({
 
       {showLeftPanel && (
         <>
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>
-              <FolderTree size={16} /> Tile Categories
-            </h3>
-            <div style={styles.categoryRow}>
-              {[
-                { key: "all", label: "All" },
-                { key: "terrain", label: "Terrain" },
-                { key: "decor", label: "Decor" },
-              ].map((category) => (
-                <button
-                  key={category.key}
-                  onClick={() => setTileCategory(category.key as "all" | "terrain" | "decor")}
-                  style={{
-                    ...styles.categoryChip,
-                    ...(tileCategory === category.key ? styles.categoryChipActive : {}),
-                  }}
-                >
-                  {category.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {(activeLayer === "background" ||
             activeLayer === "ground" ||
             activeLayer === "foreground") && (
