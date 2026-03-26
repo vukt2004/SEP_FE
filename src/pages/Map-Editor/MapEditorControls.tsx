@@ -1366,10 +1366,10 @@ export function MapEditorControls({
           </div>
           )}
 
-          {selectedObjectId === 15 && (
+          {selectedObjectId === 59 && (
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>Portal Color</h3>
-              <p style={styles.helpText}>Select a color for the portal (max 2 per color)</p>
+              <p style={styles.helpText}>Select a color for the portal</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
                 {(["blue", "green", "orange", "purple"] as const).map((color) => {
                   const colorMap: Record<string, string> = {
@@ -1436,7 +1436,7 @@ export function MapEditorControls({
           )}
 
           {/* Portal Recolor Mode */}
-          {selectedObjectId === 15 && mapData.objects.items?.some(
+          {selectedObjectId === 59 && mapData.objects.items?.some(
             (obj) => obj.type === "portal" && obj.x !== undefined && obj.y !== undefined
           ) && ( 
             <div style={styles.section}>
