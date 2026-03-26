@@ -3,8 +3,11 @@ import type { CSSProperties } from "react";
 interface MissionBarProps {
   goal: string;
   blockLimit: number | null;
+  estimatedSteps?: number;
+  timeLimitSeconds?: number;
   requiredBlocks: string[];
-  forbiddenBlocks: string[];
+  allowedBlocks: string[];
+  bannedBlocks?: string[];
   width?: number;
   height?: number;
 }
@@ -21,21 +24,49 @@ function Badge({ label, value }: { label: string; value: string }) {
 export function MissionBar({
   goal,
   blockLimit,
+  estimatedSteps,
+  timeLimitSeconds,
   requiredBlocks,
-  forbiddenBlocks,
+  allowedBlocks,
+  bannedBlocks,
   width,
   height,
 }: MissionBarProps) {
-  const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "None";
-  const forbiddenText = forbiddenBlocks.length > 0 ? forbiddenBlocks.join(", ") : "None";
+  const formatGoal = (rawGoal: string): string => {
+    // Keep this mapping in UI components so the game code can remain simple.
+    if (rawGoal === "Reach Goal") return "Đưa nhân vật tới ô đích.";
+    if (rawGoal === "Collect All Fruits and reach goal") return "Thu thập tất cả 🍎 rồi đưa nhân vật tới ô đích.";
+    const m = rawGoal.match(/^Collect (\d+) Fruits and reach goal$/);
+    if (m) return `Thu thập ${m[1]} 🍎 rồi đưa nhân vật tới ô đích.`;
+    return rawGoal;
+  };
 
+  const requiredText = requiredBlocks.length > 0 ? requiredBlocks.join(", ") : "Không có";
+  const allowedOrBanned = (() => {
+    const hasAllowed = allowedBlocks.length > 0;
+    const hasBanned = Boolean(bannedBlocks && bannedBlocks.length > 0);
+
+    if (hasAllowed) {
+      return { label: "Chỉ được dùng", value: allowedBlocks.join(", ") };
+    }
+    if (hasBanned) {
+      return { label: "Bị cấm", value: bannedBlocks!.join(", ") };
+    }
+    return { label: "Khối", value: "Được dùng mọi block" };
+  })();
   return (
     <div style={styles.container}>
-      <Badge label="Goal" value={goal} />
-      {width && height && <Badge label="Size" value={`${width}x${height}`} />}
-      <Badge label="Limit" value={blockLimit !== null ? `${blockLimit} blocks` : "No limit"} />
-      <Badge label="Required" value={requiredText} />
-      <Badge label="Forbidden" value={forbiddenText} />
+      <Badge label="Mục tiêu" value={formatGoal(goal)} />
+      {width && height && <Badge label="Kích thước" value={`${width}x${height}`} />}
+      <Badge label="Giới hạn khối" value={blockLimit !== null ? `${blockLimit} khối` : "Không giới hạn"} />
+      {typeof estimatedSteps === "number" && estimatedSteps > 0 && (
+        <Badge label="Ước tính" value={`${estimatedSteps} bước`} />
+      )}
+      {typeof timeLimitSeconds === "number" && timeLimitSeconds > 0 && (
+        <Badge label="Giới hạn thời gian" value={`${timeLimitSeconds} giây`} />
+      )}
+      <Badge label="Bắt buộc" value={requiredText} />
+      <Badge label={allowedOrBanned.label} value={allowedOrBanned.value} />
     </div>
   );
 }

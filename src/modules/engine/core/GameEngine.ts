@@ -3,6 +3,7 @@ import { isWinConditionMet } from "../../map-system/types";
 import type { Player, Direction } from "./types";
 import { Renderer } from "../rendering/Renderer";
 import type { EngineCommand } from "../../executor/commands";
+import { objectRegistry } from "../object/objectRegistry";
 import type { EngineEvent } from "./engineEvents";
 import { EventEmitter } from "./events/EventEmitter";
 import { AnimationSystem } from "../systems/animation/AnimationSystem";
@@ -20,6 +21,7 @@ import type { EngineRuntimeState } from "./engineRuntimeState";
 import type { GameType } from "../../../shared/types/GameType";
 import { AudioSystem } from "../systems/audio/AudioSystem";
 import { SoundEffect } from "../systems/audio/types";
+import { getRawNeighbors, parseCell, stringifyCell } from "@/shared/utils/cell";
 
 // Re-export for convenience
 export { EngineState } from "./engineState";
@@ -106,6 +108,7 @@ export class GameEngine {
         isMoving: false,
         animationState: "idle",
         isJumping: false,
+        isFalling: false,
         jumpPower: 2,
         isGrounded: true,
       },
@@ -114,6 +117,7 @@ export class GameEngine {
       hasPlayerWon: false,
       state: EngineState.Idle,
       collectedFruits: new Set<string>(),
+      collectedCharacters: new Set<string>(),
       timeElapsed: 0,
       startTime: null,
     };
@@ -213,6 +217,7 @@ export class GameEngine {
       | "right";
     this.runtime.player.isMoving = false;
     this.runtime.player.isJumping = false;
+    this.runtime.player.isFalling = false;
     this.runtime.player.isGrounded = true;
     this.runtime.player.isMoving = false;
     this.runtime.player.animationState = this.resolvePlayerAnimationState(this.runtime.player);
@@ -222,6 +227,7 @@ export class GameEngine {
     this.runtime.hasPlayerWon = false;
     this.runtime.state = EngineState.Idle;
     this.runtime.collectedFruits.clear();
+    this.runtime.collectedCharacters.clear();
     this.runtime.startTime = null;
     this.runtime.timeElapsed = 0;
     this.goalRequirementNotified = false;
@@ -245,7 +251,7 @@ export class GameEngine {
       this.level,
       this.tileSize,
       this.runtime.player,
-      this.runtime.collectedFruits,
+      new Set<string>([...this.runtime.collectedFruits, ...this.runtime.collectedCharacters]),
       this.runtime.objectStates,
     );
   }
@@ -255,6 +261,19 @@ export class GameEngine {
    * State transition: Running → Failed
    * Only works if engine is currently running
    */
+  private markFailed(): void {
+    if (this.runtime.state !== EngineState.Running) {
+      return;
+    }
+
+    if (this.runtime.startTime !== null) {
+      this.runtime.timeElapsed = performance.now() - this.runtime.startTime;
+    }
+
+    this.runtime.state = EngineState.Failed;
+    this.executionEnabled = false;
+    this.emit({ type: "engine:failed" });
+  }
 
   getCollisionSystem(): CollisionSystem {
     return this.collisionSystem;
@@ -278,6 +297,15 @@ export class GameEngine {
 
   getConfig(): GameConfig {
     return this.config;
+  }
+
+  setDoorKeyHintVisible(visible: boolean): void {
+    this.renderer.setDoorKeyHintVisible(visible);
+
+    const canvasWidth = this.level.width * this.tileSize;
+    const canvasHeight = this.level.height * this.tileSize;
+    this.ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    this.render();
   }
 
   /**
@@ -438,7 +466,7 @@ export class GameEngine {
       this.level,
       this.tileSize,
       this.runtime.player,
-      this.runtime.collectedFruits,
+      new Set<string>([...this.runtime.collectedFruits, ...this.runtime.collectedCharacters]),
       this.runtime.objectStates,
     );
   }
@@ -478,32 +506,55 @@ export class GameEngine {
         // Handle absolute directional movement
         this.moveInDirection(command.direction);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       case "moveForward":
         // Move in the current facing direction
         this.moveInDirection(this.runtime.player.facing);
         // Apply physics (gravity) based on controller type
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         // Update player collider after physics
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
+      case "moveToCell": {
+        const target = parseCell(command.cell);
+        if (!target) {
+          this.emit({
+            type: "interactionFeedback",
+            message: "Move To Cell expects a valid x,y cell.",
+          });
+          break;
+        }
+
+        const dx = target.x - this.runtime.player.x;
+        const dy = target.y - this.runtime.player.y;
+        const isAdjacent = Math.abs(dx) + Math.abs(dy) === 1;
+        if (!isAdjacent) {
+          this.emit({
+            type: "interactionFeedback",
+            message: "Move To Cell can only move to an adjacent cell.",
+          });
+          break;
+        }
+
+        const direction: Direction =
+          dx === 1 ? "right" : dx === -1 ? "left" : dy === 1 ? "down" : "up";
+        this.moveInDirection(direction);
+        this.applyPhysicsAndCheckLanding();
+        this.updatePlayerCollider();
+        this.checkFruitCollection();
+        this.checkTrapCollision();
+        this.checkWinCondition();
+        break;
+      }
       case "turn": {
         const newDirection = this.resolveTurnDirection(
           this.runtime.player.facing,
@@ -535,20 +586,17 @@ export class GameEngine {
         // Update player collider after jump
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         // NOTE: gravity is NOT applied here — it will be applied on the next
         // command step (move/moveForward) so the jump arc is visible across steps.
         break;
       case "wait":
         // Consume one turn without movement while still advancing physics.
-        this.controller.applyPhysics(
-          this.runtime.player,
-          this.level,
-          this.tileSize,
-          this.runtime.objectStates,
-        );
+        this.applyPhysicsAndCheckLanding();
         this.updatePlayerCollider();
         this.checkFruitCollection();
+        this.checkTrapCollision();
         this.checkWinCondition();
         break;
       case "break":
@@ -559,6 +607,9 @@ export class GameEngine {
         break;
       case "closeDoor":
         this.closeDoor();
+        break;
+      case "unlockDoor":
+        this.unlockDoor(command.key);
         break;
     }
 
@@ -635,8 +686,83 @@ export class GameEngine {
     }
   }
 
-  private isObstacleRelative(rotation: "clockwise" | "counterclockwise"): boolean {
+
+
+  private isWallRelative(rotation: "clockwise" | "counterclockwise"): boolean {
     const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
+    const { dx, dy } = DIRECTION_DELTA[lookDirection];
+    const targetX = this.runtime.player.x + dx;
+    const targetY = this.runtime.player.y + dy;
+
+    return this.isWallAt(targetX, targetY);
+  }
+
+  private isObjectObstacleRelative(rotation: "clockwise" | "counterclockwise"): boolean {
+    const lookDirection = this.rotateFacing(this.runtime.player.facing, rotation);
+    const { dx, dy } = DIRECTION_DELTA[lookDirection];
+    const targetX = this.runtime.player.x + dx;
+    const targetY = this.runtime.player.y + dy;
+
+    return this.hasCollidableObjectAt(targetX, targetY);
+  }
+
+  private isWallAt(x: number, y: number): boolean {
+    if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) {
+      return true;
+    }
+
+    return this.level.layers.collision[y]?.[x] ?? true;
+  }
+
+  private hasCollidableObjectAt(x: number, y: number): boolean {
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== x || obj.position.row !== y) {
+        continue;
+      }
+
+      const behavior = objectRegistry[obj.type];
+      if (!behavior?.isCollidable) {
+        continue;
+      }
+
+      const currentState = this.runtime.objectStates.get(obj.id) ?? this.getInitialObjectState(obj);
+      if (behavior.isCollidable(currentState)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  isWallAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.isWallAt(this.runtime.player.x + dx, this.runtime.player.y + dy);
+  }
+
+  isWallLeft(): boolean {
+    return this.isWallRelative("counterclockwise");
+  }
+
+  isWallRight(): boolean {
+    return this.isWallRelative("clockwise");
+  }
+
+  // Obstacle = collidable object in front (e.g. box, closed door), not wall tile.
+  isObstacleAhead(): boolean {
+    const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
+    return this.hasCollidableObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy);
+  }
+
+  isObstacleLeft(): boolean {
+    return this.isObjectObstacleRelative("counterclockwise");
+  }
+
+  isObstacleRight(): boolean {
+    return this.isObjectObstacleRelative("clockwise");
+  }
+
+  isBlockedAhead(): boolean {
+    const lookDirection = this.runtime.player.facing;
     const virtualPlayer = {
       ...this.runtime.player,
       facing: lookDirection,
@@ -650,23 +776,6 @@ export class GameEngine {
     );
   }
 
-  isObstacleAhead(): boolean {
-    return this.controller.isObstacleAhead(
-      this.runtime.player,
-      this.level,
-      this.tileSize,
-      this.runtime.objectStates,
-    );
-  }
-
-  isObstacleLeft(): boolean {
-    return this.isObstacleRelative("counterclockwise");
-  }
-
-  isObstacleRight(): boolean {
-    return this.isObstacleRelative("clockwise");
-  }
-
   isEnemyAhead(): boolean {
     const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
     return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["enemy"]);
@@ -675,6 +784,21 @@ export class GameEngine {
   isTrapAhead(): boolean {
     const { dx, dy } = DIRECTION_DELTA[this.runtime.player.facing];
     return this.hasObjectAt(this.runtime.player.x + dx, this.runtime.player.y + dy, ["trap"]);
+  }
+
+  getBoxHardnessAhead(): number {
+    const target = this.getObjectInFront();
+    if (!target || !this.isBoxType(target.type)) {
+      return 0;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "break") {
+      return 0;
+    }
+
+    return this.getBoxHardness(target);
   }
 
   hasCollectedFruit(): boolean {
@@ -705,6 +829,88 @@ export class GameEngine {
 
   hasWon(): boolean {
     return this.runtime.hasPlayerWon;
+  }
+
+  getStartCell(): string {
+    return stringifyCell(this.level.startPosition.col, this.level.startPosition.row);
+  }
+
+  getGoalCell(): string {
+    return stringifyCell(this.level.goalPosition.col, this.level.goalPosition.row);
+  }
+
+  getCurrentCell(): string {
+    return stringifyCell(this.runtime.player.x, this.runtime.player.y);
+  }
+
+  hasCharacterAtCurrentCell(): boolean {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== playerX || obj.position.row !== playerY) {
+        continue;
+      }
+
+      if (this.runtime.collectedCharacters.has(obj.id)) {
+        continue;
+      }
+
+      if (/^letter_([a-z])$/i.test(obj.type)) {
+        return true;
+      }
+
+      if (/^digit_([0-9])$/.test(obj.type)) {
+        return true;
+      }
+
+      if (/^punctuation_([1-8])$/.test(obj.type)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  getCharacterAtCurrentCell(): string {
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.position.col !== playerX || obj.position.row !== playerY) {
+        continue;
+      }
+
+      if (this.runtime.collectedCharacters.has(obj.id)) {
+        continue;
+      }
+
+      const letterMatch = /^letter_([a-z])$/i.exec(obj.type);
+      if (letterMatch) {
+        this.runtime.collectedCharacters.add(obj.id);
+        return letterMatch[1].toUpperCase();
+      }
+
+      const digitMatch = /^digit_([0-9])$/.exec(obj.type);
+      if (digitMatch) {
+        this.runtime.collectedCharacters.add(obj.id);
+        return digitMatch[1];
+      }
+
+      const punctuationMatch = /^punctuation_([1-8])$/.exec(obj.type);
+      if (punctuationMatch) {
+        const punctuationByIndex = [".", ",", "!", "?", ":", ";", "'", '"'];
+        const index = Number(punctuationMatch[1]) - 1;
+        this.runtime.collectedCharacters.add(obj.id);
+        return punctuationByIndex[index] ?? "";
+      }
+    }
+
+    return "";
+  }
+
+  getNeighbors(cell: string): string[] {
+    return getRawNeighbors(cell);
   }
 
   /**
@@ -783,8 +989,28 @@ export class GameEngine {
       // Update player collider position if registered
       this.updatePlayerCollider();
       this.checkFruitCollection();
+      this.checkTrapCollision();
       this.checkWinCondition();
       this.handlePlayerEnterTile();
+    }
+  }
+
+  /**
+   * Apply physics via the controller and emit a playerLanded event
+   * when the player lands after falling.
+   */
+  private applyPhysicsAndCheckLanding(): void {
+    const wasFalling = this.runtime.player.isFalling;
+    const tilesFallen = this.controller.applyPhysics(
+      this.runtime.player,
+      this.level,
+      this.tileSize,
+      this.runtime.objectStates,
+    );
+
+    // Emit landing event when the player was falling and is now grounded
+    if ((wasFalling || tilesFallen > 0) && this.runtime.player.isGrounded) {
+      this.emit({ type: "playerLanded", fallDistance: tilesFallen });
     }
   }
 
@@ -798,6 +1024,10 @@ export class GameEngine {
     }
 
     if (obj.type === "door") {
+      const isLocked = typeof obj.metadata?.isLocked === "boolean" ? obj.metadata.isLocked : false;
+      if (isLocked) {
+        return "locked";
+      }
       const isOpen = typeof obj.metadata?.isOpen === "boolean" ? obj.metadata.isOpen : false;
       return isOpen ? "open" : "closed";
     }
@@ -900,6 +1130,10 @@ export class GameEngine {
 
     const currentState =
       this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is locked. Unlock it first." });
+      return;
+    }
     if (currentState === "open") {
       return;
     }
@@ -918,6 +1152,10 @@ export class GameEngine {
 
     const currentState =
       this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+    if (currentState === "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is locked." });
+      return;
+    }
     if (currentState === "closed") {
       return;
     }
@@ -926,12 +1164,59 @@ export class GameEngine {
     this.emit({ type: "objectStateChanged", objectId: target.id, newState: "closed" });
   }
 
+  private unlockDoor(key: string): void {
+    const target = this.getObjectInFront();
+
+    if (!target || target.type !== "door") {
+      this.emit({ type: "interactionFeedback", message: "No door in front to unlock." });
+      return;
+    }
+
+    const currentState =
+      this.runtime.objectStates.get(target.id) ?? this.getInitialObjectState(target);
+
+    if (currentState === "open") {
+      return;
+    }
+
+    if (currentState !== "locked") {
+      this.emit({ type: "interactionFeedback", message: "Door is already unlocked." });
+      return;
+    }
+
+    const requiredCodeRaw =
+      (typeof target.metadata?.unlockCode === "string" && target.metadata.unlockCode) ||
+      (typeof target.metadata?.requiredCode === "string" && target.metadata.requiredCode) ||
+      (typeof target.metadata?.code === "string" && target.metadata.code) ||
+      "";
+
+    const provided = key.trim().toUpperCase();
+    const required = requiredCodeRaw.trim().toUpperCase();
+
+    if (required && provided !== required) {
+      this.emit({ type: "interactionFeedback", message: "Incorrect key for this door." });
+      return;
+    }
+
+    if (!required && !provided) {
+      this.emit({ type: "interactionFeedback", message: "Provide a key to unlock the door." });
+      return;
+    }
+
+    this.runtime.objectStates.set(target.id, "open");
+    this.emit({ type: "objectStateChanged", objectId: target.id, newState: "open" });
+  }
+
   /**
    * Check if player has reached a win condition
    * State transition: Running → Won
    */
   private checkWinCondition(): void {
-    if (this.runtime.state === EngineState.Won || this.runtime.hasPlayerWon) {
+    if (
+      this.runtime.state === EngineState.Won ||
+      this.runtime.state === EngineState.Failed ||
+      this.runtime.hasPlayerWon
+    ) {
       return;
     }
 
@@ -1007,6 +1292,24 @@ export class GameEngine {
           fruitId: obj.id,
           totalCollected: this.runtime.collectedFruits.size,
         });
+      }
+    }
+  }
+
+  private checkTrapCollision(): void {
+    if (this.runtime.state !== EngineState.Running) {
+      return;
+    }
+
+    const playerX = this.runtime.player.x;
+    const playerY = this.runtime.player.y;
+
+    for (const obj of this.level.objects || []) {
+      if (obj.type !== "trap") continue;
+
+      if (obj.position.col === playerX && obj.position.row === playerY) {
+        this.markFailed();
+        return;
       }
     }
   }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brush,
@@ -29,6 +29,10 @@ import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { useLearnerAuthStore } from "../../stores/auth/learnerAuth.store";
 import { useCmsAuthStore } from "../../stores/auth/cmsAuth.store";
 import { exportMapToGameFormat } from "../../tools/map-editor/utils/exportMapToGameFormat";
+import {
+  getSupportedUnlockCharacters,
+  sanitizeUnlockCode,
+} from "../../tools/map-editor/utils/unlockCode";
 import { ROUTES } from "../../lib/constants/routes";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 
@@ -65,13 +69,15 @@ interface MapEditorControlsProps {
   onDescriptionChange?: (description: string) => void;
   onDifficultyChange?: (difficulty: 1 | 2 | 3) => void;
   onTimeLimitChange?: (seconds: number) => void;
+  onEstimatedStepsChange?: (steps: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
-  onBannedBlocksChange?: (bannedBlocks: string[]) => void;
+  onAllowedBlocksChange?: (allowedBlocks: string[]) => void;
   onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
   onObjectDefinitionsLoaded?: (defs: Record<string, ObjectDefinition>) => void;
+  onObjectMetadataChange?: (index: number, metadata: Record<string, unknown>) => void;
   sectionMode?: "left" | "right";
   editingMapId?: string;
   editorMode?: "edit" | "view";
@@ -208,13 +214,15 @@ export function MapEditorControls({
   onDescriptionChange,
   onDifficultyChange,
   onTimeLimitChange,
+  onEstimatedStepsChange,
   onWinConditionChange,
   onRequiredFruitsChange,
   onPriceChange,
   onBlockLimitChange,
-  onBannedBlocksChange,
+  onAllowedBlocksChange,
   onRequiredBlocksChange,
   onObjectDefinitionsLoaded,
+  onObjectMetadataChange,
   sectionMode = "right",
   editingMapId,
   editorMode,
@@ -239,6 +247,7 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "estimatedSteps"
     | "winCondition"
     | "requiredFruits"
     | "price"
@@ -251,6 +260,7 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "estimatedSteps"
     | "winCondition"
     | "requiredFruits"
     | "price"
@@ -272,6 +282,69 @@ export function MapEditorControls({
     purple: 0,
   });
 
+  const isBoxType = (type: string): boolean =>
+    type === "box" || type === "box1" || type === "box2" || type === "box3";
+
+  const configurableObjects = mapData.objects.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.type === "door" || isBoxType(item.type));
+
+  const supportedUnlockCharactersLabel = useMemo(() => {
+    const chars = getSupportedUnlockCharacters(mapData.config.type);
+    return chars.join(" ");
+  }, [mapData.config.type]);
+
+  const getDoorMetadata = (metadata: Record<string, unknown> | undefined) => {
+    const isOpen = typeof metadata?.isOpen === "boolean" ? metadata.isOpen : false;
+    const isLocked = typeof metadata?.isLocked === "boolean" ? metadata.isLocked : false;
+    const unlockCodeRaw = typeof metadata?.unlockCode === "string" ? metadata.unlockCode : "";
+    const unlockCode = sanitizeUnlockCode(unlockCodeRaw, mapData.config.type);
+    return { isOpen, isLocked, unlockCode };
+  };
+
+  const getBoxHardness = (type: string, metadata: Record<string, unknown> | undefined): number => {
+    if (typeof metadata?.hardness === "number" && Number.isFinite(metadata.hardness)) {
+      return Math.max(1, Math.floor(metadata.hardness));
+    }
+    if (type === "box1") return 1;
+    if (type === "box2") return 2;
+    if (type === "box3" || type === "box") return 3;
+    return 1;
+  };
+
+  const updateDoorMetadata = (
+    index: number,
+    currentMetadata: Record<string, unknown> | undefined,
+    changes: Partial<{ isOpen: boolean; isLocked: boolean; unlockCode: string }>,
+  ) => {
+    if (!onObjectMetadataChange) return;
+    const current = getDoorMetadata(currentMetadata);
+    const next = {
+      ...current,
+      ...changes,
+      unlockCode:
+        changes.unlockCode !== undefined
+          ? sanitizeUnlockCode(changes.unlockCode, mapData.config.type)
+          : current.unlockCode,
+    };
+    onObjectMetadataChange(index, {
+      ...(currentMetadata ?? {}),
+      ...next,
+    });
+  };
+
+  const updateBoxMetadata = (
+    index: number,
+    currentMetadata: Record<string, unknown> | undefined,
+    hardness: number,
+  ) => {
+    if (!onObjectMetadataChange) return;
+    onObjectMetadataChange(index, {
+      ...(currentMetadata ?? {}),
+      hardness: Math.max(1, Math.floor(hardness)),
+    });
+  };
+
   const gameType = mapTypeToGameType(mapData.config.type);
   const [objectCache] = useState(() => new ObjectSpriteCache());
 
@@ -286,6 +359,21 @@ export function MapEditorControls({
     ObjectDefinition
   > | null>(null);
   const availableBlocks = blocksConfig.blocks;
+  const blockTypeToLabel = new Map(availableBlocks.map((block) => [block.type, block.label]));
+  const normalizedAllowedBlocks = Array.from(
+    new Set(mapData.blockConstraints.allowedBlocks ?? []),
+  ).filter((type) => availableBlocks.some((block) => block.type === type));
+  const blocksAvailableForGameplay =
+    normalizedAllowedBlocks.length === 0
+      ? availableBlocks
+      : availableBlocks.filter((block) => normalizedAllowedBlocks.includes(block.type));
+  const normalizedRequiredBlocks = Array.from(
+    new Map(
+      mapData.blockConstraints.requiredBlocks
+        .filter((rule) => blocksAvailableForGameplay.some((block) => block.type === rule.type))
+        .map((rule) => [rule.type, { type: rule.type, minCount: Math.max(1, rule.minCount) }]),
+    ).values(),
+  );
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
   const showLeftPanel = sectionMode === "left";
   const showRightPanel = sectionMode === "right";
@@ -477,27 +565,43 @@ export function MapEditorControls({
     onBlockLimitChange(Math.max(1, Math.floor(parsed)));
   };
 
-  const updateBannedBlock = (index: number, nextType: string) => {
-    if (!onBannedBlocksChange) return;
+  const updateAllowedBlock = (index: number, nextType: string) => {
+    if (!onAllowedBlocksChange) return;
 
-    const next = [...mapData.blockConstraints.bannedBlocks];
+    const next = [...normalizedAllowedBlocks];
     next[index] = nextType;
-    onBannedBlocksChange(Array.from(new Set(next)));
+    const dedupedAllowed = Array.from(new Set(next));
+    onAllowedBlocksChange(dedupedAllowed);
+
+    if (onRequiredBlocksChange) {
+      const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
+        dedupedAllowed.length === 0 ? true : dedupedAllowed.includes(rule.type),
+      );
+      onRequiredBlocksChange(sanitizedRequired);
+    }
   };
 
-  const addBannedBlock = () => {
-    if (!onBannedBlocksChange) return;
+  const addAllowedBlock = () => {
+    if (!onAllowedBlocksChange) return;
 
-    const usedTypes = new Set(mapData.blockConstraints.bannedBlocks);
+    const usedTypes = new Set(normalizedAllowedBlocks);
     const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
     if (!candidate) return;
 
-    onBannedBlocksChange([...mapData.blockConstraints.bannedBlocks, candidate.type]);
+    onAllowedBlocksChange([...normalizedAllowedBlocks, candidate.type]);
   };
 
-  const removeBannedBlock = (index: number) => {
-    if (!onBannedBlocksChange) return;
-    onBannedBlocksChange(mapData.blockConstraints.bannedBlocks.filter((_, i) => i !== index));
+  const removeAllowedBlock = (index: number) => {
+    if (!onAllowedBlocksChange) return;
+
+    const nextAllowed = normalizedAllowedBlocks.filter((_, i) => i !== index);
+    onAllowedBlocksChange(nextAllowed);
+
+    if (!onRequiredBlocksChange) return;
+    const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
+      nextAllowed.length === 0 ? true : nextAllowed.includes(rule.type),
+    );
+    onRequiredBlocksChange(sanitizedRequired);
   };
 
   const updateRequiredBlock = (
@@ -506,34 +610,98 @@ export function MapEditorControls({
   ) => {
     if (!onRequiredBlocksChange) return;
 
-    const next = mapData.blockConstraints.requiredBlocks.map((rule, ruleIndex) =>
+    const next = normalizedRequiredBlocks.map((rule, ruleIndex) =>
       ruleIndex === index ? { ...rule, ...patch } : rule,
     );
-    onRequiredBlocksChange(next);
+    const deduped = Array.from(new Map(next.map((rule) => [rule.type, rule])).values()).filter(
+      (rule) =>
+        normalizedAllowedBlocks.length === 0 || normalizedAllowedBlocks.includes(rule.type),
+    );
+    onRequiredBlocksChange(deduped);
   };
 
   const addRequiredBlock = () => {
     if (!onRequiredBlocksChange) return;
 
-    const usedTypes = new Set(mapData.blockConstraints.requiredBlocks.map((rule) => rule.type));
-    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
+    const usedTypes = new Set(normalizedRequiredBlocks.map((rule) => rule.type));
+    const candidate = blocksAvailableForGameplay.find((block) => !usedTypes.has(block.type));
     if (!candidate) return;
 
     onRequiredBlocksChange([
-      ...mapData.blockConstraints.requiredBlocks,
+      ...normalizedRequiredBlocks,
       { type: candidate.type, minCount: 1 },
     ]);
   };
 
   const removeRequiredBlock = (index: number) => {
     if (!onRequiredBlocksChange) return;
-    onRequiredBlocksChange(mapData.blockConstraints.requiredBlocks.filter((_, i) => i !== index));
+    onRequiredBlocksChange(normalizedRequiredBlocks.filter((_, i) => i !== index));
   };
+
+  const validateBlockRules = (): string[] => {
+    const errors: string[] = [];
+    const allowedSet = new Set(normalizedAllowedBlocks);
+    const requiredTypes = normalizedRequiredBlocks.map((rule) => rule.type);
+    const requiredSet = new Set(requiredTypes);
+
+    if (allowedSet.size !== normalizedAllowedBlocks.length) {
+      errors.push("Allowed blocks contains duplicate block types.");
+    }
+
+    if (requiredSet.size !== requiredTypes.length) {
+      errors.push("Required blocks contains duplicate block types.");
+    }
+
+    if (normalizedAllowedBlocks.length > 0) {
+      const invalidRequired = normalizedRequiredBlocks.filter(
+        (rule) => !allowedSet.has(rule.type),
+      );
+      if (invalidRequired.length > 0) {
+        errors.push("Required blocks must be selected from Allowed Blocks.");
+      }
+    }
+
+    const blockLimit = mapData.blockConstraints.blockLimit;
+    if (
+      blockLimit !== null &&
+      (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit < 1)
+    ) {
+      errors.push("Block limit must be at least 1 or empty for unlimited.");
+    }
+
+    return errors;
+  };
+
+  const toBlockLabel = (type: string) => blockTypeToLabel.get(type) ?? type;
+  const allowedSummary =
+    normalizedAllowedBlocks.length === 0
+      ? "All blocks allowed"
+      : normalizedAllowedBlocks.map((type) => toBlockLabel(type)).join(", ");
+  const requiredSummary =
+    normalizedRequiredBlocks.length === 0
+      ? "No required blocks"
+      : normalizedRequiredBlocks
+          .map((rule) => `Use \"${toBlockLabel(rule.type)}\" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`)
+          .join("; ");
+  const limitSummary =
+    mapData.blockConstraints.blockLimit === null
+      ? "Unlimited"
+      : `${mapData.blockConstraints.blockLimit} blocks`;
+  const hasAllowedRequiredConflict =
+    normalizedAllowedBlocks.length > 0 &&
+    normalizedRequiredBlocks.some((rule) => !normalizedAllowedBlocks.includes(rule.type));
 
   const handleSaveMapFromModal = async () => {
     const mapName = mapData.config.name?.trim();
     if (!mapName) {
       alert("Please set a map name before saving");
+      return;
+    }
+
+    const hasPlayer = mapData.objects.items.some((item) => item.type === "player");
+    const hasGoal = mapData.objects.items.some((item) => item.type === "goal");
+    if (!hasPlayer || !hasGoal) {
+      alert("Please place both a Player start and a Goal before saving the map.");
       return;
     }
 
@@ -553,6 +721,12 @@ export function MapEditorControls({
 
     if (userType === "unknown") {
       alert("You must be logged in as a learner or CMS user to save maps");
+      return;
+    }
+
+    const ruleErrors = validateBlockRules();
+    if (ruleErrors.length > 0) {
+      alert(`Please fix block rules before saving:\n- ${ruleErrors.join("\n- ")}`);
       return;
     }
 
@@ -760,12 +934,16 @@ export function MapEditorControls({
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Banned Blocks:</label>
-              <p style={styles.helpText}>Players cannot use these block types</p>
+              <label style={styles.label}>Allowed Blocks:</label>
+              <p style={styles.helpText}>Leave empty to allow all blocks</p>
+              <p style={styles.helpText}>Only selected blocks will be available to the player</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {mapData.blockConstraints.bannedBlocks.map((type, index) => (
+                {normalizedAllowedBlocks.length === 0 && (
+                  <div style={styles.placeholderText}>No selection. All blocks are allowed.</div>
+                )}
+                {normalizedAllowedBlocks.map((type, index) => (
                   <div
-                    key={`panel-banned-row-${type}-${index}`}
+                    key={`panel-allowed-row-${type}-${index}`}
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
@@ -775,17 +953,17 @@ export function MapEditorControls({
                   >
                     <select
                       value={type}
-                      onChange={(e) => updateBannedBlock(index, e.target.value)}
+                      onChange={(e) => updateAllowedBlock(index, e.target.value)}
                       style={styles.select}
                     >
                       {availableBlocks.map((block) => (
-                        <option key={`panel-banned-option-${block.type}`} value={block.type}>
+                        <option key={`panel-allowed-option-${block.type}`} value={block.type}>
                           {block.label}
                         </option>
                       ))}
                     </select>
                     <button
-                      onClick={() => removeBannedBlock(index)}
+                      onClick={() => removeAllowedBlock(index)}
                       style={{
                         padding: "6px 8px",
                         background: "#ff6b6b",
@@ -803,34 +981,39 @@ export function MapEditorControls({
               </div>
 
               <button
-                onClick={addBannedBlock}
-                disabled={mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length}
+                onClick={addAllowedBlock}
+                disabled={normalizedAllowedBlocks.length >= availableBlocks.length}
                 style={{
                   marginTop: "8px",
                   padding: "8px 10px",
                   background:
-                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                    normalizedAllowedBlocks.length >= availableBlocks.length
                       ? "#cfd8dc"
                       : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
                   cursor:
-                    mapData.blockConstraints.bannedBlocks.length >= availableBlocks.length
+                    normalizedAllowedBlocks.length >= availableBlocks.length
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "12px",
                 }}
               >
-                + Add Banned Block
+                + Add Allowed Block
               </button>
             </div>
 
             <div style={styles.formGroup}>
               <label style={styles.label}>Required Blocks:</label>
               <p style={styles.helpText}>Players must use these blocks at least N times</p>
+              {hasAllowedRequiredConflict && (
+                <p style={styles.ruleWarningText}>
+                  Some required blocks are outside Allowed Blocks and must be fixed before saving.
+                </p>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {mapData.blockConstraints.requiredBlocks.map((rule, index) => (
+                {normalizedRequiredBlocks.map((rule, index) => (
                   <div
                     key={`panel-required-${rule.type}-${index}`}
                     style={{
@@ -844,8 +1027,9 @@ export function MapEditorControls({
                       value={rule.type}
                       onChange={(e) => updateRequiredBlock(index, { type: e.target.value })}
                       style={styles.select}
+                      disabled={blocksAvailableForGameplay.length === 0}
                     >
-                      {availableBlocks.map((block) => (
+                      {blocksAvailableForGameplay.map((block) => (
                         <option key={`panel-required-option-${block.type}`} value={block.type}>
                           {block.label}
                         </option>
@@ -882,19 +1066,24 @@ export function MapEditorControls({
 
               <button
                 onClick={addRequiredBlock}
-                disabled={mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length}
+                disabled={
+                  blocksAvailableForGameplay.length === 0 ||
+                  normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
+                }
                 style={{
                   marginTop: "8px",
                   padding: "8px 10px",
                   background:
-                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                    blocksAvailableForGameplay.length === 0 ||
+                    normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
                       ? "#cfd8dc"
                       : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
                   cursor:
-                    mapData.blockConstraints.requiredBlocks.length >= availableBlocks.length
+                    blocksAvailableForGameplay.length === 0 ||
+                    normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "12px",
@@ -902,7 +1091,90 @@ export function MapEditorControls({
               >
                 + Add Required Block
               </button>
+              {blocksAvailableForGameplay.length === 0 && (
+                <p style={styles.ruleWarningText}>
+                  No blocks are currently available for requirement rules.
+                </p>
+              )}
             </div>
+
+            <div style={styles.ruleSummaryPanel}>
+              <p style={styles.ruleSummaryTitle}>Rule Summary:</p>
+              <p style={styles.ruleSummaryItem}>- Allowed: {allowedSummary}</p>
+              <p style={styles.ruleSummaryItem}>- Required: {requiredSummary}</p>
+              <p style={styles.ruleSummaryItem}>- Limit: {limitSummary}</p>
+            </div>
+          </div>
+
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Object Metadata</h3>
+            <p style={styles.helpText}>Configure metadata for placed doors and boxes.</p>
+
+            {configurableObjects.length === 0 && (
+              <p style={styles.placeholderText}>Place a door or box object to configure metadata.</p>
+            )}
+
+            {configurableObjects.map(({ item, index }) => {
+              if (item.type === "door") {
+                const door = getDoorMetadata(item.metadata);
+                return (
+                  <div key={`door-meta-${index}`} style={styles.objectMetadataCard}>
+                    <p style={styles.objectMetadataTitle}>Door at ({item.x}, {item.y})</p>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={door.isOpen}
+                        onChange={(e) =>
+                          updateDoorMetadata(index, item.metadata, { isOpen: e.target.checked })
+                        }
+                      />
+                      Open by default
+                    </label>
+                    <label style={styles.checkboxLabel}>
+                      <input
+                        type="checkbox"
+                        checked={door.isLocked}
+                        onChange={(e) =>
+                          updateDoorMetadata(index, item.metadata, { isLocked: e.target.checked })
+                        }
+                      />
+                      Locked
+                    </label>
+                    <label style={styles.label}>Unlock Code</label>
+                    <input
+                      type="text"
+                      value={door.unlockCode}
+                      onChange={(e) =>
+                        updateDoorMetadata(index, item.metadata, { unlockCode: e.target.value })
+                      }
+                      placeholder="e.g. AB1"
+                      style={styles.input}
+                    />
+                    <p style={styles.helpText}>Supported characters: {supportedUnlockCharactersLabel}</p>
+                  </div>
+                );
+              }
+
+              const hardness = getBoxHardness(item.type, item.metadata);
+              return (
+                <div key={`box-meta-${index}`} style={styles.objectMetadataCard}>
+                  <p style={styles.objectMetadataTitle}>
+                    {item.type} at ({item.x}, {item.y})
+                  </p>
+                  <label style={styles.label}>Hardness</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={hardness}
+                    onChange={(e) =>
+                      updateBoxMetadata(index, item.metadata, Number(e.target.value) || hardness)
+                    }
+                    style={styles.input}
+                  />
+                </div>
+              );
+            })}
           </div>
 
           <div style={styles.section}>
@@ -1437,6 +1709,38 @@ export function MapEditorControls({
                 <div
                   style={{
                     ...styles.inlineField,
+                    ...(activeInlineField === "estimatedSteps" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("estimatedSteps")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("estimatedSteps")}
+                >
+                  <div style={styles.inlineFieldLabel}>Estimated Steps</div>
+                  {activeInlineField === "estimatedSteps" ? (
+                    <input
+                      autoFocus
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={mapData.config.estimatedSteps}
+                      onChange={(e) =>
+                        onEstimatedStepsChange?.(Math.max(1, Number.parseInt(e.target.value) || 1))
+                      }
+                      onBlur={() => setActiveInlineField(null)}
+                      style={styles.inlineInput}
+                    />
+                  ) : (
+                    <div style={styles.inlineFieldValue}>{mapData.config.estimatedSteps} steps</div>
+                  )}
+                  {(hoveredInlineField === "estimatedSteps" ||
+                    activeInlineField === "estimatedSteps") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
                     ...(activeInlineField === "winCondition" ? styles.inlineFieldActive : {}),
                   }}
                   onMouseEnter={() => setHoveredInlineField("winCondition")}
@@ -1739,6 +2043,37 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     marginBottom: "10px",
   },
+  placeholderText: {
+    fontSize: "12px",
+    color: "#64748b",
+    padding: "8px 10px",
+    border: "1px dashed #cbd5e1",
+    borderRadius: "8px",
+    background: "#f8fafc",
+  },
+  ruleWarningText: {
+    fontSize: "12px",
+    color: "#b45309",
+    marginBottom: "8px",
+  },
+  ruleSummaryPanel: {
+    marginTop: "12px",
+    padding: "10px",
+    borderRadius: "10px",
+    border: "1px solid #dbe3ef",
+    background: "#f8fafc",
+  },
+  ruleSummaryTitle: {
+    margin: "0 0 6px 0",
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  ruleSummaryItem: {
+    margin: "0 0 4px 0",
+    fontSize: "12px",
+    color: "#334155",
+  },
   buttonGroup: {
     display: "flex",
     gap: "8px",
@@ -1798,6 +2133,29 @@ const styles: Record<string, React.CSSProperties> = {
     maxHeight: "280px",
     overflowY: "auto",
     padding: "4px",
+  },
+  objectMetadataCard: {
+    border: "1px solid #dbe3ef",
+    borderRadius: "10px",
+    background: "#f8fafc",
+    padding: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    marginBottom: "10px",
+  },
+  objectMetadataTitle: {
+    margin: 0,
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#1e293b",
+  },
+  checkboxLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "12px",
+    color: "#334155",
   },
   infoText: {
     margin: 0,

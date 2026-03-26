@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
 import "blockly/blocks";
 import "blockly/javascript";
-import { loadBlockRegistry } from "../utils/blockLoader";
+import { useTranslation } from "@/lib/i18n/translations";
+import { loadLocalizedBlockRegistry } from "../utils/blockLoader";
 import { registerBlocks } from "../blocks/registerBlocks";
 import { generateToolbox } from "../utils/generateToolbox";
 import type { BlockConfig } from "../types/blockDefinition";
+import type { BlockCategory } from "../types/blockDefinition";
 
 const cssVar = (name: string, fallback: string) => {
   if (typeof window === "undefined") return fallback;
@@ -50,10 +52,30 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
   onConstraintViolation,
   onBlockCountChange,
 }) => {
+  const { t, locale } = useTranslation();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const blocklyWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const blockDefinitionsRef = useRef<BlockConfig[] | null>(null);
+  const hiddenTypesKeyRef = useRef<string>("");
+  const onWorkspaceReadyRef = useRef(onWorkspaceReady);
+  const onConstraintViolationRef = useRef(onConstraintViolation);
+  const onBlockCountChangeRef = useRef(onBlockCountChange);
+  const blockLimitRef = useRef(blockLimit);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const getCategoryLabel = (category: BlockCategory, fallback: string): string => {
+    const key = `blockCategory.${category}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+
+  useEffect(() => {
+    onWorkspaceReadyRef.current = onWorkspaceReady;
+    onConstraintViolationRef.current = onConstraintViolation;
+    onBlockCountChangeRef.current = onBlockCountChange;
+    blockLimitRef.current = blockLimit;
+  }, [onWorkspaceReady, onConstraintViolation, onBlockCountChange, blockLimit]);
 
   useEffect(() => {
     let mounted = true;
@@ -95,24 +117,18 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         setError(null);
 
         // Load block definitions from JSON
-        const blockedTypes = new Set(bannedBlockTypes);
-        const blockDefinitions: BlockConfig[] = loadBlockRegistry().map((block) => {
-          if (!blockedTypes.has(block.type)) {
-            return block;
-          }
-
-          return {
-            ...block,
-            tooltip: "This block is not allowed in this level",
-          };
-        });
+        const blockDefinitions: BlockConfig[] = loadLocalizedBlockRegistry(t, locale);
+        blockDefinitionsRef.current = blockDefinitions;
 
         // Register blocks dynamically
         registerBlocks(blockDefinitions);
 
         // Generate dynamic toolbox
+        const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+        hiddenTypesKeyRef.current = hiddenTypes.join("|");
         const toolbox = generateToolbox(blockDefinitions, {
-          disabledBlockTypes: bannedBlockTypes,
+          hiddenBlockTypes: hiddenTypes,
+          getCategoryLabel,
         });
 
         if (!mounted) return;
@@ -158,8 +174,8 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         }, 100);
 
         // Notify parent component that workspace is ready
-        if (onWorkspaceReady && blocklyWorkspaceRef.current) {
-          onWorkspaceReady(blocklyWorkspaceRef.current);
+        if (onWorkspaceReadyRef.current && blocklyWorkspaceRef.current) {
+          onWorkspaceReadyRef.current(blocklyWorkspaceRef.current);
         }
 
         const workspace = blocklyWorkspaceRef.current;
@@ -169,7 +185,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           const totalBlocks = workspace
             .getAllBlocks(false)
             .filter((block) => !block.isShadow()).length;
-          onBlockCountChange?.(totalBlocks);
+          onBlockCountChangeRef.current?.(totalBlocks);
         };
 
         reportBlockCount();
@@ -181,19 +197,20 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
 
           if (event.type !== Blockly.Events.BLOCK_CREATE) return;
 
-          if (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit <= 0) {
+          const limit = blockLimitRef.current;
+          if (typeof limit !== "number" || !Number.isFinite(limit) || limit <= 0) {
             return;
           }
 
           const totalBlocks = workspace
             .getAllBlocks(false)
             .filter((block) => !block.isShadow()).length;
-          if (totalBlocks <= blockLimit) return;
+          if (totalBlocks <= limit) return;
 
           revertingCreate = true;
           workspace.undo(false);
           revertingCreate = false;
-          onConstraintViolation?.(`Block limit reached (${blockLimit}).`);
+          onConstraintViolationRef.current?.(`${t("blockLimitReached")} (${limit}).`);
         });
       } catch (err) {
         if (mounted) {
@@ -216,7 +233,48 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         blocklyWorkspaceRef.current = null;
       }
     };
-  }, [bannedBlockTypes, blockLimit, onBlockCountChange, onConstraintViolation, onWorkspaceReady]);
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const workspace = blocklyWorkspaceRef.current;
+    const blockDefinitions = blockDefinitionsRef.current;
+    if (!workspace || !blockDefinitions) return;
+
+    const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+    const nextKey = hiddenTypes.join("|");
+    if (nextKey === hiddenTypesKeyRef.current) return;
+
+    hiddenTypesKeyRef.current = nextKey;
+    workspace.updateToolbox(
+      generateToolbox(blockDefinitions, {
+        hiddenBlockTypes: hiddenTypes,
+        getCategoryLabel,
+      }),
+    );
+  }, [bannedBlockTypes, t]);
+
+  useEffect(() => {
+    const workspace = blocklyWorkspaceRef.current;
+    if (!workspace) return;
+
+    const xmlSnapshot = Blockly.Xml.workspaceToDom(workspace);
+    const blockDefinitions = loadLocalizedBlockRegistry(t, locale);
+    blockDefinitionsRef.current = blockDefinitions;
+    registerBlocks(blockDefinitions);
+
+    const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+    hiddenTypesKeyRef.current = hiddenTypes.join("|");
+    workspace.updateToolbox(
+      generateToolbox(blockDefinitions, {
+        hiddenBlockTypes: hiddenTypes,
+        getCategoryLabel,
+      }),
+    );
+
+    workspace.clear();
+    Blockly.Xml.domToWorkspace(xmlSnapshot, workspace);
+    Blockly.svgResize(workspace);
+  }, [locale]);
 
   // Handle container resize
   useEffect(() => {
@@ -256,7 +314,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
             zIndex: 1000,
           }}
         >
-          <div>Loading block editor...</div>
+          <div>{t("loadingBlockEditor")}</div>
         </div>
       )}
 
@@ -279,7 +337,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           }}
         >
           <div>
-            <strong>Error:</strong> {error}
+            <strong>{t("errorLabel")}:</strong> {error}
           </div>
         </div>
       )}

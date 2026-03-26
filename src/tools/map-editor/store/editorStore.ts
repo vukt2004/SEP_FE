@@ -1,4 +1,5 @@
 import type { MapData } from "../../../shared/types/MapSchema";
+import blocksConfig from "../../../shared/block/blocks-config.json";
 import { createEmptyLayer } from "../utils/createEmptyLayer";
 import { createEmptyMap } from "../utils/createEmptyMap";
 
@@ -35,6 +36,30 @@ export class EditorStore {
     string,
     import("../../../modules/engine/assets/definitions/ObjectDefinition").ObjectDefinition
   > | null = null;
+
+  private getDefaultObjectMetadata(type: string): Record<string, unknown> | undefined {
+    if (type === "door") {
+      return {
+        isOpen: false,
+        isLocked: false,
+        unlockCode: "",
+      };
+    }
+
+    if (type === "box1") {
+      return { hardness: 1 };
+    }
+
+    if (type === "box2") {
+      return { hardness: 2 };
+    }
+
+    if (type === "box3" || type === "box") {
+      return { hardness: 3 };
+    }
+
+    return undefined;
+  }
 
   /**
    * Initialize the editor store with a map
@@ -500,14 +525,20 @@ export class EditorStore {
         (item) => item.id !== objectId,
       );
       // Place the new one
-      this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
+      const metadata = this.getDefaultObjectMetadata(objectType);
+      this.mapData.objects.items.push({
+        id: objectId,
+        type: objectType,
+        x,
+        y,
+        ...(metadata ? { metadata } : {}),
+      });
     } else {
       // For multiple-placement items (fruits, enemies, decorative, portals)
       // Toggle at position
       const existingIndex = this.mapData.objects.items.findIndex(
         (obj) => obj.x === x && obj.y === y && obj.id === objectId,
       );
-
       if (existingIndex !== -1) {
         // Remove existing object
         this.mapData.objects.items.splice(existingIndex, 1);
@@ -525,7 +556,6 @@ export class EditorStore {
             this.undoStack.pop(); // Remove the saveHistory call since we're not making changes
             return;
           }
-
           // Add new portal with color metadata
           this.mapData.objects.items.push({
             id: objectId,
@@ -535,12 +565,31 @@ export class EditorStore {
             metadata: { color: this.selectedPortalColor },
           });
         } else {
-          // Add new object
-          this.mapData.objects.items.push({ id: objectId, type: objectType, x, y });
-        }
+        const metadata = this.getDefaultObjectMetadata(objectType);
+        this.mapData.objects.items.push({
+          id: objectId,
+          type: objectType,
+          x,
+          y,
+          ...(metadata ? { metadata } : {}),
+        });
       }
     }
 
+    this.notify();
+  }
+
+  /**
+   * Update metadata for a placed object by its index in objects.items
+   */
+  updateObjectMetadataByIndex(index: number, metadata: Record<string, unknown>): void {
+    if (index < 0 || index >= this.mapData.objects.items.length) {
+      return;
+    }
+
+    this.saveHistory();
+    const target = this.mapData.objects.items[index];
+    target.metadata = { ...metadata };
     this.notify();
   }
 
@@ -662,6 +711,17 @@ export class EditorStore {
   }
 
   /**
+   * Update the estimated steps for solving the map
+   *
+   * @param steps - Estimated number of steps
+   */
+  setMapEstimatedSteps(steps: number): void {
+    this.saveHistory();
+    this.mapData.config.estimatedSteps = Math.max(1, Math.floor(steps));
+    this.notify();
+  }
+
+  /**
    * Update the map win condition
    *
    * @param winCondition - Win condition (1=reach goal, 2=collect all fruits)
@@ -716,15 +776,23 @@ export class EditorStore {
   }
 
   /**
-   * Update the list of banned block types
+   * Update the list of allowed block types
    *
-   * @param bannedBlocks - Block type IDs that cannot be used
+   * @param allowedBlocks - Block type IDs that can be used. Empty means all are allowed.
    */
-  setBannedBlocks(bannedBlocks: string[]): void {
+  setAllowedBlocks(allowedBlocks: string[]): void {
     this.saveHistory();
-    this.mapData.blockConstraints.bannedBlocks = Array.from(
-      new Set(bannedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
+    const normalizedAllowed = Array.from(
+      new Set(allowedBlocks.filter((type) => typeof type === "string" && type.trim().length > 0)),
     );
+    this.mapData.blockConstraints.allowedBlocks = normalizedAllowed;
+
+    if (normalizedAllowed.length > 0) {
+      this.mapData.blockConstraints.requiredBlocks = this.mapData.blockConstraints.requiredBlocks.filter(
+        (rule) => normalizedAllowed.includes(rule.type),
+      );
+    }
+
     this.notify();
   }
 
@@ -735,13 +803,15 @@ export class EditorStore {
    */
   setRequiredBlocks(requiredBlocks: Array<{ type: string; minCount: number }>): void {
     this.saveHistory();
+    const normalizedAllowed = this.mapData.blockConstraints.allowedBlocks;
     this.mapData.blockConstraints.requiredBlocks = requiredBlocks
       .filter(
         (rule) =>
           typeof rule.type === "string" &&
           rule.type.trim().length > 0 &&
           typeof rule.minCount === "number" &&
-          Number.isFinite(rule.minCount),
+          Number.isFinite(rule.minCount) &&
+          (normalizedAllowed.length === 0 || normalizedAllowed.includes(rule.type)),
       )
       .map((rule) => ({
         type: rule.type,
@@ -791,6 +861,9 @@ export class EditorStore {
     }
     if (loadedMap.config.timeLimitSeconds === undefined) {
       loadedMap.config.timeLimitSeconds = 300; // Default: 5 minutes
+    }
+    if (loadedMap.config.estimatedSteps === undefined) {
+      loadedMap.config.estimatedSteps = 50; // Default estimated steps
     }
     if (loadedMap.config.winCondition === undefined) {
       loadedMap.config.winCondition = 1; // Default: Reach goal
@@ -855,15 +928,37 @@ export class EditorStore {
     if (!loadedMap.blockConstraints) {
       loadedMap.blockConstraints = {
         blockLimit: null,
-        bannedBlocks: [],
+        allowedBlocks: [],
         requiredBlocks: [],
       };
     }
-    if (!Array.isArray(loadedMap.blockConstraints.bannedBlocks)) {
-      loadedMap.blockConstraints.bannedBlocks = [];
+    if (!Array.isArray(loadedMap.blockConstraints.allowedBlocks)) {
+      loadedMap.blockConstraints.allowedBlocks = [];
+    }
+    if (
+      loadedMap.blockConstraints.allowedBlocks.length === 0 &&
+      Array.isArray(loadedMap.blockConstraints.bannedBlocks)
+    ) {
+      const legacyBanned = Array.from(
+        new Set(
+          loadedMap.blockConstraints.bannedBlocks.filter(
+            (type): type is string => typeof type === "string" && type.trim().length > 0,
+          ),
+        ),
+      );
+      const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+      loadedMap.blockConstraints.allowedBlocks = allBlockTypes.filter(
+        (type) => !legacyBanned.includes(type),
+      );
     }
     if (!Array.isArray(loadedMap.blockConstraints.requiredBlocks)) {
       loadedMap.blockConstraints.requiredBlocks = [];
+    }
+
+    if (loadedMap.blockConstraints.allowedBlocks.length > 0) {
+      loadedMap.blockConstraints.requiredBlocks = loadedMap.blockConstraints.requiredBlocks.filter(
+        (rule) => loadedMap.blockConstraints.allowedBlocks.includes(rule.type),
+      );
     }
     if (
       loadedMap.blockConstraints.blockLimit !== null &&

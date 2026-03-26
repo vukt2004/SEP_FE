@@ -45,14 +45,17 @@ export class PlatformController implements IPlayerController {
     return true;
   }
 
+  /** Configurable maximum fall speed in tiles per step */
+  private readonly maxFallSpeed: number = 3;
+
   applyPhysics(
     player: Player,
     level: LevelDefinition,
     tileSize: number,
     objectStates: ReadonlyMap<string, string>,
-  ): void {
-    // Apply rule-based gravity
-    this.applyGravity(player, level, tileSize, objectStates);
+  ): number {
+    // Apply hybrid gravity and return tiles fallen
+    return this.applyGravity(player, level, tileSize, objectStates);
   }
 
   isObstacleAhead(
@@ -127,37 +130,89 @@ export class PlatformController implements IPlayerController {
     player.targetPixelX = player.x * tileSize;
     player.targetPixelY = player.y * tileSize;
     player.isJumping = true;
+    player.isFalling = false;
   }
 
   /**
-   * Apply rule-based gravity: drop player one tile toward the ground.
-   * Called once per command step so the fall arc is visible across
-   * multiple block executions rather than teleporting to the floor.
+   * Count the number of empty (non-solid) tiles directly below a position.
+   * Scans downward until a solid tile or the map boundary is reached.
+   */
+  private countEmptyTilesBelow(
+    x: number,
+    y: number,
+    level: LevelDefinition,
+    objectStates: ReadonlyMap<string, string>,
+  ): number {
+    let count = 0;
+    let checkY = y + 1;
+    while (this.isInBounds(x, checkY, level) && !this.isSolidTile(x, checkY, level, objectStates)) {
+      count++;
+      checkY++;
+    }
+    return count;
+  }
+
+  /**
+   * Apply hybrid gravity:
+   *  - fallDistance == 0  → grounded, do nothing
+   *  - fallDistance <= 2  → fall 1 tile per step (slow, controlled)
+   *  - fallDistance >  2  → fall min(fallDistance, maxFallSpeed) tiles per step
+   *
+   * The player is moved down one tile at a time inside a loop so
+   * collision with solid tiles is never skipped.
+   *
+   * @returns the number of tiles the player actually fell this step
    */
   private applyGravity(
     player: Player,
     level: LevelDefinition,
     tileSize: number,
     objectStates: ReadonlyMap<string, string>,
-  ): void {
-    const canFall =
-      this.isInBounds(player.x, player.y + 1, level) &&
-      !this.isSolidTile(player.x, player.y + 1, level, objectStates);
+  ): number {
+    const fallDistance = this.countEmptyTilesBelow(player.x, player.y, level, objectStates);
 
-    if (canFall) {
-      // Fall exactly one tile per step
-      player.y++;
+    let tilesFallen = 0;
+
+    if (fallDistance > 0) {
+      // Determine how many tiles to fall this step
+      const fallSpeed =
+        fallDistance <= 2
+          ? 1
+          : Math.min(fallDistance, this.maxFallSpeed);
+
+      player.isFalling = true;
+
+      // Move down tile-by-tile, checking each one
+      for (let i = 0; i < fallSpeed; i++) {
+        if (
+          this.isInBounds(player.x, player.y + 1, level) &&
+          !this.isSolidTile(player.x, player.y + 1, level, objectStates)
+        ) {
+          player.y++;
+          tilesFallen++;
+        } else {
+          break; // Hit solid tile, stop immediately
+        }
+      }
     }
 
     // Update target pixel position
     player.targetPixelX = player.x * tileSize;
     player.targetPixelY = player.y * tileSize;
 
-    // Update grounded flag
-    player.isGrounded =
+    // Update grounded / falling / jumping flags
+    const groundBelow =
       this.isInBounds(player.x, player.y + 1, level) &&
       this.isSolidTile(player.x, player.y + 1, level, objectStates);
-    player.isJumping = !player.isGrounded;
+
+    player.isGrounded = groundBelow;
+
+    if (groundBelow) {
+      player.isFalling = false;
+      player.isJumping = false;
+    }
+
+    return tilesFallen;
   }
 
   private isInBounds(x: number, y: number, level: LevelDefinition): boolean {

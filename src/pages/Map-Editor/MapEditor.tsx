@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
@@ -11,6 +11,7 @@ import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { tokenStorage } from "../../lib/storage/tokenStorage";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
+import blocksConfig from "../../shared/block/blocks-config.json";
 
 type MapEditorRouteState = {
   mapId?: string;
@@ -23,6 +24,7 @@ type MapDetailLike = {
   type: "Topdown" | "Platform";
   difficulty: number;
   timeLimitMs: number;
+  estimatedSteps?: number;
   winCondition: number;
   price: number;
   hints?: Array<{ orderNo: number; content: string }>;
@@ -111,21 +113,35 @@ const normalizeBlockConstraints = (
   source: Record<string, unknown> | null,
 ): {
   blockLimit: number | null;
-  bannedBlocks: string[];
+  allowedBlocks: string[];
   requiredBlocks: RequiredBlockRule[];
 } => {
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
   if (!source) {
     return {
       blockLimit: null,
-      bannedBlocks: [],
+      allowedBlocks: [],
       requiredBlocks: [],
     };
   }
 
+  const explicitAllowed = normalizeStringList(source.allowedBlocks);
+  const legacyBanned = normalizeStringList(source.bannedBlocks);
+  const allowedBlocks =
+    explicitAllowed.length > 0
+      ? explicitAllowed
+      : legacyBanned.length > 0
+        ? allBlockTypes.filter((type) => !legacyBanned.includes(type))
+        : [];
+
+  const requiredBlocks = normalizeRequiredBlocks(source.requiredBlocks).filter(
+    (rule) => allowedBlocks.length === 0 || allowedBlocks.includes(rule.type),
+  );
+
   return {
     blockLimit: normalizeBlockLimit(source.blockLimit),
-    bannedBlocks: normalizeStringList(source.bannedBlocks),
-    requiredBlocks: normalizeRequiredBlocks(source.requiredBlocks),
+    allowedBlocks,
+    requiredBlocks,
   };
 };
 
@@ -174,6 +190,18 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           1,
           Math.floor(
             toNumber(detail.timeLimitMs, toNumber(configRaw.timeLimitSeconds, 60) * 1000) / 1000,
+          ),
+        ),
+        estimatedSteps: Math.max(
+          1,
+          Math.floor(
+            toNumber(
+              detail.estimatedSteps,
+              toNumber(
+                isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined,
+                toNumber(configRaw.estimatedSteps, 50),
+              ),
+            ),
           ),
         ),
         winCondition: clampWinCondition(
@@ -310,6 +338,15 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         description: detail.description || "",
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
+        estimatedSteps: Math.max(
+          1,
+          Math.floor(
+            toNumber(
+              detail.estimatedSteps,
+              toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined, 50),
+            ),
+          ),
+        ),
         winCondition: clampWinCondition(detail.winCondition),
         requiredFruits: Math.max(
           0,
@@ -519,6 +556,10 @@ export default function MapEditor() {
     store?.setMapTimeLimitSeconds(seconds);
   };
 
+  const handleEstimatedStepsChange = (steps: number) => {
+    store?.setMapEstimatedSteps(steps);
+  };
+
   const handleWinConditionChange = (winCondition: 1 | 2) => {
     store?.setMapWinCondition(winCondition);
   };
@@ -535,13 +576,27 @@ export default function MapEditor() {
     store?.setBlockLimit(blockLimit);
   };
 
-  const handleBannedBlocksChange = (bannedBlocks: string[]) => {
-    store?.setBannedBlocks(bannedBlocks);
+  const handleAllowedBlocksChange = (allowedBlocks: string[]) => {
+    store?.setAllowedBlocks(allowedBlocks);
   };
 
   const handleRequiredBlocksChange = (requiredBlocks: RequiredBlockRule[]) => {
     store?.setRequiredBlocks(requiredBlocks);
   };
+
+  const handleObjectDefinitionsLoaded = useCallback(
+    (defs: Record<string, import("../../modules/engine/assets").ObjectDefinition>) => {
+      store?.setObjectDefinitions(defs);
+    },
+    [store],
+  );
+
+  const handleObjectMetadataChange = useCallback(
+    (index: number, metadata: Record<string, unknown>) => {
+      store?.updateObjectMetadataByIndex(index, metadata);
+    },
+    [store],
+  );
 
   const handleUndo = () => {
     store?.undo();
@@ -599,12 +654,14 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
-              onBannedBlocksChange={handleBannedBlocksChange}
+              onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
+              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+              onObjectMetadataChange={handleObjectMetadataChange}
             />
           </aside>
 
@@ -675,13 +732,15 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
-              onBannedBlocksChange={handleBannedBlocksChange}
+              onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={(defs) => store.setObjectDefinitions(defs)}
+              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+              onObjectMetadataChange={handleObjectMetadataChange}
             />
           </aside>
         </div>

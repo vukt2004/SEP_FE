@@ -3,8 +3,6 @@ import type { BlockConfig, BlockCategory } from "../types/blockDefinition";
 interface ToolboxBlock {
   kind: "block";
   type: string;
-  disabled?: boolean;
-  enabled?: boolean;
 }
 
 interface ToolboxSeparator {
@@ -32,6 +30,9 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
   procedure: "Procedure",
   variables: "Variables",
   math: "Math",
+  array: "Array",
+  queue: "Queue",
+  stack: "Stack",
 };
 
 /**
@@ -43,10 +44,13 @@ const CATEGORY_NAMES: Record<BlockCategory, string> = {
 export function generateToolbox(
   blockDefinitions: BlockConfig[],
   options?: {
-    disabledBlockTypes?: string[];
+    hiddenBlockTypes?: string[];
+    getCategoryLabel?: (category: BlockCategory, fallback: string) => string;
   },
 ): FlyoutToolbox {
-  const disabledTypes = new Set(options?.disabledBlockTypes ?? []);
+  const hiddenTypes = new Set(options?.hiddenBlockTypes ?? []);
+  // User request: hide only category headers (not the blocks) for these sections.
+  const hiddenCategoryLabels = new Set<BlockCategory>(["movement", "control"]);
 
   // Group blocks by category
   const blocksByCategory = new Map<BlockCategory, BlockConfig[]>();
@@ -68,30 +72,37 @@ export function generateToolbox(
     "control",
     "logic",
     "variables",
+    "array",
+    "queue",
+    "stack",
     "math",
     "procedure",
   ];
 
   categoryOrder.forEach((category, index) => {
     const blocks = blocksByCategory.get(category);
-    if (blocks && blocks.length > 0) {
+    const visibleBlocks =
+      blocks?.filter((block) => !hiddenTypes.has(block.type)) ?? [];
+
+    if (visibleBlocks.length > 0) {
       // Add category label
-      if (index > 0) {
-        contents.push({ kind: "sep", gap: "32" });
+      const shouldShowLabel = !hiddenCategoryLabels.has(category);
+      if (shouldShowLabel) {
+        if (index > 0) {
+          contents.push({ kind: "sep", gap: "32" });
+        }
+        const fallbackCategoryName = CATEGORY_NAMES[category];
+        contents.push({
+          kind: "label",
+          text: options?.getCategoryLabel?.(category, fallbackCategoryName) ?? fallbackCategoryName,
+        });
       }
-      contents.push({
-        kind: "label",
-        text: CATEGORY_NAMES[category],
-      });
 
       // Add blocks from this category
-      blocks.forEach((block) => {
-        const isDisabled = disabledTypes.has(block.type);
+      visibleBlocks.forEach((block) => {
         contents.push({
           kind: "block",
           type: block.type,
-          disabled: isDisabled,
-          enabled: !isDisabled,
         });
       });
     }

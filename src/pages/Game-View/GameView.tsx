@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
-import { GameEngine } from "../../modules/engine/core/GameEngine";
-import type { BlockProgram, ConditionType } from "../../modules/executor/types";
+import { EngineState, GameEngine } from "../../modules/engine/core/GameEngine";
+import type {
+  BlockProgram,
+  ConditionType,
+  LastRemovedItem,
+  PositionResolver,
+  RuntimeVariables,
+} from "../../modules/executor/types";
 import { StepExecutor } from "../../modules/executor/StepExecutor";
 import type { EngineEvent } from "../../modules/engine/core/engineEvents";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
@@ -13,7 +19,8 @@ import type { MapConfig } from "../../shared/types/MapSchema";
 import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { GameResultsModal } from "./GameResultsModal";
-import { MissionBar } from "./MissionBar";
+import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
+import { TrapFailedModal } from "./TrapFailedModal";
 import { LevelMissionModal } from "./LevelMissionModal";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
@@ -28,14 +35,17 @@ import {
   Eraser,
   Send,
   Flag,
-  Info,
 } from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import { useTranslation } from "@/lib/i18n/translations";
+import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import blocksConfig from "../../shared/block/blocks-config.json";
 
 export default function GameView() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -49,6 +59,7 @@ export default function GameView() {
   const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const historyRecordedRef = useRef(false);
   const [audioSystem, setAudioSystem] = useState<
     import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
   >(null);
@@ -68,13 +79,24 @@ export default function GameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
+  const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
+  const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
+  const [timerResetSignal, setTimerResetSignal] = useState(0);
+  const timerElapsedRef = useRef(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
+  const fruitCollectedPulseRef = useRef(false);
+  const [execVariables, setExecVariables] = useState<RuntimeVariables>({});
+  const [lastRemoved, setLastRemoved] = useState<LastRemovedItem | null>(null);
+  // Data panel is hidden from learner UI, keep runtime state for executor internals.
+  void execVariables;
+  void lastRemoved;
 
   // Get level ID and multiplayer room from location state
   const levelId = (location.state as { levelId?: string })?.levelId;
@@ -83,6 +105,8 @@ export default function GameView() {
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [elapsedDisplay, setElapsedDisplay] = useState(0);
+  const timeLimitTriggeredRef = useRef(false);
 
   const showWarningToast = useCallback((message: string) => {
     setWarningToast(message);
@@ -95,6 +119,16 @@ export default function GameView() {
     }, 3500);
   }, []);
 
+  const handleTimerElapsedChange = useCallback((seconds: number) => {
+    timerElapsedRef.current = seconds;
+    setElapsedDisplay(seconds);
+  }, []);
+
+  const resetGameTimerForLevelStart = useCallback(() => {
+    timeLimitTriggeredRef.current = false;
+    setTimerResetSignal((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (warningToastTimeoutRef.current !== null) {
@@ -102,6 +136,10 @@ export default function GameView() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    engineRef.current?.setDoorKeyHintVisible(showDoorKeyHints);
+  }, [showDoorKeyHints]);
 
   useEffect(() => {
     let isMounted = true;
@@ -242,15 +280,19 @@ export default function GameView() {
           }
           setIsExecutorRunning(false);
 
-          // Show results modal
+          // Prepare result immediately
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
             blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: engine.getElapsedTime(),
+            elapsedTime: timerElapsedRef.current,
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
-          setShowResultsModal(true);
+
+          // Show results modal after a short delay to allow animations to finish
+          setTimeout(() => {
+            setShowResultsModal(true);
+          }, 1500);
         };
 
         const handleFailed = () => {
@@ -258,16 +300,8 @@ export default function GameView() {
             executorRef.current.stop();
           }
           setIsExecutorRunning(false);
-
-          // Show results modal
-          setGameResult({
-            isWin: false,
-            stepCount: engine.getStepCount(),
-            blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: engine.getElapsedTime(),
-            fruitsCollected: engine.getCollectedFruitsCount(),
-          });
-          setShowResultsModal(true);
+          setShowExecutionIncompleteModal(false);
+          setShowTrapFailedModal(true);
         };
 
         const handleObjectStateChanged = (event: EngineEvent) => {
@@ -280,6 +314,7 @@ export default function GameView() {
           if (event.type === "fruitCollected") {
             console.log("Fruit collected:", event);
             setCollectedFruits(event.totalCollected);
+            fruitCollectedPulseRef.current = true;
           }
         };
 
@@ -376,7 +411,38 @@ export default function GameView() {
     }
 
     if (!isLevelStarted) {
-      setShowMissionModal(true);
+      try {
+        resetGameTimerForLevelStart();
+        engineRef.current.start();
+        setIsLevelStarted(true);
+        setShowMissionModal(false);
+      } catch (err) {
+        console.error("Failed to start level before running program:", err);
+        setShowMissionModal(true);
+        return;
+      }
+    }
+
+    const existingExecutor = executorRef.current;
+    if (existingExecutor && existingExecutor.hasNext()) {
+      setIsExecutorRunning(true);
+      existingExecutor.run(
+        (result) => {
+          const engine = engineRef.current;
+          if (engine) {
+            engine.executeCommand(result.command);
+          }
+        },
+        500,
+        () => {
+          setIsExecutorRunning(false);
+          const engine = engineRef.current;
+          if (!engine || engine.hasWon()) {
+            return;
+          }
+          setShowExecutionIncompleteModal(true);
+        },
+      );
       return;
     }
 
@@ -398,10 +464,45 @@ export default function GameView() {
         return acc;
       }, {});
 
-      const constraintsValidation = engineRef.current.validateBlockUsage(blockUsage);
-      if (!constraintsValidation.isValid) {
-        showWarningToast(constraintsValidation.message || "Block constraints are not satisfied.");
-        return;
+      const constraints = engineRef.current.getBlockConstraints();
+      if (constraints) {
+        const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+        const allowedBlocks = Array.from(new Set(constraints.allowedBlocks ?? [])).filter((type) =>
+          allBlockTypes.includes(type),
+        );
+
+        if (allowedBlocks.length > 0) {
+          for (const usedType of Object.keys(blockUsage)) {
+            if (!allowedBlocks.includes(usedType)) {
+              showWarningToast(`${t("blockNotAllowed")}: ${toBlockLabel(usedType)}.`);
+              return;
+            }
+          }
+        } else {
+          for (const bannedType of constraints.bannedBlocks || []) {
+            const used = blockUsage[bannedType] ?? 0;
+            if (used > 0) {
+              showWarningToast(`${t("blockNotAllowed")}: ${toBlockLabel(bannedType)}.`);
+              return;
+            }
+          }
+        }
+
+        for (const rule of constraints.requiredBlocks || []) {
+          const used = blockUsage[rule.type] ?? 0;
+          if (used < rule.minCount) {
+            showWarningToast(`${t("requiredBlockMissing")}: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`);
+            return;
+          }
+        }
+
+        const blockLimit = constraints.blockLimit;
+        if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
+          const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
+          if (totalUsed > blockLimit) {
+            showWarningToast(`${t("blockLimitExceeded")} (${totalUsed}/${blockLimit}). ${t("runningAnyway")}.`);
+          }
+        }
       }
 
       const program: BlockProgram = generateAST(workspaceRef.current);
@@ -423,15 +524,15 @@ export default function GameView() {
 
         switch (condition) {
           case "pathAhead":
-            return !engine.isObstacleAhead();
+            return !engine.isWallAhead() && !engine.isObstacleAhead();
           case "wallAhead":
-            return engine.isObstacleAhead();
+            return engine.isWallAhead();
           case "obstacleAhead":
             return engine.isObstacleAhead();
           case "wallLeft":
-            return engine.isObstacleLeft();
+            return engine.isWallLeft();
           case "wallRight":
-            return engine.isObstacleRight();
+            return engine.isWallRight();
           case "goalReached":
             return engine.hasWon();
           case "enemyAhead":
@@ -439,21 +540,75 @@ export default function GameView() {
           case "trapAhead":
             return engine.isTrapAhead();
           case "fruitCollected":
-            return engine.hasCollectedFruit();
+            if (fruitCollectedPulseRef.current) {
+              fruitCollectedPulseRef.current = false;
+              return true;
+            }
+            return false;
           default:
             return false;
         }
+      };
+
+      const numberResolver = (sensorType: "boxHardnessAhead"): number => {
+        const engine = engineRef.current;
+        if (!engine) return 0;
+
+        switch (sensorType) {
+          case "boxHardnessAhead":
+            return engine.getBoxHardnessAhead();
+          default:
+            return 0;
+        }
+      };
+
+      const positionResolver: PositionResolver = {
+        getStartCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getStartCell() : "0,0";
+        },
+        getGoalCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getGoalCell() : "0,0";
+        },
+        getCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getCurrentCell() : "0,0";
+        },
+        getNeighbors: (cell: string) => {
+          const engine = engineRef.current;
+          return engine ? engine.getNeighbors(cell) : [];
+        },
+        getCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getCharacterAtCurrentCell() : "";
+        },
+        hasCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.hasCharacterAtCurrentCell() : false;
+        },
       };
 
       // Stop existing executor if running
       if (executorRef.current) {
         executorRef.current.stop();
       }
+      fruitCollectedPulseRef.current = false;
 
       // Create new executor with the generated program
-      const executor = new StepExecutor(program, conditionChecker);
+      const executor = new StepExecutor(
+        program,
+        conditionChecker,
+        numberResolver,
+        positionResolver,
+      );
       executor.setWarningCallback((message) => {
         showWarningToast(message);
+      });
+      executor.setStateChangeCallback(() => {
+        const ctx = executor.getExecutionContext();
+        setExecVariables({ ...ctx.variables });
+        setLastRemoved(ctx.lastRemoved);
       });
       executorRef.current = executor;
 
@@ -465,7 +620,14 @@ export default function GameView() {
           engine.executeCommand(result.command);
           // TODO: Highlight block with result.blockId
         }
-      }, 500);
+      }, 500, () => {
+        setIsExecutorRunning(false);
+        const engine = engineRef.current;
+        if (!engine || engine.hasWon() || engine.getState() === EngineState.Failed) {
+          return;
+        }
+        setShowExecutionIncompleteModal(true);
+      });
     } catch (err) {
       console.error("Failed to run program:", err);
       alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
@@ -482,10 +644,13 @@ export default function GameView() {
 
   // Reset game and executor
   const handleReset = () => {
+    historyRecordedRef.current = false;
+    setSubmitted(false);
+    timeLimitTriggeredRef.current = false;
     // Stop and reset executor
     if (executorRef.current) {
       executorRef.current.stop();
-      executorRef.current.reset();
+      executorRef.current = null;
     }
 
     // Reset game engine to initial state
@@ -504,6 +669,51 @@ export default function GameView() {
     setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
+    setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
+    setExecVariables({});
+    setLastRemoved(null);
+    fruitCollectedPulseRef.current = false;
+  };
+
+  const handlePlayAgainFromResults = () => {
+    historyRecordedRef.current = false;
+    setSubmitted(false);
+    timeLimitTriggeredRef.current = false;
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current = null;
+    }
+
+    if (workspaceRef.current) {
+      workspaceRef.current.clear();
+    }
+
+    if (engineRef.current) {
+      try {
+        // New game style restart: reset world and wait for Start Level
+        engineRef.current.reset();
+      } catch (err) {
+        console.error("Error resetting engine for play again:", err);
+        window.location.reload();
+        return;
+      }
+    }
+
+    setIsExecutorRunning(false);
+    setCollectedFruits(0);
+    setShowResultsModal(false);
+    setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
+    setExecVariables({});
+    setLastRemoved(null);
+    setBlocksUsed(0);
+    setRevealedHints(0);
+    setIsLevelStarted(false);
+    setShowMissionModal(true);
+    fruitCollectedPulseRef.current = false;
+    resetGameTimerForLevelStart();
   };
 
   const handleStepExecution = () => {
@@ -532,15 +742,21 @@ export default function GameView() {
   };
 
   const handleStartLevel = () => {
+    historyRecordedRef.current = false;
     const engine = engineRef.current;
     if (!engine) return;
+    resetGameTimerForLevelStart();
     engine.start();
     setIsLevelStarted(true);
     setShowMissionModal(false);
   };
 
   const blockTypeLabelMap = new Map(blocksConfig.blocks.map((block) => [block.type, block.label]));
-  const toBlockLabel = (type: string) => blockTypeLabelMap.get(type) || type;
+  const toBlockLabel = (type: string) => {
+    const key = `block.${type}`;
+    const translated = t(key);
+    return translated !== key ? translated : blockTypeLabelMap.get(type) || type;
+  };
 
   const missionGoal =
     mapConfig?.winCondition === 2
@@ -552,7 +768,16 @@ export default function GameView() {
     const label = toBlockLabel(rule.type);
     return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
   });
-  const forbiddenBlocks = (blockConstraints?.bannedBlocks ?? []).map((type) => toBlockLabel(type));
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+  const normalizedAllowedTypes = Array.from(new Set(blockConstraints?.allowedBlocks ?? [])).filter(
+    (type) => allBlockTypes.includes(type),
+  );
+  const derivedBannedTypesForWorkspace =
+    normalizedAllowedTypes.length > 0
+      ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
+      : blockConstraints?.bannedBlocks ?? [];
+  const allowedBlocks = normalizedAllowedTypes.map((type) => toBlockLabel(type));
+  const bannedBlocks = derivedBannedTypesForWorkspace.map((type) => toBlockLabel(type));
   const totalHints = hints.length;
   const revealedHintCount = Math.min(revealedHints, totalHints);
   const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
@@ -601,7 +826,7 @@ export default function GameView() {
         });
       });
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
-        navigate(ROUTES.LEARNER_LEARN);
+        void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
       });
     });
     return () => {
@@ -609,6 +834,45 @@ export default function GameView() {
       unsubEnd?.();
     };
   }, [multiplayerRoomId, navigate]);
+
+  useEffect(() => {
+    const limit = mapConfig?.timeLimitSeconds;
+    if (limit == null || !Number.isFinite(limit) || limit <= 0) return;
+    if (!isLevelStarted) return;
+    if (showResultsModal) return;
+    if (timeLimitTriggeredRef.current) return;
+    if (elapsedDisplay < limit) return;
+
+    timeLimitTriggeredRef.current = true;
+    showWarningToast(t("gameTimeUpToast"));
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+    }
+    setIsExecutorRunning(false);
+    const engine = engineRef.current;
+    if (!engine) return;
+    try {
+      engine.stop();
+    } catch {
+      /* ignore */
+    }
+    setGameResult({
+      isWin: false,
+      stepCount: engine.getStepCount(),
+      blocksUsed: lastRunBlockCountRef.current,
+      elapsedTime: Math.min(elapsedDisplay, limit),
+      fruitsCollected: engine.getCollectedFruitsCount(),
+    });
+    setShowResultsModal(true);
+  }, [
+    mapConfig?.timeLimitSeconds,
+    isLevelStarted,
+    showResultsModal,
+    elapsedDisplay,
+    showWarningToast,
+    t,
+  ]);
 
   const handleMultiplayerSubmit = async () => {
     if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
@@ -619,6 +883,10 @@ export default function GameView() {
       const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
         language: "Blockly",
         astSpec,
+        isWin: gameResult?.isWin ?? false,
+        stepsUsed: gameResult?.stepCount ?? 0,
+        blocksUsed: gameResult?.blocksUsed ?? lastRunBlockCountRef.current,
+        time: gameResult?.elapsedTime ?? timerElapsedRef.current,
       });
       if (res.data?.isSuccess) {
         setSubmitted(true);
@@ -642,10 +910,86 @@ export default function GameView() {
     }
   };
 
+  const isGuid = (value?: string | null): value is string =>
+    Boolean(value) && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value as string);
+
+  // Auto-save play history when the game ends.
+  // - Single player: call POST `/api/learner/gameplay/validate`
+  // - Multiplayer: call POST `/api/learner/lobby/rooms/:roomId/submit`
+  useEffect(() => {
+    if (!showResultsModal || !gameResult) return;
+    if (historyRecordedRef.current) return;
+    historyRecordedRef.current = true;
+
+    void (async () => {
+      try {
+        // Multiplayer: persist when player didn't manually submit.
+        if (multiplayerRoomId) {
+          if (submitted || submitLoading) return;
+          if (!workspaceRef.current) return;
+          setSubmitLoading(true);
+          try {
+            const program = generateAST(workspaceRef.current);
+            const astSpec = gameResult.isWin ? JSON.stringify(program) : null;
+
+            const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+              language: "Blockly",
+              astSpec,
+              isWin: gameResult.isWin,
+              stepsUsed: gameResult.stepCount,
+              blocksUsed: gameResult.blocksUsed,
+              time: gameResult.elapsedTime,
+            });
+
+            if (res.data?.isSuccess) {
+              setSubmitted(true);
+              if (res.data?.data?.rankingIfAllSubmitted?.length) {
+                const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                  playerId: r.playerId,
+                  score: r.score,
+                  rank: r.rank,
+                  status: r.status,
+                }));
+                navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                  state: { ranking, roomId: multiplayerRoomId },
+                });
+              }
+            } else {
+              window.alert(res.data?.message ?? "Submit failed.");
+            }
+          } finally {
+            setSubmitLoading(false);
+          }
+          return;
+        }
+
+        // Single player: validate & save history.
+        if (!isGuid(levelId)) return;
+        if (!workspaceRef.current) return;
+
+        const program = generateAST(workspaceRef.current);
+        await learnerGameplayApi.validateSolution({
+          mapId: levelId,
+          language: "Blockly",
+          astSpec: gameResult.isWin ? JSON.stringify(program) : null,
+          playMode: 0, // Single
+          isWin: gameResult.isWin,
+          clientStepsUsed: gameResult.stepCount,
+          clientBlocksUsed: gameResult.blocksUsed,
+          clientElapsedSeconds: gameResult.elapsedTime,
+        });
+      } catch (err) {
+        console.error("Failed to save play history", err);
+        historyRecordedRef.current = false;
+      }
+    })();
+  }, [showResultsModal, gameResult, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
+
   const handleEndMultiplayerGame = async () => {
     if (!multiplayerRoomId) return;
     try {
       await learnerLobbyApi.endGame(multiplayerRoomId);
+      await leaveLobbyRoom(multiplayerRoomId);
       navigate(ROUTES.LEARNER_LEARN);
     } catch {
       window.alert("Could not end game.");
@@ -757,12 +1101,39 @@ export default function GameView() {
         </div>
       )}
 
+      {multiplayerRoomId && submitted && !showResultsModal && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1001,
+            maxWidth: "min(92vw, 520px)",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            background: "color-mix(in srgb, var(--primary) 16%, var(--surface))",
+            border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--text)",
+            textAlign: "center",
+            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.2)",
+          }}
+        >
+          {t("multiplayerWaitOthers")}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
           gap: "10px",
-          alignItems: "center",
+          alignItems: "stretch",
+          justifyContent: "space-between",
           padding: "12px",
           borderRadius: "16px",
           border: "1px solid var(--border)",
@@ -771,108 +1142,134 @@ export default function GameView() {
           boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
         }}
       >
-        <button
-          onClick={() =>
-            navigate(multiplayerRoomId ? ROUTES.LEARNER_LEARN : ROUTES.LEARNER_MAPS_BROWSE)
-          }
-          style={controlButtonStyle("neutral", false, hoveredControl === "back")}
-          onMouseEnter={() => setHoveredControl("back")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <ArrowLeft size={15} /> {multiplayerRoomId ? "Leave" : "Back to Maps"}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={() => {
+              if (multiplayerRoomId) {
+                void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+              } else {
+                navigate(ROUTES.LEARNER_MAPS_BROWSE);
+              }
+            }}
+            style={controlButtonStyle("neutral", false, hoveredControl === "back")}
+            onMouseEnter={() => setHoveredControl("back")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
+          </button>
 
-        {multiplayerRoomId && (
-          <>
-            <button
-              onClick={handleMultiplayerSubmit}
-              disabled={isLoading || !!error || submitLoading || submitted}
-              style={controlButtonStyle(
-                "primary",
-                isLoading || !!error || submitLoading || submitted,
-                hoveredControl === "submit",
-              )}
-              onMouseEnter={() => setHoveredControl("submit")}
-              onMouseLeave={() => setHoveredControl(null)}
-            >
-              <Send size={15} /> {submitted ? "Submitted" : "Submit solution"}
-            </button>
-            <button
-              onClick={handleEndMultiplayerGame}
-              style={controlButtonStyle("warning", false, hoveredControl === "end")}
-              onMouseEnter={() => setHoveredControl("end")}
-              onMouseLeave={() => setHoveredControl(null)}
-            >
-              <Flag size={15} /> End game
-            </button>
-          </>
-        )}
-
-        <button
-          onClick={handleRunProgram}
-          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
-          style={controlButtonStyle(
-            "primary",
-            isLoading || !!error || isExecutorRunning || !isLevelStarted,
-            hoveredControl === "run",
+          {multiplayerRoomId && (
+            <>
+              <button
+                onClick={handleMultiplayerSubmit}
+                disabled={isLoading || !!error || submitLoading || submitted}
+                style={controlButtonStyle(
+                  "primary",
+                  isLoading || !!error || submitLoading || submitted,
+                  hoveredControl === "submit",
+                )}
+                onMouseEnter={() => setHoveredControl("submit")}
+                onMouseLeave={() => setHoveredControl(null)}
+              >
+                <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
+              </button>
+              <button
+                onClick={handleEndMultiplayerGame}
+                style={controlButtonStyle("warning", false, hoveredControl === "end")}
+                onMouseEnter={() => setHoveredControl("end")}
+                onMouseLeave={() => setHoveredControl(null)}
+              >
+                <Flag size={15} /> {t("endGame")}
+              </button>
+            </>
           )}
-          onMouseEnter={() => setHoveredControl("run")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <Play size={15} /> Run Program
-        </button>
+        </div>
 
-        <button
-          onClick={handleStepExecution}
-          disabled={isLoading || !!error || isExecutorRunning || !isLevelStarted}
-          style={controlButtonStyle(
-            "primary",
-            isLoading || !!error || isExecutorRunning || !isLevelStarted,
-            hoveredControl === "step",
-          )}
-          onMouseEnter={() => setHoveredControl("step")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <SkipForward size={15} /> Step Execution
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={handleRunProgram}
+            disabled={isLoading || !!error || isExecutorRunning}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || isExecutorRunning,
+              hoveredControl === "run",
+            )}
+            onMouseEnter={() => setHoveredControl("run")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <Play size={15} /> {t("runProgram")}
+          </button>
 
-        <button
-          onClick={handleStopProgram}
-          disabled={!isExecutorRunning}
-          style={controlButtonStyle("danger", !isExecutorRunning, hoveredControl === "stop")}
-          onMouseEnter={() => setHoveredControl("stop")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <Pause size={15} /> Stop
-        </button>
+          <button
+            onClick={handleStepExecution}
+            disabled={isLoading || !!error || isExecutorRunning}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || isExecutorRunning,
+              hoveredControl === "step",
+            )}
+            onMouseEnter={() => setHoveredControl("step")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <SkipForward size={15} /> {t("stepExecution")}
+          </button>
 
-        <button
-          onClick={handleReset}
-          disabled={isLoading || !!error}
-          style={controlButtonStyle("warning", isLoading || !!error, hoveredControl === "reset")}
-          onMouseEnter={() => setHoveredControl("reset")}
-          onMouseLeave={() => setHoveredControl(null)}
-        >
-          <RotateCcw size={15} /> Reset
-        </button>
+          <button
+            onClick={handleStopProgram}
+            disabled={isLoading || !!error}
+            style={controlButtonStyle("danger", isLoading || !!error, hoveredControl === "stop")}
+            onMouseEnter={() => setHoveredControl("stop")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <Pause size={15} /> {t("stop")}
+          </button>
 
-        <div style={{ marginLeft: "auto" }}>
+          <button
+            onClick={handleReset}
+            disabled={isLoading || !!error}
+            style={controlButtonStyle("warning", isLoading || !!error, hoveredControl === "reset")}
+            onMouseEnter={() => setHoveredControl("reset")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <RotateCcw size={15} /> {t("reset")}
+          </button>
+
+          <button
+            onClick={() => setShowDoorKeyHints((prev) => !prev)}
+            disabled={isLoading || !!error}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "1px solid var(--border)",
+              background: showDoorKeyHints ? "var(--primary)" : "var(--surface-2)",
+              color: showDoorKeyHints ? "#fff" : "var(--text)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: isLoading || !!error ? "not-allowed" : "pointer",
+            }}
+            title="Toggle door key message"
+          >
+            {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
+          </button>
+        </div>
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
           <AudioControls key={audioSystem ? "ready" : "none"} audioSystem={audioSystem} />
         </div>
       </div>
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center", color: "var(--text)" }}>
-          <p>Loading level...</p>
+          <p>{t("loadingLevel")}</p>
         </div>
       )}
 
       {error && (
         <div style={{ padding: "20px", color: "var(--danger)" }}>
-          <h3>Error Loading Game</h3>
+          <h3>{t("errorLoadingGame")}</h3>
           <p>{error}</p>
           <p style={{ fontSize: "12px", marginTop: "10px" }}>
-            Check browser console (F12) for more details.
+            {t("checkBrowserConsole")}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -885,7 +1282,7 @@ export default function GameView() {
               borderRadius: "10px",
             }}
           >
-            Retry
+            {t("retry")}
           </button>
         </div>
       )}
@@ -938,35 +1335,14 @@ export default function GameView() {
               ⏱ Time
             </div> */}
             <div style={{ minWidth: "120px" }}>
-              <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} />
+              <GameTimer
+                engineRef={engineRef}
+                isLoading={isLoading}
+                error={error}
+                resetSignal={timerResetSignal}
+                onElapsedTimeChange={handleTimerElapsedChange}
+              />
             </div>
-
-            <button
-              onClick={() => setShowMissionModal(true)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                color: "var(--text)",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 700,
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "color-mix(in srgb, var(--primary) 18%, var(--surface))";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)";
-              }}
-            >
-              <Info size={14} /> Mission
-            </button>
 
             <div
               style={{
@@ -979,11 +1355,11 @@ export default function GameView() {
                 color: "var(--text)",
               }}
             >
-              🍎 Fruits: {collectedFruits}
+              🍎 {t("fruitsLabel")} {collectedFruits}
             </div>
             <button
               onClick={() => setShowHintsModal(true)}
-              disabled={allHintsRevealed}
+              disabled={false}
               style={{
                 marginLeft: "auto",
                 display: "inline-flex",
@@ -992,18 +1368,16 @@ export default function GameView() {
                 padding: "8px 12px",
                 borderRadius: "12px",
                 ...hintButtonStyles[hintButtonState],
-                cursor: allHintsRevealed ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: 800,
                 transition: "all 0.2s ease",
-                boxShadow: allHintsRevealed
-                  ? "none"
-                  : "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
-                opacity: allHintsRevealed ? 0.8 : 1,
+                boxShadow: "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
+                opacity: 1,
               }}
               aria-label="Show map hints"
             >
-              💡 {`Hints (${revealedHintCount}/${totalHints})`}
+              💡 {t("hintsCount")} ({revealedHintCount}/{totalHints})
             </button>
             {/* <div
               style={{
@@ -1020,15 +1394,6 @@ export default function GameView() {
             </div> */}
           </div>
 
-          <MissionBar
-            goal={missionGoal}
-            blockLimit={blockConstraints?.blockLimit ?? null}
-            requiredBlocks={requiredBlocks}
-            forbiddenBlocks={forbiddenBlocks}
-            width={mapConfig?.width}
-            height={mapConfig?.height}
-          />
-
           <div
             style={{
               padding: "12px 16px 16px",
@@ -1041,7 +1406,7 @@ export default function GameView() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
-                Game View - Block Programming
+                {t("gameViewTitle")}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
@@ -1066,7 +1431,7 @@ export default function GameView() {
                       cursor: "pointer",
                     }}
                   >
-                    Fit
+                    {t("zoomFit")}
                   </button>
                   <button
                     type="button"
@@ -1082,7 +1447,7 @@ export default function GameView() {
                       cursor: "pointer",
                     }}
                   >
-                    100%
+                    {t("zoomActual")}
                   </button>
                 </div>
               </div>
@@ -1151,9 +1516,9 @@ export default function GameView() {
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>Block Editor</h3>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>{t("blockEditorTitle")}</h3>
               <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-2)" }}>
-                Palette is on the left, workspace is on the right.
+                {t("blockEditorSubtitle")}
               </p>
             </div>
             <button
@@ -1174,7 +1539,7 @@ export default function GameView() {
               }}
               title="Clear all blocks"
             >
-              <Eraser size={14} /> Clear Blocks
+              <Eraser size={14} /> {t("clearBlocks")}
             </button>
           </div>
 
@@ -1190,35 +1555,66 @@ export default function GameView() {
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  background: "color-mix(in srgb, var(--primary) 20%, var(--surface))",
-                  border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
-                  borderRadius: "999px",
-                  padding: "4px 10px",
-                }}
-              >
-                Movement
-              </span>
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  background: "color-mix(in srgb, var(--accent) 20%, var(--surface))",
-                  border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
-                  borderRadius: "999px",
-                  padding: "4px 10px",
-                }}
-              >
-                Control
-              </span>
-            </div>
             <BlockCounter used={blocksUsed} limit={blockConstraints?.blockLimit ?? null} />
+          </div>
+
+          <div
+            style={{
+              padding: "10px 12px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: "12px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
+              <div style={{ fontWeight: 800, opacity: 0.9 }}>{t("dataPanelTitle")}</div>
+              {lastRemoved && (
+                <div style={{ opacity: 0.8 }}>
+                  {t("dataTookFrom")}{" "}
+                  <strong>
+                    {lastRemoved.name} ({lastRemoved.structure})
+                  </strong>
+                  : <code>{String(lastRemoved.value)}</code>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: "8px", display: "grid", gap: "6px" }}>
+              {Object.entries(execVariables)
+                .filter(([, v]) => Array.isArray(v))
+                .map(([name, v]) => {
+                  const arr = v as any[];
+                  const items = arr
+                    .slice(0, 20)
+                    .map((item: any) =>
+                      typeof item === "object" && item !== null
+                        ? JSON.stringify(item)
+                        : String(item),
+                    );
+                  return (
+                    <div key={name} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <div style={{ minWidth: "90px", fontWeight: 700 }}>{name}:</div>
+                      <div
+                        style={{
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                          opacity: 0.9,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1,
+                        }}
+                        title={items.join(" → ")}
+                      >
+                        [{items.join(" → ")}]
+                      </div>
+                    </div>
+                  );
+                })}
+              {Object.entries(execVariables).filter(([, v]) => Array.isArray(v)).length === 0 && (
+                <div style={{ opacity: 0.7 }}>{t("dataPanelEmpty")}</div>
+              )}
+            </div>
           </div>
 
           <div
@@ -1232,8 +1628,8 @@ export default function GameView() {
           >
             <BlocklyWorkspace
               onWorkspaceReady={handleWorkspaceReady}
-              bannedBlockTypes={blockConstraints?.bannedBlocks ?? []}
-              blockLimit={blockConstraints?.blockLimit ?? null}
+              bannedBlockTypes={derivedBannedTypesForWorkspace}
+              blockLimit={null}
               onConstraintViolation={showWarningToast}
               onBlockCountChange={setBlocksUsed}
             />
@@ -1247,7 +1643,8 @@ export default function GameView() {
         goal={missionGoal}
         blockLimit={blockConstraints?.blockLimit ?? null}
         requiredBlocks={requiredBlocks}
-        forbiddenBlocks={forbiddenBlocks}
+        allowedBlocks={allowedBlocks}
+        bannedBlocks={bannedBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
       />
@@ -1262,19 +1659,40 @@ export default function GameView() {
         onClose={() => setShowHintsModal(false)}
       />
 
+      <ExecutionIncompleteModal
+        isOpen={showExecutionIncompleteModal}
+        onConfirm={() => {
+          setShowExecutionIncompleteModal(false);
+          handleReset();
+        }}
+      />
+
+      <TrapFailedModal
+        isOpen={showTrapFailedModal}
+        onReplay={() => {
+          setShowTrapFailedModal(false);
+          handleReset();
+        }}
+      />
+
       {/* Game Results Modal */}
       {gameResult && (
         <GameResultsModal
           isOpen={showResultsModal}
-          onClose={() => setShowResultsModal(false)}
+          onClose={gameResult?.isWin ? handlePlayAgainFromResults : () => setShowResultsModal(false)}
           isWin={gameResult.isWin}
           stepCount={gameResult.stepCount}
           blocksUsed={gameResult.blocksUsed}
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
+          timeLimitSeconds={mapConfig?.timeLimitSeconds ?? null}
+          stepEstimated={mapConfig?.estimatedSteps ?? null}
+          blockLimit={blockConstraints?.blockLimit ?? null}
+          multiplayerFooterNote={
+            multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null
+          }
           onReset={() => {
-            setShowResultsModal(false);
-            handleReset();
+            handlePlayAgainFromResults();
           }}
           onBackToMenu={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
         />

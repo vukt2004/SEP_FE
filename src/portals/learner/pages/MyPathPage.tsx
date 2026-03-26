@@ -479,9 +479,8 @@ function Section({
 
   return (
     <section
-      className={`${styles.boardSection} ${
-        tone === "unlocked" ? styles.boardSectionUnlocked : tone === "locked" ? styles.boardSectionLocked : styles.boardSectionCompleted
-      }`}
+      className={`${styles.boardSection} ${tone === "unlocked" ? styles.boardSectionUnlocked : tone === "locked" ? styles.boardSectionLocked : styles.boardSectionCompleted
+        }`}
       aria-label={title}
     >
       <div className={styles.boardHeader}>

@@ -25,6 +25,8 @@ export interface MapConfig {
   difficulty: 1 | 2 | 3;
   /** Time limit in seconds */
   timeLimitSeconds: number;
+  /** Estimated algorithm steps to complete the level */
+  estimatedSteps: number;
   /** Win condition: 1 (reach goal), 2 (collect all fruits) */
   winCondition: 1 | 2;
   /** Number of required fruits to collect for winCondition 2 (0 or undefined means all fruits) */
@@ -93,8 +95,10 @@ export interface RequiredBlockRule {
 export interface BlockConstraints {
   /** Maximum total number of blocks allowed. Null means unlimited */
   blockLimit: number | null;
-  /** Block types that cannot be used */
-  bannedBlocks: string[];
+  /** Block types that are allowed. Empty means all blocks are allowed */
+  allowedBlocks: string[];
+  /** Legacy compatibility field. Avoid writing new data with this field. */
+  bannedBlocks?: string[];
   /** Block types that must be used at least minCount times */
   requiredBlocks: RequiredBlockRule[];
 }

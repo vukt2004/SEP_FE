@@ -9,6 +9,38 @@ export type Direction = "up" | "down" | "left" | "right";
 export type Rotation = "clockwise" | "counterclockwise";
 
 /**
+ * Cell coordinate string in "x,y" format
+ */
+export type CellString = string;
+
+/**
+ * Runtime value type used by block data structures (variables, arrays, queues, stacks).
+ */
+export type RuntimeValue = number | boolean | string | null | undefined | RuntimeValue[];
+
+/**
+ * Runtime variable map available during execution.
+ */
+export type RuntimeVariables = Record<string, RuntimeValue>;
+
+/**
+ * Last removed item metadata for queue/stack visualization.
+ */
+export interface LastRemovedItem {
+  structure: "queue" | "stack";
+  name: string;
+  value: RuntimeValue;
+}
+
+/**
+ * Full executor context that can be observed by the UI.
+ */
+export interface ExecutionContext {
+  variables: RuntimeVariables;
+  lastRemoved: LastRemovedItem | null;
+}
+
+/**
  * Move command with absolute direction
  */
 export interface MoveNode {
@@ -22,6 +54,15 @@ export interface MoveNode {
  */
 export interface MoveForwardNode {
   type: "moveForward";
+  blockId: string;
+}
+
+/**
+ * Move one step to an adjacent target cell string "x,y"
+ */
+export interface MoveToCellNode {
+  type: "moveToCell";
+  cell: ASTNode | null;
   blockId: string;
 }
 
@@ -81,6 +122,20 @@ export type ConditionType =
 export interface NumberLiteralNode {
   type: "numberLiteral";
   value: number;
+  blockId: string;
+}
+
+/**
+ * Runtime numeric sensor types exposed by the game engine
+ */
+export type NumberSensorType = "boxHardnessAhead";
+
+/**
+ * Numeric sensor node resolved at runtime
+ */
+export interface NumberSensorNode {
+  type: "numberSensor";
+  sensorType: NumberSensorType;
   blockId: string;
 }
 
@@ -260,19 +315,245 @@ export interface CloseDoorNode {
 }
 
 /**
+ * Unlock door command - unlocks a locked door in front using a key string
+ */
+export interface UnlockDoorNode {
+  type: "unlockDoor";
+  key: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Create a named list (array)
+ */
+export interface CreateListNode {
+  type: "createList";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Get the full named list (array)
+ */
+export interface GetListNode {
+  type: "getList";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Add a value to a named list (append)
+ */
+export interface ListAddNode {
+  type: "listAdd";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Get an item from a named list by index
+ */
+export interface ListGetNode {
+  type: "listGet";
+  name: string;
+  index: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Get the length of a named list
+ */
+export interface ListLengthNode {
+  type: "listLength";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Create a named queue
+ */
+export interface CreateQueueNode {
+  type: "createQueue";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Add a value to a named queue
+ */
+export interface QueueEnqueueNode {
+  type: "queueEnqueue";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Take a value from a named queue
+ */
+export interface QueueDequeueNode {
+  type: "queueDequeue";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Check if a named queue is empty
+ */
+export interface QueueIsEmptyNode {
+  type: "queueIsEmpty";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Create a named stack
+ */
+export interface CreateStackNode {
+  type: "createStack";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Add a value to a named stack
+ */
+export interface StackPushNode {
+  type: "stackPush";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Take a value from a named stack
+ */
+export interface StackPopNode {
+  type: "stackPop";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Check if a named stack is empty
+ */
+export interface StackIsEmptyNode {
+  type: "stackIsEmpty";
+  name: string;
+  blockId: string;
+}
+
+/**
+ * Returns the level start cell as a string "x,y"
+ */
+export interface GetStartCellNode {
+  type: "getStartCell";
+  blockId: string;
+}
+
+/**
+ * Returns the level goal cell as a string "x,y"
+ */
+export interface GetGoalCellNode {
+  type: "getGoalCell";
+  blockId: string;
+}
+
+/**
+ * Returns the player's current cell as a string "x,y"
+ */
+export interface GetCurrentCellNode {
+  type: "getCurrentCell";
+  blockId: string;
+}
+
+/**
+ * Returns the character object value on the player's current cell
+ */
+export interface CollectCharacterNode {
+  type: "collectCharacter";
+  blockId: string;
+}
+
+/**
+ * Returns whether a character object exists on the player's current cell
+ */
+export interface IsCharacterNode {
+  type: "isCharacter";
+  blockId: string;
+}
+
+/**
+ * Returns raw 4-direction neighbors of a cell string
+ */
+export interface GetNeighborsNode {
+  type: "getNeighbors";
+  cell: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Checks whether a named list contains a value
+ */
+export interface ListContainsNode {
+  type: "listContains";
+  name: string;
+  value: ASTNode | null;
+  blockId: string;
+}
+
+/**
+ * Callbacks used by executor to resolve level positions
+ */
+export interface PositionResolver {
+  getStartCell: () => CellString;
+  getGoalCell: () => CellString;
+  getCurrentCell: () => CellString;
+  getNeighbors: (cell: CellString) => CellString[];
+  /** Collect and return character at current player cell; empty string when none. */
+  getCharacterAtCurrentCell: () => string;
+  /** Check whether current player cell has an uncollected character object. */
+  hasCharacterAtCurrentCell: () => boolean;
+}
+
+/**
  * Union type of all possible AST node types
  */
 export type ASTNode =
   | MoveNode
   | MoveForwardNode
+  | MoveToCellNode
   | TurnNode
   | JumpNode
   | WaitNode
   | BreakNode
   | OpenDoorNode
   | CloseDoorNode
+  | UnlockDoorNode
+  | CreateListNode
+  | GetListNode
+  | ListAddNode
+  | ListGetNode
+  | ListLengthNode
+  | ListContainsNode
+  | CreateQueueNode
+  | QueueEnqueueNode
+  | QueueDequeueNode
+  | QueueIsEmptyNode
+  | CreateStackNode
+  | StackPushNode
+  | StackPopNode
+  | StackIsEmptyNode
+  | GetStartCellNode
+  | GetGoalCellNode
+  | GetCurrentCellNode
+  | CollectCharacterNode
+  | IsCharacterNode
+  | GetNeighborsNode
   | RepeatNode
   | NumberLiteralNode
+  | NumberSensorNode
   | ArithmeticNode
   | SetVariableNode
   | ChangeVariableNode

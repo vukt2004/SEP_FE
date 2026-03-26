@@ -1,6 +1,5 @@
 // src/services/api/learner/orbitcoin.api.ts
-import axios from "axios";
-import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { learnerAxios } from "@/services/http/axios.learner";
 
 export type OrbitCoinBalanceResponse = {
   balance: number;
@@ -41,26 +40,25 @@ export type ApiResult<T> = {
   errorCode?: string | null;
 };
 
-const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-});
+export type DepositRequest = {
+  amountOrbitCoin: number;
+};
 
-http.interceptors.request.use((config) => {
-  const token = tokenStorage.getLearnerToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+export type DepositResponse = {
+  orderId: string;
+  checkoutUrl: string;
+};
 
 export const orbitCoinApi = {
   getBalance: async () => {
-    const { data } = await http.get<ApiResult<OrbitCoinBalanceResponse>>(
+    const { data } = await learnerAxios.get<ApiResult<OrbitCoinBalanceResponse>>(
       "/api/learner/orbitcoin/balance",
     );
     return data;
   },
 
   getTransactionHistory: async (params: { pageNumber?: number; pageSize?: number } = {}) => {
-    const { data } = await http.get<ApiResult<OrbitCoinTransactionHistoryResponse>>(
+    const { data } = await learnerAxios.get<ApiResult<OrbitCoinTransactionHistoryResponse>>(
       "/api/learner/orbitcoin/transactions",
       {
         params: {
@@ -68,6 +66,14 @@ export const orbitCoinApi = {
           pageSize: params.pageSize ?? 20,
         },
       },
+    );
+    return data;
+  },
+
+  deposit: async (requestOptions: DepositRequest) => {
+    const { data } = await learnerAxios.post<ApiResult<DepositResponse>>(
+      "/api/learner/orbitcoin/deposit",
+      requestOptions
     );
     return data;
   },

@@ -1,4 +1,6 @@
 import type { MapData } from "../../../shared/types/MapSchema";
+import blocksConfig from "../../../shared/block/blocks-config.json";
+import { sanitizeUnlockCode } from "./unlockCode";
 
 /**
  * Portal validation error
@@ -89,7 +91,8 @@ export interface GameLevelFormat {
   };
   blockConstraints?: {
     blockLimit: number | null;
-    bannedBlocks: string[];
+    allowedBlocks: string[];
+    bannedBlocks?: string[];
     requiredBlocks: Array<{
       type: string;
       minCount: number;
@@ -134,7 +137,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       item.type === "sliding_block" || 
       item.type === "disappearing_block" || 
       item.type === "portal" ||
-      [13, 14, 15].includes(item.id);
+      [57, 58, 59].includes(item.id);
 
     if (isSensor) {     
       if (collisionLayer[item.y] !== undefined && collisionLayer[item.y][item.x] !== undefined) {
@@ -187,8 +190,15 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     }
 
     const metadata = { ...(item.metadata ?? {}) };
-    if (item.type === "door" && typeof metadata.isOpen !== "boolean") {
-      metadata.isOpen = false;
+    if (item.type === "door") {
+      if (typeof metadata.isOpen !== "boolean") {
+        metadata.isOpen = false;
+      }
+      if (typeof metadata.isLocked !== "boolean") {
+        metadata.isLocked = false;
+      }
+      const rawUnlockCode = typeof metadata.unlockCode === "string" ? metadata.unlockCode : "";
+      metadata.unlockCode = sanitizeUnlockCode(rawUnlockCode, mapData.config.type);
     }
     if (isBoxType(item.type) && typeof metadata.hardness !== "number") {
       metadata.hardness = defaultHardnessByType(item.type);
@@ -247,6 +257,10 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       });
     }
   });
+  const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
+  const allowedBlocks = Array.from(new Set(mapData.blockConstraints.allowedBlocks));
+  const bannedBlocks =
+    allowedBlocks.length === 0 ? [] : allBlockTypes.filter((type) => !allowedBlocks.includes(type));
 
   return {
     id,
@@ -267,12 +281,13 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       difficulty: "medium",
       description: description,
       targetAlgorithm: "manual",
-      estimatedSteps: 50,
+      estimatedSteps: mapData.config.estimatedSteps,
       requiredFruits: mapData.config.requiredFruits,
     },
     blockConstraints: {
       blockLimit: mapData.blockConstraints.blockLimit,
-      bannedBlocks: mapData.blockConstraints.bannedBlocks,
+      allowedBlocks,
+      bannedBlocks,
       requiredBlocks: mapData.blockConstraints.requiredBlocks,
     },
   };

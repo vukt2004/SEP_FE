@@ -204,6 +204,17 @@ export const learnerMapsApi = {
   },
 
   /**
+   * Publish an approved map (author only)
+   * POST /api/learner/maps/{id}/publish
+   *
+   * @param id - Map ID to publish
+   * @returns Publish result
+   */
+  publishMap(id: string) {
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/maps/${id}/publish`);
+  },
+
+  /**
    * Add free map to user's collection (published maps with price = 0 or null)
    * POST /api/learner/maps/{id}/add-to-my-maps
    *
@@ -212,5 +223,16 @@ export const learnerMapsApi = {
    */
   addMapToMyMaps(id: string) {
     return learnerAxios.post<ApiResult<null>>(`/api/learner/maps/${id}/add-to-my-maps`);
+  },
+
+  /**
+   * Purchase a paid map in marketplace with OrbitCoin
+   * POST /api/learner/marketplace/maps/{id}/purchase
+   *
+   * @param id - Map ID
+   * @returns Purchase result
+   */
+  purchaseMap(id: string) {
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/maps/${id}/purchase`);
   },
 };

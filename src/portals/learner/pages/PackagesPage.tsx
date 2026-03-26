@@ -1,13 +1,20 @@
 // src/portals/learner/pages/PackagesPage.tsx
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import { motion } from "framer-motion";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
+import type { ApiResult } from "@/types/api/common";
 import { useTranslation } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./PackagesPage.module.css";
 
 const CURRENCY = "OC"; // Orbit Coin – không dùng VND
+
+type PurchaseModalState = {
+  kind: "success" | "insufficient" | "error";
+  message: string;
+};
 
 export default function PackagesPage() {
   const { t } = useTranslation();
@@ -15,6 +22,8 @@ export default function PackagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,11 +53,40 @@ export default function PackagesPage() {
     };
   }, [t]);
 
-  const handleChoose = (pkg: Package) => {
+  const handleChoose = async (pkg: Package) => {
     if (!pkg.isActive) return;
-    // TODO: Implement purchase
-    const priceStr = pkg.price === 0 ? t("free") : `${formatPrice(pkg.price)} ${CURRENCY}`;
-    alert(`${t("choosePackage")}: ${pkg.name} — ${priceStr}`);
+    try {
+      setPurchasingId(pkg.id);
+      const response = await learnerPackagesApi.purchase(pkg.id);
+      if (response.data.isSuccess) {
+        setPurchaseModal({
+          kind: "success",
+          message: response.data.message || "Package purchased successfully.",
+        });
+        return;
+      }
+      setPurchaseModal({
+        kind: "error",
+        message: response.data.message || "Failed to purchase package.",
+      });
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const body = err.response?.data as ApiResult<string> | undefined;
+        const isInsufficientBalance =
+          body?.errorCode === "InvalidOperation" ||
+          (body?.message ?? "").toLowerCase().includes("insufficient");
+
+        setPurchaseModal({
+          kind: isInsufficientBalance ? "insufficient" : "error",
+          message: body?.message || "Failed to purchase package.",
+        });
+        return;
+      }
+      setPurchaseModal({ kind: "error", message: "Failed to purchase package." });
+      console.error(err);
+    } finally {
+      setPurchasingId(null);
+    }
   };
 
   const formatPrice = (price: number) => price.toLocaleString("en-US");
@@ -200,16 +238,44 @@ export default function PackagesPage() {
                     type="button"
                     className={styles.btnChoose}
                     onClick={() => handleChoose(pkg)}
-                    disabled={!pkg.isActive}
+                    disabled={!pkg.isActive || purchasingId === pkg.id}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    {t("choose")} {pkg.name}
+                    {purchasingId === pkg.id ? "Purchasing..." : `${t("choose")} ${pkg.name}`}
                   </motion.button>
                 </motion.div>
               );
             })}
           </motion.div>
+        )}
+
+        {purchaseModal && (
+          <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3
+                className={`${styles.modalTitle} ${
+                  purchaseModal.kind === "success" ? styles.modalTitleSuccess : styles.modalTitleError
+                }`}
+              >
+                {purchaseModal.kind === "success"
+                  ? "Purchase successful"
+                  : purchaseModal.kind === "insufficient"
+                    ? "Insufficient balance"
+                    : "Purchase failed"}
+              </h3>
+              <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                  onClick={() => setPurchaseModal(null)}
+                >
+                  {t("back")}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -12,6 +12,11 @@ export interface MoveForwardCommand {
   type: "moveForward";
 }
 
+export interface MoveToCellCommand {
+  type: "moveToCell";
+  cell: string;
+}
+
 export interface TurnCommand {
   type: "turn";
   rotation: Rotation;
@@ -30,6 +35,11 @@ export interface CloseDoorCommand {
   type: "closeDoor";
 }
 
+export interface UnlockDoorCommand {
+  type: "unlockDoor";
+  key: string;
+}
+
 export interface JumpCommand {
   type: "jump";
 }
@@ -41,10 +51,12 @@ export interface WaitCommand {
 export type EngineCommand =
   | MoveCommand
   | MoveForwardCommand
+  | MoveToCellCommand
   | TurnCommand
   | BreakCommand
   | OpenDoorCommand
   | CloseDoorCommand
+  | UnlockDoorCommand
   | JumpCommand
   | WaitCommand;
 

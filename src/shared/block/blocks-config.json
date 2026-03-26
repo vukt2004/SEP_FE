@@ -11,6 +11,24 @@
       "nextStatement": true
     },
     {
+      "type": "move_to_cell",
+      "category": "movement",
+      "label": "Move To Cell",
+      "tooltip": "Move one step toward an adjacent target cell x,y",
+      "color": "#4CAF50",
+      "command": "MOVE_TO_CELL",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "CELL",
+          "check": "String",
+          "label": "cell"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "turn_left",
       "category": "movement",
       "label": "Turn Left",
@@ -79,6 +97,24 @@
       "nextStatement": true
     },
     {
+      "type": "unlock_door",
+      "category": "movement",
+      "label": "Unlock Door",
+      "tooltip": "Unlock a locked door in front of you using a key string or character array",
+      "color": "#4CAF50",
+      "command": "UNLOCK_DOOR",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "KEY",
+          "check": ["String", "Array"],
+          "label": "key"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "repeat",
       "category": "control",
       "label": "Repeat",
@@ -126,6 +162,15 @@
       "tooltip": "Returns true if there is an obstacle ahead",
       "color": "#5C81F6",
       "command": "OBSTACLE_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "is_character",
+      "category": "logic",
+      "label": "is character?",
+      "tooltip": "Returns true if player is standing on a character object",
+      "color": "#5C81F6",
+      "command": "IS_CHARACTER",
       "output": "Boolean"
     },
     {
@@ -378,10 +423,34 @@
       "nextStatement": true
     },
     {
+      "type": "create_variable",
+      "category": "variables",
+      "label": "create",
+      "tooltip": "Create a variable with a number or string value",
+      "color": "#FF5722",
+      "command": "CREATE_VARIABLE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "=",
+          "text": "cell"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "check": ["Number", "String", "Array"],
+          "label": ""
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "set_variable",
       "category": "variables",
       "label": "set",
-      "tooltip": "Set a variable to a numeric value",
+      "tooltip": "Set a variable to a number or string value",
       "color": "#FF5722",
       "command": "SET_VARIABLE",
       "inputs": [
@@ -394,31 +463,7 @@
         {
           "kind": "value",
           "name": "VALUE",
-          "check": "Number",
-          "label": ""
-        }
-      ],
-      "previousStatement": true,
-      "nextStatement": true
-    },
-    {
-      "type": "change_variable",
-      "category": "variables",
-      "label": "change",
-      "tooltip": "Set a variable to a numeric value",
-      "color": "#FF5722",
-      "command": "CHANGE_VARIABLE",
-      "inputs": [
-        {
-          "kind": "field_input",
-          "name": "NAME",
-          "label": "to",
-          "text": "score"
-        },
-        {
-          "kind": "value",
-          "name": "VALUE",
-          "check": "Number",
+          "check": ["Number", "String", "Array"],
           "label": ""
         }
       ],
@@ -429,7 +474,7 @@
       "type": "get_variable",
       "category": "variables",
       "label": "variable",
-      "tooltip": "Get the current numeric value of a variable",
+      "tooltip": "Get the current number or string value of a variable",
       "color": "#FF5722",
       "command": "GET_VARIABLE",
       "inputs": [
@@ -440,12 +485,12 @@
           "text": "score"
         }
       ],
-      "output": "Number"
+      "output": ["Number", "String", "Array"]
     },
     {
       "type": "number_literal",
       "category": "math",
-      "label": "",
+      "label": "number",
       "tooltip": "A numeric literal value",
       "color": "#2196F3",
       "command": "NUMBER_LITERAL",
@@ -462,7 +507,7 @@
     {
       "type": "math_arithmetic",
       "category": "math",
-      "label": "",
+      "label": "math",
       "tooltip": "Apply arithmetic operation to two numbers",
       "color": "#2196F3",
       "command": "MATH_ARITHMETIC",
@@ -496,7 +541,7 @@
     {
       "type": "logic_compare",
       "category": "logic",
-      "label": "",
+      "label": "compare",
       "tooltip": "Compare two numbers and return true or false",
       "color": "#5C81F6",
       "command": "LOGIC_COMPARE",
@@ -548,12 +593,344 @@
       "output": "Boolean"
     },
     {
+      "type": "box_hardness_ahead",
+      "category": "logic",
+      "label": "box hardness ahead",
+      "tooltip": "Returns hardness of the box in front, or 0 if there is no box",
+      "color": "#5C81F6",
+      "command": "BOX_HARDNESS_AHEAD",
+      "output": "Number"
+    },
+    {
       "type": "fruit_collected",
       "category": "logic",
       "label": "fruit collected?",
       "tooltip": "Returns true if the character has collected at least one fruit",
       "color": "#5C81F6",
       "command": "FRUIT_COLLECTED",
+      "output": "Boolean"
+    },
+    {
+      "type": "get_start_cell",
+      "category": "logic",
+      "label": "Get Start Cell",
+      "tooltip": "Returns the map start cell in x,y format",
+      "color": "#5C81F6",
+      "command": "GET_START_CELL",
+      "output": "String"
+    },
+    {
+      "type": "get_goal_cell",
+      "category": "logic",
+      "label": "Get Goal Cell",
+      "tooltip": "Returns the map goal cell in x,y format",
+      "color": "#5C81F6",
+      "command": "GET_GOAL_CELL",
+      "output": "String"
+    },
+    {
+      "type": "get_current_cell",
+      "category": "logic",
+      "label": "Get Current Cell",
+      "tooltip": "Returns the player's current cell in x,y format",
+      "color": "#5C81F6",
+      "command": "GET_CURRENT_CELL",
+      "output": "String"
+    },
+    {
+      "type": "collect_character",
+      "category": "logic",
+      "label": "Collect Character",
+      "tooltip": "Returns the character object on the player's current cell",
+      "color": "#5C81F6",
+      "command": "COLLECT_CHARACTER",
+      "output": "String"
+    },
+    {
+      "type": "get_neighbors",
+      "category": "logic",
+      "label": "Get Neighbors",
+      "tooltip": "Returns raw adjacent cells for a given x,y cell string",
+      "color": "#5C81F6",
+      "command": "GET_NEIGHBORS",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "CELL",
+          "check": "String",
+          "label": "cell"
+        }
+      ],
+      "output": "Array"
+    },
+    {
+      "type": "create_list",
+      "category": "array",
+      "label": "Create Array",
+      "tooltip": "Create an empty array",
+      "color": "#00BFA5",
+      "command": "CREATE_LIST",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "name",
+          "text": "myArray"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "get_array",
+      "category": "array",
+      "label": "Get Array",
+      "tooltip": "Get the full array value by name",
+      "color": "#00BFA5",
+      "command": "GET_ARRAY",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        }
+      ],
+      "output": "Array"
+    },
+    {
+      "type": "list_add",
+      "category": "array",
+      "label": "Add to Array",
+      "tooltip": "Add a value to the end of an array",
+      "color": "#00BFA5",
+      "command": "LIST_ADD",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "label": "value"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "list_get",
+      "category": "array",
+      "label": "Get from Array",
+      "tooltip": "Get an item from an array at a position",
+      "color": "#00BFA5",
+      "command": "LIST_GET",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        },
+        {
+          "kind": "value",
+          "name": "INDEX",
+          "check": "Number",
+          "label": "at"
+        }
+      ],
+      "output": ["Number", "String"]
+    },
+    {
+      "type": "list_length",
+      "category": "array",
+      "label": "Length of Array",
+      "tooltip": "Get how many items are in an array",
+      "color": "#00BFA5",
+      "command": "LIST_LENGTH",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        }
+      ],
+      "output": "Number"
+    },
+    {
+      "type": "list_contains",
+      "category": "array",
+      "label": "Array contains",
+      "tooltip": "Returns true if the array contains the provided value",
+      "color": "#00BFA5",
+      "command": "LIST_CONTAINS",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "label": "value"
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "create_queue",
+      "category": "queue",
+      "label": "Create Queue",
+      "tooltip": "Create an empty queue",
+      "color": "#26A69A",
+      "command": "CREATE_QUEUE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "name",
+          "text": "queue"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "queue_enqueue",
+      "category": "queue",
+      "label": "Add to Queue",
+      "tooltip": "Add a value to the end of the queue",
+      "color": "#26A69A",
+      "command": "QUEUE_ADD",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "queue",
+          "text": "queue"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "label": "value"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "queue_dequeue",
+      "category": "queue",
+      "label": "Take from Queue",
+      "tooltip": "Take the first value from the queue",
+      "color": "#26A69A",
+      "command": "QUEUE_TAKE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "queue",
+          "text": "queue"
+        }
+      ],
+      "output": ["Number", "String"]
+    },
+    {
+      "type": "queue_is_empty",
+      "category": "queue",
+      "label": "Is Queue Empty",
+      "tooltip": "Returns true if the queue has no items",
+      "color": "#26A69A",
+      "command": "QUEUE_IS_EMPTY",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "queue",
+          "text": "queue"
+        }
+      ],
+      "output": "Boolean"
+    },
+    {
+      "type": "create_stack",
+      "category": "stack",
+      "label": "Create Stack",
+      "tooltip": "Create an empty stack",
+      "color": "#8E24AA",
+      "command": "CREATE_STACK",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "name",
+          "text": "stack"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "stack_push",
+      "category": "stack",
+      "label": "Add to Stack",
+      "tooltip": "Add a value on top of the stack",
+      "color": "#8E24AA",
+      "command": "STACK_ADD",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "stack",
+          "text": "stack"
+        },
+        {
+          "kind": "value",
+          "name": "VALUE",
+          "label": "value"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
+      "type": "stack_pop",
+      "category": "stack",
+      "label": "Take from Stack",
+      "tooltip": "Take the top value from the stack",
+      "color": "#8E24AA",
+      "command": "STACK_TAKE",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "stack",
+          "text": "stack"
+        }
+      ],
+      "output": ["Number", "String"]
+    },
+    {
+      "type": "stack_is_empty",
+      "category": "stack",
+      "label": "Is Stack Empty",
+      "tooltip": "Returns true if the stack has no items",
+      "color": "#8E24AA",
+      "command": "STACK_IS_EMPTY",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "stack",
+          "text": "stack"
+        }
+      ],
       "output": "Boolean"
     }
   ]

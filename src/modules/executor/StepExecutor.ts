@@ -1,4 +1,15 @@
-import type { BlockProgram, ASTNode, ConditionType } from "./types";
+import type {
+  BlockProgram,
+  ASTNode,
+  CellString,
+  ConditionType,
+  ExecutionContext,
+  LastRemovedItem,
+  NumberSensorType,
+  PositionResolver,
+  RuntimeValue,
+  RuntimeVariables,
+} from "./types";
 import type { ExecutionResult } from "./commands";
 
 /**
@@ -42,7 +53,10 @@ interface StackFrame {
 export class StepExecutor {
   private stack: StackFrame[];
   private procedures: Map<string, ASTNode[]>;
-  private variables: Map<string, number>;
+  private variables: Map<string, RuntimeValue>;
+  private context: { variables: RuntimeVariables };
+  private stateChangeCallback: ((context: { variables: RuntimeVariables }) => void) | null;
+  private lastRemoved: LastRemovedItem | null;
   private warnedMissingProcedures: Set<string>;
   private warnedLiteralBreakBlocks: Set<string>;
   private originalProgram: BlockProgram;
@@ -50,15 +64,26 @@ export class StepExecutor {
   private isRunning: boolean;
   private isPaused: boolean;
   private conditionChecker: (condition: ConditionType) => boolean;
+  private numberResolver: (sensorType: NumberSensorType) => number;
+  private positionResolver: PositionResolver;
   private callback: ((result: ExecutionResult) => void) | null;
+  private onComplete: (() => void) | null;
   private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
 
-  constructor(program: BlockProgram, conditionChecker: (condition: ConditionType) => boolean) {
+  constructor(
+    program: BlockProgram,
+    conditionChecker: (condition: ConditionType) => boolean,
+    numberResolver?: (sensorType: NumberSensorType) => number,
+    positionResolver?: PositionResolver,
+  ) {
     this.originalProgram = program;
     this.stack = [{ nodes: program, index: 0 }];
     this.procedures = new Map();
     this.variables = new Map();
+    this.context = { variables: {} };
+    this.stateChangeCallback = null;
+    this.lastRemoved = null;
     this.warnedMissingProcedures = new Set();
     this.warnedLiteralBreakBlocks = new Set();
     this.preRegisterProcedures(program);
@@ -66,7 +91,17 @@ export class StepExecutor {
     this.isRunning = false;
     this.isPaused = false;
     this.conditionChecker = conditionChecker;
+    this.numberResolver = numberResolver ?? (() => 0);
+    this.positionResolver = positionResolver ?? {
+      getStartCell: () => "0,0",
+      getGoalCell: () => "0,0",
+      getCurrentCell: () => "0,0",
+      getNeighbors: () => [],
+      getCharacterAtCurrentCell: () => "",
+      hasCharacterAtCurrentCell: () => false,
+    };
     this.callback = null;
+    this.onComplete = null;
     this.warningCallback = null;
     this.intervalMs = 500;
   }
@@ -79,6 +114,8 @@ export class StepExecutor {
     this.stack = [{ nodes: this.originalProgram, index: 0 }];
     this.procedures.clear();
     this.variables.clear();
+    this.context = { variables: {} };
+    this.lastRemoved = null;
     this.warnedMissingProcedures.clear();
     this.warnedLiteralBreakBlocks.clear();
     this.preRegisterProcedures(this.originalProgram);
@@ -86,6 +123,31 @@ export class StepExecutor {
 
   setWarningCallback(callback: (message: string, blockId: string) => void): void {
     this.warningCallback = callback;
+  }
+
+  setStateChangeCallback(
+    callback: ((context: { variables: RuntimeVariables }) => void) | null,
+  ): void {
+    this.stateChangeCallback = callback;
+  }
+
+  getExecutionContext(): ExecutionContext {
+    return {
+      variables: this.context.variables,
+      lastRemoved: this.lastRemoved,
+    };
+  }
+
+  private notifyStateChange(): void {
+    this.stateChangeCallback?.(this.context);
+  }
+
+  private ensureArrayVariable(name: string): RuntimeValue[] {
+    const existing = this.context.variables[name];
+    if (Array.isArray(existing)) return existing;
+    const next: RuntimeValue[] = [];
+    this.context.variables[name] = next;
+    return next;
   }
 
   private preRegisterProcedures(nodes: ASTNode[]): void {
@@ -221,6 +283,21 @@ export class StepExecutor {
             blockId: node.blockId,
           };
 
+        case "moveToCell": {
+          const resolved = this.resolveCellString(this.evaluateAny(node.cell));
+          if (!resolved) {
+            this.warningCallback?.("Move To Cell requires a valid x,y string.", node.blockId);
+            continue;
+          }
+          return {
+            command: {
+              type: "moveToCell",
+              cell: resolved,
+            },
+            blockId: node.blockId,
+          };
+        }
+
         case "turn":
           return {
             command: {
@@ -279,6 +356,17 @@ export class StepExecutor {
             },
             blockId: node.blockId,
           };
+
+        case "unlockDoor": {
+          const key = this.toUnlockKey(this.evaluateAny(node.key));
+          return {
+            command: {
+              type: "unlockDoor",
+              key,
+            },
+            blockId: node.blockId,
+          };
+        }
 
         case "repeat": {
           // Push ONE frame with repeatLeft counter
@@ -381,14 +469,57 @@ export class StepExecutor {
         }
 
         case "setVariable": {
-          const numericValue = this.evaluateNumber(node.value);
-          this.variables.set(node.name, numericValue);
+          const assignedValue = this.evaluateAny(node.value);
+          this.variables.set(node.name, assignedValue);
+          this.context.variables[node.name] = assignedValue;
+          this.notifyStateChange();
           continue;
         }
 
         case "changeVariable": {
-          const numericValue = this.evaluateNumber(node.value);
-          this.variables.set(node.name, numericValue);
+          const assignedValue = this.evaluateAny(node.value);
+          this.variables.set(node.name, assignedValue);
+          this.context.variables[node.name] = assignedValue;
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "createList": {
+          this.context.variables[node.name] = [];
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "listAdd": {
+          const list = this.ensureArrayVariable(node.name);
+          list.push(this.evaluateAny(node.value));
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "createQueue": {
+          this.context.variables[node.name] = [];
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "queueEnqueue": {
+          const queue = this.ensureArrayVariable(node.name);
+          queue.push(this.evaluateAny(node.value));
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "createStack": {
+          this.context.variables[node.name] = [];
+          this.notifyStateChange();
+          continue;
+        }
+
+        case "stackPush": {
+          const stack = this.ensureArrayVariable(node.name);
+          stack.push(this.evaluateAny(node.value));
+          this.notifyStateChange();
           continue;
         }
 
@@ -409,7 +540,15 @@ export class StepExecutor {
         case "numberLiteral":
         case "arithmetic":
         case "getVariable":
+        case "getList":
         case "compare":
+        case "listContains":
+        case "getStartCell":
+        case "getGoalCell":
+        case "getCurrentCell":
+        case "collectCharacter":
+        case "isCharacter":
+        case "getNeighbors":
           // Logic expression blocks are value blocks, not statement blocks
           console.warn("Logic expression block executed directly - this should not happen");
           continue;
@@ -469,9 +608,126 @@ export class StepExecutor {
       }
     }
 
+    if (conditionNode.type === "queueIsEmpty") {
+      const queue = this.ensureArrayVariable(conditionNode.name);
+      return queue.length === 0;
+    }
+
+    if (conditionNode.type === "stackIsEmpty") {
+      const stack = this.ensureArrayVariable(conditionNode.name);
+      return stack.length === 0;
+    }
+
+    if (conditionNode.type === "listContains") {
+      return !!this.evaluateAny(conditionNode);
+    }
+
+    if (conditionNode.type === "isCharacter") {
+      return this.positionResolver.hasCharacterAtCurrentCell();
+    }
+
     // Unknown condition type
     console.warn("Unknown condition type:", conditionNode.type);
     return false;
+  }
+
+  private evaluateAny(node: ASTNode | null): RuntimeValue {
+    if (!node) return null;
+
+    switch (node.type) {
+      case "numberLiteral":
+        return node.value;
+      case "booleanLiteral":
+        return node.value;
+      case "getVariable":
+        return this.context.variables[node.name] ?? this.variables.get(node.name) ?? 0;
+      case "numberSensor":
+        return this.numberResolver(node.sensorType);
+      case "arithmetic":
+      case "compare":
+      case "condition":
+      case "logicBinary":
+      case "logicNot":
+        // Reuse existing evaluators for these expression types
+        return node.type === "arithmetic"
+          ? this.evaluateNumber(node)
+          : this.evaluateCondition(node);
+      case "listGet": {
+        const list = this.ensureArrayVariable(node.name);
+        const rawIndex = this.evaluateNumber(node.index);
+        const index = Math.max(0, Math.floor(rawIndex));
+        return list[index];
+      }
+      case "getList": {
+        const list = this.ensureArrayVariable(node.name);
+        return [...list];
+      }
+      case "listLength": {
+        const list = this.ensureArrayVariable(node.name);
+        return list.length;
+      }
+      case "listContains": {
+        const list = this.ensureArrayVariable(node.name);
+        const expected = this.evaluateAny(node.value);
+        return list.some((item) => item === expected);
+      }
+      case "queueDequeue": {
+        const queue = this.ensureArrayVariable(node.name);
+        const value = queue.shift();
+        this.lastRemoved = { structure: "queue", name: node.name, value };
+        this.notifyStateChange();
+        return value;
+      }
+      case "queueIsEmpty": {
+        const queue = this.ensureArrayVariable(node.name);
+        return queue.length === 0;
+      }
+      case "stackPop": {
+        const stack = this.ensureArrayVariable(node.name);
+        const value = stack.pop();
+        this.lastRemoved = { structure: "stack", name: node.name, value };
+        this.notifyStateChange();
+        return value;
+      }
+      case "stackIsEmpty": {
+        const stack = this.ensureArrayVariable(node.name);
+        return stack.length === 0;
+      }
+      case "getStartCell":
+        return this.positionResolver.getStartCell();
+      case "getGoalCell":
+        return this.positionResolver.getGoalCell();
+      case "getCurrentCell":
+        return this.positionResolver.getCurrentCell();
+      case "collectCharacter":
+        return this.positionResolver.getCharacterAtCurrentCell();
+      case "isCharacter":
+        return this.positionResolver.hasCharacterAtCurrentCell();
+      case "getNeighbors": {
+        const rawCell = this.evaluateAny(node.cell);
+        const cell = this.resolveCellString(rawCell);
+        if (!cell) {
+          return [];
+        }
+        // Return a fresh array so subsequent mutations don't affect cached references.
+        return [...this.positionResolver.getNeighbors(cell)];
+      }
+      default:
+        return null;
+    }
+  }
+
+  private resolveCellString(value: unknown): CellString | null {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed.includes(",")) {
+      return null;
+    }
+
+    return trimmed;
   }
 
   private evaluateNumber(node: ASTNode | null): number {
@@ -481,6 +737,11 @@ export class StepExecutor {
 
     if (node.type === "numberLiteral") {
       return node.value;
+    }
+
+    if (node.type === "numberSensor") {
+      const value = this.numberResolver(node.sensorType);
+      return Number.isFinite(value) ? value : 0;
     }
 
     if (node.type === "arithmetic") {
@@ -501,7 +762,67 @@ export class StepExecutor {
     }
 
     if (node.type === "getVariable") {
-      return this.variables.get(node.name) ?? 0;
+      const value = this.context.variables[node.name] ?? this.variables.get(node.name);
+      if (typeof value === "number") {
+        return value;
+      }
+      if (typeof value === "boolean") {
+        return value ? 1 : 0;
+      }
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
+    }
+
+    if (node.type === "listLength") {
+      const list = this.ensureArrayVariable(node.name);
+      return list.length;
+    }
+
+    if (node.type === "listGet") {
+      const value = this.evaluateAny(node);
+      if (typeof value === "number") return value;
+      if (typeof value === "boolean") return value ? 1 : 0;
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
+    }
+
+    if (node.type === "queueDequeue") {
+      const value = this.evaluateAny(node);
+      if (typeof value === "number") return value;
+      if (typeof value === "boolean") return value ? 1 : 0;
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
+    }
+
+    if (node.type === "queueIsEmpty") {
+      return this.evaluateAny(node) ? 1 : 0;
+    }
+
+    if (node.type === "stackPop") {
+      const value = this.evaluateAny(node);
+      if (typeof value === "number") return value;
+      if (typeof value === "boolean") return value ? 1 : 0;
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
+    }
+
+    if (node.type === "stackIsEmpty") {
+      return this.evaluateAny(node) ? 1 : 0;
+    }
+
+    if (
+      node.type === "listContains" ||
+      node.type === "getStartCell" ||
+      node.type === "getGoalCell" ||
+      node.type === "getCurrentCell" ||
+      node.type === "collectCharacter" ||
+      node.type === "getNeighbors"
+    ) {
+      const value = this.evaluateAny(node);
+      if (typeof value === "number") return value;
+      if (typeof value === "boolean") return value ? 1 : 0;
+      const asNumber = Number(value);
+      return Number.isFinite(asNumber) ? asNumber : 0;
     }
 
     if (node.type === "booleanLiteral") {
@@ -529,6 +850,30 @@ export class StepExecutor {
       return true;
     }
 
+    if (
+      node.type === "createList" ||
+      node.type === "getList" ||
+      node.type === "listAdd" ||
+      node.type === "listGet" ||
+      node.type === "listLength" ||
+      node.type === "createQueue" ||
+      node.type === "queueEnqueue" ||
+      node.type === "queueDequeue" ||
+      node.type === "queueIsEmpty" ||
+      node.type === "createStack" ||
+      node.type === "stackPush" ||
+      node.type === "stackPop" ||
+      node.type === "stackIsEmpty" ||
+      node.type === "listContains" ||
+      node.type === "getStartCell" ||
+      node.type === "getGoalCell" ||
+      node.type === "getCurrentCell" ||
+      node.type === "collectCharacter" ||
+      node.type === "getNeighbors"
+    ) {
+      return true;
+    }
+
     if (node.type === "arithmetic") {
       return this.expressionUsesVariable(node.left) || this.expressionUsesVariable(node.right);
     }
@@ -546,6 +891,23 @@ export class StepExecutor {
     }
 
     return false;
+  }
+
+  private toUnlockKey(value: RuntimeValue): string {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => {
+          if (item === null || item === undefined) return "";
+          return String(item);
+        })
+        .join("");
+    }
+
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    return String(value);
   }
 
   /**
@@ -574,7 +936,9 @@ export class StepExecutor {
       this.timeoutId = window.setTimeout(() => this.tick(), this.intervalMs);
     } else {
       // Execution complete (result is null), stop immediately
+      const completeHandler = this.onComplete;
       this.stop();
+      completeHandler?.();
     }
   }
 
@@ -583,7 +947,11 @@ export class StepExecutor {
    * @param callback Function to call with each ExecutionResult (command + blockId)
    * @param intervalMs Delay between commands in milliseconds
    */
-  run(callback: (result: ExecutionResult) => void, intervalMs: number = 500): void {
+  run(
+    callback: (result: ExecutionResult) => void,
+    intervalMs: number = 500,
+    onComplete?: () => void,
+  ): void {
     if (this.isRunning && !this.isPaused) {
       return; // Already running and not paused
     }
@@ -598,6 +966,7 @@ export class StepExecutor {
     this.isRunning = true;
     this.isPaused = false;
     this.callback = callback;
+    this.onComplete = onComplete ?? null;
     this.intervalMs = intervalMs;
 
     // Start execution with first tick
@@ -635,6 +1004,7 @@ export class StepExecutor {
     this.isRunning = false;
     this.isPaused = false;
     this.callback = null;
+    this.onComplete = null;
   }
 
   /**

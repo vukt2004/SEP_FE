@@ -64,6 +64,367 @@
       "frameWidth": 54,
       "frameHeight": 52,
       "frameIndex": 0
+    },
+    "8": {
+      "name": "door",
+      "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "frameIndex": 1,
+      "columns": 1
+    },
+    
+    "11": {
+      "name": "letter_a",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 0,
+      "columns": 10
+    },
+    "12": {
+      "name": "letter_b",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 1,
+      "columns": 10
+    },
+    "13": {
+      "name": "letter_c",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 2,
+      "columns": 10
+    },
+    "14": {
+      "name": "letter_d",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 3,
+      "columns": 10
+    },
+    "15": {
+      "name": "letter_e",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 4,
+      "columns": 10
+    },
+    "16": {
+      "name": "letter_f",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 5,
+      "columns": 10
+    },
+    "17": {
+      "name": "letter_g",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 6,
+      "columns": 10
+    },
+    "18": {
+      "name": "letter_h",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 7,
+      "columns": 10
+    },
+    "19": {
+      "name": "letter_i",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 8,
+      "columns": 10
+    },
+    "20": {
+      "name": "letter_j",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 9,
+      "columns": 10
+    },
+    "21": {
+      "name": "letter_k",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 10,
+      "columns": 10
+    },
+    "22": {
+      "name": "letter_l",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 11,
+      "columns": 10
+    },
+    "23": {
+      "name": "letter_m",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 12,
+      "columns": 10
+    },
+    "24": {
+      "name": "letter_n",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 13,
+      "columns": 10
+    },
+    "25": {
+      "name": "letter_o",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 14,
+      "columns": 10
+    },
+    "26": {
+      "name": "letter_p",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 15,
+      "columns": 10
+    },
+    "27": {
+      "name": "letter_q",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 16,
+      "columns": 10
+    },
+    "28": {
+      "name": "letter_r",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 17,
+      "columns": 10
+    },
+    "29": {
+      "name": "letter_s",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 18,
+      "columns": 10
+    },
+    "30": {
+      "name": "letter_t",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 19,
+      "columns": 10
+    },
+    "31": {
+      "name": "letter_u",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 20,
+      "columns": 10
+    },
+    "32": {
+      "name": "letter_v",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 21,
+      "columns": 10
+    },
+    "33": {
+      "name": "letter_w",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 22,
+      "columns": 10
+    },
+    "34": {
+      "name": "letter_x",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 23,
+      "columns": 10
+    },
+    "35": {
+      "name": "digit_0",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 30,
+      "columns": 10
+    },
+    "36": {
+      "name": "digit_1",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 31,
+      "columns": 10
+    },
+    "37": {
+      "name": "digit_2",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 32,
+      "columns": 10
+    },
+    "38": {
+      "name": "digit_3",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 33,
+      "columns": 10
+    },
+    "39": {
+      "name": "digit_4",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 34,
+      "columns": 10
+    },
+    "40": {
+      "name": "digit_5",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 35,
+      "columns": 10
+    },
+    "41": {
+      "name": "digit_6",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 36,
+      "columns": 10
+    },
+    "42": {
+      "name": "digit_7",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 37,
+      "columns": 10
+    },
+    "43": {
+      "name": "digit_8",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 38,
+      "columns": 10
+    },
+    "44": {
+      "name": "digit_9",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 39,
+      "columns": 10
+    },
+    "45": {
+      "name": "punctuation_1",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 40,
+      "columns": 10
+    },
+    "46": {
+      "name": "punctuation_2",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 41,
+      "columns": 10
+    },
+    "47": {
+      "name": "punctuation_3",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 42,
+      "columns": 10
+    },
+    "48": {
+      "name": "punctuation_4",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 43,
+      "columns": 10
+    },
+    "49": {
+      "name": "punctuation_5",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 44,
+      "columns": 10
+    },
+    "50": {
+      "name": "punctuation_6",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 45,
+      "columns": 10
+    },
+    "51": {
+      "name": "punctuation_7",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 46,
+      "columns": 10
+    },
+    "52": {
+      "name": "punctuation_8",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 47,
+      "columns": 10
+    },
+    "53": {
+      "name": "letter_y",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 24,
+      "columns": 10
+    },
+    "54": {
+      "name": "letter_z",
+      "imagePath": "/assets/Pixel Adventure 1/Menu/Text/Text (Black) (8x10).png",
+      "frameWidth": 8,
+      "frameHeight": 10,
+      "frameIndex": 25,
+      "columns": 10
     }
   }
 }

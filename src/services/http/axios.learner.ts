@@ -11,6 +11,11 @@ function isLoginOnlyEndpoint(url?: string): boolean {
   return /auth\/login|auth\/register|auth\/verify-otp/.test(url ?? "");
 }
 
+function isRefreshTokenEndpoint(url?: string): boolean {
+  // Used to prevent the response interceptor from trying to refresh when refreshing fails.
+  return /auth\/refresh-token/.test(url ?? "");
+}
+
 learnerAxios.interceptors.request.use((config) => {
   if (isLoginOnlyEndpoint(config.url)) {
     config.withCredentials = true;
@@ -59,10 +64,27 @@ learnerAxios.interceptors.response.use(
     if (!config || !error.response || error.response.status !== 401) {
       return Promise.reject(error);
     }
-    if (isLoginOnlyEndpoint(config.url)) {
+
+    // Never retry/refresh on endpoints that should not be handled here.
+    // In particular, if `/refresh-token` itself returns 401 (refresh token expired),
+    // we must let `doRefresh()` handle the logout/redirect.
+    if (isLoginOnlyEndpoint(config.url) || isRefreshTokenEndpoint(config.url)) {
       return Promise.reject(error);
     }
+
+    // Avoid infinite retry loops for the same request.
+    if ((config as { _retry?: boolean })._retry) {
+      // If we already tried refresh once and still got 401, treat it as an auth failure.
+      tokenStorage.removeLearnerToken();
+      if (typeof window !== "undefined") {
+        window.location.href = ROUTES.LEARNER_LOGIN;
+      }
+      return Promise.reject(error);
+    }
+    (config as { _retry?: boolean })._retry = true;
+
     return doRefresh().then((newToken) => {
+      config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${newToken}`;
       return learnerAxios.request(config);
     });

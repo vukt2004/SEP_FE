@@ -35,6 +35,7 @@ export function createEmptyMap(
       description,
       difficulty: 1, // Default: Easy
       timeLimitSeconds: 300, // Default: 5 minutes
+      estimatedSteps: 50, // Default estimated solution length
       winCondition: 1, // Default: Reach goal
       price: 0, // Default: Free
     },
@@ -49,7 +50,7 @@ export function createEmptyMap(
     },
     blockConstraints: {
       blockLimit: null,
-      bannedBlocks: [],
+      allowedBlocks: [],
       requiredBlocks: [],
     },
   };
