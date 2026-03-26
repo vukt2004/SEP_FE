@@ -640,14 +640,9 @@ const MapCard: React.FC<MapCardProps> = ({
           )}
 
           {isAuthor && map.mapStatus === "Draft" && (
-            <>
-              <button onClick={() => onEdit(map.id)} style={actionBtnStyle("primary")}>
-                <Edit size={14} /> {t("edit")}
-              </button>
-              <button onClick={() => onSubmitForReview(map.id)} style={actionBtnStyle("success")}>
-                <Send size={14} /> {t("submitForReview")}
-              </button>
-            </>
+            <button onClick={() => onSubmitForReview(map.id)} style={actionBtnStyle("success")}>
+              <Send size={14} /> {t("submitForReview")}
+            </button>
           )}
 
           {isAuthor && map.mapStatus === "Approved" && (

@@ -45,6 +45,7 @@ export function generateToolbox(
   blockDefinitions: BlockConfig[],
   options?: {
     hiddenBlockTypes?: string[];
+    getCategoryLabel?: (category: BlockCategory, fallback: string) => string;
   },
 ): FlyoutToolbox {
   const hiddenTypes = new Set(options?.hiddenBlockTypes ?? []);
@@ -90,9 +91,10 @@ export function generateToolbox(
         if (index > 0) {
           contents.push({ kind: "sep", gap: "32" });
         }
+        const fallbackCategoryName = CATEGORY_NAMES[category];
         contents.push({
           kind: "label",
-          text: CATEGORY_NAMES[category],
+          text: options?.getCategoryLabel?.(category, fallbackCategoryName) ?? fallbackCategoryName,
         });
       }
 
