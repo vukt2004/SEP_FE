@@ -347,28 +347,58 @@ function CashflowMiniChart({
   transactions: OrbitCoinTransaction[];
   note: string;
 }) {
-  // Group by date (YYYY-MM-DD), compute net flow.
-  const map = new Map<string, number>();
-  for (const tx of transactions) {
-    const d = new Date(tx.createdAt);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = d.toISOString().slice(0, 10);
-    const signed = tx.transactionType === CoinTransactionTypeEnum.Credit ? Math.abs(tx.amount) : -Math.abs(tx.amount);
-    map.set(key, (map.get(key) ?? 0) + signed);
-  }
+  // Use last N transactions to build a cumulative flow line.
+  const sorted = [...transactions]
+    .filter((tx) => !Number.isNaN(new Date(tx.createdAt).getTime()))
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .slice(-20);
 
-  const keys = Array.from(map.keys()).sort();
-  const lastKeys = keys.slice(-12); // show last 12 days we have in current page
-  const values = lastKeys.map((k) => map.get(k) ?? 0);
-  const maxAbs = Math.max(1, ...values.map((v) => Math.abs(v)));
+  const flowValues = sorted.map((tx) =>
+    tx.transactionType === CoinTransactionTypeEnum.Credit ? Math.abs(tx.amount) : -Math.abs(tx.amount),
+  );
+
+  const cumulative: number[] = [];
+  let running = 0;
+  for (const v of flowValues) {
+    running += v;
+    cumulative.push(running);
+  }
 
   const width = 560;
   const height = 120;
-  const padX = 10;
-  const padY = 12;
-  const baselineY = Math.round(height / 2);
-  const barGap = 8;
-  const barW = lastKeys.length > 0 ? Math.max(10, Math.floor((width - padX * 2 - barGap * (lastKeys.length - 1)) / lastKeys.length)) : 18;
+  const padX = 12;
+  const padY = 14;
+
+  const minVal = cumulative.length ? Math.min(...cumulative) : 0;
+  const maxVal = cumulative.length ? Math.max(...cumulative) : 0;
+  const range = Math.max(1, maxVal - minVal);
+
+  const xAt = (i: number) =>
+    cumulative.length <= 1
+      ? width / 2
+      : padX + (i * (width - padX * 2)) / (cumulative.length - 1);
+  const yAt = (v: number) => padY + ((maxVal - v) * (height - padY * 2)) / range;
+
+  const points = cumulative.map((v, i) => ({ x: xAt(i), y: yAt(v), v }));
+  const linePath =
+    points.length > 0
+      ? points
+          .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+          .join(" ")
+      : "";
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x.toFixed(2)} ${(height - padY).toFixed(2)} L ${points[0].x.toFixed(2)} ${(height - padY).toFixed(2)} Z`
+      : "";
+  const trendUp = cumulative.length >= 2 ? cumulative[cumulative.length - 1] >= cumulative[0] : true;
+  const lineColor = trendUp ? "rgba(34,197,94,0.95)" : "rgba(245,158,11,0.95)";
+  const areaColor = trendUp ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.14)";
+  const gridTicks = 4;
+  const gridValues = Array.from({ length: gridTicks + 1 }, (_, i) => maxVal - (range * i) / gridTicks);
+  const formatTick = (n: number) =>
+    Math.round(n).toLocaleString("en-US", {
+      maximumFractionDigits: 0,
+    });
 
   return (
     <div style={styles.chartWrap}>
@@ -390,28 +420,50 @@ function CashflowMiniChart({
         aria-label="Cashflow chart"
         style={{ display: "block" }}
       >
-        <line
-          x1={padX}
-          x2={width - padX}
-          y1={baselineY}
-          y2={baselineY}
-          stroke="var(--border)"
-          strokeWidth="1"
-          opacity="0.8"
-        />
-
-        {values.map((v, i) => {
-          const x = padX + i * (barW + barGap);
-          const h = Math.round(((height / 2 - padY) * Math.abs(v)) / maxAbs);
-          const isIn = v >= 0;
-          const y = isIn ? baselineY - h : baselineY;
-          const fill = isIn ? "rgba(34,197,94,0.75)" : "rgba(245,158,11,0.75)";
+        {gridValues.map((tick, idx) => {
+          const y = yAt(tick);
           return (
-            <g key={lastKeys[i]}>
-              <rect x={x} y={y} width={barW} height={Math.max(2, h)} rx={8} fill={fill} />
+            <g key={idx}>
+              <line
+                x1={padX}
+                x2={width - padX}
+                y1={y}
+                y2={y}
+                stroke="var(--border)"
+                strokeWidth="1"
+                opacity={idx === 0 || idx === gridValues.length - 1 ? 0.65 : 0.38}
+                strokeDasharray={idx === 0 || idx === gridValues.length - 1 ? "0" : "3 4"}
+              />
+              <text
+                x={padX + 2}
+                y={y - 4}
+                fill="var(--muted)"
+                fontSize="10"
+                fontWeight="700"
+              >
+                {formatTick(tick)}
+              </text>
             </g>
           );
         })}
+
+        {points.length > 0 ? (
+          <>
+            <path d={areaPath} fill={areaColor} />
+            <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" />
+            {points.map((p, idx) => (
+              <circle
+                key={idx}
+                cx={p.x}
+                cy={p.y}
+                r={idx === points.length - 1 ? 3.8 : 2.4}
+                fill={idx === points.length - 1 ? lineColor : "rgba(255,255,255,0.92)"}
+                stroke={lineColor}
+                strokeWidth="1.2"
+              />
+            ))}
+          </>
+        ) : null}
       </svg>
       <div style={styles.chartNote}>{note}</div>
     </div>
