@@ -1,7 +1,7 @@
 import "@/shared/styles/login.css";
 import "@/shared/styles/tokens.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/lib/constants/routes";
 
 import Starfield from "../components/login/Starfield";
@@ -17,6 +17,10 @@ import { buildMessage } from "../login/messages";
 import { validateForm, firstErrorField } from "../login/validation";
 import { selectTopBubbleMessage } from "../login/messageSelector";
 import LoginAriaAnnouncer from "../components/login/LoginAriaAnnouncer";
+import { useThemeStore } from "@/stores/theme.store";
+import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
+import { Sun, Moon } from "lucide-react";
 
 import { learnerAuthApi } from "@/services/api/learner/auth.api";
 import type { LearnerRegisterForm } from "@/types/api/learner/auth";
@@ -39,6 +43,13 @@ type ExtraErrors = Partial<
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const locale = useLanguageStore((s) => s.locale);
+  const toggleLocale = useLanguageStore((s) => s.toggle);
+  const t = getT(locale);
+  const leftOverlayBg =
+    theme === "light" ? "rgba(255,255,255,0.08)" : "rgba(2,6,23,0.25)";
 
   const [values, setValues] = useState<RegisterValues>({
     email: "",
@@ -70,6 +81,27 @@ export default function RegisterPage() {
     const t = window.setTimeout(() => setConfetti(false), 800);
     return () => window.clearTimeout(t);
   }, [confetti]);
+
+  useEffect(() => {
+    document.documentElement.classList.add("auth-no-scroll");
+    document.body.classList.add("auth-no-scroll");
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlHeight = document.documentElement.style.height;
+    const prevBodyHeight = document.body.style.height;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.height = "100%";
+    document.body.style.height = "100%";
+    return () => {
+      document.documentElement.classList.remove("auth-no-scroll");
+      document.body.classList.remove("auth-no-scroll");
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.height = prevHtmlHeight;
+      document.body.style.height = prevBodyHeight;
+    };
+  }, []);
 
   const bubble = useMemo(
     () =>
@@ -204,9 +236,61 @@ export default function RegisterPage() {
   const pageStyle = {
     ["--accent" as const]: "#2563EB",
   } as React.CSSProperties;
+  const copy =
+    locale === "vi"
+      ? {
+          title: "Đăng ký học viên",
+          subtitle: "Tạo tài khoản học viên và bắt đầu hành trình học.",
+          firstName: "Tên",
+          lastName: "Họ",
+          phone: "Số điện thoại",
+          email: "Email",
+          password: "Mật khẩu",
+          confirmPassword: "Nhập lại mật khẩu",
+          studentCode: "Mã sinh viên (không bắt buộc)",
+          creating: "Đang tạo...",
+          create: "Tạo tài khoản",
+          haveAccount: "Đã có tài khoản?",
+          login: "Đăng nhập",
+        }
+      : {
+          title: "Learner Register",
+          subtitle: "Create your student account and start learning.",
+          firstName: "First name",
+          lastName: "Last name",
+          phone: "Phone number",
+          email: "Email",
+          password: "Password",
+          confirmPassword: "Confirm password",
+          studentCode: "Student code (optional)",
+          creating: "Creating...",
+          create: "Create account",
+          haveAccount: "Already have an account?",
+          login: "Login",
+        };
 
   return (
     <div className="login-page" style={pageStyle}>
+      <div className="auth-topbar">
+        <button
+          type="button"
+          className="auth-icon-btn"
+          onClick={() => toggleTheme()}
+          title={theme === "dark" ? t("themeLight") : t("themeDark")}
+          aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+        >
+          {theme === "light" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
+          type="button"
+          className="auth-icon-btn"
+          onClick={() => toggleLocale()}
+          title={t("language")}
+          aria-label={t("language")}
+        >
+          <span>{locale === "en" ? "EN" : "VI"}</span>
+        </button>
+      </div>
       <LoginAriaAnnouncer message={bubble} />
 
       <div className={styles.sceneRoot} aria-hidden="true">
@@ -214,14 +298,14 @@ export default function RegisterPage() {
       </div>
 
       <div className="login-duck" style={{ position: "relative", overflow: "visible" }}>
-        <div style={{ position: "absolute", inset: 0, background: "rgba(2,6,23,0.25)" }} />
+        <div style={{ position: "absolute", inset: 0, background: leftOverlayBg }} />
         <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden="true">
           <OrbitBlocks />
         </div>
 
         <div className="login-duck-content" style={{ position: "relative" }}>
-          <h1 style={{ color: "#2563EB", marginBottom: 8, fontSize: 80 }}>QuackOrbit</h1>
-          <p style={{ maxWidth: 420 }}>Create your student account and start learning.</p>
+          <h1 className="auth-brand-title">QuackOrbit</h1>
+          <p className="auth-brand-subtitle">{copy.subtitle}</p>
 
           <div style={{ marginTop: 18, position: "relative", minHeight: 340 }}>
             <DuckSpeechBubble
@@ -246,53 +330,53 @@ export default function RegisterPage() {
         <div className={["login-card", shake ? styles.shake : ""].join(" ")}>
           <PixelConfetti show={confetti} />
 
-          <h2>Learner Register</h2>
+          <h2>{copy.title}</h2>
 
           <form onSubmit={handleSubmit}>
             {submitError ? (
-              <div role="alert" style={{ margin: "8px 0", fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error" style={{ margin: "8px 0" }}>
                 {submitError}
               </div>
             ) : null}
 
             <input
               className="login-input"
-              placeholder="First name"
+              placeholder={copy.firstName}
               value={values.firstName}
               onChange={(e) => setField("firstName", e.target.value)}
               aria-invalid={Boolean(extraErrors.firstName)}
               disabled={isSubmitting}
             />
             {extraErrors.firstName ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {extraErrors.firstName}
               </div>
             ) : null}
 
             <input
               className="login-input"
-              placeholder="Last name"
+              placeholder={copy.lastName}
               value={values.lastName}
               onChange={(e) => setField("lastName", e.target.value)}
               aria-invalid={Boolean(extraErrors.lastName)}
               disabled={isSubmitting}
             />
             {extraErrors.lastName ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {extraErrors.lastName}
               </div>
             ) : null}
 
             <input
               className="login-input"
-              placeholder="Phone number"
+              placeholder={copy.phone}
               value={values.phoneNumber}
               onChange={(e) => setField("phoneNumber", e.target.value)}
               aria-invalid={Boolean(extraErrors.phoneNumber)}
               disabled={isSubmitting}
             />
             {extraErrors.phoneNumber ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {extraErrors.phoneNumber}
               </div>
             ) : null}
@@ -300,7 +384,7 @@ export default function RegisterPage() {
             <input
               ref={emailRef}
               className="login-input"
-              placeholder="Email"
+              placeholder={copy.email}
               value={values.email}
               onChange={(e) => setField("email", e.target.value)}
               onFocus={() => setFocusedField("email")}
@@ -310,7 +394,7 @@ export default function RegisterPage() {
               disabled={isSubmitting}
             />
             {fieldErrors.email ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {buildMessage(fieldErrors.email).text}
               </div>
             ) : null}
@@ -319,7 +403,7 @@ export default function RegisterPage() {
               ref={passRef}
               className="login-input"
               type="password"
-              placeholder="Password"
+              placeholder={copy.password}
               value={values.password}
               onChange={(e) => setField("password", e.target.value)}
               onFocus={() => setFocusedField("password")}
@@ -333,7 +417,7 @@ export default function RegisterPage() {
               disabled={isSubmitting}
             />
             {fieldErrors.password ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {buildMessage(fieldErrors.password).text}
               </div>
             ) : null}
@@ -341,7 +425,7 @@ export default function RegisterPage() {
             <input
               className="login-input"
               type="password"
-              placeholder="Confirm password"
+              placeholder={copy.confirmPassword}
               value={values.confirmPassword}
               onChange={(e) => setField("confirmPassword", e.target.value)}
               autoComplete="new-password"
@@ -349,14 +433,14 @@ export default function RegisterPage() {
               disabled={isSubmitting}
             />
             {extraErrors.confirmPassword ? (
-              <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "crimson" }}>
+              <div role="alert" className="auth-error">
                 {extraErrors.confirmPassword}
               </div>
             ) : null}
 
             <input
               className="login-input"
-              placeholder="Student code (optional)"
+              placeholder={copy.studentCode}
               value={values.studentCode ?? ""}
               onChange={(e) => setField("studentCode", e.target.value)}
               disabled={isSubmitting}
@@ -368,15 +452,15 @@ export default function RegisterPage() {
               style={{ backgroundColor: "#2563EB" }}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Creating..." : "Create account"}
+              {isSubmitting ? copy.creating : copy.create}
             </button>
           </form>
 
           <div className="login-footer">
-            Already have an account?{" "}
-            <a href={ROUTES.LEARNER_LOGIN} style={{ color: "#2563EB" }}>
-              Login
-            </a>
+            {copy.haveAccount}{" "}
+            <Link to={ROUTES.LEARNER_LOGIN} className="auth-link">
+              {copy.login}
+            </Link>
           </div>
         </div>
       </div>
