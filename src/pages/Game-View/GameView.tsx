@@ -87,6 +87,7 @@ export default function GameView() {
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const timerElapsedRef = useRef(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
@@ -135,6 +136,10 @@ export default function GameView() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    engineRef.current?.setDoorKeyHintVisible(showDoorKeyHints);
+  }, [showDoorKeyHints]);
 
   useEffect(() => {
     let isMounted = true;
@@ -275,7 +280,7 @@ export default function GameView() {
           }
           setIsExecutorRunning(false);
 
-          // Show results modal
+          // Prepare result immediately
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
@@ -283,7 +288,11 @@ export default function GameView() {
             elapsedTime: timerElapsedRef.current,
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
-          setShowResultsModal(true);
+
+          // Show results modal after a short delay to allow animations to finish
+          setTimeout(() => {
+            setShowResultsModal(true);
+          }, 1500);
         };
 
         const handleFailed = () => {
@@ -465,7 +474,7 @@ export default function GameView() {
         if (allowedBlocks.length > 0) {
           for (const usedType of Object.keys(blockUsage)) {
             if (!allowedBlocks.includes(usedType)) {
-              showWarningToast(`Block not allowed: ${toBlockLabel(usedType)}.`);
+              showWarningToast(`${t("blockNotAllowed")}: ${toBlockLabel(usedType)}.`);
               return;
             }
           }
@@ -473,7 +482,7 @@ export default function GameView() {
           for (const bannedType of constraints.bannedBlocks || []) {
             const used = blockUsage[bannedType] ?? 0;
             if (used > 0) {
-              showWarningToast(`Block not allowed: ${toBlockLabel(bannedType)}.`);
+              showWarningToast(`${t("blockNotAllowed")}: ${toBlockLabel(bannedType)}.`);
               return;
             }
           }
@@ -482,9 +491,7 @@ export default function GameView() {
         for (const rule of constraints.requiredBlocks || []) {
           const used = blockUsage[rule.type] ?? 0;
           if (used < rule.minCount) {
-            showWarningToast(
-              `Required block missing: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`,
-            );
+            showWarningToast(`${t("requiredBlockMissing")}: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`);
             return;
           }
         }
@@ -493,7 +500,7 @@ export default function GameView() {
         if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
           const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
           if (totalUsed > blockLimit) {
-            showWarningToast(`Block limit exceeded (${totalUsed}/${blockLimit}). Running anyway.`);
+            showWarningToast(`${t("blockLimitExceeded")} (${totalUsed}/${blockLimit}). ${t("runningAnyway")}.`);
           }
         }
       }
@@ -571,6 +578,14 @@ export default function GameView() {
         getNeighbors: (cell: string) => {
           const engine = engineRef.current;
           return engine ? engine.getNeighbors(cell) : [];
+        },
+        getCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.getCharacterAtCurrentCell() : "";
+        },
+        hasCharacterAtCurrentCell: () => {
+          const engine = engineRef.current;
+          return engine ? engine.hasCharacterAtCurrentCell() : false;
         },
       };
 
@@ -737,7 +752,11 @@ export default function GameView() {
   };
 
   const blockTypeLabelMap = new Map(blocksConfig.blocks.map((block) => [block.type, block.label]));
-  const toBlockLabel = (type: string) => blockTypeLabelMap.get(type) || type;
+  const toBlockLabel = (type: string) => {
+    const key = `block.${type}`;
+    const translated = t(key);
+    return translated !== key ? translated : blockTypeLabelMap.get(type) || type;
+  };
 
   const missionGoal =
     mapConfig?.winCondition === 2
@@ -1136,7 +1155,7 @@ export default function GameView() {
             onMouseEnter={() => setHoveredControl("back")}
             onMouseLeave={() => setHoveredControl(null)}
           >
-            <ArrowLeft size={15} /> {multiplayerRoomId ? "Leave" : "Back to Maps"}
+            <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
           </button>
 
           {multiplayerRoomId && (
@@ -1152,7 +1171,7 @@ export default function GameView() {
                 onMouseEnter={() => setHoveredControl("submit")}
                 onMouseLeave={() => setHoveredControl(null)}
               >
-                <Send size={15} /> {submitted ? "Submitted" : "Submit solution"}
+                <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
               </button>
               <button
                 onClick={handleEndMultiplayerGame}
@@ -1160,7 +1179,7 @@ export default function GameView() {
                 onMouseEnter={() => setHoveredControl("end")}
                 onMouseLeave={() => setHoveredControl(null)}
               >
-                <Flag size={15} /> End game
+                <Flag size={15} /> {t("endGame")}
               </button>
             </>
           )}
@@ -1178,7 +1197,7 @@ export default function GameView() {
             onMouseEnter={() => setHoveredControl("run")}
             onMouseLeave={() => setHoveredControl(null)}
           >
-            <Play size={15} /> Run Program
+            <Play size={15} /> {t("runProgram")}
           </button>
 
           <button
@@ -1192,7 +1211,7 @@ export default function GameView() {
             onMouseEnter={() => setHoveredControl("step")}
             onMouseLeave={() => setHoveredControl(null)}
           >
-            <SkipForward size={15} /> Step Execution
+            <SkipForward size={15} /> {t("stepExecution")}
           </button>
 
           <button
@@ -1202,7 +1221,7 @@ export default function GameView() {
             onMouseEnter={() => setHoveredControl("stop")}
             onMouseLeave={() => setHoveredControl(null)}
           >
-            <Pause size={15} /> Stop
+            <Pause size={15} /> {t("stop")}
           </button>
 
           <button
@@ -1212,7 +1231,25 @@ export default function GameView() {
             onMouseEnter={() => setHoveredControl("reset")}
             onMouseLeave={() => setHoveredControl(null)}
           >
-            <RotateCcw size={15} /> Reset
+            <RotateCcw size={15} /> {t("reset")}
+          </button>
+
+          <button
+            onClick={() => setShowDoorKeyHints((prev) => !prev)}
+            disabled={isLoading || !!error}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "1px solid var(--border)",
+              background: showDoorKeyHints ? "var(--primary)" : "var(--surface-2)",
+              color: showDoorKeyHints ? "#fff" : "var(--text)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: isLoading || !!error ? "not-allowed" : "pointer",
+            }}
+            title="Toggle door key message"
+          >
+            {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
           </button>
         </div>
 
@@ -1223,16 +1260,16 @@ export default function GameView() {
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center", color: "var(--text)" }}>
-          <p>Loading level...</p>
+          <p>{t("loadingLevel")}</p>
         </div>
       )}
 
       {error && (
         <div style={{ padding: "20px", color: "var(--danger)" }}>
-          <h3>Error Loading Game</h3>
+          <h3>{t("errorLoadingGame")}</h3>
           <p>{error}</p>
           <p style={{ fontSize: "12px", marginTop: "10px" }}>
-            Check browser console (F12) for more details.
+            {t("checkBrowserConsole")}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -1245,7 +1282,7 @@ export default function GameView() {
               borderRadius: "10px",
             }}
           >
-            Retry
+            {t("retry")}
           </button>
         </div>
       )}
@@ -1318,7 +1355,7 @@ export default function GameView() {
                 color: "var(--text)",
               }}
             >
-              🍎 Fruits: {collectedFruits}
+              🍎 {t("fruitsLabel")} {collectedFruits}
             </div>
             <button
               onClick={() => setShowHintsModal(true)}
@@ -1340,7 +1377,7 @@ export default function GameView() {
               }}
               aria-label="Show map hints"
             >
-              💡 {`Hints (${revealedHintCount}/${totalHints})`}
+              💡 {t("hintsCount")} ({revealedHintCount}/{totalHints})
             </button>
             {/* <div
               style={{
@@ -1369,7 +1406,7 @@ export default function GameView() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
-                Game View - Block Programming
+                {t("gameViewTitle")}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
@@ -1394,7 +1431,7 @@ export default function GameView() {
                       cursor: "pointer",
                     }}
                   >
-                    Fit
+                    {t("zoomFit")}
                   </button>
                   <button
                     type="button"
@@ -1410,7 +1447,7 @@ export default function GameView() {
                       cursor: "pointer",
                     }}
                   >
-                    100%
+                    {t("zoomActual")}
                   </button>
                 </div>
               </div>
@@ -1479,9 +1516,9 @@ export default function GameView() {
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>Block Editor</h3>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>{t("blockEditorTitle")}</h3>
               <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-2)" }}>
-                Palette is on the left, workspace is on the right.
+                {t("blockEditorSubtitle")}
               </p>
             </div>
             <button
@@ -1502,7 +1539,7 @@ export default function GameView() {
               }}
               title="Clear all blocks"
             >
-              <Eraser size={14} /> Clear Blocks
+              <Eraser size={14} /> {t("clearBlocks")}
             </button>
           </div>
 
@@ -1531,10 +1568,10 @@ export default function GameView() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
-              <div style={{ fontWeight: 800, opacity: 0.9 }}>Data</div>
+              <div style={{ fontWeight: 800, opacity: 0.9 }}>{t("dataPanelTitle")}</div>
               {lastRemoved && (
                 <div style={{ opacity: 0.8 }}>
-                  Took from{" "}
+                  {t("dataTookFrom")}{" "}
                   <strong>
                     {lastRemoved.name} ({lastRemoved.structure})
                   </strong>
@@ -1575,7 +1612,7 @@ export default function GameView() {
                   );
                 })}
               {Object.entries(execVariables).filter(([, v]) => Array.isArray(v)).length === 0 && (
-                <div style={{ opacity: 0.7 }}>Create an Array, Queue, or Stack to see it here.</div>
+                <div style={{ opacity: 0.7 }}>{t("dataPanelEmpty")}</div>
               )}
             </div>
           </div>

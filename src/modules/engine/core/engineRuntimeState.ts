@@ -29,6 +29,9 @@ export interface EngineRuntimeState {
   /** Set of collected fruit IDs */
   collectedFruits: Set<string>;
 
+  /** Set of collected character object IDs */
+  collectedCharacters: Set<string>;
+
   /** Time elapsed in milliseconds since game started */
   timeElapsed: number;
 

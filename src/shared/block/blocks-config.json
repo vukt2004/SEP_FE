@@ -97,6 +97,24 @@
       "nextStatement": true
     },
     {
+      "type": "unlock_door",
+      "category": "movement",
+      "label": "Unlock Door",
+      "tooltip": "Unlock a locked door in front of you using a key string or character array",
+      "color": "#4CAF50",
+      "command": "UNLOCK_DOOR",
+      "inputs": [
+        {
+          "kind": "value",
+          "name": "KEY",
+          "check": ["String", "Array"],
+          "label": "key"
+        }
+      ],
+      "previousStatement": true,
+      "nextStatement": true
+    },
+    {
       "type": "repeat",
       "category": "control",
       "label": "Repeat",
@@ -144,6 +162,15 @@
       "tooltip": "Returns true if there is an obstacle ahead",
       "color": "#5C81F6",
       "command": "OBSTACLE_AHEAD",
+      "output": "Boolean"
+    },
+    {
+      "type": "is_character",
+      "category": "logic",
+      "label": "is character?",
+      "tooltip": "Returns true if player is standing on a character object",
+      "color": "#5C81F6",
+      "command": "IS_CHARACTER",
       "output": "Boolean"
     },
     {
@@ -412,7 +439,7 @@
         {
           "kind": "value",
           "name": "VALUE",
-          "check": ["Number", "String"],
+          "check": ["Number", "String", "Array"],
           "label": ""
         }
       ],
@@ -436,7 +463,7 @@
         {
           "kind": "value",
           "name": "VALUE",
-          "check": ["Number", "String"],
+          "check": ["Number", "String", "Array"],
           "label": ""
         }
       ],
@@ -458,7 +485,7 @@
           "text": "score"
         }
       ],
-      "output": ["Number", "String"]
+      "output": ["Number", "String", "Array"]
     },
     {
       "type": "number_literal",
@@ -611,6 +638,15 @@
       "output": "String"
     },
     {
+      "type": "collect_character",
+      "category": "logic",
+      "label": "Collect Character",
+      "tooltip": "Returns the character object on the player's current cell",
+      "color": "#5C81F6",
+      "command": "COLLECT_CHARACTER",
+      "output": "String"
+    },
+    {
       "type": "get_neighbors",
       "category": "logic",
       "label": "Get Neighbors",
@@ -644,6 +680,23 @@
       ],
       "previousStatement": true,
       "nextStatement": true
+    },
+    {
+      "type": "get_array",
+      "category": "array",
+      "label": "Get Array",
+      "tooltip": "Get the full array value by name",
+      "color": "#00BFA5",
+      "command": "GET_ARRAY",
+      "inputs": [
+        {
+          "kind": "field_input",
+          "name": "NAME",
+          "label": "array",
+          "text": "myArray"
+        }
+      ],
+      "output": "Array"
     },
     {
       "type": "list_add",

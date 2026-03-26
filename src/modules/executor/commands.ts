@@ -35,6 +35,11 @@ export interface CloseDoorCommand {
   type: "closeDoor";
 }
 
+export interface UnlockDoorCommand {
+  type: "unlockDoor";
+  key: string;
+}
+
 export interface JumpCommand {
   type: "jump";
 }
@@ -51,6 +56,7 @@ export type EngineCommand =
   | BreakCommand
   | OpenDoorCommand
   | CloseDoorCommand
+  | UnlockDoorCommand
   | JumpCommand
   | WaitCommand;
 

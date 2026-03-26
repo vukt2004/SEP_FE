@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly";
 import "blockly/blocks";
 import "blockly/javascript";
-import { loadBlockRegistry } from "../utils/blockLoader";
+import { useTranslation } from "@/lib/i18n/translations";
+import { loadLocalizedBlockRegistry } from "../utils/blockLoader";
 import { registerBlocks } from "../blocks/registerBlocks";
 import { generateToolbox } from "../utils/generateToolbox";
 import type { BlockConfig } from "../types/blockDefinition";
+import type { BlockCategory } from "../types/blockDefinition";
 
 const cssVar = (name: string, fallback: string) => {
   if (typeof window === "undefined") return fallback;
@@ -50,6 +52,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
   onConstraintViolation,
   onBlockCountChange,
 }) => {
+  const { t, locale } = useTranslation();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const blocklyWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const blockDefinitionsRef = useRef<BlockConfig[] | null>(null);
@@ -60,6 +63,12 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
   const blockLimitRef = useRef(blockLimit);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const getCategoryLabel = (category: BlockCategory, fallback: string): string => {
+    const key = `blockCategory.${category}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
 
   useEffect(() => {
     onWorkspaceReadyRef.current = onWorkspaceReady;
@@ -108,7 +117,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         setError(null);
 
         // Load block definitions from JSON
-        const blockDefinitions: BlockConfig[] = loadBlockRegistry();
+        const blockDefinitions: BlockConfig[] = loadLocalizedBlockRegistry(t, locale);
         blockDefinitionsRef.current = blockDefinitions;
 
         // Register blocks dynamically
@@ -119,6 +128,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
         hiddenTypesKeyRef.current = hiddenTypes.join("|");
         const toolbox = generateToolbox(blockDefinitions, {
           hiddenBlockTypes: hiddenTypes,
+          getCategoryLabel,
         });
 
         if (!mounted) return;
@@ -200,7 +210,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           revertingCreate = true;
           workspace.undo(false);
           revertingCreate = false;
-          onConstraintViolationRef.current?.(`Block limit reached (${limit}).`);
+          onConstraintViolationRef.current?.(`${t("blockLimitReached")} (${limit}).`);
         });
       } catch (err) {
         if (mounted) {
@@ -238,9 +248,33 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
     workspace.updateToolbox(
       generateToolbox(blockDefinitions, {
         hiddenBlockTypes: hiddenTypes,
+        getCategoryLabel,
       }),
     );
-  }, [bannedBlockTypes]);
+  }, [bannedBlockTypes, t]);
+
+  useEffect(() => {
+    const workspace = blocklyWorkspaceRef.current;
+    if (!workspace) return;
+
+    const xmlSnapshot = Blockly.Xml.workspaceToDom(workspace);
+    const blockDefinitions = loadLocalizedBlockRegistry(t, locale);
+    blockDefinitionsRef.current = blockDefinitions;
+    registerBlocks(blockDefinitions);
+
+    const hiddenTypes = Array.from(new Set(bannedBlockTypes)).sort();
+    hiddenTypesKeyRef.current = hiddenTypes.join("|");
+    workspace.updateToolbox(
+      generateToolbox(blockDefinitions, {
+        hiddenBlockTypes: hiddenTypes,
+        getCategoryLabel,
+      }),
+    );
+
+    workspace.clear();
+    Blockly.Xml.domToWorkspace(xmlSnapshot, workspace);
+    Blockly.svgResize(workspace);
+  }, [locale]);
 
   // Handle container resize
   useEffect(() => {
@@ -280,7 +314,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
             zIndex: 1000,
           }}
         >
-          <div>Loading block editor...</div>
+          <div>{t("loadingBlockEditor")}</div>
         </div>
       )}
 
@@ -303,7 +337,7 @@ const BlocklyWorkspace: React.FC<BlocklyWorkspaceProps> = ({
           }}
         >
           <div>
-            <strong>Error:</strong> {error}
+            <strong>{t("errorLabel")}:</strong> {error}
           </div>
         </div>
       )}

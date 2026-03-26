@@ -587,6 +587,13 @@ export default function MapEditor() {
     [store],
   );
 
+  const handleObjectMetadataChange = useCallback(
+    (index: number, metadata: Record<string, unknown>) => {
+      store?.updateObjectMetadataByIndex(index, metadata);
+    },
+    [store],
+  );
+
   const handleUndo = () => {
     store?.undo();
   };
@@ -649,6 +656,7 @@ export default function MapEditor() {
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+              onObjectMetadataChange={handleObjectMetadataChange}
             />
           </aside>
 
@@ -726,6 +734,7 @@ export default function MapEditor() {
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+              onObjectMetadataChange={handleObjectMetadataChange}
             />
           </aside>
         </div>

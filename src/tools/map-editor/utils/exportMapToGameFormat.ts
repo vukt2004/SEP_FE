@@ -1,5 +1,6 @@
 import type { MapData } from "../../../shared/types/MapSchema";
 import blocksConfig from "../../../shared/block/blocks-config.json";
+import { sanitizeUnlockCode } from "./unlockCode";
 
 /**
  * Game level format (matches public/mock-data/test-view/*.json)
@@ -124,8 +125,15 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     }
 
     const metadata = { ...(item.metadata ?? {}) };
-    if (item.type === "door" && typeof metadata.isOpen !== "boolean") {
-      metadata.isOpen = false;
+    if (item.type === "door") {
+      if (typeof metadata.isOpen !== "boolean") {
+        metadata.isOpen = false;
+      }
+      if (typeof metadata.isLocked !== "boolean") {
+        metadata.isLocked = false;
+      }
+      const rawUnlockCode = typeof metadata.unlockCode === "string" ? metadata.unlockCode : "";
+      metadata.unlockCode = sanitizeUnlockCode(rawUnlockCode, mapData.config.type);
     }
     if (isBoxType(item.type) && typeof metadata.hardness !== "number") {
       metadata.hardness = defaultHardnessByType(item.type);
