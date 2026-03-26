@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { TilesetLoader, TilesetCache, type TileDefinition } from "../../modules/engine/assets";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
@@ -8,7 +8,17 @@ interface TilePaletteProps {
   onTileSelect: (tileId: number | null) => void;
   mapData: MapData;
   tilesetName?: string;
+  filterGroup: string;
+  currentLang: "en" | "vi";
+  onGroupsLoaded?: (groups: string[]) => void;
 }
+
+export type ExtendedTileDefinition = TileDefinition & {
+  "group_EN"?: string;
+  "group_VI"?: string;
+  "name_EN"?: string;
+  "name_VI"?: string;
+};
 
 /**
  * Convert MapData config type to GameType
@@ -28,8 +38,11 @@ export function TilePalette({
   onTileSelect,
   mapData,
   tilesetName = "default",
+  filterGroup = "all",
+  currentLang,
+  onGroupsLoaded
 }: TilePaletteProps) {
-  const [tileset, setTileset] = useState<Record<number, TileDefinition> | null>(null);
+  const [tileset, setTileset] = useState<Record<number, ExtendedTileDefinition> | null>(null);
   const [tileImages, setTileImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const gameType = mapTypeToGameType(mapData.config.type);
   const tilesetCacheRef = useRef(new TilesetCache());
@@ -77,6 +90,44 @@ export function TilePalette({
     };
   }, [tilesetName, gameType]);
 
+  // 1.  Extract unique groups from tileset and notify parent
+  useEffect(() => {
+  if (!tileset || !onGroupsLoaded) return;
+
+  const groups = new Set<string>();
+  const langKey = currentLang.toUpperCase(); // "EN" or "VI"
+  const groupKey = `group_${langKey}` as keyof ExtendedTileDefinition;
+  const otherLabel = currentLang === "vi" ? "Khác" : "Other";
+
+  Object.values(tileset).forEach((tile) => {
+    const g = tile[groupKey] || tile["group_EN"] || otherLabel;
+    if (typeof g === "string") {
+      groups.add(g);
+    }
+  });
+  
+  onGroupsLoaded(Array.from(groups).sort());
+}, [tileset, currentLang, onGroupsLoaded]); // Đã đầy đủ dependencies
+
+// 2. Lọc danh sách hiển thị
+const filteredTilesData = useMemo(() => {
+  if (!tileset) return [];
+  
+  const entries = Object.entries(tileset) as [string, ExtendedTileDefinition][];
+  if (filterGroup === "all") return entries;
+
+  const langKey = currentLang.toUpperCase();
+  const otherLabel = currentLang === "vi" ? "Khác" : "Other";
+
+  return entries.filter(([, tile]) => {
+    // Logic lấy group label phải trùng khớp với logic trong useEffect ở trên
+    const tileGroup = tile[`group-${langKey}` as keyof ExtendedTileDefinition] 
+                      || tile["group_EN"] 
+                      || otherLabel;
+    return tileGroup === filterGroup;
+  });
+}, [tileset, filterGroup, currentLang]);
+
   if (!tileset) {
     return (
       <div style={styles.loading}>
@@ -85,23 +136,27 @@ export function TilePalette({
     );
   }
 
-  // Get sorted tile IDs
-  const tileIds = Object.keys(tileset)
-    .map((id) => parseInt(id, 10))
-    .sort((a, b) => a - b);
+  // // Get sorted tile IDs
+  // const tileIds = Object.keys(tileset)
+  //   .map((id) => parseInt(id, 10))
+  //   .sort((a, b) => a - b);
 
   return (
     <div style={styles.palette}>
-      {tileIds.map((tileId) => (
+      {filteredTilesData.map(([idStr, tileDef]) => {
+      const tileId = parseInt(idStr, 10);
+      
+      return (
         <TilePreview
           key={tileId}
           tileId={tileId}
-          tileDef={tileset[tileId]}
-          image={tileImages.get(tileset[tileId].imagePath)}
+          tileDef={tileDef}
+          image={tileImages.get(tileDef.imagePath)}
           isSelected={selectedTile === tileId}
           onSelect={() => onTileSelect(selectedTile === tileId ? null : tileId)}
         />
-      ))}
+      );
+      })}
     </div>
   );
 }

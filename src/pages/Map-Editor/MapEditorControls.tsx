@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
-import { TilePalette } from "./TilePalette";
+import { useLanguageStore } from "@/stores/language.store";
+import { TilePalette} from "./TilePalette";
 import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
@@ -80,12 +81,13 @@ interface MapEditorControlsProps {
 }
 
 interface ObjectSelectionButtonProps {
-  objectId: number; // Numeric object ID
+  objectId: number;
   label: string;
   objectDef: ObjectDefinition;
   cache: ObjectSpriteCache;
   selectedObjectId: number | null;
-  onObjectSelect: (objectId: number | null) => void;
+  isSelected: boolean;
+  onObjectSelect: (id: number|null) => void;
 }
 
 function ObjectSelectionButton({
@@ -229,6 +231,9 @@ export function MapEditorControls({
   const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const { locale } = useLanguageStore(); // 'en' hoặc 'vi'
+  const [availableTileGroups, setAvailableTileGroups] = useState<string[]>([]);
+  const [selectedTileGroup, setSelectedTileGroup] = useState("all");
   const [activeInlineField, setActiveInlineField] = useState<
     | "name"
     | "description"
@@ -1042,37 +1047,77 @@ export function MapEditorControls({
             activeLayer === "ground" ||
             activeLayer === "foreground") && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Tile Selection</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
+                  {locale === "vi" ? "Ô gạch" : "Tile Selection"}
+                </h3>
+                
+                <select 
+                  value={selectedTileGroup} 
+                  onChange={(e) => setSelectedTileGroup(e.target.value)}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    border: '1px solid #ddd'
+                  }}
+                >
+                  <option value="all">{locale === "vi" ? "Tất cả" : "All Groups"}</option>
+                  {availableTileGroups.map(group => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+              </div>
+
               <TilePalette
                 selectedTile={selectedTile}
                 onTileSelect={onTileSelect}
                 mapData={mapData}
+                currentLang={locale} 
+                filterGroup={selectedTileGroup}
+                onGroupsLoaded={setAvailableTileGroups}
               />
             </div>
           )}
 
           {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
-            <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Object Palette</h3>
-              <p style={styles.helpText}>Pick an object and paint it into the map.</p>
-              <div style={styles.objectToolGrid}>
+          <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>
+                {locale === "vi" ? "Vật thể" : "Objects"}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))",
+                  gap: "8px",
+                  maxHeight: "300px",
+                  overflowY: "auto",
+                  padding: "4px",
+                }}
+              >
                 {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
                   const objectId = parseInt(idStr, 10);
-                  const label = objDef.name.charAt(0).toUpperCase() + objDef.name.slice(1);
+                  
+                  const data = objDef as ObjectDefinition;
+                  const langKey = locale.toUpperCase() as "EN" | "VI";
+                  const nameKey = `name_${langKey}` as keyof ObjectDefinition;
+                  const displayName = String(data[nameKey]);
+
                   return (
                     <ObjectSelectionButton
-                      key={objectId}
+                      key={idStr}
                       objectId={objectId}
-                      label={label}
-                      objectDef={objDef}
-                      cache={objectCache}
+                      label={displayName}
+                      objectDef={data} // Truyền dữ liệu Object chuẩn
+                      cache={objectCache} 
                       selectedObjectId={selectedObjectId}
+                      isSelected={selectedObjectId === objectId}
                       onObjectSelect={onObjectSelect}
                     />
                   );
                 })}
               </div>
-            </div>
+          </div>
           )}
 
           {selectedObjectId === 15 && (

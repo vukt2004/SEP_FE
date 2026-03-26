@@ -4,6 +4,8 @@
   "objects": {
     "1": {
       "name": "player",
+      "name_EN": "Player",
+      "name_VI": "Người chơi",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Characters/Basic Charakter Spritesheet.png",
       "frameWidth": 48,
       "frameHeight": 48,
@@ -11,6 +13,8 @@
     },
     "2": {
       "name": "goal",
+      "name_EN": "Goal",
+      "name_VI": "Đích",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Goal (Idle).png",
       "frameWidth": 64,
       "frameHeight": 64,
@@ -18,6 +22,8 @@
     },
     "3": {
       "name": "fruit",
+      "name_EN": "Fruit",
+      "name_VI": "Trái cây",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Apple.png",
       "frameWidth": 32,
       "frameHeight": 32,
@@ -25,6 +31,8 @@
     },
     "4": {
       "name": "chest",
+      "name_EN": "Chest",
+      "name_VI": "Rương",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Chest.png",
       "frameWidth": 48,
       "frameHeight": 48,
@@ -32,6 +40,8 @@
     },
     "5": {
       "name": "door",
+      "name_EN": "Door",
+      "name_VI": "Cửa",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
@@ -40,6 +50,8 @@
     },
     "6": {
       "name": "box1",
+      "name_EN": "Box 1",
+      "name_VI": "Hộp 1",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box1/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -47,6 +59,8 @@
     },
     "7": {
       "name": "box2",
+      "name_EN": "Box 2",
+      "name_VI": "Hộp 2",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box2/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -54,6 +68,8 @@
     },
     "8": {
       "name": "box3",
+      "name_EN": "Box 3",
+      "name_VI": "Hộp 3",
       "imagePath": "/assets/Pixel Adventure 1/Items/Boxes/Box3/Idle.png",
       "frameWidth": 28,
       "frameHeight": 28,
@@ -61,6 +77,8 @@
     },
     "9": {
       "name": "trap",
+      "name_EN": "Trap",
+      "name_VI": "Bẫy",
       "imagePath": "/assets/Pixel Adventure 1/Traps/Spike Head/Idle.png",
       "frameWidth": 54,
       "frameHeight": 52,
@@ -68,6 +86,8 @@
     },
     "11": {
       "name": "milk",
+      "name_EN": "Milk",
+      "name_VI": "Sữa",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Objects/Simple_Milk_and_grass_item.png",
       "frameWidth": 16,
       "frameHeight": 16,
@@ -75,6 +95,8 @@
     },
     "12": {
       "name": "door",
+      "name_EN": "Door",
+      "name_VI": "Cửa",
       "imagePath": "/assets/Sprout Lands - Sprites - Basic pack/Tilesets/Doors.png",
       "frameWidth": 16,
       "frameHeight": 16,
@@ -82,6 +104,8 @@
     },
     "13": {
       "name": "sliding_block",
+      "name_EN": "Sliding Block",
+      "name_VI": "Khối trượt sang",
       "imagePath": "/assets/MovementBlock/Sliding Block.png",
       "frameWidth": 64,
       "frameHeight": 64,
@@ -89,6 +113,8 @@
     },
     "14": {
       "name": "disappearing_block",
+      "name_EN": "Disappearing Block",
+      "name_VI": "Khối biến mất",
       "imagePath": "/assets/Temporator Asset/Disappearing Block.png",
       "frameWidth": 32,
       "frameHeight": 32,
@@ -96,6 +122,8 @@
     },
     "15": {
       "name": "portal",
+      "name_EN": "Portal",
+      "name_VI": "Cổng dịch chuyển",
       "imagePath": "/assets/Portal/PORTAL_BLUE.png",
       "frameWidth": 64,
       "frameHeight": 64,
