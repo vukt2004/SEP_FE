@@ -21,8 +21,8 @@ export interface MapConfig {
   name: string;
   /** Map description */
   description: string;
-  /** Difficulty level: 1 (easy), 2 (normal), 3 (hard) */
-  difficulty: 1 | 2 | 3;
+  /** Difficulty level: 1..5 */
+  difficulty: 1 | 2 | 3 | 4 | 5;
   /** Time limit in seconds */
   timeLimitSeconds: number;
   /** Estimated algorithm steps to complete the level */

@@ -322,9 +322,11 @@ const MapFilters: React.FC<MapFiltersProps> = ({
         }}
       >
         <option value="">All Difficulty</option>
-        <option value="1">{t("easy")}</option>
-        <option value="2">{t("medium")}</option>
-        <option value="3">{t("hard")}</option>
+        <option value="1">1/5</option>
+        <option value="2">2/5</option>
+        <option value="3">3/5</option>
+        <option value="4">4/5</option>
+        <option value="5">5/5</option>
       </select>
 
       <div style={{ position: "relative", display: "inline-flex", flex: "0 1 190px" }}>
@@ -956,9 +958,10 @@ export const MyMapsPage: React.FC = () => {
 
   const getDifficultyLabel = (difficulty: number) => {
     const tier = getDifficultyTier(difficulty);
-    if (tier === "easy") return t("easy");
-    if (tier === "medium") return t("medium");
-    return t("hard");
+    const level = Math.min(5, Math.max(1, Math.round(difficulty)));
+    if (tier === "easy") return `${t("easy")} (${level}/5)`;
+    if (tier === "medium") return `${t("medium")} (${level}/5)`;
+    return `${t("hard")} (${level}/5)`;
   };
 
   const formatDate = (dateString: string | null) => {

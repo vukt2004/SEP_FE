@@ -99,7 +99,7 @@ export function LobbyMapPickerGrid({
                 {m.description ? <p className={styles.desc}>{m.description}</p> : null}
                 <div className={styles.meta}>
                   <span className={difficultyClassFromTier(m.difficulty)}>
-                    {t("difficulty")}: {m.difficulty}/10
+                    {t("difficulty")}: {m.difficulty}/5
                   </span>
                   <span>⏱ {formatMinutes(m.timeLimitMs, t("minutes"))}</span>
                 </div>

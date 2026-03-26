@@ -204,9 +204,10 @@ function formatTime(timeLimitMs: number, t: (k: string) => string): string {
 
 function getDifficultyLabel(d: number, t: (k: string) => string): string {
   const tier = getDifficultyTier(d);
-  if (tier === "easy") return t("easy");
-  if (tier === "medium") return t("medium");
-  return t("hard");
+  const level = Math.min(5, Math.max(1, Math.round(d)));
+  if (tier === "easy") return `${t("easy")} (${level}/5)`;
+  if (tier === "medium") return `${t("medium")} (${level}/5)`;
+  return `${t("hard")} (${level}/5)`;
 }
 
 export default function MapsPage() {
@@ -561,9 +562,11 @@ function MapsContent() {
                 aria-label={t("difficulty")}
               >
                 <option value="all">{t("filterAll")}</option>
-                <option value={1}>{t("easy")}</option>
-                <option value={2}>{t("medium")}</option>
-                <option value={3}>{t("hard")}</option>
+                <option value={1}>1/5</option>
+                <option value={2}>2/5</option>
+                <option value={3}>3/5</option>
+                <option value={4}>4/5</option>
+                <option value={5}>5/5</option>
               </select>
             </div>
 
