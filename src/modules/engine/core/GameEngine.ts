@@ -14,7 +14,6 @@ import { BoxCollider } from "../physics/BoxCollider";
 import type { GameConfig } from "./GameConfig";
 import type { IPlayerController } from "../controllers/IPlayerController";
 import { PlayerControllerFactory } from "../controllers/PlayerControllerFactory";
-import { objectRegistry } from "../object/objectRegistry";
 import { EngineState } from "./engineState";
 import type { EngineState as EngineStateType } from "./engineState";
 import type { EngineRuntimeState } from "./engineRuntimeState";
