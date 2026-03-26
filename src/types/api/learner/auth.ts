@@ -7,6 +7,10 @@ export type LoginRequest = {
   grantType?: 0; // default 0
 };
 
+export type GoogleLoginRequest = {
+  idToken: string;
+};
+
 export type AuthResponse = {
   accessToken?: string | null;
   expiresAt: string; // ISO datetime

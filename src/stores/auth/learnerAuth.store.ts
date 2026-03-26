@@ -9,6 +9,7 @@ interface LearnerAuthState {
 
   setToken: (token: string) => void;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (idToken: string) => Promise<void>;
   logout: () => void;
 
   // hydrate có thể bỏ luôn, hoặc giữ cho backward-compat (không cần dùng ở guard nữa)
@@ -35,6 +36,18 @@ export const useLearnerAuthStore = create<LearnerAuthState>((set) => ({
     const res = await learnerAuthApi.login({ email, password, grantType: 0 });
 
     if (!res.data.isSuccess) throw new Error(res.data.message ?? "Login failed");
+
+    const token = res.data.data?.accessToken ?? null;
+    if (!token) throw new Error("Missing accessToken");
+
+    tokenStorage.setLearnerToken(token);
+    set({ token, isAuthenticated: true });
+  },
+
+  googleLogin: async (idToken) => {
+    const res = await learnerAuthApi.googleLogin({ idToken });
+
+    if (!res.data.isSuccess) throw new Error(res.data.message ?? "Google login failed");
 
     const token = res.data.data?.accessToken ?? null;
     if (!token) throw new Error("Missing accessToken");

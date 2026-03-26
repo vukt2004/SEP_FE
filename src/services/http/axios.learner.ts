@@ -8,7 +8,7 @@ export const learnerAxios = axiosBase.create();
 
 /** Endpoints that must not receive Bearer (e.g. login, register). Refresh-token should receive current token (even expired). */
 function isLoginOnlyEndpoint(url?: string): boolean {
-  return /auth\/login|auth\/register|auth\/verify-otp/.test(url ?? "");
+  return /auth\/login|auth\/register|auth\/verify-otp|auth\/google|auth\/login\/google/.test(url ?? "");
 }
 
 function isRefreshTokenEndpoint(url?: string): boolean {

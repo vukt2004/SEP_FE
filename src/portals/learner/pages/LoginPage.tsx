@@ -20,6 +20,10 @@ import { validateForm, firstErrorField } from "../login/validation";
 import { mapAuthErrorToMessage, mapAuthStatusToMessage } from "../login/authError";
 import { selectTopBubbleMessage } from "../login/messageSelector";
 import LoginAriaAnnouncer from "../components/login/LoginAriaAnnouncer";
+import { useThemeStore } from "@/stores/theme.store";
+import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
+import { Sun, Moon } from "lucide-react";
 
 type LoginValues = { email: string; password: string };
 type FieldErrors = Partial<Record<FieldKey, MessageCode>>;
@@ -61,8 +65,16 @@ function isAuthSystemError(code: MessageCode): code is AuthSystemErrorCode {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const locale = useLanguageStore((s) => s.locale);
+  const toggleLocale = useLanguageStore((s) => s.toggle);
+  const t = getT(locale);
+  const leftOverlayBg =
+    theme === "light" ? "rgba(255,255,255,0.08)" : "rgba(2,6,23,0.25)";
 
   const login = useLearnerAuthStore((s) => s.login);
+  const googleLogin = useLearnerAuthStore((s) => s.googleLogin);
 
   const [values, setValues] = useState<LoginValues>({ email: "", password: "" });
 
@@ -84,14 +96,170 @@ export default function LoginPage() {
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef(false);
+  const isGoogleSubmittingRef = useRef(false);
+  const [googleReady, setGoogleReady] = useState(false);
 
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+  const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const googleClientId = rawGoogleClientId
+    ?.replace(/[\u200B-\u200D\uFEFF]/g, "")
+    ?.replace(/^["']|["']$/g, "")
+    ?.trim();
+
+  const loadGoogleIdentityScript = async (): Promise<void> => {
+    if ((window.google?.accounts as { oauth2?: unknown } | undefined)?.oauth2) {
+      setGoogleReady(true);
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existing) {
+        const waitUntilReady = () => {
+          if ((window.google?.accounts as { oauth2?: unknown } | undefined)?.oauth2) {
+            setGoogleReady(true);
+            resolve();
+            return;
+          }
+          window.setTimeout(waitUntilReady, 50);
+        };
+        waitUntilReady();
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        const waitUntilReady = () => {
+          if ((window.google?.accounts as { oauth2?: unknown } | undefined)?.oauth2) {
+            setGoogleReady(true);
+            resolve();
+            return;
+          }
+          window.setTimeout(waitUntilReady, 50);
+        };
+        waitUntilReady();
+      };
+      script.onerror = () => reject(new Error("Failed to load Google Identity script"));
+      document.head.appendChild(script);
+    });
+  };
+
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
+
+  useEffect(() => {
+    isGoogleSubmittingRef.current = isGoogleSubmitting;
+  }, [isGoogleSubmitting]);
+
+  const completeGoogleLogin = async (idToken: string) => {
+    if (!idToken) throw new Error("Missing Google credential");
+
+    await googleLogin(idToken);
+
+    setIsSuccess(true);
+    setConfetti(true);
+    setShowLoading(true);
+    setLoadingStep(0);
+
+    await sleep(220);
+    setLoadingStep(1);
+    await sleep(220);
+    setLoadingStep(2);
+    await sleep(260);
+    setLoadingStep(3);
+    await sleep(140);
+
+    navigate(ROUTES.LEARNER_HOME);
+  };
+
+  useEffect(() => {
+    if (!googleClientId) return;
+    loadGoogleIdentityScript().catch((err) => {
+      console.error("Google script load failed:", err);
+      setGoogleReady(false);
+    });
+  }, [googleClientId]);
+
+  const handleGoogleLogin = async () => {
+    if (isSubmittingRef.current || isGoogleSubmittingRef.current) return;
+    if (!googleClientId) {
+      setSystemErrorCode("AUTH_SERVER_ERROR");
+      return;
+    }
+    const oauth2 = (window.google?.accounts as { oauth2?: { initTokenClient: (opts: { client_id: string; scope: string; callback: (resp: { access_token?: string; error?: string }) => void; }) => { requestAccessToken: () => void; }; } } | undefined)?.oauth2;
+    if (!oauth2) {
+      setSystemErrorCode("AUTH_SERVER_ERROR");
+      return;
+    }
+
+    clearNonFieldErrors();
+    setIsGoogleSubmitting(true);
+    try {
+      const tokenClient = oauth2.initTokenClient({
+        client_id: googleClientId,
+        scope: "openid email profile",
+        callback: async (resp: { access_token?: string; error?: string }) => {
+          if (!resp || resp.error || !resp.access_token) {
+            triggerShake();
+            setSystemErrorCode("AUTH_SERVER_ERROR");
+            setIsGoogleSubmitting(false);
+            setShowLoading(false);
+            return;
+          }
+
+          try {
+            await completeGoogleLogin(resp.access_token);
+          } catch (err) {
+            triggerShake();
+            setSystemErrorCode("AUTH_SERVER_ERROR");
+            console.error("Google login failed:", err);
+          } finally {
+            setIsGoogleSubmitting(false);
+            setShowLoading(false);
+          }
+        },
+      });
+      tokenClient.requestAccessToken();
+    } catch (err) {
+      triggerShake();
+      setSystemErrorCode("AUTH_SERVER_ERROR");
+      console.error("Google login init failed:", err);
+      setIsGoogleSubmitting(false);
+      setShowLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!confetti) return;
     const t = window.setTimeout(() => setConfetti(false), 800);
     return () => window.clearTimeout(t);
   }, [confetti]);
+
+  useEffect(() => {
+    document.documentElement.classList.add("auth-no-scroll");
+    document.body.classList.add("auth-no-scroll");
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlHeight = document.documentElement.style.height;
+    const prevBodyHeight = document.body.style.height;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.height = "100%";
+    document.body.style.height = "100%";
+    return () => {
+      document.documentElement.classList.remove("auth-no-scroll");
+      document.body.classList.remove("auth-no-scroll");
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.height = prevHtmlHeight;
+      document.body.style.height = prevBodyHeight;
+    };
+  }, []);
 
   const bubble = useMemo(
     () =>
@@ -161,21 +329,6 @@ export default function LoginPage() {
     clearNonFieldErrors();
   }
 
-  // ✅ Google OAuth redirect (frontend chỉ cần bấm -> redirect)
-  const GOOGLE_OAUTH_URL =
-    import.meta.env.VITE_GOOGLE_OAUTH_URL ??
-    `${import.meta.env.VITE_API_BASE_URL ?? ""}/auth/google`;
-
-  const handleGoogleLogin = () => {
-    if (isSubmitting || isGoogleSubmitting) return;
-
-    clearNonFieldErrors();
-    setIsGoogleSubmitting(true);
-
-    // Nếu BE dùng endpoint khác, đổi lại GOOGLE_OAUTH_URL cho đúng.
-    window.location.assign(GOOGLE_OAUTH_URL);
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting || isGoogleSubmitting) return;
@@ -237,27 +390,77 @@ export default function LoginPage() {
   const pageStyle = {
     ["--accent" as const]: "#2563EB",
   } as React.CSSProperties;
+  const copy =
+    locale === "vi"
+      ? {
+          title: "Đăng nhập học viên",
+          subtitle: "Học logic qua game 2D vui nhộn. Nâng kỹ năng qua từng màn.",
+          email: "Email",
+          password: "Mật khẩu",
+          signIn: "Đăng nhập",
+          signingIn: "Đang đăng nhập...",
+          noAccount: "Chưa có tài khoản?",
+          createAccount: "Tạo tài khoản",
+          or: "hoặc",
+          googleContinue: "Tiếp tục với Google",
+          googleLoading: "Đang tải Google...",
+          googleSigning: "Đang đăng nhập Google...",
+          footer: "Tiếp tục hành trình học tập của bạn",
+        }
+      : {
+          title: "Learner Login",
+          subtitle: "Learn logic through fun 2D gameplay. Build skills while exploring levels.",
+          email: "Email",
+          password: "Password",
+          signIn: "Sign In",
+          signingIn: "Signing in...",
+          noAccount: "Don't have an account yet?",
+          createAccount: "Create Account",
+          or: "or",
+          googleContinue: "Continue with Google",
+          googleLoading: "Loading Google...",
+          googleSigning: "Signing in with Google...",
+          footer: "Continue your learning journey",
+        };
 
   return (
     <>
       <div className="login-page" style={pageStyle}>
+        <div className="auth-topbar">
+          <button
+            type="button"
+            className="auth-icon-btn"
+            onClick={() => toggleTheme()}
+            title={theme === "dark" ? t("themeLight") : t("themeDark")}
+            aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+          >
+            {theme === "light" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            type="button"
+            className="auth-icon-btn"
+            onClick={() => toggleLocale()}
+            title={t("language")}
+            aria-label={t("language")}
+          >
+            <span>{locale === "en" ? "EN" : "VI"}</span>
+          </button>
+        </div>
         <LoginAriaAnnouncer message={bubble} />
         <div className={styles.sceneRoot} aria-hidden="true">
           <Starfield />
         </div>
 
         <div className="login-duck" style={{ position: "relative", overflow: "visible" }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(2,6,23,0.25)" }} />
+          <div style={{ position: "absolute", inset: 0, background: leftOverlayBg }} />
 
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} aria-hidden="true">
             <OrbitBlocks />
           </div>
 
           <div className="login-duck-content" style={{ position: "relative" }}>
-            <h1 style={{ color: "#2563EB", marginBottom: 8, fontSize: 80 }}>QuackOrbit</h1>
-            <p style={{ maxWidth: 420 }}>
-              Learn logic through fun 2D gameplay. Build skills while exploring levels.
-            </p>
+            <h1 className="auth-brand-title">QuackOrbit</h1>
+            <p className="auth-brand-subtitle">{copy.subtitle}</p>
 
             <div style={{ marginTop: 18, position: "relative", minHeight: 340 }}>
               <DuckSpeechBubble
@@ -291,7 +494,7 @@ export default function LoginPage() {
 
             <PixelConfetti show={confetti} />
 
-            <h2>Learner Login</h2>
+            <h2>{copy.title}</h2>
 
             {infoMessage ? (
               <div
@@ -303,7 +506,7 @@ export default function LoginPage() {
                   borderRadius: 10,
                   background: "rgba(37,99,235,0.10)",
                   border: "1px solid rgba(37,99,235,0.25)",
-                  color: "#ff7402",
+                  color: "var(--text)",
                 }}
               >
                 {infoMessage}
@@ -314,7 +517,7 @@ export default function LoginPage() {
               <input
                 ref={emailRef}
                 className="login-input"
-                placeholder="Email"
+                placeholder={copy.email}
                 value={values.email}
                 onChange={(e) => setField("email", e.target.value)}
                 onFocus={() => setFocusedField("email")}
@@ -328,7 +531,7 @@ export default function LoginPage() {
                 <div
                   id="login-email-error"
                   role="alert"
-                  style={{ marginTop: 6, fontSize: 12, color: "crimson" }}
+                  className="auth-error"
                 >
                   {buildMessage(fieldErrors.email).text}
                 </div>
@@ -338,7 +541,7 @@ export default function LoginPage() {
                 ref={passRef}
                 className="login-input"
                 type="password"
-                placeholder="Password"
+                placeholder={copy.password}
                 value={values.password}
                 onChange={(e) => setField("password", e.target.value)}
                 onFocus={() => setFocusedField("password")}
@@ -356,7 +559,7 @@ export default function LoginPage() {
                 <div
                   id="login-password-error"
                   role="alert"
-                  style={{ marginTop: 6, fontSize: 12, color: "crimson" }}
+                  className="auth-error"
                 >
                   {buildMessage(fieldErrors.password).text}
                 </div>
@@ -368,7 +571,7 @@ export default function LoginPage() {
                 style={{ backgroundColor: "#2563EB" }}
                 disabled={isSubmitting || isGoogleSubmitting}
               >
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                {isSubmitting ? copy.signingIn : copy.signIn}
               </button>
             </form>
 
@@ -382,12 +585,9 @@ export default function LoginPage() {
                 gap: 6,
               }}
             >
-              <span style={{ color: "#A7B0C0" }}>Don't have an account yet?</span>
-              <Link
-                to={ROUTES.LEARNER_REGISTER}
-                style={{ color: "#2563EB", fontWeight: 700, textDecoration: "none" }}
-              >
-                Create Account
+              <span className="auth-muted">{copy.noAccount}</span>
+              <Link to={ROUTES.LEARNER_REGISTER} className="auth-link">
+                {copy.createAccount}
               </Link>
             </div>
 
@@ -403,50 +603,33 @@ export default function LoginPage() {
               }}
             >
               <div style={{ height: 1, background: "rgba(229,231,235,0.18)", flex: 1 }} />
-              <div style={{ fontSize: 12, color: "#A7B0C0" }}>or</div>
+              <div style={{ fontSize: 12 }} className="auth-muted">
+                {copy.or}
+              </div>
               <div style={{ height: 1, background: "rgba(229,231,235,0.18)", flex: 1 }} />
             </div>
 
-            {/* ✅ Google login button (xuống dưới) */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              className="login-button"
-              disabled={isSubmitting || isGoogleSubmitting}
-              style={{
-                backgroundColor: "transparent",
-                border: "1px solid rgba(229,231,235,0.25)",
-                color: "#E5E7EB",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-              }}
-            >
-              {/* Google logo (inline SVG) */}
-              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-                <path
-                  fill="#EA4335"
-                  d="M24 9.5c3.54 0 6.73 1.22 9.25 3.61l6.9-6.9C35.97 2.39 30.45 0 24 0 14.62 0 6.51 5.38 2.56 13.22l8.02 6.23C12.55 13.27 17.8 9.5 24 9.5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M46.5 24.5c0-1.64-.15-3.22-.43-4.75H24v9h12.7c-.55 2.93-2.2 5.41-4.7 7.08l7.22 5.6C43.73 37.29 46.5 31.43 46.5 24.5z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M10.58 28.55A14.47 14.47 0 0 1 9.5 24c0-1.58.27-3.11.76-4.55l-8.02-6.23A23.95 23.95 0 0 0 0 24c0 3.89.93 7.57 2.56 10.78l8.02-6.23z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M24 48c6.45 0 11.97-2.13 15.96-5.78l-7.22-5.6c-2 1.35-4.57 2.15-8.74 2.15-6.2 0-11.45-3.77-13.42-9.05l-8.02 6.23C6.51 42.62 14.62 48 24 48z"
-                />
-              </svg>
+            <div style={{ display: "grid", justifyItems: "center", marginTop: 4 }}>
+              <button
+                type="button"
+                className="login-button auth-google-btn"
+                onClick={handleGoogleLogin}
+                disabled={isSubmitting || isGoogleSubmitting || !googleReady}
+              >
+                {isGoogleSubmitting
+                  ? copy.googleSigning
+                  : !googleReady
+                    ? copy.googleLoading
+                    : copy.googleContinue}
+              </button>
+              {!googleClientId ? (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#fca5a5" }}>
+                  Missing `VITE_GOOGLE_CLIENT_ID`
+                </div>
+              ) : null}
+            </div>
 
-              {isGoogleSubmitting ? "Redirecting..." : "Continue with Google"}
-            </button>
-
-            <div className="login-footer">Continue your learning journey</div>
+            <div className="login-footer">{copy.footer}</div>
           </div>
         </div>
       </div>
