@@ -40,6 +40,15 @@ export type ApiResult<T> = {
   errorCode?: string | null;
 };
 
+export type DepositRequest = {
+  amountOrbitCoin: number;
+};
+
+export type DepositResponse = {
+  orderId: string;
+  checkoutUrl: string;
+};
+
 export const orbitCoinApi = {
   getBalance: async () => {
     const { data } = await learnerAxios.get<ApiResult<OrbitCoinBalanceResponse>>(
@@ -57,6 +66,14 @@ export const orbitCoinApi = {
           pageSize: params.pageSize ?? 20,
         },
       },
+    );
+    return data;
+  },
+
+  deposit: async (requestOptions: DepositRequest) => {
+    const { data } = await learnerAxios.post<ApiResult<DepositResponse>>(
+      "/api/learner/orbitcoin/deposit",
+      requestOptions
     );
     return data;
   },
