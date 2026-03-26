@@ -32,6 +32,7 @@ export const ROUTES = {
   LEARNER_GOAL_SELECT: "/app/goal-select",
   /** Lộ trình của tôi – danh sách concept + map theo goal đã chọn */
   LEARNER_MY_PATH: "/app/my-path",
+  LEARNER_COMPLAINTS: "/app/complaints",
   /** Đọc nội dung khái niệm – use with /app/concept/:id */
   LEARNER_CONCEPT: (id: string) => `/app/concept/${id}`,
   /** Danh sách concept – học thêm concept khác (query: goalId để lọc theo goal) */
@@ -42,4 +43,5 @@ export const ROUTES = {
   CMS_APP: "/cms",
   CMS_DASHBOARD: "/cms/dashboard",
   CMS_USERS: "/cms/users",
+  CMS_COMPLAINTS: "/cms/complaints",
 } as const;

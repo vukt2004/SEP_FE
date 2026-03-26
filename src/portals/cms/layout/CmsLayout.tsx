@@ -21,6 +21,7 @@ import {
   ChevronRight,
   User,
   LogOut,
+  MessageSquareWarning,
 } from "lucide-react";
 
 const CmsLayout: React.FC = () => {
@@ -40,6 +41,7 @@ const CmsLayout: React.FC = () => {
     { path: "/cms/users", label: "Users", icon: Users },
     { path: "/cms/reports", label: "Reports", icon: Flag },
     { path: "/cms/packages", label: "Packages", icon: Package },
+    { path: "/cms/complaints", label: "Complaints", icon: MessageSquareWarning },
   ];
 
   const isActive = (path: string) => location.pathname === path;

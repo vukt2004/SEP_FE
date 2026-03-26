@@ -15,6 +15,8 @@ const CmsMapsPage = React.lazy(() => import("@/portals/cms/pages/MapsPage"));
 const CmsReportsPage = React.lazy(() => import("@/portals/cms/pages/ReportsPage"));
 const CmsPackagesPage = React.lazy(() => import("@/portals/cms/pages/PackagesPage"));
 const CmsProfilePage = React.lazy(() => import("@/portals/cms/pages/ProfilePage"));
+const CmsComplaintsPage = React.lazy(() => import("@/portals/cms/pages/ComplaintsPage"));
+const CmsComplaintDetailPage = React.lazy(() => import("@/portals/cms/pages/ComplaintDetailPage"));
 
 // Optional: if you want a separate role guard, you can wrap dashboard/routes with it.
 // import { RequireCmsRole } from "@/portals/cms/guards/RequireCmsRole";
@@ -50,6 +52,14 @@ export const cmsRoutes: RouteObject = {
     {
       path: "packages",
       element: <CmsPackagesPage />,
+    },
+    {
+      path: "complaints",
+      element: <CmsComplaintsPage />,
+    },
+    {
+      path: "complaints/:id",
+      element: <CmsComplaintDetailPage />,
     },
     {
       path: "profile",
