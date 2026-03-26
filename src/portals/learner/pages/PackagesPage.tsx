@@ -253,18 +253,23 @@ export default function PackagesPage() {
         {purchaseModal && (
           <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h3
-                className={`${styles.modalTitle} ${
-                  purchaseModal.kind === "success" ? styles.modalTitleSuccess : styles.modalTitleError
-                }`}
-              >
-                {purchaseModal.kind === "success"
-                  ? "Purchase successful"
-                  : purchaseModal.kind === "insufficient"
-                    ? "Insufficient balance"
-                    : "Purchase failed"}
-              </h3>
-              <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              <Alert
+                variant={
+                  purchaseModal.kind === "success"
+                    ? "success"
+                    : purchaseModal.kind === "insufficient"
+                      ? "warning"
+                      : "error"
+                }
+                title={
+                  purchaseModal.kind === "success"
+                    ? "Purchase successful"
+                    : purchaseModal.kind === "insufficient"
+                      ? "Insufficient balance"
+                      : "Purchase failed"
+                }
+                message={purchaseModal.message}
+              />
               <div className={styles.modalActions}>
                 <button
                   type="button"

@@ -16,6 +16,10 @@ const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/Walle
 const LearnerMyMapsPage = React.lazy(() => import("@/portals/learner/pages/MyMapsPage"));
 const LearnerMapDetailPage = React.lazy(() => import("@/portals/learner/pages/MapDetailPage"));
 const LearnerMarketplacePage = React.lazy(() => import("@/portals/learner/pages/MarketplacePage"));
+const LearnerComplaintsPage = React.lazy(() => import("@/portals/learner/pages/ComplaintsPage"));
+const LearnerComplaintDetailPage = React.lazy(
+  () => import("@/portals/learner/pages/ComplaintDetailPage"),
+);
 
 // Pages (learner public)
 const LearnerLoginPage = React.lazy(() => import("@/portals/learner/pages/LoginPage"));
@@ -84,5 +88,7 @@ export const learnerRoutes: RouteObject = {
     { path: "my-path", element: <LearnerMyPathPage /> },
     { path: "concept/:id", element: <LearnerConceptDetailPage /> },
     { path: "concepts", element: <LearnerConceptsListPage /> },
+    { path: "complaints", element: <LearnerComplaintsPage /> },
+    { path: "complaints/:id", element: <LearnerComplaintDetailPage /> },
   ],
 };

@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Route,
+  MessageSquareWarning,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
@@ -248,6 +249,14 @@ export default function LearnerHeader() {
                   >
                     <Route size={18} />
                     <span>{t("myPath")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <MessageSquareWarning size={18} />
+                    <span>Complaints</span>
                   </NavLink>
                   <button
                     type="button"
