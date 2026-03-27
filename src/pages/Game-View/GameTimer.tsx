@@ -7,6 +7,8 @@ interface GameTimerProps {
   error: string | null;
   resetSignal?: number;
   onElapsedTimeChange?: (seconds: number) => void;
+  compact?: boolean;
+  isActive?: boolean;
 }
 
 const GameTimer: React.FC<GameTimerProps> = ({
@@ -15,6 +17,8 @@ const GameTimer: React.FC<GameTimerProps> = ({
   error,
   resetSignal = 0,
   onElapsedTimeChange,
+  compact = false,
+  isActive = true,
 }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const previousEngineElapsedRef = useRef(0);
@@ -23,7 +27,7 @@ const GameTimer: React.FC<GameTimerProps> = ({
   const engineSyncedToWallRef = useRef(false);
 
   useEffect(() => {
-    if (isLoading || error) {
+    if (isLoading || error || !isActive) {
       previousEngineElapsedRef.current = 0;
       carriedElapsedRef.current = 0;
       wallStartMsRef.current = null;
@@ -31,7 +35,7 @@ const GameTimer: React.FC<GameTimerProps> = ({
       setElapsedTime(0);
       onElapsedTimeChange?.(0);
     }
-  }, [isLoading, error, onElapsedTimeChange]);
+  }, [isLoading, error, isActive, onElapsedTimeChange]);
 
   useEffect(() => {
     previousEngineElapsedRef.current = 0;
@@ -42,9 +46,9 @@ const GameTimer: React.FC<GameTimerProps> = ({
     onElapsedTimeChange?.(0);
   }, [resetSignal, onElapsedTimeChange]);
 
-  // Update timer every 200ms when game is loaded
+  // Update timer every 200ms while gameplay is active
   useEffect(() => {
-    if (isLoading || error) return;
+    if (isLoading || error || !isActive) return;
 
     // If the engine hasn't started yet, keep a fallback timer so UI doesn't show "0:00".
     // Once engine time starts moving, we sync engine elapsed to the wall timer (no jump backwards).
@@ -92,13 +96,21 @@ const GameTimer: React.FC<GameTimerProps> = ({
     }, 200); // Update every 200ms
 
     return () => clearInterval(timerInterval);
-  }, [isLoading, error, engineRef, onElapsedTimeChange]);
+  }, [isLoading, error, isActive, engineRef, onElapsedTimeChange]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (compact) {
+    return (
+      <span style={{ fontSize: "14px", fontWeight: 800, color: "inherit" }}>
+        {formatTime(elapsedTime)}
+      </span>
+    );
+  }
 
   return (
     <div

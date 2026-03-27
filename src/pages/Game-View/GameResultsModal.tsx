@@ -7,7 +7,7 @@ type MetricResult = {
 };
 
 type MetricLimits = {
-  timeLimit: number;
+  timeStarLimit: number;
   stepEstimated: number;
   blockLimit: number;
 };
@@ -15,7 +15,7 @@ type MetricLimits = {
 function calculateStars(result: MetricResult, limits: MetricLimits): number {
   let stars = 0;
 
-  if (result.time <= limits.timeLimit) stars++;
+  if (result.time <= limits.timeStarLimit) stars++;
   if (result.steps <= limits.stepEstimated) stars++;
   if (result.blocks <= limits.blockLimit) stars++;
 
@@ -30,6 +30,7 @@ interface GameResultsModalProps {
   elapsedTime: number;
   fruitsCollected: number;
   timeLimitSeconds: number | null;
+  timeStarThresholdPercent: number | null;
   stepEstimated: number | null;
   blockLimit: number | null;
   onReset: () => void;
@@ -46,6 +47,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   elapsedTime,
   fruitsCollected,
   timeLimitSeconds,
+  timeStarThresholdPercent,
   stepEstimated,
   blockLimit,
   onReset,
@@ -62,11 +64,18 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   };
 
   const hasTimeLimit = typeof timeLimitSeconds === "number" && timeLimitSeconds > 0;
+  const normalizedTimeStarPercent =
+    typeof timeStarThresholdPercent === "number" && Number.isFinite(timeStarThresholdPercent)
+      ? Math.max(1, Math.min(100, Math.floor(timeStarThresholdPercent)))
+      : 100;
+  const timeStarLimitSeconds = hasTimeLimit
+    ? (timeLimitSeconds as number) * (normalizedTimeStarPercent / 100)
+    : Number.POSITIVE_INFINITY;
   const hasStepEstimated = typeof stepEstimated === "number" && stepEstimated > 0;
   const hasBlockLimit = typeof blockLimit === "number" && blockLimit > 0;
 
   const numericLimits: MetricLimits = {
-    timeLimit: hasTimeLimit ? (timeLimitSeconds as number) : Number.POSITIVE_INFINITY,
+    timeStarLimit: timeStarLimitSeconds,
     stepEstimated: hasStepEstimated ? (stepEstimated as number) : Number.POSITIVE_INFINITY,
     blockLimit: hasBlockLimit ? (blockLimit as number) : Number.POSITIVE_INFINITY,
   };
@@ -83,7 +92,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   const subtitle =
     stars === 3 ? "Perfect!" : stars === 2 ? "Great job!" : stars === 1 ? "Good effort!" : "Try again!";
 
-  const timePassed = elapsedTime <= numericLimits.timeLimit;
+  const timePassed = elapsedTime <= numericLimits.timeStarLimit;
   const stepsPassed = stepCount <= numericLimits.stepEstimated;
   const blocksPassed = blocksUsed <= numericLimits.blockLimit;
 
@@ -199,7 +208,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
             icon="⏱️"
             label="Time"
             current={Math.max(0, Number(elapsedTime.toFixed(2)))}
-            limit={numericLimits.timeLimit}
+            limit={numericLimits.timeStarLimit}
             passed={timePassed}
             valueText={formatTime(elapsedTime)}
           />

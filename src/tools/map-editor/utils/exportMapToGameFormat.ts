@@ -86,6 +86,7 @@ export interface GameLevelFormat {
     difficulty: string;
     description: string;
     targetAlgorithm: string;
+    timeStarThresholdPercent?: number;
     estimatedSteps: number;
     levelObjective?: string;
     requiredFruits?: number;
@@ -282,6 +283,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       difficulty: "medium",
       description: description,
       targetAlgorithm: "manual",
+      timeStarThresholdPercent: mapData.config.timeStarThresholdPercent,
       estimatedSteps: mapData.config.estimatedSteps,
       levelObjective: mapData.config.levelObjective ?? "",
       requiredFruits: mapData.config.requiredFruits,

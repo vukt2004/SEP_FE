@@ -69,6 +69,7 @@ interface MapEditorControlsProps {
   onDescriptionChange?: (description: string) => void;
   onDifficultyChange?: (difficulty: 1 | 2 | 3 | 4 | 5) => void;
   onTimeLimitChange?: (seconds: number) => void;
+  onTimeStarThresholdChange?: (percent: number) => void;
   onEstimatedStepsChange?: (steps: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
   onLevelObjectiveChange?: (objective: string) => void;
@@ -217,6 +218,7 @@ export function MapEditorControls({
   onDescriptionChange,
   onDifficultyChange,
   onTimeLimitChange,
+  onTimeStarThresholdChange,
   onEstimatedStepsChange,
   onWinConditionChange,
   onLevelObjectiveChange,
@@ -258,12 +260,14 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "timeStarThreshold"
     | "estimatedSteps"
     | "winCondition"
     | "levelObjective"
     | "requiredFruits"
     | "price"
     | "tags"
+    | "learnedTagsCsv"
     | "hints"
     | null
   >(null);
@@ -272,18 +276,21 @@ export function MapEditorControls({
     | "description"
     | "difficulty"
     | "timeLimit"
+    | "timeStarThreshold"
     | "estimatedSteps"
     | "winCondition"
     | "levelObjective"
     | "requiredFruits"
     | "price"
     | "tags"
+    | "learnedTagsCsv"
     | "hints"
     | null
   >(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedPortalColor, setSelectedPortalColor] = useState<"blue" | "green" | "orange" | "purple">("blue");
@@ -498,6 +505,12 @@ export function MapEditorControls({
     );
   };
 
+  const toggleLearnedTagSelection = (tagId: string) => {
+    setSelectedLearnedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+    );
+  };
+
   useEffect(() => {
     setAvatarPreviewUrl(initialAvatarUrl ?? null);
   }, [initialAvatarUrl, showMapInfoModal]);
@@ -548,7 +561,27 @@ export function MapEditorControls({
     .filter((tag) => selectedTagIds.includes(tag.id))
     .map((tag) => tag.name);
 
+  const hiddenLearnedKnowledgeTagNames = new Set([
+    "beginner",
+    "expert",
+    "easy",
+    "medium",
+    "hard",
+  ]);
+
+  const learnedKnowledgeTags = availableMapTags.filter(
+    (tag) => !hiddenLearnedKnowledgeTagNames.has(tag.name.trim().toLowerCase()),
+  );
+
+  const selectedLearnedTagNames = learnedKnowledgeTags
+    .filter((tag) => selectedLearnedTagIds.includes(tag.id))
+    .map((tag) => tag.name);
+
   const difficultyLabel = `${mapData.config.difficulty}/5`;
+  const timeStarThresholdPercent = Math.max(
+    1,
+    Math.min(100, Math.floor(mapData.config.timeStarThresholdPercent ?? 100)),
+  );
 
   const winConditionLabel =
     mapData.config.winCondition === 2
@@ -811,6 +844,8 @@ export function MapEditorControls({
         Price: mapData.config.price,
         HintsJson: hintsJson,
         TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
+        LearnedTagsCsv:
+          selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds.join(",") : undefined,
         MapDetailFile: file,
         AvatarFile: avatarFile ?? undefined,
       };
@@ -825,6 +860,7 @@ export function MapEditorControls({
         Price: payload.Price,
         HintsJson: payload.HintsJson,
         TagIdsCsv: payload.TagIdsCsv,
+        LearnedTagsCsv: payload.LearnedTagsCsv,
         MapDetailFile: payload.MapDetailFile,
       };
 
@@ -979,13 +1015,13 @@ export function MapEditorControls({
 
             <div style={styles.formGroup}>
               <label style={styles.label}>{tt("mapEditorBlockLimitLabel", "Block Limit:")}</label>
-              <p style={styles.helpText}>{tt("mapEditorBlockLimitHint", "Leave empty for unlimited blocks")}</p>
+              <p style={styles.helpText}>{tt("mapEditorBlockLimitHint", "Set the block limit for the player")}</p>
               <input
                 type="number"
                 min="1"
                 value={mapData.blockConstraints.blockLimit ?? ""}
                 onChange={(e) => handleBlockLimitInput(e.target.value)}
-                placeholder={tt("mapEditorUnlimited", "Unlimited")}
+                placeholder="30"
                 style={styles.input}
               />
             </div>
@@ -1262,7 +1298,10 @@ export function MapEditorControls({
               </button>
               <button
                 style={{ ...styles.actionButton, ...styles.saveButton }}
-                onClick={() => setShowMapInfoModal(true)}
+                onClick={() => {
+                  setSelectedLearnedTagIds(selectedTagIds);
+                  setShowMapInfoModal(true);
+                }}
                 disabled={userType === "unknown"}
                 title={
                   userType === "unknown"
@@ -1735,6 +1774,42 @@ export function MapEditorControls({
                   <div
                     style={{
                       ...styles.inlineField,
+                      ...(activeInlineField === "timeStarThreshold" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("timeStarThreshold")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("timeStarThreshold")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}</div>
+                    {activeInlineField === "timeStarThreshold" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={timeStarThresholdPercent}
+                        onChange={(e) =>
+                          onTimeStarThresholdChange?.(
+                            Math.max(1, Math.min(100, Number.parseInt(e.target.value, 10) || 100)),
+                          )
+                        }
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>{timeStarThresholdPercent}%</div>
+                    )}
+                    <div style={styles.inlineFieldHint}>
+                      {tt("mapEditorTimeStarThresholdHint", "Award the time star when elapsed time is at or below this percent of time limit.")}
+                    </div>
+                    {(hoveredInlineField === "timeStarThreshold" || activeInlineField === "timeStarThreshold") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
                       ...(activeInlineField === "estimatedSteps" ? styles.inlineFieldActive : {}),
                     }}
                     onMouseEnter={() => setHoveredInlineField("estimatedSteps")}
@@ -1986,6 +2061,77 @@ export function MapEditorControls({
                     </div>
                   )}
                   {(hoveredInlineField === "tags" || activeInlineField === "tags") && (
+                    <Pencil size={14} style={styles.inlineEditIcon} />
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    ...styles.inlineField,
+                    ...(activeInlineField === "learnedTagsCsv" ? styles.inlineFieldActive : {}),
+                  }}
+                  onMouseEnter={() => setHoveredInlineField("learnedTagsCsv")}
+                  onMouseLeave={() => setHoveredInlineField(null)}
+                  onClick={() => setActiveInlineField("learnedTagsCsv")}
+                >
+                  <div style={styles.inlineFieldLabel}>
+                    {tt("mapEditorLearnedKnowledge", "Learned knowledge")}
+                  </div>
+                  {activeInlineField === "learnedTagsCsv" ? (
+                    <div>
+                      {loadingMapTags ? (
+                        <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
+                      ) : (
+                        <div style={styles.tagWrap}>
+                          {learnedKnowledgeTags.map((tag) => {
+                            const selected = selectedLearnedTagIds.includes(tag.id);
+                            return (
+                              <button
+                                key={tag.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleLearnedTagSelection(tag.id);
+                                }}
+                                style={{
+                                  ...styles.tagChip,
+                                  ...(selected ? styles.tagChipSelected : {}),
+                                }}
+                              >
+                                {tag.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveInlineField(null);
+                        }}
+                      >
+                        {tt("mapEditorDone", "Done")}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.tagWrap}>
+                      {selectedLearnedTagNames.length > 0 ? (
+                        selectedLearnedTagNames.map((name) => (
+                          <span key={`learned-${name}`} style={{ ...styles.tagChip, ...styles.tagChipSelected }}>
+                            {name}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={styles.inlineFieldValueMuted}>
+                          {tt("mapEditorNoLearnedTagsCsv", "No learned knowledge set")}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {(hoveredInlineField === "learnedTagsCsv" ||
+                    activeInlineField === "learnedTagsCsv") && (
                     <Pencil size={14} style={styles.inlineEditIcon} />
                   )}
                 </div>
@@ -2441,6 +2587,12 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#475569",
     lineHeight: 1.5,
     whiteSpace: "pre-wrap",
+  },
+  inlineFieldHint: {
+    marginTop: "8px",
+    fontSize: "12px",
+    color: "#64748b",
+    lineHeight: 1.4,
   },
   inlineInput: {
     width: "100%",

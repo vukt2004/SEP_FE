@@ -25,6 +25,8 @@ export interface MapConfig {
   difficulty: 1 | 2 | 3 | 4 | 5;
   /** Time limit in seconds */
   timeLimitSeconds: number;
+  /** Time threshold for earning the time star, as percent of timeLimitSeconds (1..100) */
+  timeStarThresholdPercent?: number;
   /** Estimated algorithm steps to complete the level */
   estimatedSteps: number;
   /** Win condition: 1 (reach goal), 2 (collect all fruits) */

@@ -54,6 +54,11 @@ const clampWinCondition = (value: number): 1 | 2 => {
   return value === 2 ? 2 : 1;
 };
 
+const clampTimeStarThresholdPercent = (value: number): number => {
+  if (!Number.isFinite(value)) return 100;
+  return Math.max(1, Math.min(100, Math.floor(value)));
+};
+
 const normalizeNumberLayer = (
   layer: unknown,
   width: number,
@@ -119,7 +124,7 @@ const normalizeBlockConstraints = (
   const allBlockTypes = blocksConfig.blocks.map((block) => block.type);
   if (!source) {
     return {
-      blockLimit: null,
+      blockLimit: 30,
       allowedBlocks: [],
       requiredBlocks: [],
     };
@@ -190,6 +195,12 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           1,
           Math.floor(
             toNumber(detail.timeLimitMs, toNumber(configRaw.timeLimitSeconds, 60) * 1000) / 1000,
+          ),
+        ),
+        timeStarThresholdPercent: clampTimeStarThresholdPercent(
+          toNumber(
+            isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined,
+            toNumber(configRaw.timeStarThresholdPercent, 100),
           ),
         ),
         estimatedSteps: Math.max(
@@ -344,6 +355,9 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         description: detail.description || "",
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
+        timeStarThresholdPercent: clampTimeStarThresholdPercent(
+          toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined, 100),
+        ),
         estimatedSteps: Math.max(
           1,
           Math.floor(
@@ -568,6 +582,10 @@ export default function MapEditor() {
     store?.setMapTimeLimitSeconds(seconds);
   };
 
+  const handleTimeStarThresholdChange = (percent: number) => {
+    store?.setMapTimeStarThresholdPercent(percent);
+  };
+
   const handleEstimatedStepsChange = (steps: number) => {
     store?.setMapEstimatedSteps(steps);
   };
@@ -670,6 +688,7 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onTimeStarThresholdChange={handleTimeStarThresholdChange}
               onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onLevelObjectiveChange={handleLevelObjectiveChange}
@@ -749,6 +768,7 @@ export default function MapEditor() {
               onDescriptionChange={handleDescriptionChange}
               onDifficultyChange={handleDifficultyChange}
               onTimeLimitChange={handleTimeLimitChange}
+              onTimeStarThresholdChange={handleTimeStarThresholdChange}
               onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
               onLevelObjectiveChange={handleLevelObjectiveChange}
