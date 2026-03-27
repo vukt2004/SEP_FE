@@ -7,6 +7,7 @@ import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
+import { extractLearnedTags } from "@/lib/maps/learnedTags";
 import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
@@ -22,6 +23,7 @@ type MapItem = {
   likesPercentage: number; // e.g. 63.3
   isFavorited: boolean;
   previews?: string[]; // for featured carousel
+  learnedTags?: string[];
 };
 
 const TAG_STYLES: Record<MapTag["color"], React.CSSProperties> = {
@@ -102,6 +104,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
     views: baseViews,
     likesPercentage: Math.min(likes, 99),
     isFavorited: false,
+    learnedTags: extractLearnedTags(apiMap),
   };
 }
 
@@ -575,6 +578,8 @@ function MapCard({
   tagStyles: Record<MapTag["color"], React.CSSProperties>;
   onClick?: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       variants={cardVariants}
@@ -655,6 +660,22 @@ function MapCard({
         >
           {map.title}
         </h3>
+        {map.learnedTags && map.learnedTags.length > 0 && (
+          <p
+            style={{
+              margin: "0 0 8px 0",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-2)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={map.learnedTags.join(", ")}
+          >
+            {t("youWillLearn")}: {map.learnedTags.slice(0, 3).join(", ")}
+          </p>
+        )}
         {/* Hidden: card views & likes */}
         {/*
         <div
