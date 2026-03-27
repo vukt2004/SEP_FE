@@ -301,6 +301,7 @@ function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) 
   const sign = isCredit ? "+" : "-";
   const color = isCredit ? "var(--success)" : "var(--warning)";
   const tagBg = isCredit ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.14)";
+  const amountVnd = transaction.amountVND ?? transaction.amountVnd;
 
   return (
     <div style={styles.txRow}>
@@ -321,7 +322,13 @@ function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) 
         <div style={{ fontWeight: 700, fontSize: 15, color }}>
           {sign}
           {Math.abs(transaction.amount).toLocaleString("en-US")}
+          {" OrbitCoin"}
         </div>
+        {amountVnd !== undefined && amountVnd !== null && (
+          <div style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
+            {formatVnd(amountVnd)}
+          </div>
+        )}
         {transaction.balanceAfter !== undefined && transaction.balanceAfter !== null && (
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
             {tBalanceLabel()}: {transaction.balanceAfter.toLocaleString("en-US")}
@@ -334,6 +341,14 @@ function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) 
 
 function tBalanceLabel() {
   return "Balance";
+}
+
+function formatVnd(value: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function card(): React.CSSProperties {

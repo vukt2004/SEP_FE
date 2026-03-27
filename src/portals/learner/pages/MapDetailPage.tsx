@@ -12,6 +12,7 @@ import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
+import { extractLearnedTags } from "@/lib/maps/learnedTags";
 
 type PurchaseModalState = {
   kind: "success" | "insufficient" | "error";
@@ -227,6 +228,7 @@ export default function MapDetailPage() {
   const previews = map?.avatarUrl && !heroImageFailed ? [map.avatarUrl] : [];
 
   const rawTags = map?.tagNames ?? [];
+  const learnedTags = map ? extractLearnedTags(map) : [];
   const dedupeByLower = (arr: string[]) => {
     const seen = new Set<string>();
     return arr.filter((x) => {
@@ -404,6 +406,18 @@ export default function MapDetailPage() {
             </section>
 
             <section className={styles.steamSidebarSection}>
+              {learnedTags.length > 0 && (
+                <div className={styles.steamTagGroup} style={{ marginBottom: 14 }}>
+                  <h3 className={styles.steamSubTitle}>{t("youWillLearn")}</h3>
+                  <div className={styles.steamTagsList}>
+                    {learnedTags.map((tag) => (
+                      <span key={tag} className={styles.steamTag}>
+                        {getConceptLabel(tag, locale)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <h2 className={styles.steamSectionTitle}>{t("tags")}</h2>
               {rawTags.length > 0 ? (
                 <div className={styles.steamTagGroups}>

@@ -16,6 +16,8 @@ export type CoinTransactionTypeEnum =
 export type OrbitCoinTransaction = {
   id: string;
   amount: number;
+  amountVND?: number | null;
+  amountVnd?: number | null;
   transactionType: CoinTransactionTypeEnum;
   relatedEntityType?: string | null;
   relatedEntityId?: string | null;

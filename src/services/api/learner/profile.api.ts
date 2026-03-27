@@ -18,6 +18,15 @@ export type ProfileResponse = {
   salary?: number | null;
 };
 
+export type MyXpProfileResponse = {
+  userId: string;
+  currentXp: number;
+  currentLevel: number;
+  nextLevel: number;
+  xpToNextLevel: number;
+  progressPercent: number;
+};
+
 export type ApiResult<T> = {
   isSuccess: boolean;
   message?: string | null;
@@ -51,6 +60,11 @@ export const learnerProfileApi = {
       headers: { "Content-Type": "multipart/form-data" },
       },
     );
+    return data;
+  },
+
+  getMyXpProfile: async () => {
+    const { data } = await learnerAxios.get<ApiResult<MyXpProfileResponse>>("/api/learner/xp/profile");
     return data;
   },
 };

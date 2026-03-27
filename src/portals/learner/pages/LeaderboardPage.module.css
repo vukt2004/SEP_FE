@@ -1,0 +1,265 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.page > * {
+  width: 100%;
+  max-width: 980px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.refreshBtn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.podiumWrap {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.podiumCard {
+  background: color-mix(in srgb, var(--surface) 98%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.podiumCardTop1 {
+  border-color: #f6aa1c;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #f6aa1c 55%, transparent);
+}
+
+.podiumMedal {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.avatarCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  background: var(--primary);
+}
+
+.avatarCircleImg {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.podiumNameRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.podiumName {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+}
+
+.podiumLevel {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.podiumXp {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.podiumXpLabel {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.card {
+  background: color-mix(in srgb, var(--surface) 98%, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 14px;
+}
+
+.table th {
+  color: color-mix(in srgb, var(--text-2) 90%, #444);
+  font-weight: 700;
+  background: color-mix(in srgb, #f2efe5 80%, var(--surface));
+  font-size: 12px;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.rankBadge {
+  display: inline-flex;
+  min-width: 36px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 12px;
+  color: #0f4ab5;
+  background: color-mix(in srgb, #0f4ab5 10%, transparent);
+}
+
+.userCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userAvatarMini {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: color-mix(in srgb, var(--primary) 80%, #1b4fd1);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.userAvatarMiniImg {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.userName {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.meTag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1b4fd1;
+  background: color-mix(in srgb, #1b4fd1 12%, transparent);
+}
+
+.myRow td {
+  background: color-mix(in srgb, #1b4fd1 7%, var(--surface));
+}
+
+.empty {
+  padding: 22px 16px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.error {
+  padding: 12px 16px;
+  color: var(--danger);
+  border-top: 1px solid var(--border);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 95%, var(--surface-2));
+}
+
+.pagerInfo {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pagerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagerBtn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pagerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .podiumWrap {
+    grid-template-columns: 1fr;
+  }
+}

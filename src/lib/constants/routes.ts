@@ -18,6 +18,7 @@ export const ROUTES = {
   LEARNER_REGISTER: "/register",
   LEARNER_LEARN: "/app/browse",
   LEARNER_PROFILE: "/app/profile",
+  LEARNER_LEADERBOARD: "/app/leaderboard",
   LEARNER_WALLET: "/app/wallet",
   LEARNER_MAPS: "/app/my-maps",
   LEARNER_MARKETPLACE: "/app/marketplace",
