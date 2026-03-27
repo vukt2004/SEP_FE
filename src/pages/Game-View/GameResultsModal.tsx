@@ -24,7 +24,6 @@ function calculateStars(result: MetricResult, limits: MetricLimits): number {
 
 interface GameResultsModalProps {
   isOpen: boolean;
-  onClose: () => void;
   isWin: boolean;
   stepCount: number;
   blocksUsed: number;
@@ -41,7 +40,6 @@ interface GameResultsModalProps {
 
 export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   isOpen,
-  onClose,
   isWin,
   stepCount,
   blocksUsed,
@@ -151,7 +149,6 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   return (
     <div
       style={styles.overlay}
-      onClick={onClose}
     >
       <style>{`
         @keyframes resultsModalFade {
@@ -165,10 +162,6 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
       `}</style>
 
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} style={styles.closeButton} aria-label="Close results modal">
-          ×
-        </button>
-
         <div style={styles.header}>
           <div style={styles.headerIcon}>{isWin ? "🏆" : "😔"}</div>
           <h2

@@ -275,6 +275,10 @@
   color: color-mix(in srgb, var(--danger) 85%, var(--text));
 }
 
+.modalTitleWarning {
+  color: color-mix(in srgb, var(--warning, #f59e0b) 85%, var(--text));
+}
+
 .modalMessage {
   margin: 10px 0 0;
   color: var(--text-2);

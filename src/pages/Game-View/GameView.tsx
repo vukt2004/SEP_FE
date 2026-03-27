@@ -764,6 +764,7 @@ export default function GameView() {
         ? `Collect ${mapConfig.requiredFruits} Fruits and reach goal`
         : "Collect All Fruits and reach goal"
       : "Reach Goal";
+  const objectiveText = (mapConfig?.levelObjective ?? "").trim() || missionGoal;
   const requiredBlocks = (blockConstraints?.requiredBlocks ?? []).map((rule) => {
     const label = toBlockLabel(rule.type);
     return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
@@ -1357,6 +1358,25 @@ export default function GameView() {
             >
               🍎 {t("fruitsLabel")} {collectedFruits}
             </div>
+            <div
+              style={{
+                flex: "1 1 260px",
+                minWidth: "220px",
+                padding: "8px 12px",
+                borderRadius: "12px",
+                background: "color-mix(in srgb, var(--primary) 16%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+                fontSize: "13px",
+                fontWeight: 700,
+                color: "var(--text)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={objectiveText}
+            >
+               {t("gameObjectiveLabel")}: {objectiveText}
+            </div>
             <button
               onClick={() => setShowHintsModal(true)}
               disabled={false}
@@ -1679,7 +1699,6 @@ export default function GameView() {
       {gameResult && (
         <GameResultsModal
           isOpen={showResultsModal}
-          onClose={gameResult?.isWin ? handlePlayAgainFromResults : () => setShowResultsModal(false)}
           isWin={gameResult.isWin}
           stepCount={gameResult.stepCount}
           blocksUsed={gameResult.blocksUsed}

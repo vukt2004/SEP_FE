@@ -37,6 +37,7 @@ export function createEmptyMap(
       timeLimitSeconds: 300, // Default: 5 minutes
       estimatedSteps: 50, // Default estimated solution length
       winCondition: 1, // Default: Reach goal
+      levelObjective: "",
       price: 0, // Default: Free
     },
     layers: {

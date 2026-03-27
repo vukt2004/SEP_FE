@@ -29,6 +29,8 @@ export interface MapConfig {
   estimatedSteps: number;
   /** Win condition: 1 (reach goal), 2 (collect all fruits) */
   winCondition: 1 | 2;
+  /** Optional user-authored level objective text */
+  levelObjective?: string;
   /** Number of required fruits to collect for winCondition 2 (0 or undefined means all fruits) */
   requiredFruits?: number;
   /** Map price */
