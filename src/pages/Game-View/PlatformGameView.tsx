@@ -92,10 +92,12 @@ export default function PlatformGameView() {
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
+  const [liveSteps, setLiveSteps] = useState(0);
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
   const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
+  const [hasDoor, setHasDoor] = useState(false);
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const timerElapsedRef = useRef(0);
   const warningToastTimeoutRef = useRef<number | null>(null);
@@ -223,6 +225,7 @@ export default function PlatformGameView() {
         const levelDefinition = levelResult.level;
         setBlockConstraints(levelDefinition.blockConstraints ?? null);
         setLevelTitle(levelDefinition.name || levelDefinition.id || "Level");
+        setHasDoor(levelDefinition.objects?.some((obj: any) => obj.type === "door") ?? false);
 
         // Set canvas size based on level dimensions
         const tileSize = 48;
@@ -520,6 +523,7 @@ export default function PlatformGameView() {
         const ctx = executor.getExecutionContext();
         setExecVariables({ ...ctx.variables });
         setLastRemoved(ctx.lastRemoved);
+        setLiveSteps(engineRef.current?.getStepCount() ?? 0);
       });
       executorRef.current = executor;
 
@@ -528,6 +532,7 @@ export default function PlatformGameView() {
         const engine = engineRef.current;
         if (engine) {
           engine.executeCommand(result.command);
+          setLiveSteps(engine.getStepCount());
         }
       }, 500, () => {
         setIsExecutorRunning(false);
@@ -574,6 +579,7 @@ export default function PlatformGameView() {
     setShowTrapFailedModal(false);
     setExecVariables({});
     setLastRemoved(null);
+    setLiveSteps(0);
     fruitCollectedPulseRef.current = false;
   };
 
@@ -610,6 +616,7 @@ export default function PlatformGameView() {
     setExecVariables({});
     setLastRemoved(null);
     setBlocksUsed(0);
+    setLiveSteps(0);
     setRevealedHints(0);
     setIsLevelStarted(false);
     setShowMissionModal(true);
@@ -630,6 +637,7 @@ export default function PlatformGameView() {
       const result = executor.next();
       if (result) {
         engine.executeCommand(result.command);
+        setLiveSteps(engine.getStepCount());
       }
     } else {
       setIsExecutorRunning(false);
@@ -969,6 +977,22 @@ export default function PlatformGameView() {
     };
   };
 
+  const timeLimit = mapConfig?.timeLimitSeconds && mapConfig.timeLimitSeconds > 0 ? mapConfig.timeLimitSeconds : Number.POSITIVE_INFINITY;
+  const timeStarThresholdPercent =
+    mapConfig?.timeStarThresholdPercent && Number.isFinite(mapConfig.timeStarThresholdPercent)
+      ? Math.max(1, Math.min(100, Math.floor(mapConfig.timeStarThresholdPercent)))
+      : 100;
+  const timeStarLimit = Number.isFinite(timeLimit)
+    ? timeLimit * (timeStarThresholdPercent / 100)
+    : Number.POSITIVE_INFINITY;
+  const stepLimit = mapConfig?.estimatedSteps && mapConfig.estimatedSteps > 0 ? mapConfig.estimatedSteps : Number.POSITIVE_INFINITY;
+  const blockLimit = blockConstraints?.blockLimit && blockConstraints.blockLimit > 0 ? blockConstraints.blockLimit : Number.POSITIVE_INFINITY;
+
+  let currentStars = 0;
+  if (elapsedDisplay <= timeStarLimit) currentStars++;
+  if (liveSteps <= stepLimit) currentStars++;
+  if (blocksUsed <= blockLimit) currentStars++;
+
   return (
     <div
       style={{
@@ -1137,23 +1161,25 @@ export default function PlatformGameView() {
             <RotateCcw size={15} /> {t("reset")}
           </button>
 
-          <button
-            onClick={() => setShowDoorKeyHints((prev) => !prev)}
-            disabled={isLoading || !!error}
-            style={{
-              padding: "8px 10px",
-              borderRadius: "10px",
-              border: "1px solid var(--border)",
-              background: showDoorKeyHints ? "var(--primary)" : "var(--surface-2)",
-              color: showDoorKeyHints ? "#fff" : "var(--text)",
-              fontSize: "12px",
-              fontWeight: 700,
-              cursor: isLoading || !!error ? "not-allowed" : "pointer",
-            }}
-            title="Toggle door key message"
-          >
-            {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
-          </button>
+          {hasDoor && (
+            <button
+              onClick={() => setShowDoorKeyHints((prev) => !prev)}
+              disabled={isLoading || !!error}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
+                background: showDoorKeyHints ? "var(--primary)" : "var(--surface-2)",
+                color: showDoorKeyHints ? "#fff" : "var(--text)",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: isLoading || !!error ? "not-allowed" : "pointer",
+              }}
+              title="Toggle door key message"
+            >
+              {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
+            </button>
+          )}
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
@@ -1218,70 +1244,50 @@ export default function PlatformGameView() {
         >
           <div
             style={{
-              padding: "12px",
+              padding: "8px 16px",
               borderBottom: "1px solid var(--border)",
               background: "var(--surface-2)",
               display: "flex",
-              gap: "10px",
+              gap: "16px",
               flexWrap: "wrap",
               alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: "14px",
             }}
           >
-            {/* <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: "12px",
-                background: "color-mix(in srgb, var(--info) 18%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--info) 50%, var(--border))",
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "var(--text)",
-              }}
-            >
-              ⏱ Time
-            </div> */}
-            <div style={{ minWidth: "120px" }}>
-              <GameTimer
-                engineRef={engineRef}
-                isLoading={isLoading}
-                error={error}
-                resetSignal={timerResetSignal}
-                onElapsedTimeChange={handleTimerElapsedChange}
-              />
+            <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+              {/* Time */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: elapsedDisplay > timeLimit ? "var(--danger)" : elapsedDisplay >= timeLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
+                ⏱️ <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} resetSignal={timerResetSignal} onElapsedTimeChange={handleTimerElapsedChange} compact isActive={isLevelStarted && !showResultsModal} />
+                {timeLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {timeLimit}s</span>}
+              </div>
+
+              {/* Steps */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: liveSteps > stepLimit ? "var(--danger)" : liveSteps >= stepLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
+                👣 <strong>{liveSteps}</strong>
+                {stepLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {stepLimit}</span>}
+              </div>
+
+              {/* Blocks */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: blocksUsed > blockLimit ? "var(--danger)" : blocksUsed >= blockLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
+                🧩 <strong>{blocksUsed}</strong>
+                {blockLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {blockLimit}</span>}
+              </div>
+
+              {/* Fruits */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
+                🍎 <strong>{collectedFruits}</strong>
+                {mapConfig?.requiredFruits ? <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {mapConfig.requiredFruits}</span> : ""}
+              </div>
+
+              {/* Stars */}
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", marginLeft: "8px" }}>
+                {[0, 1, 2].map(i => (
+                  <span key={i} style={{ color: i < currentStars ? "var(--warning)" : "var(--border)", fontSize: "16px" }}>★</span>
+                ))}
+              </div>
             </div>
 
-            <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: "12px",
-                background: "color-mix(in srgb, var(--warning) 18%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--warning) 45%, var(--border))",
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "var(--text)",
-              }}
-            >
-              🍎 {t("fruitsLabel")} {collectedFruits}
-            </div>
-            <div
-              style={{
-                flex: "1 1 260px",
-                minWidth: "220px",
-                padding: "8px 12px",
-                borderRadius: "12px",
-                background: "color-mix(in srgb, var(--primary) 16%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "var(--text)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              title={objectiveText}
-            >
-               {t("gameObjectiveLabel")}: {objectiveText}
-            </div>
             <button
               onClick={() => setShowHintsModal(true)}
               disabled={false}
@@ -1290,11 +1296,11 @@ export default function PlatformGameView() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "8px 12px",
+                padding: "6px 10px",
                 borderRadius: "12px",
                 ...hintButtonStyles[hintButtonState],
                 cursor: "pointer",
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 800,
                 transition: "all 0.2s ease",
                 boxShadow: "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
@@ -1304,19 +1310,10 @@ export default function PlatformGameView() {
             >
               💡 {t("hintsCount")} ({revealedHintCount}/{totalHints})
             </button>
-            {/* <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: "12px",
-                background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
-                border: "1px solid color-mix(in srgb, var(--primary) 45%, var(--border))",
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "var(--text)",
-              }}
-            >
-              🎯 {mapConfig?.winCondition === 1 ? "Reach Goal" : "Collect All Fruits"}
-            </div> */}
+          </div>
+
+          <div style={{ padding: "8px 16px", background: "color-mix(in srgb, var(--primary) 8%, var(--surface))", borderBottom: "1px solid var(--border)", fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: "6px" }}>
+            <strong>{t("gameObjectiveLabel")}:</strong> {objectiveText}
           </div>
 
           <div
@@ -1329,10 +1326,7 @@ export default function PlatformGameView() {
               minHeight: 0,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
-                {t("gameViewTitle")}
-              </h2>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
                   style={{
@@ -1610,6 +1604,7 @@ export default function PlatformGameView() {
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
           timeLimitSeconds={mapConfig?.timeLimitSeconds ?? null}
+          timeStarThresholdPercent={mapConfig?.timeStarThresholdPercent ?? 100}
           stepEstimated={mapConfig?.estimatedSteps ?? null}
           blockLimit={blockConstraints?.blockLimit ?? null}
           multiplayerFooterNote={

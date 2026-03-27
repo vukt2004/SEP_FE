@@ -42,8 +42,11 @@ export interface MapListItem {
   mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
+  createdByUserName?: string | null;
+  isAuthor?: boolean;
   createdAt: string;
   tagNames: string[];
+  learnedTags?: string[];
   winCondition: number;
   conceptNames?: string[];
   avatarUrl: string | null;

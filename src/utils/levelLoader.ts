@@ -70,6 +70,8 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
       type: mapDetail.type === "Platform" ? "platform" : "topdown", // Convert API format to MapConfig format
       difficulty: mapDetail.difficulty as 1 | 2 | 3 | 4 | 5,
       timeLimitSeconds: Math.floor(mapDetail.timeLimitMs / 1000), // Convert ms to seconds
+      timeStarThresholdPercent:
+        (levelData as LevelDefinition).metadata?.timeStarThresholdPercent as number | undefined,
       estimatedSteps: (levelData as LevelDefinition).metadata?.estimatedSteps as number | undefined,
       winCondition: mapDetail.winCondition as 1 | 2,
       levelObjective: (levelData as LevelDefinition).metadata?.levelObjective as string | undefined,
@@ -111,6 +113,7 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
       mapConfig = data.config;
     } else if (data.metadata || (data.width && data.height)) {
       mapConfig = {
+        timeStarThresholdPercent: data.metadata?.timeStarThresholdPercent,
         estimatedSteps: data.metadata?.estimatedSteps,
         levelObjective: data.metadata?.levelObjective,
         requiredFruits: data.metadata?.requiredFruits,

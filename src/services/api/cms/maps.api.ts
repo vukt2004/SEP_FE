@@ -98,6 +98,7 @@ export const cmsMapsApi = {
     MapDetailFile: File;
     HintsJson?: string;
     TagIdsCsv?: string;
+    LearnedTagsCsv?: string;
     AvatarFile?: File | null;
   }) {
     const formData = new FormData();
@@ -115,6 +116,10 @@ export const cmsMapsApi = {
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
+    }
+
+    if (params.LearnedTagsCsv) {
+      formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
     }
 
     formData.append("MapDetailFile", params.MapDetailFile);

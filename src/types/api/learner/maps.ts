@@ -25,6 +25,8 @@ export interface UploadMapFromJsonParams {
   HintsJson?: string;
   /** Comma-separated tag IDs */
   TagIdsCsv?: string;
+  /** Comma-separated learned tag IDs */
+  LearnedTagsCsv?: string;
   /** Map detail JSON file */
   MapDetailFile: File;
   /** Avatar image file (optional) */
@@ -80,6 +82,7 @@ export interface Map {
   createdByUserName?: string | null;
   createdAt: string;
   tagNames: string[];
+  learnedTags?: string[];
   winCondition: number;
   avatarUrl: string | null;
   /**

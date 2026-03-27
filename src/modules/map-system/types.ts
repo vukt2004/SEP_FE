@@ -78,6 +78,7 @@ export interface LevelDefinition {
     difficulty?: "easy" | "medium" | "hard";
     description?: string;
     targetAlgorithm?: string; // e.g., "DFS", "BFS", "backtracking"
+    timeStarThresholdPercent?: number;
     levelObjective?: string;
     requiredFruits?: number;
     [key: string]: unknown;

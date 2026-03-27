@@ -122,6 +122,10 @@ export const learnerMapsApi = {
       formData.append("TagIdsCsv", params.TagIdsCsv);
     }
 
+    if (params.LearnedTagsCsv) {
+      formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
+    }
+
     formData.append("MapDetailFile", params.MapDetailFile);
 
     if (params.AvatarFile) {
@@ -159,6 +163,10 @@ export const learnerMapsApi = {
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
+    }
+
+    if (params.LearnedTagsCsv) {
+      formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
     }
 
     formData.append("MapDetailFile", params.MapDetailFile);

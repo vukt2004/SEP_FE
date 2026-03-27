@@ -713,6 +713,17 @@ export class EditorStore {
   }
 
   /**
+   * Update the time threshold for awarding a time star
+   *
+   * @param percent - Percent of map time limit (1..100)
+   */
+  setMapTimeStarThresholdPercent(percent: number): void {
+    this.saveHistory();
+    this.mapData.config.timeStarThresholdPercent = Math.max(1, Math.min(100, Math.floor(percent)));
+    this.notify();
+  }
+
+  /**
    * Update the estimated steps for solving the map
    *
    * @param steps - Estimated number of steps
@@ -940,7 +951,7 @@ export class EditorStore {
     // Backward compatibility: Add block constraints if missing
     if (!loadedMap.blockConstraints) {
       loadedMap.blockConstraints = {
-        blockLimit: null,
+        blockLimit: 30,
         allowedBlocks: [],
         requiredBlocks: [],
       };

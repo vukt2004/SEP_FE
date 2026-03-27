@@ -884,6 +884,10 @@ function MapCard({
       .slice(0, 2)
       .map((name) => getConceptLabel(name, locale))
       .join(", ") || "—";
+  const keyLearnings =
+    (map.learnedTags ?? [])
+      .map((name) => getConceptLabel(name, locale))
+      .join(", ") || "—";
 
   const cardContent = (
     <>
@@ -949,6 +953,9 @@ function MapCard({
         </div>
         <p className={styles.prerequisiteText}>
           {t("prerequisiteKnowledge")}: {prerequisites}
+        </p>
+        <p className={styles.prerequisiteText}>
+          {t("keyLearnings")}: {keyLearnings}
         </p>
         <div className={styles.statusRow}>
           {status !== "in_progress" &&
