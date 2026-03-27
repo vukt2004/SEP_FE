@@ -34,6 +34,7 @@ import {
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
+import { extractLearnedTags } from "@/lib/maps/learnedTags";
 import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
@@ -417,6 +418,7 @@ const MapCard: React.FC<MapCardProps> = ({
   const { t } = useTranslation();
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
+  const learnedTags = extractLearnedTags(map);
 
   return (
     <div
@@ -519,6 +521,24 @@ const MapCard: React.FC<MapCardProps> = ({
           </div>
 
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {learnedTags.slice(0, 2).map((tag, idx) => (
+              <span
+                key={`learned-${idx}-${tag}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "3px 9px",
+                  borderRadius: "999px",
+                  fontSize: "11px",
+                  background: "rgba(34, 197, 94, 0.14)",
+                  color: "#166534",
+                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                }}
+              >
+                {t("youWillLearn")}: {tag}
+              </span>
+            ))}
             {map.tagNames.slice(0, 4).map((tag, idx) => (
               <span
                 key={idx}

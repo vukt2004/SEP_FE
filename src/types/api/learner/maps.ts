@@ -82,6 +82,8 @@ export interface Map {
   tagNames: string[];
   winCondition: number;
   avatarUrl: string | null;
+  learnedTag?: string[] | string | null;
+  learnedTags?: string[] | string | null;
   /**
    * true if this map is created by current user; false if it's only purchased/owned.
    * (Field is returned by GET /api/learner/maps/my-maps)
@@ -190,6 +192,8 @@ export interface MapDetail {
   conceptNames: string[];
   winCondition: number;
   mapDetailJson?: unknown;
+  learnedTag?: string[] | string | null;
+  learnedTags?: string[] | string | null;
 }
 
 /**
@@ -212,6 +216,8 @@ export interface MapInfo {
   tagNames: string[];
   winCondition: number;
   avatarUrl: string | null;
+  learnedTag?: string[] | string | null;
+  learnedTags?: string[] | string | null;
 }
 
 export type MapInfoResult = ApiResult<MapInfo>;

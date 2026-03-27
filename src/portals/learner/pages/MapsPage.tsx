@@ -24,6 +24,7 @@ import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
 import styles from "./MapsPage.module.css";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
+import { extractLearnedTags } from "@/lib/maps/learnedTags";
 
 /** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
 const DIFFICULTY_TAG_NAMES = new Set(
@@ -878,6 +879,7 @@ function MapCard({
   const difficultyClass =
     diffTier === "easy" ? styles.difficultyEasy : diffTier === "medium" ? styles.difficultyMedium : styles.difficultyHard;
   const tagNames = map.tagNames ?? [];
+  const learnedTags = extractLearnedTags(map).map((name) => getConceptLabel(name, locale));
   const conceptTags = tagNames.filter((name) => !isDifficultyTag(name));
   const prerequisites =
     conceptTags
@@ -950,6 +952,11 @@ function MapCard({
         <p className={styles.prerequisiteText}>
           {t("prerequisiteKnowledge")}: {prerequisites}
         </p>
+        {learnedTags.length > 0 && (
+          <p className={styles.prerequisiteText}>
+            {t("youWillLearn")}: {learnedTags.slice(0, 3).join(", ")}
+          </p>
+        )}
         <div className={styles.statusRow}>
           {status !== "in_progress" &&
             (status === "locked" ? (
