@@ -40,6 +40,8 @@ import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
+import { AlertToast } from "@/shared/components/AlertToast";
 import { useTranslation } from "@/lib/i18n/translations";
 import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import blocksConfig from "../../shared/block/blocks-config.json";
@@ -78,6 +80,7 @@ export default function GameView() {
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
+  const [xpToast, setXpToast] = useState<string>("");
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
@@ -968,6 +971,7 @@ export default function GameView() {
         if (!isGuid(levelId)) return;
         if (!workspaceRef.current) return;
 
+        const before = gameResult.isWin ? await learnerProfileApi.getMyXpProfile().catch(() => null) : null;
         const program = generateAST(workspaceRef.current);
         await learnerGameplayApi.validateSolution({
           mapId: levelId,
@@ -979,6 +983,18 @@ export default function GameView() {
           clientBlocksUsed: gameResult.blocksUsed,
           clientElapsedSeconds: gameResult.elapsedTime,
         });
+        if (gameResult.isWin) {
+          const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+          const beforeXp = before?.data?.currentXp ?? null;
+          const afterXp = after?.data?.currentXp ?? null;
+          if (beforeXp != null && afterXp != null) {
+            const delta = afterXp - beforeXp;
+            if (delta > 0) {
+              setXpToast(`+${delta} XP`);
+              window.setTimeout(() => setXpToast(""), 2600);
+            }
+          }
+        }
       } catch (err) {
         console.error("Failed to save play history", err);
         historyRecordedRef.current = false;
@@ -1078,6 +1094,7 @@ export default function GameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
+      {xpToast ? <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} /> : null}
       {warningToast && (
         <div
           role="status"

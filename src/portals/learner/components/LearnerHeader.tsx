@@ -14,6 +14,7 @@ import {
   Moon,
   Route,
   MessageSquareWarning,
+  Trophy,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
@@ -139,6 +140,11 @@ export default function LearnerHeader() {
                 {t("myPath")}
               </HeaderNavLink>
             </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_LEADERBOARD ?? "/app/leaderboard"} icon={Trophy}>
+                Leaderboard
+              </HeaderNavLink>
+            </motion.div>
           </nav>
         </div>
 
@@ -249,6 +255,14 @@ export default function LearnerHeader() {
                   >
                     <Route size={18} />
                     <span>{t("myPath")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_LEADERBOARD ?? "/app/leaderboard"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <Trophy size={18} />
+                    <span>Leaderboard</span>
                   </NavLink>
                   <NavLink
                     to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"}

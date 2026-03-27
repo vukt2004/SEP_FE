@@ -1,6 +1,10 @@
 // src/portals/learner/pages/ProfilePage.tsx
 import { useEffect, useMemo, useState } from "react";
-import { learnerProfileApi, type ProfileResponse } from "@/services/api/learner/profile.api";
+import {
+  learnerProfileApi,
+  type MyXpProfileResponse,
+  type ProfileResponse,
+} from "@/services/api/learner/profile.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -44,6 +48,7 @@ export default function ProfilePage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [playHistory, setPlayHistory] = useState<PaginationResult<MapPlayHistoryItem> | null>(null);
+  const [xpProfile, setXpProfile] = useState<MyXpProfileResponse | null>(null);
 
   const fullName = useMemo(() => {
     const fn = form.firstName?.trim();
@@ -99,9 +104,10 @@ export default function ProfilePage() {
       setHistoryError(null);
 
       try {
-        const [profileRes, historyRes] = await Promise.all([
+        const [profileRes, historyRes, xpRes] = await Promise.all([
           learnerProfileApi.getProfile(),
           learnerGameplayApi.getMyPlayHistory({ pageNumber: 1, pageSize: 10 }),
+          learnerProfileApi.getMyXpProfile(),
         ]);
 
         if (!alive) return;
@@ -123,6 +129,10 @@ export default function ProfilePage() {
           setPlayHistory(historyRes.data ?? null);
         } else {
           setHistoryError(historyRes.message ?? "Failed to load play history");
+        }
+
+        if (xpRes.isSuccess) {
+          setXpProfile(xpRes.data ?? null);
         }
       } catch {
         if (!alive) return;
@@ -250,6 +260,27 @@ export default function ProfilePage() {
             <div className={styles.identityMeta}>
               <h1 className={styles.identityName}>{fullName}</h1>
               <p className={styles.identitySubtitle}>{profile?.email ?? "—"}</p>
+              {xpProfile && (
+                <div className={styles.identityXp}>
+                  <span className={styles.identityLevelBadge}>Lv. {xpProfile.currentLevel}</span>
+                  <div
+                    className={styles.identityXpBar}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(xpProfile.progressPercent)}
+                    aria-label="Experience progress"
+                  >
+                    <div
+                      className={styles.identityXpBarFill}
+                      style={{ width: `${Math.max(0, Math.min(100, xpProfile.progressPercent))}%` }}
+                    />
+                  </div>
+                  <span className={styles.identityXpText}>
+                    {xpProfile.xpToNextLevel.toLocaleString()} XP to Lv. {xpProfile.nextLevel}
+                  </span>
+                </div>
+              )}
             </div>
             <div className={styles.identityActions}>
               {successMsg && (
