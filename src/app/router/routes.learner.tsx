@@ -27,6 +27,7 @@ const LearnerRegisterPage = React.lazy(() => import("@/portals/learner/pages/Reg
 // Phase 2 sẽ tạo file này:
 const LearnerVerifyOtpPage = React.lazy(() => import("@/portals/learner/pages/VerifyOtpPage"));
 const LearnerProfilePage = React.lazy(() => import("@/portals/learner/pages/ProfilePage"));
+const LearnerLeaderboardPage = React.lazy(() => import("@/portals/learner/pages/LeaderboardPage"));
 const LearnerModeSelectPage = React.lazy(() => import("@/portals/learner/pages/ModeSelectPage"));
 const LearnerRoomCreatePage = React.lazy(() => import("@/portals/learner/pages/RoomCreatePage"));
 const LearnerRoomJoinPage = React.lazy(() => import("@/portals/learner/pages/RoomJoinPage"));
@@ -73,6 +74,7 @@ export const learnerRoutes: RouteObject = {
     // Default entry: Marketplace
     { index: true, element: <LearnerMarketplacePage /> },
     { path: "profile", element: <LearnerProfilePage /> },
+    { path: "leaderboard", element: <LearnerLeaderboardPage /> },
     { path: "wallet", element: <LearnerWalletPage /> },
     { path: "maps", element: <LearnerMapsBrowsePage /> },
     { path: "packages", element: <LearnerPackagesPage /> },

@@ -6,9 +6,11 @@ import { ChevronLeft, Loader2, Check, List } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { learnerLearningPathApi } from "@/services/api/learner/learningPath.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { ConceptMiniGame } from "@/portals/learner/components/ConceptMiniGame";
 import { getConceptContentComponent } from "@/portals/learner/concept-content";
 import type { ConceptDetailDto, ConceptCompletionDto } from "@/types/api/learner/learningPath";
+import { AlertToast } from "@/shared/components/AlertToast";
 import styles from "./ConceptDetailPage.module.css";
 
 /** Chuẩn hóa contentKey từ BE (có thể tiếng Việt hoặc tên khác) → key file/TOC/mini-game */
@@ -206,6 +208,7 @@ export default function ConceptDetailPage() {
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [xpToast, setXpToast] = useState<string>("");
 
   const fetchConcept = useCallback(() => {
     if (!conceptId) return;
@@ -280,12 +283,23 @@ export default function ConceptDetailPage() {
   const handleMarkComplete = async () => {
     setCompleting(true);
     try {
+      const before = await learnerProfileApi.getMyXpProfile().catch(() => null);
       const res = await learnerLearningPathApi.completeConcept(conceptId);
       if (res.data?.isSuccess) {
         setCompleted(true);
         setCompletion((c) =>
           c ? { ...c, isCompleted: true } : { isCompleted: true, completedAt: null },
         );
+        const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+        const beforeXp = before?.data?.currentXp ?? null;
+        const afterXp = after?.data?.currentXp ?? null;
+        if (beforeXp != null && afterXp != null) {
+          const delta = afterXp - beforeXp;
+          if (delta > 0) {
+            setXpToast(`+${delta} XP`);
+            window.setTimeout(() => setXpToast(""), 2600);
+          }
+        }
         setTimeout(() => navigate(ROUTES.LEARNER_MY_PATH), 800);
         return;
       }
@@ -306,6 +320,7 @@ export default function ConceptDetailPage() {
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.wrapper}>
+        {xpToast ? <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} /> : null}
         {toc && toc.length > 0 && (
           <aside className={styles.sidebar} aria-label="Mục lục">
             <div className={styles.sidebarSticky}>
