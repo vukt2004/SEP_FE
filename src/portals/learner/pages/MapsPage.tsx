@@ -886,10 +886,6 @@ function MapCard({
       .slice(0, 2)
       .map((name) => getConceptLabel(name, locale))
       .join(", ") || "—";
-  const keyLearnings =
-    (map.learnedTags ?? [])
-      .map((name) => getConceptLabel(name, locale))
-      .join(", ") || "—";
 
   const cardContent = (
     <>

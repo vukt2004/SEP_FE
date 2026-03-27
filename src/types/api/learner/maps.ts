@@ -82,7 +82,6 @@ export interface Map {
   createdByUserName?: string | null;
   createdAt: string;
   tagNames: string[];
-  learnedTags?: string[];
   winCondition: number;
   avatarUrl: string | null;
   learnedTag?: string[] | string | null;
