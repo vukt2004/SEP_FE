@@ -735,6 +735,17 @@ export class EditorStore {
   }
 
   /**
+   * Update the map level objective text
+   *
+   * @param objective - User-authored objective
+   */
+  setMapLevelObjective(objective: string): void {
+    this.saveHistory();
+    this.mapData.config.levelObjective = objective;
+    this.notify();
+  }
+
+  /**
    * Update the map required fruits
    *
    * @param count - Number of required fruits (0 means all fruits)

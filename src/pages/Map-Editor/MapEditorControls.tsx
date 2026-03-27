@@ -16,6 +16,7 @@ import {
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
 import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
 import { TilePalette} from "./TilePalette";
 import {
   ObjectSpriteLoader,
@@ -70,6 +71,7 @@ interface MapEditorControlsProps {
   onTimeLimitChange?: (seconds: number) => void;
   onEstimatedStepsChange?: (steps: number) => void;
   onWinConditionChange?: (winCondition: 1 | 2) => void;
+  onLevelObjectiveChange?: (objective: string) => void;
   onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
@@ -92,6 +94,7 @@ interface ObjectSelectionButtonProps {
   cache: ObjectSpriteCache;
   selectedObjectId: number | null;
   isSelected: boolean;
+  deselectHint: string;
   onObjectSelect: (id: number|null) => void;
 }
 
@@ -101,6 +104,7 @@ function ObjectSelectionButton({
   objectDef,
   cache,
   selectedObjectId,
+  deselectHint,
   onObjectSelect,
 }: ObjectSelectionButtonProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -165,7 +169,7 @@ function ObjectSelectionButton({
         boxShadow: selectedObjectId === objectId ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
       }}
       onClick={() => onObjectSelect(selectedObjectId === objectId ? null : objectId)}
-      title={`${label} (click again to deselect)`}
+      title={`${label} (${deselectHint})`}
     >
       <div
         style={{
@@ -215,6 +219,7 @@ export function MapEditorControls({
   onTimeLimitChange,
   onEstimatedStepsChange,
   onWinConditionChange,
+  onLevelObjectiveChange,
   onRequiredFruitsChange,
   onPriceChange,
   onBlockLimitChange,
@@ -239,6 +244,13 @@ export function MapEditorControls({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
   const { locale } = useLanguageStore();
+  const t = useMemo(() => getT(locale), [locale]);
+  const isVi = locale === "vi";
+  const tr = (en: string, vi: string) => (isVi ? vi : en);
+  const tt = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
   const [availableTileGroups, setAvailableTileGroups] = useState<string[]>([]);
   const [selectedTileGroup, setSelectedTileGroup] = useState("all");
   const [activeInlineField, setActiveInlineField] = useState<
@@ -248,6 +260,7 @@ export function MapEditorControls({
     | "timeLimit"
     | "estimatedSteps"
     | "winCondition"
+    | "levelObjective"
     | "requiredFruits"
     | "price"
     | "tags"
@@ -261,6 +274,7 @@ export function MapEditorControls({
     | "timeLimit"
     | "estimatedSteps"
     | "winCondition"
+    | "levelObjective"
     | "requiredFruits"
     | "price"
     | "tags"
@@ -357,7 +371,13 @@ export function MapEditorControls({
     ObjectDefinition
   > | null>(null);
   const availableBlocks = blocksConfig.blocks;
-  const blockTypeToLabel = new Map(availableBlocks.map((block) => [block.type, block.label]));
+  const blockTypeToLabel = new Map(
+    availableBlocks.map((block) => {
+      const key = `block.${block.type}`;
+      const translated = t(key);
+      return [block.type, translated === key ? block.label : translated] as const;
+    }),
+  );
   const normalizedAllowedBlocks = Array.from(
     new Set(mapData.blockConstraints.allowedBlocks ?? []),
   ).filter((type) => availableBlocks.some((block) => block.type === type));
@@ -530,7 +550,10 @@ export function MapEditorControls({
 
   const difficultyLabel = `${mapData.config.difficulty}/5`;
 
-  const winConditionLabel = mapData.config.winCondition === 2 ? "Collect Fruits" : "Reach Goal";
+  const winConditionLabel =
+    mapData.config.winCondition === 2
+      ? tr("Collect Fruits", "Thu thap trai cay")
+      : tr("Reach Goal", "Den dich");
 
   const handleResizeConfirm = () => {
     // Validate map size (10-30)
@@ -538,7 +561,12 @@ export function MapEditorControls({
     const validHeight = Math.max(10, Math.min(30, resizeHeight));
 
     if (validWidth !== resizeWidth || validHeight !== resizeHeight) {
-      alert(`Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`);
+      alert(
+        tr(
+          `Map size must be between 10x10 and 30x30. Adjusting to ${validWidth}x${validHeight}.`,
+          `Kich thuoc ban do phai trong khoang 10x10 den 30x30. Tu dong dieu chinh ve ${validWidth}x${validHeight}.`,
+        ),
+      );
     }
 
     onResize(validWidth, validHeight, resizeTileSize);
@@ -642,11 +670,11 @@ export function MapEditorControls({
     const requiredSet = new Set(requiredTypes);
 
     if (allowedSet.size !== normalizedAllowedBlocks.length) {
-      errors.push("Allowed blocks contains duplicate block types.");
+      errors.push(tr("Allowed blocks contains duplicate block types.", "Khối được phép có kiểu khối bị trùng."));
     }
 
     if (requiredSet.size !== requiredTypes.length) {
-      errors.push("Required blocks contains duplicate block types.");
+      errors.push(tr("Required blocks contains duplicate block types.", "Khối bắt buộc có kiểu khối bị trùng."));
     }
 
     if (normalizedAllowedBlocks.length > 0) {
@@ -654,7 +682,7 @@ export function MapEditorControls({
         (rule) => !allowedSet.has(rule.type),
       );
       if (invalidRequired.length > 0) {
-        errors.push("Required blocks must be selected from Allowed Blocks.");
+        errors.push(tr("Required blocks must be selected from Allowed Blocks.", "Khối bắt buộc phải được chọn từ danh sách Khối được phép."));
       }
     }
 
@@ -663,7 +691,7 @@ export function MapEditorControls({
       blockLimit !== null &&
       (typeof blockLimit !== "number" || !Number.isFinite(blockLimit) || blockLimit < 1)
     ) {
-      errors.push("Block limit must be at least 1 or empty for unlimited.");
+      errors.push(tr("Block limit must be at least 1 or empty for unlimited.", "Giới hạn khối phải >= 1 hoặc để trống để không giới hạn."));
     }
 
     return errors;
@@ -672,18 +700,23 @@ export function MapEditorControls({
   const toBlockLabel = (type: string) => blockTypeToLabel.get(type) ?? type;
   const allowedSummary =
     normalizedAllowedBlocks.length === 0
-      ? "All blocks allowed"
+      ? tr("All blocks allowed", "Tat ca khối deu duoc phep")
       : normalizedAllowedBlocks.map((type) => toBlockLabel(type)).join(", ");
   const requiredSummary =
     normalizedRequiredBlocks.length === 0
-      ? "No required blocks"
+      ? tr("No required blocks", "Khong co khối bat buoc")
       : normalizedRequiredBlocks
-          .map((rule) => `Use "${toBlockLabel(rule.type)}" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`)
+          .map((rule) =>
+            tr(
+              `Use "${toBlockLabel(rule.type)}" at least ${rule.minCount} time${rule.minCount > 1 ? "s" : ""}`,
+              `Dung "${toBlockLabel(rule.type)}" it nhat ${rule.minCount} lan`,
+            ),
+          )
           .join("; ");
   const limitSummary =
     mapData.blockConstraints.blockLimit === null
-      ? "Unlimited"
-      : `${mapData.blockConstraints.blockLimit} blocks`;
+      ? tr("Unlimited", "Khong gioi han")
+      : tr(`${mapData.blockConstraints.blockLimit} blocks`, `${mapData.blockConstraints.blockLimit} khoi`);
   const hasAllowedRequiredConflict =
     normalizedAllowedBlocks.length > 0 &&
     normalizedRequiredBlocks.some((rule) => !normalizedAllowedBlocks.includes(rule.type));
@@ -691,14 +724,14 @@ export function MapEditorControls({
   const handleSaveMapFromModal = async () => {
     const mapName = mapData.config.name?.trim();
     if (!mapName) {
-      alert("Please set a map name before saving");
+      alert(tr("Please set a map name before saving", "Vui long dat ten ban do truoc khi luu"));
       return;
     }
 
     const hasPlayer = mapData.objects.items.some((item) => item.type === "player");
     const hasGoal = mapData.objects.items.some((item) => item.type === "goal");
     if (!hasPlayer || !hasGoal) {
-      alert("Please place both a Player start and a Goal before saving the map.");
+      alert(tr("Please place both a Player start and a Goal before saving the map.", "Vui long dat ca vi tri bat dau cua Nguoi choi va Dich truoc khi luu ban do."));
       return;
     }
 
@@ -710,24 +743,32 @@ export function MapEditorControls({
       const totalFruits = mapData.objects.items.filter((obj) => obj.type === "fruit").length;
       if (mapData.config.requiredFruits > totalFruits) {
         alert(
-          `Required fruits (${mapData.config.requiredFruits}) cannot exceed the total number of fruits on the map (${totalFruits}).`,
+          tr(
+            `Required fruits (${mapData.config.requiredFruits}) cannot exceed the total number of fruits on the map (${totalFruits}).`,
+            `So trai cay yeu cau (${mapData.config.requiredFruits}) khong duoc vuot qua tong so trai cay tren ban do (${totalFruits}).`,
+          ),
         );
         return;
       }
     }
 
     if (userType === "unknown") {
-      alert("You must be logged in as a learner or CMS user to save maps");
+      alert(tr("You must be logged in as a learner or CMS user to save maps", "Ban can dang nhap voi tai khoan learner hoac CMS de luu ban do"));
       return;
     }
 
     const ruleErrors = validateBlockRules();
     if (ruleErrors.length > 0) {
-      alert(`Please fix block rules before saving:\n- ${ruleErrors.join("\n- ")}`);
+      alert(
+        tr(
+          `Please fix block rules before saving:\n- ${ruleErrors.join("\n- ")}`,
+          `Vui long sua quy tac khoi truoc khi luu:\n- ${ruleErrors.join("\n- ")}`,
+        ),
+      );
       return;
     }
 
-    if (!confirm("Do you want to save the map?")) return;
+    if (!confirm(tr("Do you want to save the map?", "Ban co muon luu ban do khong?"))) return;
 
     try {
       setUploading(true);
@@ -796,7 +837,10 @@ export function MapEditorControls({
           const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
           if (!avatarResponse.data.isSuccess) {
             alert(
-              `Map updated but avatar upload failed: ${avatarResponse.data.message || "Unknown error"}`,
+              tr(
+                `Map updated but avatar upload failed: ${avatarResponse.data.message || "Unknown error"}`,
+                `Cap nhat ban do thanh cong nhung tai avatar that bai: ${avatarResponse.data.message || "Loi khong xac dinh"}`,
+              ),
             );
             return;
           }
@@ -808,8 +852,11 @@ export function MapEditorControls({
             : "";
         alert(
           isEditingExistingMap
-            ? "Map updated successfully!"
-            : `Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`,
+            ? tr("Map updated successfully!", "Cap nhat ban do thanh cong!")
+            : tr(
+                `Map saved successfully!${mapId ? ` Map ID: ${mapId}` : ""}`,
+                `Luu ban do thanh cong!${mapId ? ` Ma ban do: ${mapId}` : ""}`,
+              ),
         );
         setShowMapInfoModal(false);
         setAvatarFile(null);
@@ -820,11 +867,21 @@ export function MapEditorControls({
           navigate(-1);
         }
       } else {
-        alert(`Save failed: ${response.data.message || "Unknown error"}`);
+        alert(
+          tr(
+            `Save failed: ${response.data.message || "Unknown error"}`,
+            `Luu that bai: ${response.data.message || "Loi khong xac dinh"}`,
+          ),
+        );
       }
     } catch (error) {
       console.error("Save error:", error);
-      alert(`Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        tr(
+          `Failed to save map: ${error instanceof Error ? error.message : "Unknown error"}`,
+          `Khong the luu ban do: ${error instanceof Error ? error.message : "Loi khong xac dinh"}`,
+        ),
+      );
     } finally {
       setUploading(false);
     }
@@ -836,7 +893,7 @@ export function MapEditorControls({
         <>
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              <History size={16} /> History
+              <History size={16} /> {tt("mapEditorHistory", "History")}
             </h3>
             <div style={styles.buttonGroup}>
               <button
@@ -847,7 +904,7 @@ export function MapEditorControls({
                 onClick={onUndo}
                 disabled={!canUndo}
               >
-                ↶ Undo
+                ↶ {tt("mapEditorUndo", "Undo")}
               </button>
               <button
                 style={{
@@ -857,14 +914,14 @@ export function MapEditorControls({
                 onClick={onRedo}
                 disabled={!canRedo}
               >
-                ↷ Redo
+                ↷ {tt("mapEditorRedo", "Redo")}
               </button>
             </div>
           </div>
 
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              <Layers size={16} /> Active Layer
+              <Layers size={16} /> {tt("mapEditorActiveLayer", "Active Layer")}
             </h3>
             <div style={styles.buttonGroup}>
               <button
@@ -874,7 +931,7 @@ export function MapEditorControls({
                 }}
                 onClick={() => onLayerChange("background")}
               >
-                Background
+                {tt("mapEditorLayerBackground", "Background")}
               </button>
               <button
                 style={{
@@ -883,7 +940,7 @@ export function MapEditorControls({
                 }}
                 onClick={() => onLayerChange("ground")}
               >
-                Ground
+                {tt("mapEditorLayerGround", "Ground")}
               </button>
               <button
                 style={{
@@ -892,7 +949,7 @@ export function MapEditorControls({
                 }}
                 onClick={() => onLayerChange("foreground")}
               >
-                Foreground
+                {tt("mapEditorLayerForeground", "Foreground")}
               </button>
               <button
                 style={{
@@ -901,42 +958,45 @@ export function MapEditorControls({
                 }}
                 onClick={() => onLayerChange("collision")}
               >
-                Collision
+                {tt("mapEditorLayerCollision", "Collision")}
               </button>
             </div>
             {activeLayer === "collision" && (
               <p style={styles.helpText}>
-                Collision layer: paint blocks movement, erase makes paths passable.
+                {tr(
+                  "Collision layer: paint blocks movement, erase makes paths passable.",
+                  "Lop va cham: to de chan di chuyen, xoa de cho phep di qua.",
+                )}
               </p>
             )}
             {activeLayer === "foreground" && (
-              <p style={styles.helpText}>Foreground renders above objects and player.</p>
+              <p style={styles.helpText}>{tr("Foreground renders above objects and player.", "Tien canh hien thi tren vat the va nguoi choi.")}</p>
             )}
           </div>
 
           <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Block Rules</h3>
+            <h3 style={styles.sectionTitle}>{tt("mapEditorBlockRules", "Block Rules")}</h3>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Block Limit:</label>
-              <p style={styles.helpText}>Leave empty for unlimited blocks</p>
+              <label style={styles.label}>{tt("mapEditorBlockLimitLabel", "Block Limit:")}</label>
+              <p style={styles.helpText}>{tt("mapEditorBlockLimitHint", "Leave empty for unlimited blocks")}</p>
               <input
                 type="number"
                 min="1"
                 value={mapData.blockConstraints.blockLimit ?? ""}
                 onChange={(e) => handleBlockLimitInput(e.target.value)}
-                placeholder="Unlimited"
+                placeholder={tt("mapEditorUnlimited", "Unlimited")}
                 style={styles.input}
               />
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Allowed Blocks:</label>
-              <p style={styles.helpText}>Leave empty to allow all blocks</p>
-              <p style={styles.helpText}>Only selected blocks will be available to the player</p>
+              <label style={styles.label}>{tt("mapEditorAllowedBlocksLabel", "Allowed Blocks:")}</label>
+              <p style={styles.helpText}>{tt("mapEditorAllowedBlocksHint1", "Leave empty to allow all blocks")}</p>
+              <p style={styles.helpText}>{tt("mapEditorAllowedBlocksHint2", "Only selected blocks will be available to the player")}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 {normalizedAllowedBlocks.length === 0 && (
-                  <div style={styles.placeholderText}>No selection. All blocks are allowed.</div>
+                  <div style={styles.placeholderText}>{tt("mapEditorAllowedBlocksEmpty", "No selection. All blocks are allowed.")}</div>
                 )}
                 {normalizedAllowedBlocks.map((type, index) => (
                   <div
@@ -953,9 +1013,11 @@ export function MapEditorControls({
                       onChange={(e) => updateAllowedBlock(index, e.target.value)}
                       style={styles.select}
                     >
-                      {availableBlocks.map((block) => (
+                      {availableBlocks
+                        .filter((block) => block.type === type || !normalizedAllowedBlocks.includes(block.type))
+                        .map((block) => (
                         <option key={`panel-allowed-option-${block.type}`} value={block.type}>
-                          {block.label}
+                          {toBlockLabel(block.type)}
                         </option>
                       ))}
                     </select>
@@ -971,7 +1033,7 @@ export function MapEditorControls({
                         fontSize: "11px",
                       }}
                     >
-                      Remove
+                      {tt("mapEditorRemove", "Remove")}
                     </button>
                   </div>
                 ))}
@@ -997,16 +1059,19 @@ export function MapEditorControls({
                   fontSize: "12px",
                 }}
               >
-                + Add Allowed Block
+                + {tt("mapEditorAddAllowedBlock", "Add Allowed Block")}
               </button>
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>Required Blocks:</label>
-              <p style={styles.helpText}>Players must use these blocks at least N times</p>
+              <label style={styles.label}>{tt("mapEditorRequiredBlocksLabel", "Required Blocks:")}</label>
+              <p style={styles.helpText}>{tt("mapEditorRequiredBlocksHint", "Players must use these blocks at least N times")}</p>
               {hasAllowedRequiredConflict && (
                 <p style={styles.ruleWarningText}>
-                  Some required blocks are outside Allowed Blocks and must be fixed before saving.
+                  {tr(
+                    "Some required blocks are outside Allowed Blocks and must be fixed before saving.",
+                    "Mot so khoi bat buoc nam ngoai danh sach Khoi duoc phep va can sua truoc khi luu.",
+                  )}
                 </p>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -1026,9 +1091,11 @@ export function MapEditorControls({
                       style={styles.select}
                       disabled={blocksAvailableForGameplay.length === 0}
                     >
-                      {blocksAvailableForGameplay.map((block) => (
+                      {blocksAvailableForGameplay
+                        .filter((block) => block.type === rule.type || !normalizedRequiredBlocks.some((r) => r.type === block.type))
+                        .map((block) => (
                         <option key={`panel-required-option-${block.type}`} value={block.type}>
-                          {block.label}
+                          {toBlockLabel(block.type)}
                         </option>
                       ))}
                     </select>
@@ -1055,7 +1122,7 @@ export function MapEditorControls({
                         fontSize: "11px",
                       }}
                     >
-                      Remove
+                      {tt("mapEditorRemove", "Remove")}
                     </button>
                   </div>
                 ))}
@@ -1086,29 +1153,29 @@ export function MapEditorControls({
                   fontSize: "12px",
                 }}
               >
-                + Add Required Block
+                + {tt("mapEditorAddRequiredBlock", "Add Required Block")}
               </button>
               {blocksAvailableForGameplay.length === 0 && (
                 <p style={styles.ruleWarningText}>
-                  No blocks are currently available for requirement rules.
+                  {tr("No blocks are currently available for requirement rules.", "Hien tai khong co khoi nao kha dung cho quy tac bat buoc.")}
                 </p>
               )}
             </div>
 
             <div style={styles.ruleSummaryPanel}>
-              <p style={styles.ruleSummaryTitle}>Rule Summary:</p>
-              <p style={styles.ruleSummaryItem}>- Allowed: {allowedSummary}</p>
-              <p style={styles.ruleSummaryItem}>- Required: {requiredSummary}</p>
-              <p style={styles.ruleSummaryItem}>- Limit: {limitSummary}</p>
+              <p style={styles.ruleSummaryTitle}>{tt("mapEditorRuleSummary", "Rule Summary:")}</p>
+              <p style={styles.ruleSummaryItem}>- {tt("mapEditorAllowedShort", "Allowed")}: {allowedSummary}</p>
+              <p style={styles.ruleSummaryItem}>- {tt("mapEditorRequiredShort", "Required")}: {requiredSummary}</p>
+              <p style={styles.ruleSummaryItem}>- {tt("mapEditorLimitShort", "Limit")}: {limitSummary}</p>
             </div>
           </div>
 
           <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Object Metadata</h3>
-            <p style={styles.helpText}>Configure metadata for placed doors and boxes.</p>
+            <h3 style={styles.sectionTitle}>{tt("mapEditorObjectMetadata", "Object Metadata")}</h3>
+            <p style={styles.helpText}>{tt("mapEditorObjectMetadataHint", "Configure metadata for placed doors and boxes.")}</p>
 
             {configurableObjects.length === 0 && (
-              <p style={styles.placeholderText}>Place a door or box object to configure metadata.</p>
+              <p style={styles.placeholderText}>{tr("Place a door or box object to configure metadata.", "Dat mot cua hoac hop de cau hinh metadata.")}</p>
             )}
 
             {configurableObjects.map(({ item, index }) => {
@@ -1116,7 +1183,7 @@ export function MapEditorControls({
                 const door = getDoorMetadata(item.metadata);
                 return (
                   <div key={`door-meta-${index}`} style={styles.objectMetadataCard}>
-                    <p style={styles.objectMetadataTitle}>Door at ({item.x}, {item.y})</p>
+                    <p style={styles.objectMetadataTitle}>{tr("Door at", "Cua tai")} ({item.x}, {item.y})</p>
                     <label style={styles.checkboxLabel}>
                       <input
                         type="checkbox"
@@ -1125,7 +1192,7 @@ export function MapEditorControls({
                           updateDoorMetadata(index, item.metadata, { isOpen: e.target.checked })
                         }
                       />
-                      Open by default
+                      {tr("Open by default", "Mo mac dinh")}
                     </label>
                     <label style={styles.checkboxLabel}>
                       <input
@@ -1135,19 +1202,19 @@ export function MapEditorControls({
                           updateDoorMetadata(index, item.metadata, { isLocked: e.target.checked })
                         }
                       />
-                      Locked
+                      {tr("Locked", "Khoa")}
                     </label>
-                    <label style={styles.label}>Unlock Code</label>
+                    <label style={styles.label}>{tr("Unlock Code", "Ma mo khoa")}</label>
                     <input
                       type="text"
                       value={door.unlockCode}
                       onChange={(e) =>
                         updateDoorMetadata(index, item.metadata, { unlockCode: e.target.value })
                       }
-                      placeholder="e.g. AB1"
+                      placeholder={tr("e.g. AB1", "vi du: AB1")}
                       style={styles.input}
                     />
-                    <p style={styles.helpText}>Supported characters: {supportedUnlockCharactersLabel}</p>
+                    <p style={styles.helpText}>{tr("Supported characters", "Ky tu ho tro")}: {supportedUnlockCharactersLabel}</p>
                   </div>
                 );
               }
@@ -1158,7 +1225,7 @@ export function MapEditorControls({
                   <p style={styles.objectMetadataTitle}>
                     {item.type} at ({item.x}, {item.y})
                   </p>
-                  <label style={styles.label}>Hardness</label>
+                  <label style={styles.label}>{tr("Hardness", "Do cung")}</label>
                   <input
                     type="number"
                     min={1}
@@ -1176,30 +1243,34 @@ export function MapEditorControls({
 
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              <Settings2 size={16} /> Map Settings
+              <Settings2 size={16} /> {tt("mapEditorMapSettings", "Map Settings")}
             </h3>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Map Type</label>
+              <label style={styles.label}>{tt("mapEditorMapType", "Map Type")}</label>
               <select
                 value={mapData.config.type}
                 onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown")}
                 style={styles.select}
               >
-                <option value="platform">Platform</option>
-                <option value="topdown">Top Down</option>
+                <option value="platform">{tr("Platform", "Platform")}</option>
+                <option value="topdown">{tr("Top Down", "Top Down")}</option>
               </select>
             </div>
             <div style={styles.actionButtons}>
               <button style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
-                <Maximize2 size={14} /> Resize Map
+                <Maximize2 size={14} /> {tt("mapEditorResizeMap", "Resize Map")}
               </button>
               <button
                 style={{ ...styles.actionButton, ...styles.saveButton }}
                 onClick={() => setShowMapInfoModal(true)}
                 disabled={userType === "unknown"}
-                title={userType === "unknown" ? "Please login to save maps" : "Save map to server"}
+                title={
+                  userType === "unknown"
+                    ? tr("Please login to save maps", "Vui long dang nhap de luu ban do")
+                    : tr("Save map to server", "Luu ban do len may chu")
+                }
               >
-                <Save size={14} /> Save Map
+                <Save size={14} /> {tt("mapEditorSaveMap", "Save Map")}
               </button>
             </div>
           </div>
@@ -1213,7 +1284,7 @@ export function MapEditorControls({
             activeLayer === "foreground") && (
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>
-                <Shapes size={16} /> Tile Tools
+                <Shapes size={16} /> {tt("mapEditorTileTools", "Tile Tools")}
               </h3>
               <div style={styles.buttonGroup}>
                 <button
@@ -1222,9 +1293,9 @@ export function MapEditorControls({
                     ...(selectedTool === "paint" ? styles.buttonActive : {}),
                   }}
                   onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
-                  title="Paint tiles"
+                  title={tr("Paint tiles", "To o gach")}
                 >
-                  <Brush size={14} /> Paint
+                  <Brush size={14} /> {tt("mapEditorPaint", "Paint")}
                 </button>
                 <button
                   style={{
@@ -1232,9 +1303,9 @@ export function MapEditorControls({
                     ...(selectedTool === "erase" ? styles.buttonActive : {}),
                   }}
                   onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
-                  title="Erase tiles"
+                  title={tr("Erase tiles", "Xoa o gach")}
                 >
-                  <Eraser size={14} /> Erase
+                  <Eraser size={14} /> {tt("mapEditorErase", "Erase")}
                 </button>
                 <button
                   style={{
@@ -1242,9 +1313,9 @@ export function MapEditorControls({
                     ...(selectedTool === "fill" ? styles.buttonActive : {}),
                   }}
                   onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
-                  title="Fill area"
+                  title={tr("Fill area", "To day khu vuc")}
                 >
-                  <PaintBucket size={14} /> Fill
+                  <PaintBucket size={14} /> {tt("mapEditorFill", "Fill")}
                 </button>
               </div>
             </div>
@@ -1253,9 +1324,9 @@ export function MapEditorControls({
           {activeLayer === "collision" && (
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>
-                <Shapes size={16} /> Collision Tools
+                <Shapes size={16} /> {tt("mapEditorCollisionTools", "Collision Tools")}
               </h3>
-              <p style={styles.helpText}>Draw solid tiles or erase them to make walkable spaces.</p>
+              <p style={styles.helpText}>{tr("Draw solid tiles or erase them to make walkable spaces.", "Ve o chan duong hoac xoa de tao duong di.")}</p>
               <div style={styles.buttonGroup}>
                 <button
                   style={{
@@ -1264,7 +1335,7 @@ export function MapEditorControls({
                   }}
                   onClick={() => onToolSelect(selectedTool === "paint" ? null : "paint")}
                 >
-                  <Brush size={14} /> Paint Solid
+                  <Brush size={14} /> {tt("mapEditorPaintSolid", "Paint Solid")}
                 </button>
                 <button
                   style={{
@@ -1273,7 +1344,7 @@ export function MapEditorControls({
                   }}
                   onClick={() => onToolSelect(selectedTool === "erase" ? null : "erase")}
                 >
-                  <Eraser size={14} /> Erase
+                  <Eraser size={14} /> {tt("mapEditorErase", "Erase")}
                 </button>
                 <button
                   style={{
@@ -1282,7 +1353,7 @@ export function MapEditorControls({
                   }}
                   onClick={() => onToolSelect(selectedTool === "fill" ? null : "fill")}
                 >
-                  <PaintBucket size={14} /> Fill
+                  <PaintBucket size={14} /> {tt("mapEditorFill", "Fill")}
                 </button>
               </div>
             </div>
@@ -1294,7 +1365,7 @@ export function MapEditorControls({
             <div style={styles.section}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
-                  {locale === "vi" ? "Ô gạch" : "Tile Selection"}
+                  {tt("mapEditorTileSelection", "Tile Selection")}
                 </h3>
                 
                 <select 
@@ -1307,7 +1378,7 @@ export function MapEditorControls({
                     border: '1px solid #ddd'
                   }}
                 >
-                  <option value="all">{locale === "vi" ? "Tất cả" : "All Groups"}</option>
+                  <option value="all">{tt("mapEditorAllGroups", "All Groups")}</option>
                   {availableTileGroups.map(group => (
                     <option key={group} value={group}>{group}</option>
                   ))}
@@ -1328,7 +1399,7 @@ export function MapEditorControls({
           {activeLayer === "background" && objectSpritesLoaded && objectDefinitions && (
           <div style={styles.section}>
               <h3 style={styles.sectionTitle}>
-                {locale === "vi" ? "Vật thể" : "Objects"}
+                {tt("mapEditorObjects", "Objects")}
               </h3>
               <div
                 style={{
@@ -1357,6 +1428,7 @@ export function MapEditorControls({
                       cache={objectCache} 
                       selectedObjectId={selectedObjectId}
                       isSelected={selectedObjectId === objectId}
+                      deselectHint={tr("click again to deselect", "bam lai de bo chon")}
                       onObjectSelect={onObjectSelect}
                     />
                   );
@@ -1367,8 +1439,8 @@ export function MapEditorControls({
 
           {selectedObjectId === 15 && (
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Portal Color</h3>
-              <p style={styles.helpText}>Select a color for the portal (max 2 per color)</p>
+              <h3 style={styles.sectionTitle}>{tt("mapEditorPortalColor", "Portal Color")}</h3>
+              <p style={styles.helpText}>{tt("mapEditorPortalColorHint", "Select a color for the portal (max 2 per color)")}</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
                 {(["blue", "green", "orange", "purple"] as const).map((color) => {
                   const colorMap: Record<string, string> = {
@@ -1409,8 +1481,8 @@ export function MapEditorControls({
                       disabled={!canPlace}
                       title={
                         canPlace
-                          ? `Select ${color} portal`
-                          : `Cannot place more ${color} portals (already 2)`
+                          ? tr(`Select ${color} portal`, `Chon cong ${color}`)
+                          : tr(`Cannot place more ${color} portals (already 2)`, `Khong the dat them cong ${color} (da du 2)`)
                       }
                     >
                       <div
@@ -1439,8 +1511,8 @@ export function MapEditorControls({
             (obj) => obj.type === "portal" && obj.x !== undefined && obj.y !== undefined
           ) && ( 
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>Recolor Portal</h3>
-              <p style={styles.helpText}>Click a placed portal to change its color</p>
+              <h3 style={styles.sectionTitle}>{tr("Recolor Portal", "Doi mau cong")}</h3>
+              <p style={styles.helpText}>{tr("Click a placed portal to change its color", "Bam vao cong da dat de doi mau")}</p>
             </div>
           )}
         </>
@@ -1450,11 +1522,11 @@ export function MapEditorControls({
       {showResizeDialog && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Resize Map</h3>
-            <p style={styles.warningText}>⚠️ This will clear all map data</p>
-            <p style={styles.helpText}>Map size must be between 10x10 and 30x30</p>
+            <h3 style={styles.modalTitle}>{tr("Resize Map", "Doi kich thuoc ban do")}</h3>
+            <p style={styles.warningText}>{tr("⚠️ This will clear all map data", "⚠️ Thao tac nay se xoa toan bo du lieu ban do")}</p>
+            <p style={styles.helpText}>{tr("Map size must be between 10x10 and 30x30", "Kich thuoc ban do phai trong khoang 10x10 den 30x30")}</p>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Width (tiles):</label>
+              <label style={styles.label}>{tr("Width (tiles):", "Chieu rong (o):")}</label>
               <input
                 type="number"
                 min="10"
@@ -1465,7 +1537,7 @@ export function MapEditorControls({
               />
             </div>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Height (tiles):</label>
+              <label style={styles.label}>{tr("Height (tiles):", "Chieu cao (o):")}</label>
               <input
                 type="number"
                 min="10"
@@ -1476,7 +1548,7 @@ export function MapEditorControls({
               />
             </div>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Tile Size (px):</label>
+              <label style={styles.label}>{tr("Tile Size (px):", "Kich thuoc o (px):")}</label>
               <input
                 type="number"
                 min="8"
@@ -1488,10 +1560,10 @@ export function MapEditorControls({
             </div>
             <div style={styles.modalButtons}>
               <button style={styles.confirmButton} onClick={handleResizeConfirm}>
-                Confirm
+                {tr("Confirm", "Xac nhan")}
               </button>
               <button style={styles.cancelButton} onClick={() => setShowResizeDialog(false)}>
-                Cancel
+                {tr("Cancel", "Huy")}
               </button>
             </div>
           </div>
@@ -1502,63 +1574,226 @@ export function MapEditorControls({
       {showMapInfoModal && (
         <div style={styles.modal}>
           <div style={{ ...styles.modalContent, ...styles.marketModalContent }}>
-            <h3 style={styles.modalTitle}>Map Details</h3>
+            <h3 style={styles.modalTitle}>{tt("mapEditorMapDetailsTitle", "Map Details")}</h3>
             <p style={{ ...styles.helpText, marginTop: -8, marginBottom: 18 }}>
-              Click a field to edit inline. Changes are previewed instantly.
+              {tt("mapEditorMapDetailsSubtitle", "Click a field to edit inline. Changes are previewed instantly.")}
             </p>
 
             <div style={styles.detailLayout}>
-              <div style={styles.previewPanel}>
-                <div style={styles.previewFrame}>
-                  {avatarPreviewUrl ? (
-                    <img src={avatarPreviewUrl} alt="Map thumbnail" style={styles.previewImage} />
-                  ) : (
-                    <div style={styles.previewPlaceholder}>
-                      <div style={styles.previewPlaceholderTitle}>
-                        {mapData.config.name || "Untitled Map"}
-                      </div>
-                      <div style={styles.previewPlaceholderText}>
-                        Upload a thumbnail to showcase this map.
-                      </div>
+              <div style={styles.previewFrame}>
+                {avatarPreviewUrl ? (
+                  <img src={avatarPreviewUrl} alt={tt("mapEditorMapThumbnail", "Map thumbnail")} style={styles.previewImage} />
+                ) : (
+                  <div style={styles.previewPlaceholder} />
+                )}
+
+                <div style={styles.previewGradient} />
+
+                <div style={styles.previewOverlayContent}>
+                  <div>
+                    <div style={styles.previewPlaceholderTitle}>
+                      {mapData.config.name || tt("mapEditorUntitledMap", "Untitled Map")}
                     </div>
-                  )}
+                    <div style={styles.previewPlaceholderText}>
+                      {tt("mapEditorUploadThumbnailHint", "Upload a thumbnail to showcase this map.")}
+                    </div>
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => avatarInputRef.current?.click()}
                     style={styles.previewOverlayButton}
                   >
-                    <ImagePlus size={14} /> Change Image
+                    <ImagePlus size={14} /> {tt("mapEditorChangeImage", "Change Image")}
                   </button>
-
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
-                    style={styles.fileInput}
-                  />
                 </div>
 
-                {avatarFile && <p style={styles.helpText}>Selected: {avatarFile.name}</p>}
-
-                <div style={styles.mapInfoCard}>
-                  <div style={styles.mapInfoRow}>
-                    <span>Type</span>
-                    <strong>{mapData.config.type}</strong>
-                  </div>
-                  <div style={styles.mapInfoRow}>
-                    <span>Size</span>
-                    <strong>
-                      {mapData.config.width} x {mapData.config.height} tiles
-                    </strong>
-                  </div>
-                  <div style={styles.mapInfoRow}>
-                    <span>Tile Size</span>
-                    <strong>{mapData.config.tileSize}px</strong>
-                  </div>
-                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
+                  style={styles.fileInput}
+                />
               </div>
+
+              {avatarFile && <p style={styles.helpText}>{tt("mapEditorSelected", "Selected")}: {avatarFile.name}</p>}
+
+              <div style={styles.detailContentGrid}>
+                <div style={styles.detailPanel}>
+                  <div style={styles.mapInfoCard}>
+                    <div style={styles.mapInfoRow}>
+                      <span>{tt("mapEditorType", "Type")}</span>
+                      <strong>{mapData.config.type}</strong>
+                    </div>
+                    <div style={styles.mapInfoRow}>
+                      <span>{tt("mapEditorSize", "Size")}</span>
+                      <strong>
+                        {mapData.config.width} x {mapData.config.height} {tt("mapEditorTiles", "tiles")}
+                      </strong>
+                    </div>
+                    <div style={styles.mapInfoRow}>
+                      <span>{tt("mapEditorTileSize", "Tile Size")}</span>
+                      <strong>{mapData.config.tileSize}px</strong>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "levelObjective" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("levelObjective")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("levelObjective")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorLevelObjective", "Level Objective")}</div>
+                    {activeInlineField === "levelObjective" ? (
+                      <textarea
+                        autoFocus
+                        rows={3}
+                        value={mapData.config.levelObjective ?? ""}
+                        onChange={(e) => onLevelObjectiveChange?.(e.target.value)}
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineTextarea}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValueMuted}>
+                        {(mapData.config.levelObjective ?? "").trim() ||
+                          tt("mapEditorLevelObjectiveHint", "Write the main objective for this level.")}
+                      </div>
+                    )}
+                    {(hoveredInlineField === "levelObjective" ||
+                      activeInlineField === "levelObjective") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "difficulty" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("difficulty")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("difficulty")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorDifficulty", "Difficulty")}</div>
+                    {activeInlineField === "difficulty" ? (
+                      <select
+                        autoFocus
+                        value={mapData.config.difficulty}
+                        onChange={(e) =>
+                          onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)
+                        }
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      >
+                        <option value={1}>1/5</option>
+                        <option value={2}>2/5</option>
+                        <option value={3}>3/5</option>
+                        <option value={4}>4/5</option>
+                        <option value={5}>5/5</option>
+                      </select>
+                    ) : (
+                      <div style={styles.inlineFieldValue}>{difficultyLabel}</div>
+                    )}
+                    {(hoveredInlineField === "difficulty" || activeInlineField === "difficulty") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "timeLimit" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("timeLimit")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("timeLimit")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorTimeLimit", "Time Limit")}</div>
+                    {activeInlineField === "timeLimit" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={30}
+                        max={3600}
+                        value={mapData.config.timeLimitSeconds}
+                        onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>{mapData.config.timeLimitSeconds}s</div>
+                    )}
+                    {(hoveredInlineField === "timeLimit" || activeInlineField === "timeLimit") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "estimatedSteps" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("estimatedSteps")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("estimatedSteps")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorEstimatedSteps", "Estimated Steps")}</div>
+                    {activeInlineField === "estimatedSteps" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={mapData.config.estimatedSteps}
+                        onChange={(e) =>
+                          onEstimatedStepsChange?.(Math.max(1, Number.parseInt(e.target.value) || 1))
+                        }
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>{mapData.config.estimatedSteps} {tt("mapEditorSteps", "steps")}</div>
+                    )}
+                    {(hoveredInlineField === "estimatedSteps" ||
+                      activeInlineField === "estimatedSteps") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      ...styles.inlineField,
+                      ...(activeInlineField === "price" ? styles.inlineFieldActive : {}),
+                    }}
+                    onMouseEnter={() => setHoveredInlineField("price")}
+                    onMouseLeave={() => setHoveredInlineField(null)}
+                    onClick={() => setActiveInlineField("price")}
+                  >
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorPrice", "Price")}</div>
+                    {activeInlineField === "price" ? (
+                      <input
+                        autoFocus
+                        type="number"
+                        min={0}
+                        value={mapData.config.price}
+                        onChange={(e) => onPriceChange?.(Number(e.target.value))}
+                        onBlur={() => setActiveInlineField(null)}
+                        style={styles.inlineInput}
+                      />
+                    ) : (
+                      <div style={styles.inlineFieldValue}>
+                        {mapData.config.price > 0 ? `${mapData.config.price} OC` : tt("mapEditorFree", "Free")}
+                      </div>
+                    )}
+                    {(hoveredInlineField === "price" || activeInlineField === "price") && (
+                      <Pencil size={14} style={styles.inlineEditIcon} />
+                    )}
+                  </div>
+                </div>
 
               <div style={styles.detailPanel}>
                 <div
@@ -1570,7 +1805,7 @@ export function MapEditorControls({
                   onMouseLeave={() => setHoveredInlineField(null)}
                   onClick={() => setActiveInlineField("name")}
                 >
-                  <div style={styles.inlineFieldLabel}>Map Name</div>
+                  <div style={styles.inlineFieldLabel}>{tt("mapEditorMapName", "Map Name")}</div>
                   {activeInlineField === "name" ? (
                     <input
                       autoFocus
@@ -1581,7 +1816,7 @@ export function MapEditorControls({
                     />
                   ) : (
                     <div style={styles.inlineFieldValue}>
-                      {mapData.config.name || "Untitled Map"}
+                      {mapData.config.name || tt("mapEditorUntitledMap", "Untitled Map")}
                     </div>
                   )}
                   {(hoveredInlineField === "name" || activeInlineField === "name") && (
@@ -1598,7 +1833,7 @@ export function MapEditorControls({
                   onMouseLeave={() => setHoveredInlineField(null)}
                   onClick={() => setActiveInlineField("description")}
                 >
-                  <div style={styles.inlineFieldLabel}>Description</div>
+                  <div style={styles.inlineFieldLabel}>{tt("mapEditorDescription", "Description")}</div>
                   {activeInlineField === "description" ? (
                     <textarea
                       autoFocus
@@ -1611,106 +1846,11 @@ export function MapEditorControls({
                   ) : (
                     <div style={styles.inlineFieldValueMuted}>
                       {mapData.config.description ||
-                        "Add a description to help players understand the challenge."}
+                        tt("mapEditorDescriptionHint", "Add a description to help players understand the challenge.")}
                     </div>
                   )}
                   {(hoveredInlineField === "description" ||
                     activeInlineField === "description") && (
-                    <Pencil size={14} style={styles.inlineEditIcon} />
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    ...styles.inlineField,
-                    ...(activeInlineField === "difficulty" ? styles.inlineFieldActive : {}),
-                  }}
-                  onMouseEnter={() => setHoveredInlineField("difficulty")}
-                  onMouseLeave={() => setHoveredInlineField(null)}
-                  onClick={() => setActiveInlineField("difficulty")}
-                >
-                  <div style={styles.inlineFieldLabel}>Difficulty</div>
-                  {activeInlineField === "difficulty" ? (
-                    <select
-                      autoFocus
-                      value={mapData.config.difficulty}
-                      onChange={(e) =>
-                        onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)
-                      }
-                      onBlur={() => setActiveInlineField(null)}
-                      style={styles.inlineInput}
-                    >
-                      <option value={1}>1/5</option>
-                      <option value={2}>2/5</option>
-                      <option value={3}>3/5</option>
-                      <option value={4}>4/5</option>
-                      <option value={5}>5/5</option>
-                    </select>
-                  ) : (
-                    <div style={styles.inlineFieldValue}>{difficultyLabel}</div>
-                  )}
-                  {(hoveredInlineField === "difficulty" || activeInlineField === "difficulty") && (
-                    <Pencil size={14} style={styles.inlineEditIcon} />
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    ...styles.inlineField,
-                    ...(activeInlineField === "timeLimit" ? styles.inlineFieldActive : {}),
-                  }}
-                  onMouseEnter={() => setHoveredInlineField("timeLimit")}
-                  onMouseLeave={() => setHoveredInlineField(null)}
-                  onClick={() => setActiveInlineField("timeLimit")}
-                >
-                  <div style={styles.inlineFieldLabel}>Time Limit</div>
-                  {activeInlineField === "timeLimit" ? (
-                    <input
-                      autoFocus
-                      type="number"
-                      min={30}
-                      max={3600}
-                      value={mapData.config.timeLimitSeconds}
-                      onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
-                      onBlur={() => setActiveInlineField(null)}
-                      style={styles.inlineInput}
-                    />
-                  ) : (
-                    <div style={styles.inlineFieldValue}>{mapData.config.timeLimitSeconds}s</div>
-                  )}
-                  {(hoveredInlineField === "timeLimit" || activeInlineField === "timeLimit") && (
-                    <Pencil size={14} style={styles.inlineEditIcon} />
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    ...styles.inlineField,
-                    ...(activeInlineField === "estimatedSteps" ? styles.inlineFieldActive : {}),
-                  }}
-                  onMouseEnter={() => setHoveredInlineField("estimatedSteps")}
-                  onMouseLeave={() => setHoveredInlineField(null)}
-                  onClick={() => setActiveInlineField("estimatedSteps")}
-                >
-                  <div style={styles.inlineFieldLabel}>Estimated Steps</div>
-                  {activeInlineField === "estimatedSteps" ? (
-                    <input
-                      autoFocus
-                      type="number"
-                      min={1}
-                      max={1000}
-                      value={mapData.config.estimatedSteps}
-                      onChange={(e) =>
-                        onEstimatedStepsChange?.(Math.max(1, Number.parseInt(e.target.value) || 1))
-                      }
-                      onBlur={() => setActiveInlineField(null)}
-                      style={styles.inlineInput}
-                    />
-                  ) : (
-                    <div style={styles.inlineFieldValue}>{mapData.config.estimatedSteps} steps</div>
-                  )}
-                  {(hoveredInlineField === "estimatedSteps" ||
-                    activeInlineField === "estimatedSteps") && (
                     <Pencil size={14} style={styles.inlineEditIcon} />
                   )}
                 </div>
@@ -1724,7 +1864,7 @@ export function MapEditorControls({
                   onMouseLeave={() => setHoveredInlineField(null)}
                   onClick={() => setActiveInlineField("winCondition")}
                 >
-                  <div style={styles.inlineFieldLabel}>Win Condition</div>
+                  <div style={styles.inlineFieldLabel}>{tt("mapEditorWinCondition", "Win Condition")}</div>
                   {activeInlineField === "winCondition" ? (
                     <select
                       autoFocus
@@ -1733,8 +1873,8 @@ export function MapEditorControls({
                       onBlur={() => setActiveInlineField(null)}
                       style={styles.inlineInput}
                     >
-                      <option value={1}>Reach Goal</option>
-                      <option value={2}>Collect Fruits</option>
+                      <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
+                      <option value={2}>{tt("mapEditorCollectFruits", "Collect Fruits")}</option>
                     </select>
                   ) : (
                     <div style={styles.inlineFieldValue}>{winConditionLabel}</div>
@@ -1755,7 +1895,7 @@ export function MapEditorControls({
                     onMouseLeave={() => setHoveredInlineField(null)}
                     onClick={() => setActiveInlineField("requiredFruits")}
                   >
-                    <div style={styles.inlineFieldLabel}>Required Fruits</div>
+                    <div style={styles.inlineFieldLabel}>{tt("mapEditorRequiredFruits", "Required Fruits")}</div>
                     {activeInlineField === "requiredFruits" ? (
                       <input
                         autoFocus
@@ -1773,8 +1913,8 @@ export function MapEditorControls({
                     ) : (
                       <div style={styles.inlineFieldValue}>
                         {(mapData.config.requiredFruits ?? 0) === 0
-                          ? "All fruits"
-                          : `${mapData.config.requiredFruits} fruits`}
+                          ? tt("mapEditorAllFruits", "All fruits")
+                          : tr(`${mapData.config.requiredFruits} fruits`, `${mapData.config.requiredFruits} trai cay`)}
                       </div>
                     )}
                     {(hoveredInlineField === "requiredFruits" ||
@@ -1787,47 +1927,17 @@ export function MapEditorControls({
                 <div
                   style={{
                     ...styles.inlineField,
-                    ...(activeInlineField === "price" ? styles.inlineFieldActive : {}),
-                  }}
-                  onMouseEnter={() => setHoveredInlineField("price")}
-                  onMouseLeave={() => setHoveredInlineField(null)}
-                  onClick={() => setActiveInlineField("price")}
-                >
-                  <div style={styles.inlineFieldLabel}>Price</div>
-                  {activeInlineField === "price" ? (
-                    <input
-                      autoFocus
-                      type="number"
-                      min={0}
-                      value={mapData.config.price}
-                      onChange={(e) => onPriceChange?.(Number(e.target.value))}
-                      onBlur={() => setActiveInlineField(null)}
-                      style={styles.inlineInput}
-                    />
-                  ) : (
-                    <div style={styles.inlineFieldValue}>
-                      {mapData.config.price > 0 ? `${mapData.config.price} OC` : "Free"}
-                    </div>
-                  )}
-                  {(hoveredInlineField === "price" || activeInlineField === "price") && (
-                    <Pencil size={14} style={styles.inlineEditIcon} />
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    ...styles.inlineField,
                     ...(activeInlineField === "tags" ? styles.inlineFieldActive : {}),
                   }}
                   onMouseEnter={() => setHoveredInlineField("tags")}
                   onMouseLeave={() => setHoveredInlineField(null)}
                   onClick={() => setActiveInlineField("tags")}
                 >
-                  <div style={styles.inlineFieldLabel}>Tags</div>
+                  <div style={styles.inlineFieldLabel}>{tt("mapEditorTags", "Tags")}</div>
                   {activeInlineField === "tags" ? (
                     <div>
                       {loadingMapTags ? (
-                        <p style={styles.helpText}>Loading tags...</p>
+                        <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
                       ) : (
                         <div style={styles.tagWrap}>
                           {availableMapTags.map((tag) => {
@@ -1859,7 +1969,7 @@ export function MapEditorControls({
                           setActiveInlineField(null);
                         }}
                       >
-                        Done
+                        {tt("mapEditorDone", "Done")}
                       </button>
                     </div>
                   ) : (
@@ -1871,7 +1981,7 @@ export function MapEditorControls({
                           </span>
                         ))
                       ) : (
-                        <span style={styles.inlineFieldValueMuted}>No tags selected</span>
+                        <span style={styles.inlineFieldValueMuted}>{tt("mapEditorNoTagsSelected", "No tags selected")}</span>
                       )}
                     </div>
                   )}
@@ -1889,7 +1999,7 @@ export function MapEditorControls({
                   onMouseLeave={() => setHoveredInlineField(null)}
                   onClick={() => setActiveInlineField("hints")}
                 >
-                  <div style={styles.inlineFieldLabel}>Hints</div>
+                  <div style={styles.inlineFieldLabel}>{tt("mapEditorHints", "Hints")}</div>
                   {activeInlineField === "hints" ? (
                     <div onClick={(e) => e.stopPropagation()}>
                       {hints.map((hint, index) => (
@@ -1905,7 +2015,7 @@ export function MapEditorControls({
                               next[index] = e.target.value;
                               setHints(next);
                             }}
-                            placeholder={`Hint ${index + 1}`}
+                            placeholder={tr(`Hint ${index + 1}`, `Goi y ${index + 1}`)}
                             style={{ ...styles.inlineInput, flex: 1 }}
                           />
                           {hints.length > 1 && (
@@ -1914,7 +2024,7 @@ export function MapEditorControls({
                               style={{ ...styles.cancelButton, padding: "6px 10px" }}
                               onClick={() => setHints(hints.filter((_, i) => i !== index))}
                             >
-                              Remove
+                              {tt("mapEditorRemove", "Remove")}
                             </button>
                           )}
                         </div>
@@ -1925,7 +2035,7 @@ export function MapEditorControls({
                           style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 2 }}
                           onClick={() => setHints([...hints, ""])}
                         >
-                          + Add Hint
+                          + {tt("mapEditorAddHint", "Add Hint")}
                         </button>
                       )}
                       <button
@@ -1933,7 +2043,7 @@ export function MapEditorControls({
                         style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
                         onClick={() => setActiveInlineField(null)}
                       >
-                        Done
+                        {tt("mapEditorDone", "Done")}
                       </button>
                     </div>
                   ) : (
@@ -1950,7 +2060,7 @@ export function MapEditorControls({
                             </span>
                           ))
                       ) : (
-                        <span style={styles.inlineFieldValueMuted}>No hints added</span>
+                        <span style={styles.inlineFieldValueMuted}>{tt("mapEditorNoHintsAdded", "No hints added")}</span>
                       )}
                     </div>
                   )}
@@ -1959,6 +2069,7 @@ export function MapEditorControls({
                   )}
                 </div>
               </div>
+            </div>
             </div>
 
             <div style={styles.modalButtons}>
@@ -1970,7 +2081,7 @@ export function MapEditorControls({
                 onClick={handleSaveMapFromModal}
                 disabled={uploading}
               >
-                {uploading ? "Saving..." : "Save Changes"}
+                {uploading ? tt("mapEditorSaving", "Saving...") : tt("mapEditorSaveChanges", "Save Changes")}
               </button>
               <button
                 style={styles.cancelButton}
@@ -1981,7 +2092,7 @@ export function MapEditorControls({
                 }}
                 disabled={uploading}
               >
-                Cancel
+                {tt("mapEditorCancel", "Cancel")}
               </button>
             </div>
           </div>
@@ -2207,52 +2318,64 @@ const styles: Record<string, React.CSSProperties> = {
   },
   detailLayout: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "16px",
+  },
+  detailContentGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
     gap: "18px",
     alignItems: "start",
-  },
-  previewPanel: {
-    display: "grid",
-    gap: "12px",
   },
   previewFrame: {
     position: "relative",
     borderRadius: "14px",
     overflow: "hidden",
     border: "1px solid #cbd5e1",
-    minHeight: "220px",
+    width: "100%",
+    aspectRatio: "16 / 9",
     background: "linear-gradient(135deg, #0f172a, #1e293b)",
   },
   previewImage: {
     width: "100%",
     height: "100%",
-    minHeight: "220px",
     objectFit: "cover",
     display: "block",
   },
   previewPlaceholder: {
-    minHeight: "220px",
-    padding: "18px",
-    color: "#e2e8f0",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-end",
-    gap: "6px",
+    width: "100%",
+    height: "100%",
     background:
       "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.4), transparent 35%), linear-gradient(140deg, #0f172a, #1e293b)",
+  },
+  previewGradient: {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(180deg, rgba(15,23,42,0.12) 20%, rgba(15,23,42,0.72) 100%)",
+    pointerEvents: "none",
+    zIndex: 1,
+  },
+  previewOverlayContent: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "18px",
+    zIndex: 2,
   },
   previewPlaceholderTitle: {
     fontSize: "18px",
     fontWeight: 700,
+    color: "#f8fafc",
   },
   previewPlaceholderText: {
     fontSize: "12px",
-    opacity: 0.85,
+    opacity: 0.92,
+    color: "#e2e8f0",
+    marginTop: "4px",
   },
   previewOverlayButton: {
-    position: "absolute",
-    right: "10px",
-    bottom: "10px",
     display: "inline-flex",
     alignItems: "center",
     gap: "6px",

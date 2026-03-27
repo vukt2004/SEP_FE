@@ -207,6 +207,12 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         winCondition: clampWinCondition(
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
+        levelObjective:
+          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+            ? sourceJson.metadata.levelObjective
+            : typeof configRaw.levelObjective === "string"
+              ? configRaw.levelObjective
+              : ""),
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -348,6 +354,12 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           ),
         ),
         winCondition: clampWinCondition(detail.winCondition),
+        levelObjective:
+          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+            ? sourceJson.metadata.levelObjective
+            : typeof sourceJson.levelObjective === "string"
+              ? sourceJson.levelObjective
+              : ""),
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -564,6 +576,10 @@ export default function MapEditor() {
     store?.setMapWinCondition(winCondition);
   };
 
+  const handleLevelObjectiveChange = (objective: string) => {
+    store?.setMapLevelObjective(objective);
+  };
+
   const handleRequiredFruitsChange = (requiredFruits: number) => {
     store?.setMapRequiredFruits(requiredFruits);
   };
@@ -656,6 +672,7 @@ export default function MapEditor() {
               onTimeLimitChange={handleTimeLimitChange}
               onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
+              onLevelObjectiveChange={handleLevelObjectiveChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}
               onAllowedBlocksChange={handleAllowedBlocksChange}
@@ -734,6 +751,7 @@ export default function MapEditor() {
               onTimeLimitChange={handleTimeLimitChange}
               onEstimatedStepsChange={handleEstimatedStepsChange}
               onWinConditionChange={handleWinConditionChange}
+              onLevelObjectiveChange={handleLevelObjectiveChange}
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
               onBlockLimitChange={handleBlockLimitChange}

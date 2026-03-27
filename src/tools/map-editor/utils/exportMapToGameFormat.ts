@@ -87,6 +87,7 @@ export interface GameLevelFormat {
     description: string;
     targetAlgorithm: string;
     estimatedSteps: number;
+    levelObjective?: string;
     requiredFruits?: number;
   };
   blockConstraints?: {
@@ -282,6 +283,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
       description: description,
       targetAlgorithm: "manual",
       estimatedSteps: mapData.config.estimatedSteps,
+      levelObjective: mapData.config.levelObjective ?? "",
       requiredFruits: mapData.config.requiredFruits,
     },
     blockConstraints: {

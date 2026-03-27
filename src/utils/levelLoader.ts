@@ -72,6 +72,7 @@ export async function loadLevelFromAPI(levelId: string): Promise<LevelLoadResult
       timeLimitSeconds: Math.floor(mapDetail.timeLimitMs / 1000), // Convert ms to seconds
       estimatedSteps: (levelData as LevelDefinition).metadata?.estimatedSteps as number | undefined,
       winCondition: mapDetail.winCondition as 1 | 2,
+      levelObjective: (levelData as LevelDefinition).metadata?.levelObjective as string | undefined,
       price: mapDetail.price,
       requiredFruits: (levelData as LevelDefinition).metadata?.requiredFruits as number | undefined,
       width: (levelData as LevelDefinition).width,
@@ -111,6 +112,7 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
     } else if (data.metadata || (data.width && data.height)) {
       mapConfig = {
         estimatedSteps: data.metadata?.estimatedSteps,
+        levelObjective: data.metadata?.levelObjective,
         requiredFruits: data.metadata?.requiredFruits,
         width: data.width,
         height: data.height,
