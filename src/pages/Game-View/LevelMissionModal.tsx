@@ -44,8 +44,16 @@ export function LevelMissionModal({
   // `levelTitle` được truyền từ caller, nhưng UI tutorial hiện không hiển thị dòng title nữa.
   // Dùng `void` để tránh cảnh báo biến chưa được dùng.
   void levelTitle;
-  // Nút đóng đã bỏ theo yêu cầu UX, giữ prop để tương thích caller cũ.
-  void onClose;
+
+  const handleHeaderAction = () => {
+    // If caller provided a close action (e.g. start level), prioritize it.
+    if (onClose) {
+      onClose();
+      return;
+    }
+
+    setIsShrunk((p) => !p);
+  };
   // 0..5 represent 6 tutorial screens (matches 6 dots).
   const [screen, setScreen] = useState<number>(0);
   const [isShrunk, setIsShrunk] = useState(false);
@@ -270,11 +278,17 @@ export function LevelMissionModal({
             <button
               type="button"
               style={styles.headerAction}
-              onClick={() => setIsShrunk((p) => !p)}
-              aria-label="Shrink tutorial"
+              onClick={handleHeaderAction}
+              aria-label={onClose ? (isVi ? "Bắt đầu màn" : "Start level") : "Shrink tutorial"}
             >
-              <Minimize2 size={18} style={{ color: "rgba(255,255,255,0.95)" }} aria-hidden />
-              <span style={styles.headerActionText}>{isVi ? "Thu gọn" : "Shrink"}</span>
+              {onClose ? (
+                <Play size={18} style={{ color: "rgba(255,255,255,0.95)" }} aria-hidden />
+              ) : (
+                <Minimize2 size={18} style={{ color: "rgba(255,255,255,0.95)" }} aria-hidden />
+              )}
+              <span style={styles.headerActionText}>
+                {onClose ? (isVi ? "Bắt đầu" : "Start") : isVi ? "Thu gọn" : "Shrink"}
+              </span>
             </button>
           </div>
         </div>
