@@ -175,9 +175,9 @@ export default function WalletPage() {
       <div style={styles.heroGrid}>
         <div style={{ ...card(), ...styles.announceCard }}>
           <div style={styles.announceGlow} />
-          <div style={styles.announceBadge}>Announcement</div>
-          <div style={styles.announceTitle}>Manage your OrbitCoin smartly</div>
-          <div style={styles.announceDesc}>Track balance, top up quickly, and review transactions in one place.</div>
+          <div style={styles.announceBadge}>{t("walletAnnouncementBadge")}</div>
+          <div style={styles.announceTitle}>{t("walletAnnouncementTitle")}</div>
+          <div style={styles.announceDesc}>{t("walletAnnouncementDesc")}</div>
         </div>
 
         <div style={{ ...card(), ...styles.accountCard }}>
@@ -196,6 +196,7 @@ export default function WalletPage() {
         <div ref={topUpRef} style={card()}>
           <div style={styles.sectionTitle}>{t("topUp")}</div>
           <div style={styles.sectionHint}>{t("topUpInstruction")}</div>
+          <div style={styles.conversionRateHint}>{t("walletConversionRate")}</div>
 
           <CashflowMiniChart
             transactions={transactions}
@@ -690,6 +691,12 @@ const styles: Record<string, any> = {
   sectionHint: {
     color: "var(--muted)",
     fontSize: 13,
+    marginBottom: 6,
+  },
+  conversionRateHint: {
+    color: "var(--text-2)",
+    fontSize: 13,
+    fontWeight: 600,
     marginBottom: 16,
   },
   bottomGrid: {

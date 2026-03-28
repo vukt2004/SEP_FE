@@ -13,6 +13,12 @@ const LearnerLayout = React.lazy(() => import("@/portals/learner/layout/LearnerL
 const LearnerMapsBrowsePage = React.lazy(() => import("@/portals/learner/pages/MapsPage"));
 const LearnerPackagesPage = React.lazy(() => import("@/portals/learner/pages/PackagesPage"));
 const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/WalletPage"));
+const LearnerPaymentSuccessPage = React.lazy(
+  () => import("@/portals/learner/pages/PaymentSuccessPage"),
+);
+const LearnerPaymentFailurePage = React.lazy(
+  () => import("@/portals/learner/pages/PaymentFailurePage"),
+);
 const LearnerMyMapsPage = React.lazy(() => import("@/portals/learner/pages/MyMapsPage"));
 const LearnerMapDetailPage = React.lazy(() => import("@/portals/learner/pages/MapDetailPage"));
 const LearnerMarketplacePage = React.lazy(() => import("@/portals/learner/pages/MarketplacePage"));
@@ -76,6 +82,8 @@ export const learnerRoutes: RouteObject = {
     { path: "profile", element: <LearnerProfilePage /> },
     { path: "leaderboard", element: <LearnerLeaderboardPage /> },
     { path: "wallet", element: <LearnerWalletPage /> },
+    { path: "wallet/payment-success", element: <LearnerPaymentSuccessPage /> },
+    { path: "wallet/payment-failure", element: <LearnerPaymentFailurePage /> },
     { path: "maps", element: <LearnerMapsBrowsePage /> },
     { path: "packages", element: <LearnerPackagesPage /> },
     { path: "browse", element: <LearnerModeSelectPage /> },
