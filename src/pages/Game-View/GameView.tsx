@@ -26,6 +26,7 @@ import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
 import { HintModal, type GameplayHint } from "./HintModal";
+import { StatusDetailsModal } from "./StatusDetailsModal";
 import {
   ArrowLeft,
   Play,
@@ -84,6 +85,7 @@ export default function GameView() {
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
+  const [showStatusDetailsModal, setShowStatusDetailsModal] = useState(false);
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [levelTitle, setLevelTitle] = useState("Level");
   const [blocksUsed, setBlocksUsed] = useState(0);
@@ -1107,6 +1109,11 @@ export default function GameView() {
   if (liveSteps <= stepLimit) currentStars++;
   if (blocksUsed <= blockLimit) currentStars++;
 
+  const currentElapsedForDetails = showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
+  const currentStepsForDetails = showResultsModal && gameResult ? gameResult.stepCount : liveSteps;
+  const currentBlocksForDetails = showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
+  const currentFruitsForDetails = showResultsModal && gameResult ? gameResult.fruitsCollected : collectedFruits;
+
   return (
     <div
       style={{
@@ -1365,7 +1372,11 @@ export default function GameView() {
               alignItems: "center",
               justifyContent: "space-between",
               fontSize: "14px",
+              cursor: "pointer",
+              transition: "background 0.2s ease, box-shadow 0.2s ease",
             }}
+            onClick={() => setShowStatusDetailsModal(true)}
+            title="Click to view detailed performance"
           >
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
               {/* Time */}
@@ -1401,7 +1412,10 @@ export default function GameView() {
             </div>
 
             <button
-              onClick={() => setShowHintsModal(true)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowHintsModal(true);
+              }}
               disabled={false}
               style={{
                 marginLeft: "auto",
@@ -1688,6 +1702,20 @@ export default function GameView() {
           setRevealedHints((prev) => Math.min(prev + 1, totalHints));
         }}
         onClose={() => setShowHintsModal(false)}
+      />
+
+      <StatusDetailsModal
+        isOpen={showStatusDetailsModal}
+        onClose={() => setShowStatusDetailsModal(false)}
+        elapsedSeconds={currentElapsedForDetails}
+        timeLimitSeconds={Number.isFinite(timeLimit) ? timeLimit : null}
+        timeStarLimitSeconds={Number.isFinite(timeStarLimit) ? timeStarLimit : null}
+        stepsUsed={currentStepsForDetails}
+        stepLimit={Number.isFinite(stepLimit) ? stepLimit : null}
+        blocksUsed={currentBlocksForDetails}
+        blockLimit={Number.isFinite(blockLimit) ? blockLimit : null}
+        fruitsCollected={currentFruitsForDetails}
+        fruitsTotal={mapConfig?.requiredFruits ?? null}
       />
 
       <ExecutionIncompleteModal
