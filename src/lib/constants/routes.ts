@@ -20,6 +20,8 @@ export const ROUTES = {
   LEARNER_PROFILE: "/app/profile",
   LEARNER_LEADERBOARD: "/app/leaderboard",
   LEARNER_WALLET: "/app/wallet",
+  LEARNER_WALLET_PAYMENT_SUCCESS: "/app/wallet/payment-success",
+  LEARNER_WALLET_PAYMENT_FAILURE: "/app/wallet/payment-failure",
   LEARNER_MAPS: "/app/my-maps",
   LEARNER_MARKETPLACE: "/app/marketplace",
   LEARNER_MAP_DETAIL: "/app/map/:id",
