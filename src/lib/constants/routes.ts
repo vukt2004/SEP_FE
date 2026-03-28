@@ -47,4 +47,5 @@ export const ROUTES = {
   CMS_DASHBOARD: "/cms/dashboard",
   CMS_USERS: "/cms/users",
   CMS_COMPLAINTS: "/cms/complaints",
+  CMS_GAMEPLAY: "/cms/gameplay",
 } as const;
