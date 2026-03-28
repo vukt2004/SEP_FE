@@ -14,12 +14,9 @@ export default function PaymentFailurePage() {
     searchParams.get("error") ??
     searchParams.get("vnp_OrderInfo");
 
-  const reference =
-    searchParams.get("orderId") ?? searchParams.get("vnp_TxnRef") ?? searchParams.get("txnRef");
-  const responseCode =
-    searchParams.get("responseCode") ??
-    searchParams.get("vnp_ResponseCode") ??
-    searchParams.get("code");
+  const orderId = searchParams.get("orderId")?.trim() || null;
+  const orderCode =
+    searchParams.get("orderCode")?.trim() || searchParams.get("ordercode")?.trim() || null;
 
   return (
     <div style={styles.page}>
@@ -33,8 +30,14 @@ export default function PaymentFailurePage() {
 
         <div style={styles.metaWrap}>
           {reason ? <MetaRow label={t("paymentReason")} value={reason} /> : null}
-          {reference ? <MetaRow label={t("paymentReference")} value={reference} /> : null}
-          {responseCode ? <MetaRow label={t("paymentResponseCode")} value={responseCode} /> : null}
+          {orderId ? (
+            <MetaRow
+              label={t("paymentOrderId")}
+              value={orderId.length <= 8 ? orderId : orderId.slice(0,8)}
+              valueTitle={orderId.length > 8 ? orderId : undefined}
+            />
+          ) : null}
+          {orderCode ? <MetaRow label={t("paymentOrderCode")} value={orderCode} /> : null}
         </div>
 
         <div style={styles.actions}>
@@ -52,11 +55,21 @@ export default function PaymentFailurePage() {
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function MetaRow({
+  label,
+  value,
+  valueTitle,
+}: {
+  label: string;
+  value: string;
+  valueTitle?: string;
+}) {
   return (
     <div style={styles.metaRow}>
       <span style={styles.metaLabel}>{label}</span>
-      <span style={styles.metaValue}>{value}</span>
+      <span style={styles.metaValue} title={valueTitle}>
+        {value}
+      </span>
     </div>
   );
 }

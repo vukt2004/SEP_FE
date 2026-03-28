@@ -459,7 +459,7 @@ export default function ProfilePage() {
                     <div className={styles.historyItemTop}>
                       <div style={{ minWidth: 0 }}>
                         <div className={styles.historyTitle}>
-                          {item.mapTitle ?? `Map ${item.mapId.slice(0, 8)}...`}
+                          {item.mapTitle ?? `${t("profileHistoryGameFallback")} ${item.mapId.slice(0, 8)}...`}
                         </div>
                         <div className={styles.historyMeta}>
                           {item.playMode} · {item.isCompleted ? "Completed" : "Not completed"}

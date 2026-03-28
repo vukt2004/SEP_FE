@@ -112,10 +112,10 @@ export const MapsPage: React.FC = () => {
         setSelectedMap(mapDetail);
         setDetailModalOpen(true);
       } else {
-        alert("Map not found");
+        alert("Game not found");
       }
     } catch (err) {
-      alert("Failed to load map details");
+      alert("Failed to load game details");
       console.error("Map detail error:", err);
     } finally {
       setActionLoading(false);
@@ -143,7 +143,7 @@ export const MapsPage: React.FC = () => {
       await cmsMapsApi.approveMap(selectedMapForAction.id, {
         reviewNote: reviewNote || undefined,
       });
-      alert("Map approved successfully!");
+        alert("Game approved successfully!");
       setApproveModalOpen(false);
       setSelectedMapForAction(null);
       setReviewNote("");
@@ -165,7 +165,7 @@ export const MapsPage: React.FC = () => {
       await cmsMapsApi.rejectMap(selectedMapForAction.id, {
         rejectReason: rejectReason || undefined,
       });
-      alert("Map rejected successfully!");
+        alert("Game rejected successfully!");
       setRejectModalOpen(false);
       setSelectedMapForAction(null);
       setRejectReason("");
@@ -1001,7 +1001,7 @@ export const MapsPage: React.FC = () => {
       <Modal
         isOpen={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
-        title="Map Details"
+        title="Game details"
         maxWidth="800px"
       >
         {selectedMap && (

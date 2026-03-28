@@ -832,7 +832,7 @@ export const MyMapsPage: React.FC = () => {
       setError(null);
       const response = await learnerMapsApi.submitMapForReview(mapId);
       if (response.data.isSuccess) {
-        alert("Map submitted for review successfully!");
+        alert(t("gameSubmittedForReviewSuccess"));
         fetchMaps();
       } else {
         setError(response.data.message || t("failedSubmitReview"));
@@ -1386,7 +1386,7 @@ export const MyMapsPage: React.FC = () => {
                 <textarea
                   value={ratingComment}
                   onChange={(e) => setRatingComment(e.target.value)}
-                  placeholder="Share your thoughts about this map..."
+                  placeholder={t("rateGamePlaceholder")}
                   style={{
                     width: "100%",
                     minHeight: "100px",
@@ -1522,7 +1522,7 @@ export const MyMapsPage: React.FC = () => {
                 <textarea
                   value={reportDetails}
                   onChange={(e) => setReportDetails(e.target.value)}
-                  placeholder="Provide more information about why you're reporting this map..."
+                  placeholder={t("reportGamePlaceholder")}
                   style={{
                     width: "100%",
                     minHeight: "100px",

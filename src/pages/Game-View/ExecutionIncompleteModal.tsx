@@ -39,7 +39,7 @@ export const ExecutionIncompleteModal: React.FC<ExecutionIncompleteModalProps> =
       >
         <h3 style={{ margin: 0, fontSize: "20px" }}>Not Reached the Goal</h3>
         <p style={{ margin: "10px 0 18px", fontSize: "14px", color: "var(--text-2)" }}>
-          You have run out of blocks, but the character has not reached the goal. Press OK to reset the map and try again.
+          You have run out of blocks, but the character has not reached the goal. Press OK to reset the game and try again.
         </p>
         <button
           type="button"

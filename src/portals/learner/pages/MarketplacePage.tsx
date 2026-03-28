@@ -168,11 +168,11 @@ export default function MarketplacePage() {
           setTotalPages(apiTotalPages);
           setHasNext(apiHasNext && (currentPage + 1) * 20 < 100);
         } else {
-          setError(response.data.message || "Cannot load map list");
+          setError(response.data.message || t("failedLoadMapList"));
         }
       } catch (err) {
         console.error("Failed to load marketplace maps:", err);
-        setError("An error occurred while loading map list");
+        setError(t("errorLoadMapList"));
       } finally {
         setLoading(false);
       }

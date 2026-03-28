@@ -899,7 +899,7 @@ function MapCard({
             }}
           />
         ) : (
-          <div className={styles.thumbPlaceholder}>No preview</div>
+          <div className={styles.thumbPlaceholder}>{t("gameCardNoPreview")}</div>
         )}
         {isLocked && (
           <div className={styles.lockOverlay}>
