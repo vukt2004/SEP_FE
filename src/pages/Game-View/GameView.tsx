@@ -1418,7 +1418,7 @@ export default function GameView() {
                 boxShadow: "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
                 opacity: 1,
               }}
-              aria-label="Show map hints"
+              aria-label="Show game hints"
             >
               💡 {t("hintsCount")} ({revealedHintCount}/{totalHints})
             </button>

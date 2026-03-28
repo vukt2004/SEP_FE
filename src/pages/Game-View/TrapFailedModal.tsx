@@ -36,7 +36,7 @@ export const TrapFailedModal: React.FC<TrapFailedModalProps> = ({ isOpen, onRepl
       >
         <h3 style={{ margin: 0, fontSize: "20px" }}>You Hit a Trap</h3>
         <p style={{ margin: "10px 0 18px", fontSize: "14px", color: "var(--text-2)" }}>
-          The character stepped on a trap and failed the level. Press Replay to reset the map and
+          The character stepped on a trap and failed the level. Press Replay to reset the game and
           try again.
         </p>
         <button

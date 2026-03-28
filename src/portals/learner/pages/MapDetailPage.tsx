@@ -103,11 +103,12 @@ export default function MapDetailPage() {
   tRef.current = t;
 
   const loadMap = useCallback(async () => {
+    const tr = tRef.current;
     if (!id) {
-      setError("Map ID not found");
+      setError(tr("gameIdNotFound"));
       return;
     }
-    const t = tRef.current;
+    const t = tr;
 
     try {
       setLoading(true);
@@ -159,7 +160,7 @@ export default function MapDetailPage() {
       if (response.data.isSuccess) {
         setPurchaseModal({
           kind: "success",
-          message: response.data.message || "Map purchased with OrbitCoin.",
+          message: response.data.message || t("gamePurchasedWithOrbitCoin"),
         });
         const ownershipResponse = await learnerMapsApi.checkMapOwnership(map.id);
         if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
@@ -170,7 +171,7 @@ export default function MapDetailPage() {
 
       setPurchaseModal({
         kind: "error",
-        message: response.data.message || "Failed to purchase map.",
+        message: response.data.message || t("gamePurchaseFailed"),
       });
     } catch (err) {
       if (isAxiosError(err)) {
@@ -181,12 +182,12 @@ export default function MapDetailPage() {
 
         setPurchaseModal({
           kind: isInsufficientBalance ? "insufficient" : "error",
-          message: body?.message || "Failed to purchase map.",
+          message: body?.message || t("gamePurchaseFailed"),
         });
         return;
       }
 
-      setPurchaseModal({ kind: "error", message: "Failed to purchase map." });
+      setPurchaseModal({ kind: "error", message: t("gamePurchaseFailed") });
       console.error(err);
     } finally {
       setIsPurchasing(false);
@@ -316,7 +317,7 @@ export default function MapDetailPage() {
                 />
               ) : (
                 <div className={styles.steamPlayerPlaceholder}>
-                  <span role="img" aria-label="Map">
+                  <span role="img" aria-label="Game">
                     🗺️
                   </span>
                   <span className={styles.steamPlayerPlaceholderText}>
