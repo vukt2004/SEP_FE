@@ -45,9 +45,6 @@ export class PlatformController implements IPlayerController {
     return true;
   }
 
-  /** Configurable maximum fall speed in tiles per step */
-  private readonly maxFallSpeed: number = 3;
-
   applyPhysics(
     player: Player,
     level: LevelDefinition,
@@ -153,11 +150,8 @@ export class PlatformController implements IPlayerController {
   }
 
   /**
-   * Apply hybrid gravity:
-   *  - fallDistance == 0  → grounded, do nothing
-   *  - fallDistance <= 2  → fall 1 tile per step (slow, controlled)
-   *  - fallDistance >  2  → fall min(fallDistance, maxFallSpeed) tiles per step
-   *
+   * Apply gravity:
+   * Player falls directly to the ground without a fall distance limit.
    * The player is moved down one tile at a time inside a loop so
    * collision with solid tiles is never skipped.
    *
@@ -174,16 +168,10 @@ export class PlatformController implements IPlayerController {
     let tilesFallen = 0;
 
     if (fallDistance > 0) {
-      // Determine how many tiles to fall this step
-      const fallSpeed =
-        fallDistance <= 2
-          ? 1
-          : Math.min(fallDistance, this.maxFallSpeed);
-
       player.isFalling = true;
 
       // Move down tile-by-tile, checking each one
-      for (let i = 0; i < fallSpeed; i++) {
+      for (let i = 0; i < fallDistance; i++) {
         if (
           this.isInBounds(player.x, player.y + 1, level) &&
           !this.isSolidTile(player.x, player.y + 1, level, objectStates)

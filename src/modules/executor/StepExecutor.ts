@@ -66,7 +66,7 @@ export class StepExecutor {
   private conditionChecker: (condition: ConditionType) => boolean;
   private numberResolver: (sensorType: NumberSensorType) => number;
   private positionResolver: PositionResolver;
-  private callback: ((result: ExecutionResult) => void) | null;
+  private callback: ((result: ExecutionResult) => void | number) | null;
   private onComplete: (() => void) | null;
   private warningCallback: ((message: string, blockId: string) => void) | null;
   private intervalMs: number;
@@ -931,9 +931,10 @@ export class StepExecutor {
 
     if (result && this.callback) {
       // Command executed successfully, invoke callback
-      this.callback(result);
+      const customDelay = this.callback(result);
+      const delay = typeof customDelay === "number" ? customDelay : this.intervalMs;
       // Schedule next tick
-      this.timeoutId = window.setTimeout(() => this.tick(), this.intervalMs);
+      this.timeoutId = window.setTimeout(() => this.tick(), delay);
     } else {
       // Execution complete (result is null), stop immediately
       const completeHandler = this.onComplete;
@@ -944,11 +945,11 @@ export class StepExecutor {
 
   /**
    * Start automatic execution with a callback for each command
-   * @param callback Function to call with each ExecutionResult (command + blockId)
+   * @param callback Function to call with each ExecutionResult (command + blockId). Optionally return custom delay.
    * @param intervalMs Delay between commands in milliseconds
    */
   run(
-    callback: (result: ExecutionResult) => void,
+    callback: (result: ExecutionResult) => void | number,
     intervalMs: number = 500,
     onComplete?: () => void,
   ): void {
