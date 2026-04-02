@@ -365,7 +365,15 @@ export default function PlatformGameView() {
           const engine = engineRef.current;
           if (engine) {
             engine.executeCommand(result.command);
+
+            const player = engine.getPlayer();
+            const dist = Math.max(
+              Math.abs(player.targetPixelX - player.pixelX),
+              Math.abs(player.targetPixelY - player.pixelY)
+            );
+            return Math.max(500, dist / 0.5);
           }
+          return 500;
         },
         500,
         () => {
@@ -538,7 +546,15 @@ export default function PlatformGameView() {
         if (engine) {
           engine.executeCommand(result.command);
           setLiveSteps(engine.getStepCount());
+
+          const player = engine.getPlayer();
+          const dist = Math.max(
+            Math.abs(player.targetPixelX - player.pixelX),
+            Math.abs(player.targetPixelY - player.pixelY)
+          );
+          return Math.max(500, dist / 0.5);
         }
+        return 500;
       }, 500, () => {
         setIsExecutorRunning(false);
         const engine = engineRef.current;

@@ -1,12 +1,22 @@
-import { useEffect, useRef, useState, useMemo } from "react";
-import { TilesetLoader, TilesetCache, type TileDefinition } from "../../modules/engine/assets";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Lock } from "lucide-react";
+import {
+  TilesetLoader,
+  TilesetCache,
+  type TileDefinition,
+  type TieredTilesetGroup,
+} from "../../modules/engine/assets";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
+import type { AssetTier, SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
+
+const LOCKED_TOOLTIP = "Upgrade to Creator to use this asset";
 
 interface TilePaletteProps {
   selectedTile: number | null;
   onTileSelect: (tileId: number | null) => void;
   mapData: MapData;
+  userPlan: SubscriptionPlan;
   tilesetName?: string;
   filterGroup: string;
   currentLang: "en" | "vi";
@@ -20,52 +30,49 @@ export type ExtendedTileDefinition = TileDefinition & {
   "name_VI"?: string;
 };
 
-/**
- * Convert MapData config type to GameType
- */
+type PaletteTileEntry = {
+  tileId: number;
+  tileDef: ExtendedTileDefinition;
+  tier: AssetTier;
+  locked: boolean;
+  key: string;
+};
+
 function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
   return mapType === "platform" ? "platformer" : "topdown";
 }
 
-/**
- * TilePalette Component
- *
- * Displays a visual palette of available tiles from the tileset.
- * Each tile is rendered as a preview using the actual sprite.
- */
 export function TilePalette({
   selectedTile,
   onTileSelect,
   mapData,
+  userPlan,
   tilesetName = "default",
   filterGroup = "all",
   currentLang,
-  onGroupsLoaded
+  onGroupsLoaded,
 }: TilePaletteProps) {
-  const [tileset, setTileset] = useState<Record<number, ExtendedTileDefinition> | null>(null);
+  const [tilesetGroups, setTilesetGroups] = useState<TieredTilesetGroup[]>([]);
   const [tileImages, setTileImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const gameType = mapTypeToGameType(mapData.config.type);
   const tilesetCacheRef = useRef(new TilesetCache());
 
-  /**
-   * Load tileset on mount or when game type/tileset name changes
-   */
   useEffect(() => {
     let cancelled = false;
 
     async function loadTileset() {
       try {
-        // Create loader with current game type
         const tilesetLoader = new TilesetLoader(gameType);
-        const tilesetDef = await tilesetLoader.loadTilesetDefinition(tilesetName);
+        const tieredTilesets = await tilesetLoader.loadTieredTilesetDefinitions(tilesetName, userPlan);
 
         if (cancelled) return;
-        setTileset(tilesetDef);
+        setTilesetGroups(tieredTilesets);
 
-        // Load all unique tileset images
         const imagePathsSet = new Set<string>();
-        for (const tileDef of Object.values(tilesetDef)) {
-          imagePathsSet.add(tileDef.imagePath);
+        for (const group of tieredTilesets) {
+          for (const tileDef of Object.values(group.tileset)) {
+            imagePathsSet.add(tileDef.imagePath);
+          }
         }
 
         const images = new Map<string, HTMLImageElement>();
@@ -88,47 +95,83 @@ export function TilePalette({
     return () => {
       cancelled = true;
     };
-  }, [tilesetName, gameType]);
+  }, [tilesetName, gameType, userPlan]);
 
-  // 1.  Extract unique groups from tileset and notify parent
   useEffect(() => {
-  if (!tileset || !onGroupsLoaded) return;
-
-  const groups = new Set<string>();
-  const langKey = currentLang.toUpperCase(); // "EN" or "VI"
-  const groupKey = `group_${langKey}` as keyof ExtendedTileDefinition;
-  const otherLabel = currentLang === "vi" ? "Khác" : "Other";
-
-  Object.values(tileset).forEach((tile) => {
-    const g = tile[groupKey] || tile["group_EN"] || otherLabel;
-    if (typeof g === "string") {
-      groups.add(g);
+    if (selectedTile === null) {
+      return;
     }
-  });
-  
-  onGroupsLoaded(Array.from(groups).sort());
-}, [tileset, currentLang, onGroupsLoaded]); // Đã đầy đủ dependencies
 
-// 2. Lọc danh sách hiển thị
-const filteredTilesData = useMemo(() => {
-  if (!tileset) return [];
-  
-  const entries = Object.entries(tileset) as [string, ExtendedTileDefinition][];
-  if (filterGroup === "all") return entries;
+    const selectedVariants = tilesetGroups.flatMap((group) => {
+      const tileDef = group.tileset[selectedTile];
+      if (!tileDef) {
+        return [];
+      }
+      return [{ locked: group.locked }];
+    });
 
-  const langKey = currentLang.toUpperCase();
-  const otherLabel = currentLang === "vi" ? "Khác" : "Other";
+    if (selectedVariants.length === 0) {
+      return;
+    }
 
-  return entries.filter(([, tile]) => {
-    // Logic lấy group label phải trùng khớp với logic trong useEffect ở trên
-    const tileGroup = tile[`group-${langKey}` as keyof ExtendedTileDefinition] 
-                      || tile["group_EN"] 
-                      || otherLabel;
-    return tileGroup === filterGroup;
-  });
-}, [tileset, filterGroup, currentLang]);
+    const hasUnlockedVariant = selectedVariants.some((variant) => !variant.locked);
+    if (!hasUnlockedVariant) {
+      onTileSelect(null);
+    }
+  }, [selectedTile, tilesetGroups, onTileSelect]);
 
-  if (!tileset) {
+  useEffect(() => {
+    if (!tilesetGroups.length || !onGroupsLoaded) return;
+
+    const groups = new Set<string>();
+    const langKey = currentLang.toUpperCase();
+    const groupKey = `group_${langKey}` as keyof ExtendedTileDefinition;
+    const otherLabel = currentLang === "vi" ? "Khac" : "Other";
+
+    tilesetGroups.forEach((group) => {
+      Object.values(group.tileset).forEach((tileDef) => {
+        const tile = tileDef as ExtendedTileDefinition;
+        const groupName = tile[groupKey] || tile["group_EN"] || otherLabel;
+        if (typeof groupName === "string") {
+          groups.add(groupName);
+        }
+      });
+    });
+
+    onGroupsLoaded(Array.from(groups).sort());
+  }, [tilesetGroups, currentLang, onGroupsLoaded]);
+
+  const filteredTilesData = useMemo<PaletteTileEntry[]>(() => {
+    if (!tilesetGroups.length) return [];
+
+    const langKey = currentLang.toUpperCase();
+    const groupKey = `group_${langKey}` as keyof ExtendedTileDefinition;
+    const otherLabel = currentLang === "vi" ? "Khac" : "Other";
+
+    const entries = tilesetGroups.flatMap((group) => {
+      return Object.entries(group.tileset).map(([idStr, tileDef]) => {
+        const tileId = parseInt(idStr, 10);
+        return {
+          tileId,
+          tileDef: tileDef as ExtendedTileDefinition,
+          tier: group.tier,
+          locked: group.locked,
+          key: `${group.tier}-${idStr}`,
+        };
+      });
+    });
+
+    if (filterGroup === "all") {
+      return entries;
+    }
+
+    return entries.filter((entry) => {
+      const tileGroup = entry.tileDef[groupKey] || entry.tileDef["group_EN"] || otherLabel;
+      return tileGroup === filterGroup;
+    });
+  }, [tilesetGroups, filterGroup, currentLang]);
+
+  if (!tilesetGroups.length) {
     return (
       <div style={styles.loading}>
         <p>Loading tileset...</p>
@@ -136,26 +179,26 @@ const filteredTilesData = useMemo(() => {
     );
   }
 
-  // // Get sorted tile IDs
-  // const tileIds = Object.keys(tileset)
-  //   .map((id) => parseInt(id, 10))
-  //   .sort((a, b) => a - b);
-
   return (
     <div style={styles.palette}>
-      {filteredTilesData.map(([idStr, tileDef]) => {
-      const tileId = parseInt(idStr, 10);
-      
-      return (
-        <TilePreview
-          key={tileId}
-          tileId={tileId}
-          tileDef={tileDef}
-          image={tileImages.get(tileDef.imagePath)}
-          isSelected={selectedTile === tileId}
-          onSelect={() => onTileSelect(selectedTile === tileId ? null : tileId)}
-        />
-      );
+      {filteredTilesData.map((entry) => {
+        const { tileId, tileDef, tier, locked, key } = entry;
+
+        return (
+          <TilePreview
+            key={key}
+            tileId={tileId}
+            tileDef={tileDef}
+            tier={tier}
+            locked={locked}
+            image={tileImages.get(tileDef.imagePath)}
+            isSelected={selectedTile === tileId}
+            onSelect={() => {
+              if (locked) return;
+              onTileSelect(selectedTile === tileId ? null : tileId);
+            }}
+          />
+        );
       })}
     </div>
   );
@@ -164,15 +207,14 @@ const filteredTilesData = useMemo(() => {
 interface TilePreviewProps {
   tileId: number;
   tileDef: TileDefinition;
+  tier: AssetTier;
+  locked: boolean;
   image: HTMLImageElement | undefined;
   isSelected: boolean;
   onSelect: () => void;
 }
 
-/**
- * Individual tile preview button
- */
-function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePreviewProps) {
+function TilePreview({ tileId, tileDef, tier, locked, image, isSelected, onSelect }: TilePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -182,12 +224,9 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, 56, 56);
 
-    // Draw background for tile 0 (empty)
     if (tileId === 0) {
-      // Checkered pattern for empty tile
       ctx.fillStyle = "#f0f0f0";
       ctx.fillRect(0, 0, 56, 56);
       ctx.fillStyle = "#e0e0e0";
@@ -196,49 +235,50 @@ function TilePreview({ tileId, tileDef, image, isSelected, onSelect }: TilePrevi
       return;
     }
 
-    // Draw the tile sprite
     const sx = tileDef.tileX * tileDef.tileSize;
     const sy = tileDef.tileY * tileDef.tileSize;
 
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      image,
-      sx,
-      sy,
-      tileDef.tileSize,
-      tileDef.tileSize, // Source
-      0,
-      0,
-      56,
-      56, // Destination (56x56 preview)
-    );
+    ctx.drawImage(image, sx, sy, tileDef.tileSize, tileDef.tileSize, 0, 0, 56, 56);
   }, [tileId, tileDef, image]);
 
   return (
     <button
+      disabled={locked}
       style={{
         ...styles.tileButton,
         border: isSelected ? "3px solid #0066ff" : "2px solid #ccc",
         background: isSelected
           ? "linear-gradient(180deg, #eff6ff, #dbeafe)"
           : styles.tileButton.background,
+        opacity: locked ? 0.58 : 1,
+        filter: locked ? "grayscale(0.85)" : "none",
+        cursor: locked ? "not-allowed" : "pointer",
         boxShadow: isSelected
           ? "0 8px 16px rgba(37, 99, 235, 0.25)"
           : "0 2px 8px rgba(15, 23, 42, 0.08)",
       }}
       onClick={onSelect}
       onMouseEnter={(e) => {
+        if (locked) return;
         e.currentTarget.style.transform = "translateY(-2px)";
         e.currentTarget.style.boxShadow = "0 8px 16px rgba(15, 23, 42, 0.16)";
       }}
       onMouseLeave={(e) => {
+        if (locked) return;
         e.currentTarget.style.transform = "translateY(0)";
         e.currentTarget.style.boxShadow = isSelected
           ? "0 8px 16px rgba(37, 99, 235, 0.25)"
           : "0 2px 8px rgba(15, 23, 42, 0.08)";
       }}
-      title={`Tile ${tileId}`}
+      title={locked ? LOCKED_TOOLTIP : `Tile ${tileId}`}
     >
+      <span style={styles.tierBadge}>{tier}</span>
+      {locked && (
+        <span style={styles.lockBadge} aria-hidden>
+          <Lock size={12} />
+        </span>
+      )}
       <canvas ref={canvasRef} width={56} height={56} style={styles.tileCanvas} />
       <span style={styles.tileId}>{tileId}</span>
     </button>
@@ -260,6 +300,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#666",
   },
   tileButton: {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -283,5 +324,31 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "11px",
     fontWeight: "500",
     color: "#334155",
+  },
+  tierBadge: {
+    position: "absolute",
+    left: "6px",
+    top: "6px",
+    padding: "2px 6px",
+    fontSize: "10px",
+    fontWeight: 700,
+    borderRadius: "999px",
+    background: "rgba(15, 23, 42, 0.08)",
+    color: "#334155",
+    textTransform: "uppercase",
+    letterSpacing: "0.03em",
+  },
+  lockBadge: {
+    position: "absolute",
+    right: "6px",
+    top: "6px",
+    width: "18px",
+    height: "18px",
+    borderRadius: "999px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(15, 23, 42, 0.72)",
+    color: "#ffffff",
   },
 };

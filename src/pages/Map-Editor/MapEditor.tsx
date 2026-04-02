@@ -12,10 +12,16 @@ import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { tokenStorage } from "../../lib/storage/tokenStorage";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 import blocksConfig from "../../shared/block/blocks-config.json";
+import {
+  canCreateMaps,
+  getCurrentUserPlan,
+  type SubscriptionPlan,
+} from "@/lib/auth/subscriptionPlan";
 
 type MapEditorRouteState = {
   mapId?: string;
   mode?: "edit" | "view";
+  roleContext?: "learner" | "cms";
 };
 
 type MapDetailLike = {
@@ -415,6 +421,10 @@ export default function MapEditor() {
   const location = useLocation();
   const routeState = (location.state ?? null) as MapEditorRouteState | null;
   const mapId = routeState?.mapId;
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
+  const [planLoading, setPlanLoading] = useState(true);
+  const canCreateMap = canCreateMaps(userPlan);
+  const isCreateMode = !mapId;
   const [zoom, setZoom] = useState(1);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -439,6 +449,29 @@ export default function MapEditor() {
   });
 
   const { store } = editorState;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUserPlan = async () => {
+      try {
+        const plan = await getCurrentUserPlan(false, routeState?.roleContext);
+        if (!cancelled) {
+          setUserPlan(plan);
+        }
+      } finally {
+        if (!cancelled) {
+          setPlanLoading(false);
+        }
+      }
+    };
+
+    loadUserPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [routeState?.roleContext]);
 
   useEffect(() => {
     if (!mapId) {
@@ -643,6 +676,38 @@ export default function MapEditor() {
   const { mapData, activeLayer, selectedTile, selectedObjectId, selectedTool, canUndo, canRedo } =
     editorState;
 
+  if (isCreateMode && planLoading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <button style={styles.backButton} onClick={() => navigate(-1)}>
+            <ArrowLeft size={15} /> Back
+          </button>
+        </div>
+        <div style={styles.planBlockCard}>
+          <h1 style={styles.title}>Map Editor</h1>
+          <p style={styles.subtitle}>Checking subscription...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCreateMode && !canCreateMap) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <button style={styles.backButton} onClick={() => navigate(-1)}>
+            <ArrowLeft size={15} /> Back
+          </button>
+        </div>
+        <div style={styles.planBlockCard}>
+          <h1 style={styles.title}>Map Editor</h1>
+          <p style={styles.subtitle}>Upgrade to Pro to create maps</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -669,6 +734,7 @@ export default function MapEditor() {
               initialAvatarUrl={editingMapAvatarUrl}
               initialHints={editingMapHints}
               mapData={mapData}
+              userPlan={userPlan}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
               selectedObjectId={selectedObjectId}
@@ -749,6 +815,7 @@ export default function MapEditor() {
               initialAvatarUrl={editingMapAvatarUrl}
               initialHints={editingMapHints}
               mapData={mapData}
+              userPlan={userPlan}
               activeLayer={activeLayer}
               selectedTile={selectedTile}
               selectedObjectId={selectedObjectId}
@@ -821,6 +888,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     color: "#64748b",
     margin: 0,
+  },
+  planBlockCard: {
+    display: "grid",
+    gap: "10px",
+    width: "100%",
+    maxWidth: "1800px",
+    padding: "20px",
+    borderRadius: "16px",
+    border: "1px solid #dbe3ef",
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+    textAlign: "center",
   },
   backButton: {
     position: "absolute",

@@ -1,6 +1,10 @@
 import type { ObjectDefinition } from "../definitions/ObjectDefinition";
 import type { GameType } from "../../../../shared/types/GameType";
-import { AssetDefinitionLoader } from "./AssetDefinitionLoader";
+import {
+  AssetDefinitionLoader,
+  type TieredObjectsGroup,
+} from "./AssetDefinitionLoader";
+import type { SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
 
 /**
  * Object sprite loader
@@ -28,6 +32,13 @@ export class ObjectSpriteLoader {
     configName: string = "objects",
   ): Promise<Record<string, ObjectDefinition>> {
     return this.definitionLoader.loadObjects(configName);
+  }
+
+  async loadTieredObjectDefinitions(
+    configName: string = "objects",
+    userPlan: SubscriptionPlan,
+  ): Promise<TieredObjectsGroup[]> {
+    return this.definitionLoader.loadTieredObjects(configName, userPlan);
   }
 
   /**
