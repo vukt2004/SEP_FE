@@ -35,6 +35,11 @@ import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import {
+  canCreateMaps,
+  getCurrentUserPlan,
+  type SubscriptionPlan,
+} from "@/lib/auth/subscriptionPlan";
 import styles from "./MyMapsPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
@@ -728,6 +733,8 @@ export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const canPublishAnyApprovedMap = isAdminOrModeratorLearnerJwt(tokenStorage.getLearnerToken());
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
+  const canCreateMap = canCreateMaps(userPlan);
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -813,6 +820,23 @@ export const MyMapsPage: React.FC = () => {
     fetchMaps();
   }, [fetchMaps]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlan = async () => {
+      const plan = await getCurrentUserPlan(false, "learner");
+      if (!cancelled) {
+        setUserPlan(plan);
+      }
+    };
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleViewDetails = (mapId: string) => {
     // Open the map in game view for both author and collected tabs
     navigate(`/app/map/${mapId}`);
@@ -820,7 +844,7 @@ export const MyMapsPage: React.FC = () => {
 
   const handleUpdateMap = (mapId: string) => {
     // Navigate to map editor with edit mode
-    navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit" } });
+    navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit", roleContext: "learner" } });
   };
 
   const handleSubmitForReview = async (mapId: string) => {
@@ -1069,25 +1093,35 @@ export const MyMapsPage: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate(ROUTES.MAP_EDITOR)}
-              disabled={activeTab !== "author"}
+              onClick={() => {
+                if (activeTab !== "author" || !canCreateMap) return;
+                navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "learner" } });
+              }}
+              disabled={activeTab !== "author" || !canCreateMap}
+              title={!canCreateMap ? "Upgrade to Pro to create maps" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
                 padding: "10px 20px",
-                background: activeTab === "author" ? "var(--primary)" : "var(--surface-2)",
+                background:
+                  activeTab === "author" && canCreateMap ? "var(--primary)" : "var(--surface-2)",
                 border: "none",
                 borderRadius: "8px",
-                color: activeTab === "author" ? "white" : "var(--muted)",
+                color: activeTab === "author" && canCreateMap ? "white" : "var(--muted)",
                 fontSize: "14px",
                 fontWeight: "500",
-                cursor: activeTab === "author" ? "pointer" : "not-allowed",
+                cursor: activeTab === "author" && canCreateMap ? "pointer" : "not-allowed",
                 whiteSpace: "nowrap",
               }}
             >
               <Plus size={16} /> {t("createMap")}
             </button>
+            {!canCreateMap && (
+              <p style={{ color: "var(--warning)", fontSize: "13px", margin: 0 }}>
+                Upgrade to Pro to create maps
+              </p>
+            )}
           </div>
 
           <StatsCards
@@ -1200,7 +1234,7 @@ export const MyMapsPage: React.FC = () => {
             </div>
             {activeTab === "author" ? (
               <button
-                onClick={() => navigate(ROUTES.MAP_EDITOR)}
+                onClick={() => navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "learner" } })}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

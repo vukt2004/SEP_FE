@@ -1,5 +1,5 @@
-import platformerObjects from "../../../shared/assets/platformer/objects/objects.json";
-import topdownObjects from "../../../shared/assets/topdown/objects/objects.json";
+import platformerObjects from "../../../shared/assets/platformer/basic/objects/objects.json";
+import topdownObjects from "../../../shared/assets/topdown/basic/objects/objects.json";
 
 type MapType = "platform" | "topdown";
 

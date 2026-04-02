@@ -3,6 +3,14 @@ import { buildDefinitionPath } from "../../../../shared/types/GameType";
 import type { TileDefinition } from "../definitions/TileDefinition";
 import type { ObjectDefinition } from "../definitions/ObjectDefinition";
 import type { AnimationConfig } from "./AnimationLoader";
+import {
+  getAllowedTiers,
+  isTierLocked,
+  type AssetTier,
+  type SubscriptionPlan,
+} from "@/lib/auth/subscriptionPlan";
+
+const ASSET_TIERS: AssetTier[] = ["basic", "advanced"];
 
 /**
  * Tileset configuration format
@@ -24,6 +32,18 @@ interface ObjectSpritesConfig {
   objects: {
     [key: string]: ObjectDefinition;
   };
+}
+
+export interface TieredTilesetGroup {
+  tileset: Record<number, TileDefinition>;
+  tier: AssetTier;
+  locked: boolean;
+}
+
+export interface TieredObjectsGroup {
+  objects: Record<string, ObjectDefinition>;
+  tier: AssetTier;
+  locked: boolean;
 }
 
 /**
@@ -49,50 +69,96 @@ export class AssetDefinitionLoader {
    * @returns Parsed tileset registry
    */
   async loadTileset(tilesetName: string): Promise<Record<number, TileDefinition>> {
-    // Check cache
-    if (this.tilesetCache.has(tilesetName)) {
-      return this.tilesetCache.get(tilesetName)!;
+    const mergedCacheKey = `merged:${tilesetName}`;
+    if (this.tilesetCache.has(mergedCacheKey)) {
+      return this.tilesetCache.get(mergedCacheKey)!;
     }
 
-    const definitionPath = buildDefinitionPath(this.gameType, "tilesets", tilesetName);
-
     try {
-      // Use Vite's import.meta.glob with dynamic pattern
-      const modules = import.meta.glob<{ default: TilesetConfig }>(
-        "/src/shared/assets/*/tilesets/*.json",
-        { eager: false },
-      );
+      const tieredGroups = await this.loadTieredTilesets(tilesetName, "creator");
+      const mergedTileset: Record<number, TileDefinition> = {};
 
-      const importFn = modules[definitionPath];
-      if (!importFn) {
+      for (const group of tieredGroups) {
+        Object.assign(mergedTileset, group.tileset);
+      }
+
+      if (Object.keys(mergedTileset).length === 0) {
         throw new Error(`Tileset not found: ${tilesetName} for game type: ${this.gameType}`);
       }
 
-      const module = await importFn();
-      const config = module.default;
-
-      if (!config || !config.tiles) {
-        throw new Error(`Invalid tileset format: ${tilesetName}`);
-      }
-
-      // Convert string keys to numbers
-      const tileRegistry: Record<number, TileDefinition> = {};
-      for (const [key, tileDef] of Object.entries(config.tiles)) {
-        const tileId = parseInt(key, 10);
-        if (isNaN(tileId)) {
-          console.warn(`Invalid tile ID "${key}" in tileset ${tilesetName}, skipping`);
-          continue;
-        }
-        tileRegistry[tileId] = tileDef;
-      }
-
-      this.tilesetCache.set(tilesetName, tileRegistry);
-      return tileRegistry;
+      this.tilesetCache.set(mergedCacheKey, mergedTileset);
+      return mergedTileset;
     } catch (error) {
       throw new Error(
         `Failed to load tileset "${tilesetName}" for game type "${this.gameType}": ${error}`,
       );
     }
+  }
+
+  async loadTieredTilesets(
+    tilesetName: string,
+    userPlan: SubscriptionPlan,
+  ): Promise<TieredTilesetGroup[]> {
+    const tieredModules = import.meta.glob<{ default: TilesetConfig }>(
+      "/src/shared/assets/*/*/tilesets/*.json",
+      { eager: false },
+    );
+    const legacyModules = import.meta.glob<{ default: TilesetConfig }>(
+      "/src/shared/assets/*/tilesets/*.json",
+      { eager: false },
+    );
+
+    const groups: TieredTilesetGroup[] = [];
+    const allowedTiers = getAllowedTiers(userPlan);
+
+    for (const tier of ASSET_TIERS) {
+      const tierCacheKey = `${tier}:${tilesetName}`;
+
+      if (!this.tilesetCache.has(tierCacheKey)) {
+        const tierPath = buildDefinitionPath(this.gameType, "tilesets", tilesetName, tier);
+        const legacyPath = buildDefinitionPath(this.gameType, "tilesets", tilesetName);
+        const importFn =
+          tieredModules[tierPath] ?? (tier === "basic" ? legacyModules[legacyPath] : undefined);
+
+        if (importFn) {
+          const module = await importFn();
+          const config = module.default;
+
+          if (!config || !config.tiles) {
+            throw new Error(`Invalid tileset format: ${tilesetName}`);
+          }
+
+          const tileRegistry: Record<number, TileDefinition> = {};
+          for (const [key, tileDef] of Object.entries(config.tiles)) {
+            const tileId = parseInt(key, 10);
+            if (isNaN(tileId)) {
+              console.warn(`Invalid tile ID "${key}" in tileset ${tilesetName}, skipping`);
+              continue;
+            }
+            tileRegistry[tileId] = tileDef;
+          }
+
+          this.tilesetCache.set(tierCacheKey, tileRegistry);
+        }
+      }
+
+      const tierTileset = this.tilesetCache.get(tierCacheKey);
+      if (!tierTileset) {
+        continue;
+      }
+
+      groups.push({
+        tileset: tierTileset,
+        tier,
+        locked: isTierLocked(userPlan, tier) || !allowedTiers.includes(tier),
+      });
+    }
+
+    if (groups.length === 0) {
+      throw new Error(`Tileset not found: ${tilesetName} for game type: ${this.gameType}`);
+    }
+
+    return groups;
   }
 
   /**
@@ -101,38 +167,86 @@ export class AssetDefinitionLoader {
    * @returns Parsed object definitions
    */
   async loadObjects(configName: string = "objects"): Promise<Record<string, ObjectDefinition>> {
-    // Check cache
-    if (this.objectsCache.has(configName)) {
-      return this.objectsCache.get(configName)!;
+    const mergedCacheKey = `merged:${configName}`;
+    if (this.objectsCache.has(mergedCacheKey)) {
+      return this.objectsCache.get(mergedCacheKey)!;
     }
 
-    const definitionPath = buildDefinitionPath(this.gameType, "objects", configName);
-
     try {
-      const modules = import.meta.glob<{ default: ObjectSpritesConfig }>(
-        "/src/shared/assets/*/objects/*.json",
-        { eager: false },
-      );
+      const tieredGroups = await this.loadTieredObjects(configName, "creator");
+      const mergedObjects: Record<string, ObjectDefinition> = {};
 
-      const importFn = modules[definitionPath];
-      if (!importFn) {
+      for (const group of tieredGroups) {
+        Object.assign(mergedObjects, group.objects);
+      }
+
+      if (Object.keys(mergedObjects).length === 0) {
         throw new Error(`Objects config not found: ${configName} for game type: ${this.gameType}`);
       }
 
-      const module = await importFn();
-      const config = module.default;
-
-      if (!config || !config.objects) {
-        throw new Error(`Invalid objects format: ${configName}`);
-      }
-
-      this.objectsCache.set(configName, config.objects);
-      return config.objects;
+      this.objectsCache.set(mergedCacheKey, mergedObjects);
+      return mergedObjects;
     } catch (error) {
       throw new Error(
         `Failed to load objects "${configName}" for game type "${this.gameType}": ${error}`,
       );
     }
+  }
+
+  async loadTieredObjects(
+    configName: string = "objects",
+    userPlan: SubscriptionPlan,
+  ): Promise<TieredObjectsGroup[]> {
+    const tieredModules = import.meta.glob<{ default: ObjectSpritesConfig }>(
+      "/src/shared/assets/*/*/objects/*.json",
+      { eager: false },
+    );
+    const legacyModules = import.meta.glob<{ default: ObjectSpritesConfig }>(
+      "/src/shared/assets/*/objects/*.json",
+      { eager: false },
+    );
+
+    const groups: TieredObjectsGroup[] = [];
+    const allowedTiers = getAllowedTiers(userPlan);
+
+    for (const tier of ASSET_TIERS) {
+      const tierCacheKey = `${tier}:${configName}`;
+
+      if (!this.objectsCache.has(tierCacheKey)) {
+        const tierPath = buildDefinitionPath(this.gameType, "objects", configName, tier);
+        const legacyPath = buildDefinitionPath(this.gameType, "objects", configName);
+        const importFn =
+          tieredModules[tierPath] ?? (tier === "basic" ? legacyModules[legacyPath] : undefined);
+
+        if (importFn) {
+          const module = await importFn();
+          const config = module.default;
+
+          if (!config || !config.objects) {
+            throw new Error(`Invalid objects format: ${configName}`);
+          }
+
+          this.objectsCache.set(tierCacheKey, config.objects);
+        }
+      }
+
+      const tierObjects = this.objectsCache.get(tierCacheKey);
+      if (!tierObjects) {
+        continue;
+      }
+
+      groups.push({
+        objects: tierObjects,
+        tier,
+        locked: isTierLocked(userPlan, tier) || !allowedTiers.includes(tier),
+      });
+    }
+
+    if (groups.length === 0) {
+      throw new Error(`Objects config not found: ${configName} for game type: ${this.gameType}`);
+    }
+
+    return groups;
   }
 
   /**
@@ -141,10 +255,18 @@ export class AssetDefinitionLoader {
    */
   async loadAllAnimations(): Promise<Map<string, AnimationConfig>> {
     try {
-      const modules = import.meta.glob<{ default: AnimationConfig }>(
+      const tieredModules = import.meta.glob<{ default: AnimationConfig }>(
+        "/src/shared/assets/*/*/animations/*.json",
+        { eager: false },
+      );
+      const legacyModules = import.meta.glob<{ default: AnimationConfig }>(
         "/src/shared/assets/*/animations/*.json",
         { eager: false },
       );
+      const modules = {
+        ...legacyModules,
+        ...tieredModules,
+      };
 
       const loadPromises: Promise<void>[] = [];
 

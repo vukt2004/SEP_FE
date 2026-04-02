@@ -17,9 +17,16 @@ import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps
 import { Modal } from "../components/Modal";
 import { Eye, Check, CheckCircle, X, Plus, Search } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import {
+  canCreateMaps,
+  getCurrentUserPlan,
+  type SubscriptionPlan,
+} from "@/lib/auth/subscriptionPlan";
 
 export const MapsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
+  const canCreateMap = canCreateMaps(userPlan);
   const [maps, setMaps] = useState<MapListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +109,23 @@ export const MapsPage: React.FC = () => {
   useEffect(() => {
     fetchMaps();
   }, [fetchMaps]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlan = async () => {
+      const plan = await getCurrentUserPlan(false, "cms");
+      if (!cancelled) {
+        setUserPlan(plan);
+      }
+    };
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleViewDetails = async (mapId: string) => {
     try {
@@ -303,24 +327,34 @@ export const MapsPage: React.FC = () => {
           <p style={{ color: "var(--text-2)" }}>View and manage all maps</p>
         </div>
         <button
-          onClick={() => navigate(ROUTES.MAP_EDITOR)}
+          onClick={() => {
+            if (!canCreateMap) return;
+            navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "cms" } });
+          }}
+          disabled={!canCreateMap}
+          title={!canCreateMap ? "Upgrade to Pro to create maps" : undefined}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
             padding: "10px 20px",
-            background: "var(--primary)",
+            background: canCreateMap ? "var(--primary)" : "var(--surface-2)",
             border: "none",
             borderRadius: "8px",
-            color: "white",
+            color: canCreateMap ? "white" : "var(--muted)",
             fontSize: "14px",
             fontWeight: "500",
-            cursor: "pointer",
+            cursor: canCreateMap ? "pointer" : "not-allowed",
             whiteSpace: "nowrap",
           }}
         >
           <Plus size={16} /> Create Map
         </button>
+        {!canCreateMap && (
+          <p style={{ color: "var(--warning)", fontSize: "13px", margin: 0 }}>
+            Upgrade to Pro to create maps
+          </p>
+        )}
       </div>
 
       {/* Stats */}

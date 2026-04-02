@@ -4,6 +4,7 @@ import type {
   PackagesListResult,
   PackageDetailResult,
   PurchasePackageResult,
+  MyPackagesResult,
 } from "@/types/api/learner/packages";
 
 export const learnerPackagesApi = {
@@ -21,5 +22,11 @@ export const learnerPackagesApi = {
     return learnerAxios.post<PurchasePackageResult>(
       `/api/learner/marketplace/packages/${id}/purchase`,
     );
+  },
+
+  getMyPackages(page: number = 1, pageSize: number = 20) {
+    return learnerAxios.get<MyPackagesResult>("/api/learner/marketplace/my-packages", {
+      params: { page, pageSize },
+    });
   },
 };

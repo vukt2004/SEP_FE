@@ -1,6 +1,10 @@
 import type { TileDefinition } from "../definitions/TileDefinition";
 import type { GameType } from "../../../../shared/types/GameType";
-import { AssetDefinitionLoader } from "./AssetDefinitionLoader";
+import {
+  AssetDefinitionLoader,
+  type TieredTilesetGroup,
+} from "./AssetDefinitionLoader";
+import type { SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
 
 /**
  * Dynamic tileset loader
@@ -26,6 +30,13 @@ export class TilesetLoader {
    */
   async loadTilesetDefinition(tilesetName: string): Promise<Record<number, TileDefinition>> {
     return this.definitionLoader.loadTileset(tilesetName);
+  }
+
+  async loadTieredTilesetDefinitions(
+    tilesetName: string,
+    userPlan: SubscriptionPlan,
+  ): Promise<TieredTilesetGroup[]> {
+    return this.definitionLoader.loadTieredTilesets(tilesetName, userPlan);
   }
 
   /**

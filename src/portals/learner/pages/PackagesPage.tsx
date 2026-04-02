@@ -6,6 +6,7 @@ import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
 import type { ApiResult } from "@/types/api/common";
 import { useTranslation } from "@/lib/i18n/translations";
+import { clearCurrentUserPlanCache } from "@/lib/auth/subscriptionPlan";
 import "@/shared/styles/tokens.css";
 import styles from "./PackagesPage.module.css";
 
@@ -59,6 +60,7 @@ export default function PackagesPage() {
       setPurchasingId(pkg.id);
       const response = await learnerPackagesApi.purchase(pkg.id);
       if (response.data.isSuccess) {
+        clearCurrentUserPlanCache();
         setPurchaseModal({
           kind: "success",
           message: response.data.message || "Package purchased successfully.",

@@ -12,6 +12,7 @@ import {
   Shapes,
   Pencil,
   ImagePlus,
+  Lock,
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
@@ -22,6 +23,7 @@ import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
   type ObjectDefinition,
+  type TieredObjectsGroup,
 } from "../../modules/engine/assets";
 import blocksConfig from "../../shared/block/blocks-config.json";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
@@ -35,6 +37,9 @@ import {
 } from "../../tools/map-editor/utils/unlockCode";
 import { ROUTES } from "../../lib/constants/routes";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
+import type { AssetTier, SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
+
+const LOCKED_TOOLTIP = "Upgrade to Creator to use this asset";
 
 type MapTag = {
   id: string;
@@ -50,6 +55,7 @@ function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
 
 interface MapEditorControlsProps {
   mapData: MapData;
+  userPlan: SubscriptionPlan;
   activeLayer: "background" | "ground" | "foreground" | "collision";
   selectedTile: number | null;
   selectedObjectId: number | null; // Changed from string enum to numeric ID
@@ -92,17 +98,20 @@ interface ObjectSelectionButtonProps {
   objectId: number;
   label: string;
   objectDef: ObjectDefinition;
+  tier: AssetTier;
+  locked: boolean;
   cache: ObjectSpriteCache;
   selectedObjectId: number | null;
-  isSelected: boolean;
   deselectHint: string;
-  onObjectSelect: (id: number|null) => void;
+  onObjectSelect: (id: number | null) => void;
 }
 
 function ObjectSelectionButton({
   objectId,
   label,
   objectDef,
+  tier,
+  locked,
   cache,
   selectedObjectId,
   deselectHint,
@@ -153,7 +162,9 @@ function ObjectSelectionButton({
 
   return (
     <button
+      disabled={locked}
       style={{
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -164,14 +175,56 @@ function ObjectSelectionButton({
         border: selectedObjectId === objectId ? "2px solid #4CAF50" : "2px solid #ddd",
         borderRadius: "6px",
         backgroundColor: selectedObjectId === objectId ? "#e8f5e9" : "white",
-        cursor: "pointer",
+        cursor: locked ? "not-allowed" : "pointer",
+        opacity: locked ? 0.56 : 1,
+        filter: locked ? "grayscale(0.85)" : "none",
         transition: "all 0.2s",
         minWidth: "80px",
         boxShadow: selectedObjectId === objectId ? "0 2px 6px rgba(76,175,80,0.3)" : "none",
       }}
-      onClick={() => onObjectSelect(selectedObjectId === objectId ? null : objectId)}
-      title={`${label} (${deselectHint})`}
+      onClick={() => {
+        if (locked) return;
+        onObjectSelect(selectedObjectId === objectId ? null : objectId);
+      }}
+      title={locked ? LOCKED_TOOLTIP : `${label} (${deselectHint})`}
     >
+      <span
+        style={{
+          position: "absolute",
+          left: "6px",
+          top: "6px",
+          padding: "2px 6px",
+          fontSize: "10px",
+          fontWeight: 700,
+          borderRadius: "999px",
+          background: "rgba(15, 23, 42, 0.08)",
+          color: "#334155",
+          textTransform: "uppercase",
+          letterSpacing: "0.03em",
+        }}
+      >
+        {tier}
+      </span>
+      {locked && (
+        <span
+          style={{
+            position: "absolute",
+            right: "6px",
+            top: "6px",
+            width: "18px",
+            height: "18px",
+            borderRadius: "999px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(15, 23, 42, 0.72)",
+            color: "#ffffff",
+          }}
+          aria-hidden
+        >
+          <Lock size={12} />
+        </span>
+      )}
       <div
         style={{
           width: "48px",
@@ -199,6 +252,7 @@ function ObjectSelectionButton({
 
 export function MapEditorControls({
   mapData,
+  userPlan,
   activeLayer,
   selectedTile,
   selectedObjectId,
@@ -377,6 +431,7 @@ export function MapEditorControls({
     string,
     ObjectDefinition
   > | null>(null);
+  const [objectDefinitionGroups, setObjectDefinitionGroups] = useState<TieredObjectsGroup[]>([]);
   const availableBlocks = blocksConfig.blocks;
   const blockTypeToLabel = new Map(
     availableBlocks.map((block) => {
@@ -408,6 +463,7 @@ export function MapEditorControls({
     if (!showLeftPanel) {
       setObjectSpritesLoaded(false);
       setObjectDefinitions(null);
+      setObjectDefinitionGroups([]);
       return;
     }
 
@@ -416,16 +472,20 @@ export function MapEditorControls({
     // Reset immediately so UI shows loading state during transition
     setObjectSpritesLoaded(false);
     setObjectDefinitions(null);
+    setObjectDefinitionGroups([]);
 
     async function loadObjects() {
       try {
         // Create loader with current game type
         const objectLoader = new ObjectSpriteLoader(gameType);
-        const defs = await objectLoader.loadObjectDefinitions("objects");
+        const tieredDefs = await objectLoader.loadTieredObjectDefinitions("objects", userPlan);
+        const mergedDefs = tieredDefs.reduce<Record<string, ObjectDefinition>>((acc, group) => {
+          return { ...acc, ...group.objects };
+        }, {});
 
         // Preload all sprite images BEFORE setting definitions
         const imagePathsSet = new Set<string>();
-        for (const objDef of Object.values(defs)) {
+        for (const objDef of Object.values(mergedDefs)) {
           imagePathsSet.add(objDef.imagePath);
         }
 
@@ -433,16 +493,18 @@ export function MapEditorControls({
 
         // Only set definitions after all images are loaded
         if (cancelled) return;
-        setObjectDefinitions(defs);
+        setObjectDefinitions(mergedDefs);
+        setObjectDefinitionGroups(tieredDefs);
         setObjectSpritesLoaded(true);
         if (onObjectDefinitionsLoaded) {
-          onObjectDefinitionsLoaded(defs);
+          onObjectDefinitionsLoaded(mergedDefs);
         }
       } catch (err) {
         console.error("Failed to load object definitions:", err);
         if (!cancelled) {
           setObjectSpritesLoaded(true); // Still set true to avoid infinite loading
           setObjectDefinitions(null);
+          setObjectDefinitionGroups([]);
         }
       }
     }
@@ -452,7 +514,30 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel]);
+  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel, userPlan]);
+
+  useEffect(() => {
+    if (selectedObjectId === null) {
+      return;
+    }
+
+    const selectedVariants = objectDefinitionGroups.flatMap((group) => {
+      const def = group.objects[selectedObjectId.toString()];
+      if (!def) {
+        return [];
+      }
+      return [{ locked: group.locked }];
+    });
+
+    if (selectedVariants.length === 0) {
+      return;
+    }
+
+    const hasUnlockedVariant = selectedVariants.some((variant) => !variant.locked);
+    if (!hasUnlockedVariant) {
+      onObjectSelect(null);
+    }
+  }, [selectedObjectId, objectDefinitionGroups, onObjectSelect]);
 
   useEffect(() => {
     if (!showRightPanel || userType === "unknown") {
@@ -1428,6 +1513,7 @@ export function MapEditorControls({
                 selectedTile={selectedTile}
                 onTileSelect={onTileSelect}
                 mapData={mapData}
+                userPlan={userPlan}
                 currentLang={locale} 
                 filterGroup={selectedTileGroup}
                 onGroupsLoaded={setAvailableTileGroups}
@@ -1440,39 +1526,60 @@ export function MapEditorControls({
               <h3 style={styles.sectionTitle}>
                 {tt("mapEditorObjects", "Objects")}
               </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))",
-                  gap: "8px",
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                  padding: "4px",
-                }}
-              >
-                {Object.entries(objectDefinitions).map(([idStr, objDef]) => {
-                  const objectId = parseInt(idStr, 10);
-                  
-                  const data = objDef as ObjectDefinition;
-                  const langKey = locale.toUpperCase() as "EN" | "VI";
-                  const nameKey = `name_${langKey}` as keyof ObjectDefinition;
-                  const displayName = String(data[nameKey]);
+              {objectDefinitionGroups.map((group) => (
+                <div key={`object-tier-${group.tier}`} style={{ marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <span style={styles.tierLabel}>{group.tier.toUpperCase()}</span>
+                    {group.locked && (
+                      <span style={styles.lockedTierHint}>
+                        <Lock size={12} /> {LOCKED_TOOLTIP}
+                      </span>
+                    )}
+                  </div>
 
-                  return (
-                    <ObjectSelectionButton
-                      key={idStr}
-                      objectId={objectId}
-                      label={displayName}
-                      objectDef={data} // Truyền dữ liệu Object chuẩn
-                      cache={objectCache} 
-                      selectedObjectId={selectedObjectId}
-                      isSelected={selectedObjectId === objectId}
-                      deselectHint={tr("click again to deselect", "bam lai de bo chon")}
-                      onObjectSelect={onObjectSelect}
-                    />
-                  );
-                })}
-              </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))",
+                      gap: "8px",
+                      maxHeight: "300px",
+                      overflowY: "auto",
+                      padding: "4px",
+                    }}
+                  >
+                    {Object.entries(group.objects).map(([idStr, objDef]) => {
+                      const objectId = parseInt(idStr, 10);
+
+                      const data = objDef as ObjectDefinition;
+                      const langKey = locale.toUpperCase() as "EN" | "VI";
+                      const nameKey = `name_${langKey}` as keyof ObjectDefinition;
+                      const displayName = String(data[nameKey] ?? data.name ?? idStr);
+
+                      return (
+                        <ObjectSelectionButton
+                          key={`${group.tier}-${idStr}`}
+                          objectId={objectId}
+                          label={displayName}
+                          objectDef={data}
+                          tier={group.tier}
+                          locked={group.locked}
+                          cache={objectCache}
+                          selectedObjectId={selectedObjectId}
+                          deselectHint={tr("click again to deselect", "bam lai de bo chon")}
+                          onObjectSelect={onObjectSelect}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
           </div>
           )}
 
@@ -2307,6 +2414,25 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 4px 0",
     fontSize: "12px",
     color: "#334155",
+  },
+  tierLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    padding: "3px 8px",
+    fontSize: "10px",
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    color: "#334155",
+    background: "#f8fafc",
+  },
+  lockedTierHint: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    fontSize: "11px",
+    color: "#64748b",
   },
   buttonGroup: {
     display: "flex",

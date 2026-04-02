@@ -9,6 +9,7 @@ export type GameType = "topdown" | "platformer";
  * Asset category types
  */
 export type AssetCategory = "animations" | "objects" | "tilesets";
+export type AssetTierFolder = "basic" | "advanced";
 
 /**
  * Asset path configuration
@@ -46,8 +47,12 @@ export function buildDefinitionPath(
   gameType: GameType,
   category: AssetCategory,
   name: string,
+  tier?: AssetTierFolder,
 ): string {
   const paths = getAssetPaths(gameType);
+  if (tier) {
+    return `${paths.definitionsBasePath}/${tier}/${category}/${name}.json`;
+  }
   return `${paths.definitionsBasePath}/${category}/${name}.json`;
 }
 

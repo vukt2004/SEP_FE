@@ -9,7 +9,12 @@ export {
   ObjectSpriteLoader,
   TilesetLoader,
 } from "./loaders";
-export type { AnimationRegistry, AnimationStateMap } from "./loaders";
+export type {
+  AnimationRegistry,
+  AnimationStateMap,
+  TieredObjectsGroup,
+  TieredTilesetGroup,
+} from "./loaders";
 
 // Asset Caches
 export { ObjectSpriteCache, TilesetCache } from "./cache";
