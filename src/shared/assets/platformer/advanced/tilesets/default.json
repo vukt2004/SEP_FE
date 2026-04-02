@@ -1,0 +1,726 @@
+{
+  "name": "default",
+  "description": "Default advanced platformer tileset using Sunny Land environment assets",
+  "tiles": {
+    "0": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "1": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "2": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "3": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "4": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "5": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "6": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 1,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "7": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 13,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "8": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 14,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "9": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 16,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "10": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 17,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "11": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 19,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "12": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 20,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "13": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 22,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "14": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 23,
+      "tileY": 2,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "15": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "16": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "17": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "18": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "19": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 8,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "20": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "21": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 3,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "22": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "23": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "24": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "25": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "26": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 8,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "27": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "28": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 14,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "29": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 16,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "30": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 20,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "31": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 22,
+      "tileY": 5,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "32": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "33": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "34": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "35": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "36": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "37": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 7,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "38": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "39": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "40": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "41": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "42": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "43": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 10,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "44": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 11,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "45": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 11,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "46": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 13,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "47": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 13,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "48": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 13,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "49": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 7,
+      "tileY": 14,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "50": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 14,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "51": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 14,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "52": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 15,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "53": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 15,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "54": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 15,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "55": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 15,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "56": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 15,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "57": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 16,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "58": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 16,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "59": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 16,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "60": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "61": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "62": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "63": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "64": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "65": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 14,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "66": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 15,
+      "tileY": 17,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "67": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "68": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 2,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "69": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "70": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 5,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "71": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "72": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "73": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 12,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "74": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 14,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "75": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 15,
+      "tileY": 18,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "76": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 1,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "77": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "78": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "79": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "80": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "81": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 20,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "82": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 3,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "83": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 4,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "84": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 9,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "85": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 10,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "86": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 11,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "87": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 13,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "88": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 14,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    },
+    "89": {
+      "imagePath": "/assets/Sunny-land-files/Assets/environment/tileset.png",
+      "tileX": 15,
+      "tileY": 21,
+      "tileSize": 16,
+      "group_EN": "Environment",
+      "group_VI": "Moi truong"
+    }
+  }
+}
