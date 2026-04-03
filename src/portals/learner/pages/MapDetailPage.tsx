@@ -10,10 +10,10 @@ import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
-import type { LocaleId } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import { localizeTagName } from "@/lib/maps/tagLocalization";
 
 type PurchaseModalState = {
   kind: "success" | "insufficient" | "error";
@@ -46,44 +46,6 @@ const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
   "strategy",
   "logical thinking",
 ]);
-
-const CONCEPT_LABELS_VI: Record<string, string> = {
-  "Algorithm Basics": "Cơ bản thuật toán",
-  "Algorithm Design": "Thiết kế thuật toán",
-  Arrays: "Mảng",
-  "Computational Thinking": "Tư duy máy tính",
-  Conditionals: "Điều kiện",
-  Debugging: "Gỡ lỗi",
-  Functions: "Hàm",
-  "Logic Puzzle": "Câu đố logic",
-  "Logical Thinking": "Tư duy logic",
-  Loops: "Vòng lặp",
-  Objects: "Đối tượng",
-  "Obstacle Avoidance": "Tránh chướng ngại vật",
-  Operators: "Toán tử",
-  Optimization: "Tối ưu hóa",
-  Pathfinding: "Tìm đường",
-  "Pattern Recognition": "Nhận dạng mẫu",
-  Pointers: "Con trỏ",
-  "Problem Solving": "Giải quyết vấn đề",
-  Recursion: "Đệ quy",
-  "Resource Collection": "Thu thập tài nguyên",
-  Strategy: "Chiến lược",
-  Variables: "Biến",
-  "If Else": "If / Else",
-  "If/Else": "If / Else",
-};
-
-function getConceptLabel(name: string, locale: LocaleId): string {
-  if (locale === "vi") {
-    const exact = CONCEPT_LABELS_VI[name];
-    if (exact) return exact;
-    const lower = name.toLowerCase();
-    const entry = Object.entries(CONCEPT_LABELS_VI).find(([k]) => k.toLowerCase() === lower);
-    if (entry) return entry[1];
-  }
-  return name;
-}
 
 function isDifficultyTag(tagName: string): boolean {
   return DIFFICULTY_TAG_NAMES.has(tagName.trim().toLowerCase());
@@ -605,7 +567,7 @@ export default function MapDetailPage() {
                         }`}
                         onClick={() => toggleTagSelection(tag.id)}
                       >
-                        {tag.name}
+                        {localizeTagName(tag.name, locale)}
                       </button>
                     ))
                   )}
@@ -621,7 +583,7 @@ export default function MapDetailPage() {
                       }`}
                       onClick={() => toggleLearnedTagSelection(tag.id)}
                     >
-                      {tag.name}
+                      {localizeTagName(tag.name, locale)}
                     </button>
                   ))}
                 </div>
@@ -734,6 +696,16 @@ export default function MapDetailPage() {
                   <span className={styles.steamMetaLabel}>{t("developer")}</span>
                   <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
                 </div>
+                {isAuthor &&
+                map.contentVersion != null &&
+                Number.isFinite(map.contentVersion) ? (
+                  <div className={styles.steamMetaRow}>
+                    <span className={styles.steamMetaLabel}>
+                      {t("mapDetailContentVersionLabel")}
+                    </span>
+                    <span className={styles.steamMetaValue}>{map.contentVersion}</span>
+                  </div>
+                ) : null}
                 <div className={styles.steamMetaRow}>
                   <span className={styles.steamMetaLabel}>{t("type")}</span>
                   <span className={styles.steamMetaValue}>
@@ -760,7 +732,7 @@ export default function MapDetailPage() {
                   <div className={styles.steamTagsList}>
                     {learnedTags.map((tag) => (
                       <span key={tag} className={styles.steamTag}>
-                        {getConceptLabel(tag, locale)}
+                        {localizeTagName(tag, locale)}
                       </span>
                     ))}
                   </div>
@@ -775,7 +747,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {difficultyTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>
@@ -788,7 +760,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {knowledgeTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>
@@ -801,7 +773,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {skillTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>

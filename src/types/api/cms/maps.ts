@@ -50,6 +50,8 @@ export interface MapListItem {
   winCondition: number;
   conceptNames?: string[];
   avatarUrl: string | null;
+  contentVersion?: number;
+  updatedAt?: string | null;
 }
 
 /**
@@ -130,6 +132,8 @@ export interface MapDetail {
   editorialContent: string;
   unlockEditorialAfterStars: number;
   createdAt: string;
+  contentVersion?: number;
+  updatedAt?: string | null;
   activeSpec: MapActiveSpec;
   hints: MapHint[];
   constraints: MapConstraint[];

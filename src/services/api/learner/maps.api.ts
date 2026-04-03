@@ -10,6 +10,7 @@ import type {
   MapInfoResult,
   MapTagsResult,
   UpdateMapMetadataParams,
+  DuplicateMapAsNewRequest,
 } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -153,6 +154,17 @@ export const learnerMapsApi = {
    * @param params - Upload parameters with map metadata and JSON file
    * @returns Update result
    */
+  /**
+   * Tạo bản ghi map mới từ map nguồn (MapId mới, contentVersion = 1). Map nguồn không đổi.
+   * POST /api/learner/maps/{id}/duplicate-as-new
+   */
+  duplicateMapAsNew(id: string, body?: DuplicateMapAsNewRequest) {
+    return learnerAxios.post<ApiResult<string | { id: string }>>(
+      `/api/learner/maps/${id}/duplicate-as-new`,
+      body ?? {},
+    );
+  },
+
   updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);

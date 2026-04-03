@@ -9,7 +9,7 @@ import type {
   MapTagsResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
-import type { UploadMapFromJsonParams } from "@/types/api/learner/maps";
+import type { DuplicateMapAsNewRequest, UploadMapFromJsonParams } from "@/types/api/learner/maps";
 
 /**
  * CMS Maps API
@@ -124,6 +124,13 @@ export const cmsMapsApi = {
    * Update an existing map from JSON file (draft only)
    * PUT /api/cms/maps/{id}/upload-json
    */
+  duplicateMapAsNew(id: string, body?: DuplicateMapAsNewRequest) {
+    return cmsAxios.post<ApiResult<string | { id: string }>>(
+      `/api/cms/maps/${id}/duplicate-as-new`,
+      body ?? {},
+    );
+  },
+
   updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);

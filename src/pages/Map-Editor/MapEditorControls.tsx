@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Brush,
   Eraser,
@@ -49,6 +49,16 @@ import { ROUTES } from "../../lib/constants/routes";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 import type { AssetTier, SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
 
+function parseDuplicateNewMapId(data: unknown): string | null {
+  if (data == null) return null;
+  if (typeof data === "string" && data.trim().length > 0) return data.trim();
+  if (typeof data === "object" && data !== null && "id" in data) {
+    const id = (data as { id: unknown }).id;
+    if (typeof id === "string" && id.trim().length > 0) return id.trim();
+  }
+  return null;
+}
+
 const LOCKED_TOOLTIP = "Upgrade to Creator to use this asset";
 
 const GALLERY_BATCH_MAX = 20;
@@ -56,12 +66,6 @@ const GALLERY_BATCH_MAX = 20;
 type MapTag = {
   id: string;
   name: string;
-};
-
-type MapEditorLocationState = {
-  mapId?: string;
-  mode?: "edit" | "view";
-  roleContext?: "learner" | "cms";
 };
 
 /**
@@ -128,6 +132,8 @@ interface MapEditorControlsProps {
   /** Wire header "Save" to the same flow as Level tab save (right panel only). */
   registerSaveLevelContent?: (save: () => Promise<void>) => void;
   onSavingLevelContentChange?: (busy: boolean) => void;
+  /** Từ GET map detail — hiển thị phiên bản nội dung trong overlay catalog */
+  loadedMapContentVersion?: number | null;
 }
 
 interface ObjectSelectionButtonProps {
@@ -334,12 +340,13 @@ export function MapEditorControls({
   editorStore,
   registerSaveLevelContent,
   onSavingLevelContentChange,
+  loadedMapContentVersion = null,
 }: MapEditorControlsProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [showCatalogDraftPreview, setShowCatalogDraftPreview] = useState(false);
+  const [catalogSaveMode, setCatalogSaveMode] = useState<"overwrite" | "newListing">("overwrite");
   const [resizeWidth, setResizeWidth] = useState(mapData.config.width);
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
   const [resizeTileSize, setResizeTileSize] = useState(mapData.config.tileSize);
@@ -633,6 +640,11 @@ export function MapEditorControls({
       cancelled = true;
     };
   }, [showRightPanel, showCatalogDraftPreview, isLearner, userType]);
+
+  useEffect(() => {
+    if (!showCatalogDraftPreview) return;
+    setCatalogSaveMode("overwrite");
+  }, [showCatalogDraftPreview]);
 
   useEffect(() => {
     if (!availableMapTags.length) {
@@ -1118,8 +1130,12 @@ export function MapEditorControls({
     }
   };
 
-  /** Lưu nội dung MapDetail (levels + JSON) — POST/PUT upload-json */
-  const handleSaveLevelContent = async (opts?: { skipConfirm?: boolean }) => {
+  /** Lưu nội dung MapDetail (levels + JSON) — POST/PUT upload-json; learner catalog có thể duplicate-as-new rồi PUT */
+  const handleSaveLevelContent = async (opts?: {
+    skipConfirm?: boolean;
+    catalogSaveMode?: "overwrite" | "newListing";
+    redirectAfterSave?: boolean;
+  }) => {
     const meta = getMapFormMeta?.();
     const titleForApi = meta?.title?.trim() ?? mapCatalogTitle?.trim() ?? mapData.config.name?.trim();
     if (!titleForApi) {
@@ -1171,6 +1187,24 @@ export function MapEditorControls({
     )
       return;
 
+    const isEditingExistingMap = Boolean(editingMapId && editorMode === "edit");
+    if (
+      isLearner &&
+      opts?.catalogSaveMode === "newListing" &&
+      isEditingExistingMap &&
+      editingMapId
+    ) {
+      if (
+        !confirm(
+          tt(
+            "mapEditorCatalogConfirmSaveAsNewListing",
+            "Create a new map listing and keep the original unchanged? Your current level JSON will be saved to the new map (draft).",
+          ),
+        )
+      )
+        return;
+    }
+
     const galleryBatch = [...pendingGalleryFiles];
 
     try {
@@ -1186,7 +1220,6 @@ export function MapEditorControls({
       const file = buildMapUploadFile(levelsPayload, formMeta.title || "map");
 
       const mapsApi = isLearner ? learnerMapsApi : cmsMapsApi;
-      const isEditingExistingMap = Boolean(editingMapId && editorMode === "edit");
 
       const payload = {
         Title: formMeta.title,
@@ -1213,13 +1246,61 @@ export function MapEditorControls({
         MapDetailFile: payload.MapDetailFile,
       };
 
+      let targetMapIdForUpdate: string | null =
+        isEditingExistingMap && editingMapId ? editingMapId : null;
+
+      if (
+        isEditingExistingMap &&
+        isLearner &&
+        opts?.catalogSaveMode === "newListing" &&
+        editingMapId
+      ) {
+        const dupRes = await learnerMapsApi.duplicateMapAsNew(editingMapId, {
+          title: formMeta.title,
+          description: formMeta.description || "",
+          difficulty: formMeta.difficulty,
+          price: formMeta.price ?? 0,
+          tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+          learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
+          autoPublish: false,
+        });
+        if (!dupRes.data.isSuccess) {
+          alert(
+            tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+              "{message}",
+              dupRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+            ),
+          );
+          return;
+        }
+        const newId = parseDuplicateNewMapId(dupRes.data.data);
+        if (!newId) {
+          alert(
+            tt(
+              "mapEditorDuplicateMapNoId",
+              "The server did not return a new map id. Try again or contact support.",
+            ),
+          );
+          return;
+        }
+        targetMapIdForUpdate = newId;
+      }
+
       const response = isEditingExistingMap
-        ? await mapsApi.updateMapFromJson(editingMapId!, updatePayload)
+        ? await mapsApi.updateMapFromJson(targetMapIdForUpdate!, updatePayload)
         : await mapsApi.uploadMapFromJson(payload);
 
       if (response.data.isSuccess) {
-        if (isEditingExistingMap && isLearner && editingMapId && avatarFile) {
-          const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
+        const effectiveMapId = !isEditingExistingMap
+          ? response.data.data &&
+            typeof response.data.data === "object" &&
+            "id" in response.data.data
+            ? String((response.data.data as { id: string }).id)
+            : ""
+          : targetMapIdForUpdate!;
+
+        if (isLearner && effectiveMapId && avatarFile) {
+          const avatarResponse = await learnerMapsApi.uploadMapAvatar(effectiveMapId, avatarFile);
           if (!avatarResponse.data.isSuccess) {
             alert(
               tt(
@@ -1234,8 +1315,8 @@ export function MapEditorControls({
           }
         }
 
-        if (isEditingExistingMap && galleryBatch.length > 0 && editingMapId) {
-          const gRes = await mapsApi.uploadMapGallery(editingMapId, galleryBatch);
+        if (galleryBatch.length > 0 && effectiveMapId) {
+          const gRes = await mapsApi.uploadMapGallery(effectiveMapId, galleryBatch);
           if (!gRes.data.isSuccess) {
             alert(
               tt("mapEditorGalleryUploadFailed", "Gallery upload failed: {message}").replace(
@@ -1249,45 +1330,36 @@ export function MapEditorControls({
 
         const mapId =
           response.data.data && typeof response.data.data === "object" && "id" in response.data.data
-            ? String(response.data.data.id)
+            ? String((response.data.data as { id: string }).id)
             : "";
-        const learnerDetailId =
-          mapId || (isEditingExistingMap && editingMapId ? editingMapId : "");
+        const savedAsNewListing =
+          isLearner && opts?.catalogSaveMode === "newListing" && isEditingExistingMap;
         alert(
-          isEditingExistingMap
-            ? tt("mapEditorLevelContentSavedSuccess", "Level content saved successfully!")
-            : tt("mapEditorMapSavedSuccessWithId", "Map saved successfully!{idPart}").replace(
-                "{idPart}",
-                mapId
-                  ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace("{id}", mapId)
-                  : "",
-              ),
+          savedAsNewListing
+            ? tt(
+                "mapEditorLevelContentSavedAsNewListing",
+                "Saved as a new map listing. The editor now uses the new map id; the original listing is unchanged.",
+              )
+            : isEditingExistingMap
+              ? tt("mapEditorLevelContentSavedSuccess", "Level content saved successfully!")
+              : tt("mapEditorMapSavedSuccessWithId", "Map saved successfully!{idPart}").replace(
+                  "{idPart}",
+                  mapId
+                    ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace("{id}", mapId)
+                    : "",
+                ),
         );
         setShowMapInfoModal(false);
-        const openLearnerPreviewAfterSave = isLearner && Boolean(learnerDetailId);
-        if (!openLearnerPreviewAfterSave) {
-          setAvatarFile(null);
-          setPendingGalleryFiles([]);
-        }
+        setAvatarFile(null);
+        setPendingGalleryFiles([]);
 
-        if (isLearner) {
-          if (learnerDetailId) {
-            const prev = (location.state ?? {}) as MapEditorLocationState;
-            navigate(location.pathname, {
-              replace: true,
-              state: {
-                ...prev,
-                mapId: learnerDetailId,
-                mode: "edit",
-                roleContext: prev.roleContext ?? "learner",
-              },
-            });
-            setShowCatalogDraftPreview(true);
-          } else {
+        if (opts?.redirectAfterSave) {
+          setShowCatalogDraftPreview(false);
+          if (isLearner) {
             navigate(ROUTES.LEARNER_MAPS);
+          } else {
+            navigate(ROUTES.CMS_MAPS);
           }
-        } else {
-          navigate(-1);
         }
       } else {
         alert(
@@ -2737,7 +2809,16 @@ export function MapEditorControls({
             setPendingGalleryFiles((prev) => prev.filter((_, j) => j !== i))
           }
           galleryMaxFiles={GALLERY_BATCH_MAX}
-          onSaveToServer={() => void handleSaveLevelContent({ skipConfirm: true })}
+          onSaveToServer={() =>
+            void handleSaveLevelContent({
+              skipConfirm: true,
+              catalogSaveMode: catalogSaveMode,
+              redirectAfterSave: true,
+            })
+          }
+          catalogListingSaveMode={catalogSaveMode}
+          onCatalogListingSaveModeChange={setCatalogSaveMode}
+          mapContentVersion={loadedMapContentVersion}
           saving={savingLevelContent}
         />
       )}

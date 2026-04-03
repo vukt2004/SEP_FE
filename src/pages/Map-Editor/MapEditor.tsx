@@ -491,6 +491,7 @@ export default function MapEditor() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
+  const [editingMapContentVersion, setEditingMapContentVersion] = useState<number | null>(null);
   const [mapCatalogTitle, setMapCatalogTitle] = useState("");
   const [levelSlots, setLevelSlots] = useState<EditorLevelSlot[]>(() => {
     const slot = newEmptySlot();
@@ -693,6 +694,11 @@ export default function MapEditor() {
         setEditingMapTagNames(Array.isArray(raw.tagNames) ? raw.tagNames : []);
         setEditingMapAvatarUrl((raw as MapDetailLike).avatarUrl ?? null);
         setMapCatalogTitle(raw.title ?? "");
+        setEditingMapContentVersion(
+          typeof raw.contentVersion === "number" && Number.isFinite(raw.contentVersion)
+            ? raw.contentVersion
+            : null,
+        );
 
         const levels = raw.levels?.filter(Boolean) ?? [];
         let slots: EditorLevelSlot[];
@@ -1037,6 +1043,7 @@ export default function MapEditor() {
             <MapEditorControls
               sectionMode="left"
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}
@@ -1128,6 +1135,7 @@ export default function MapEditor() {
               sectionMode="right"
               editorStore={store}
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}

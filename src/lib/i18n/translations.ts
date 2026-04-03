@@ -904,6 +904,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogTitlePlaceholder: "Game title as shown in the store",
     mapEditorCatalogDescPlaceholder: "Describe your game for players…",
     mapEditorCatalogTagsClickHint: "Click tags to add or remove.",
+    mapEditorCatalogYouWillLearnTitle: "What users will learn through your game",
     mapEditorCatalogLearnedClickHint: "Click concepts players will learn from this game.",
     mapEditorCatalogNoTagsFromApi: "No tags loaded — check login or try again.",
     mapEditorCatalogNoLearnedPool: "No “learned knowledge” tags are available from the server.",
@@ -915,6 +916,22 @@ export const translations: Record<LocaleId, Record<string, string>> = {
       "Drag screenshots or videos here, or click to add gallery media (shown large on the left)",
     mapEditorCatalogDropGalleryHeroHint: "Drop to add to gallery",
     mapEditorCatalogGalleryPerSlotTitle: "Gallery — one slot per file",
+    mapEditorCatalogPublishModeTitle: "Save to server",
+    mapEditorCatalogPublishOverwrite: "Update this map",
+    mapEditorCatalogPublishOverwriteHint:
+      "Same store listing and map id. Playable content version increases after save.",
+    mapEditorCatalogPublishNewListing: "Save as new map",
+    mapEditorCatalogPublishNewListingHint:
+      "Creates a new draft map; the original listing stays unchanged (new map id).",
+    mapEditorCatalogPreviewSaveAsNewListing: "Save — create new map listing",
+    mapEditorCatalogConfirmSaveAsNewListing:
+      "Create a new map listing and keep the original unchanged? Your current level JSON will be saved to the new map (draft).",
+    mapEditorLevelContentSavedAsNewListing:
+      "Saved as a new map listing. The editor now uses the new map id; the original listing is unchanged.",
+    mapEditorDuplicateMapNoId:
+      "The server did not return a new map id. Try again or contact support.",
+    mapEditorCatalogContentVersionLine: "Current content version (from server): {n}",
+    mapDetailContentVersionLabel: "Content version",
     mapEditorCatalogKeyArtHint:
       "Store cover image — drag an image here or click to choose",
     mapEditorCatalogDropKeyArtHint: "Drop image for cover",
@@ -1839,6 +1856,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogTitlePlaceholder: "Tên trò chơi hiển thị trên cửa hàng",
     mapEditorCatalogDescPlaceholder: "Mô tả trò chơi cho người chơi…",
     mapEditorCatalogTagsClickHint: "Bấm thẻ để chọn hoặc bỏ chọn.",
+    mapEditorCatalogYouWillLearnTitle: "Người dùng sẽ học được gì qua trò chơi của bạn",
     mapEditorCatalogLearnedClickHint: "Bấm khái niệm người chơi sẽ học từ trò chơi này.",
     mapEditorCatalogNoTagsFromApi: "Chưa tải được thẻ — kiểm tra đăng nhập hoặc thử lại.",
     mapEditorCatalogNoLearnedPool: "Không có thẻ “kiến thức học” nào từ máy chủ.",
@@ -1850,6 +1868,22 @@ export const translations: Record<LocaleId, Record<string, string>> = {
       "Kéo ảnh chụp màn hoặc video vào đây, hoặc bấm để thêm media thư viện (hiển thị lớn bên trái)",
     mapEditorCatalogDropGalleryHeroHint: "Thả để thêm vào thư viện",
     mapEditorCatalogGalleryPerSlotTitle: "Thư viện — mỗi file một ô",
+    mapEditorCatalogPublishModeTitle: "Lưu lên máy chủ",
+    mapEditorCatalogPublishOverwrite: "Cập nhật map này",
+    mapEditorCatalogPublishOverwriteHint:
+      "Giữ cùng map id / trang store. Sau khi lưu, phiên bản nội dung chơi được tăng.",
+    mapEditorCatalogPublishNewListing: "Lưu thành map mới",
+    mapEditorCatalogPublishNewListingHint:
+      "Tạo bản draft mới; map gốc không đổi (map id mới).",
+    mapEditorCatalogPreviewSaveAsNewListing: "Lưu — tạo map mới trên máy chủ",
+    mapEditorCatalogConfirmSaveAsNewListing:
+      "Tạo một map mới trên store và giữ nguyên map gốc? JSON level hiện tại sẽ được lưu vào map mới (draft).",
+    mapEditorLevelContentSavedAsNewListing:
+      "Đã lưu thành map mới. Trình sửa đang dùng map id mới; bản gốc không đổi.",
+    mapEditorDuplicateMapNoId:
+      "Máy chủ không trả về id map mới. Thử lại hoặc liên hệ hỗ trợ.",
+    mapEditorCatalogContentVersionLine: "Phiên bản nội dung hiện tại (từ server): {n}",
+    mapDetailContentVersionLabel: "Phiên bản nội dung",
     mapEditorCatalogKeyArtHint:
       "Ảnh bìa cửa hàng — kéo ảnh vào đây hoặc bấm để chọn",
     mapEditorCatalogDropKeyArtHint: "Thả ảnh làm bìa",
