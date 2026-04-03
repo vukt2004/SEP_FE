@@ -2,7 +2,18 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { isAxiosError } from "axios";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2, ImagePlus, Video, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Lock,
+  Gamepad2,
+  Heart,
+  Bell,
+  Share2,
+  ImagePlus,
+  Video,
+  Save,
+  X,
+} from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map, MapTag } from "@/types/api/learner/maps";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
@@ -25,7 +36,9 @@ export type MapDetailLocationState = {
   mapCatalogSetup?: boolean;
 };
 
-const DIFFICULTY_TAG_NAMES = new Set(["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()));
+const DIFFICULTY_TAG_NAMES = new Set(
+  ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
+);
 
 const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
   // Vietnamese
@@ -271,13 +284,15 @@ export default function MapDetailPage() {
   };
 
   const learnedKnowledgeTags = useMemo(
-    () => availableMapTags.filter((tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase())),
+    () =>
+      availableMapTags.filter(
+        (tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase()),
+      ),
     [availableMapTags],
   );
 
   const handleSaveAuthorMetadata = async () => {
-    const setup =
-      (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
+    const setup = (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
     if (!map?.id || ownership?.isAuthor !== true || !setup) return;
     const titleTrim = editTitle.trim();
     if (!titleTrim) {
@@ -391,12 +406,12 @@ export default function MapDetailPage() {
   };
 
   const difficultyTagNames = dedupeByLower(
-    rawTags
-      .filter(isDifficultyTag)
-      .map((tag) => normalizeDifficultyTag(tag.trim().toLowerCase())),
+    rawTags.filter(isDifficultyTag).map((tag) => normalizeDifficultyTag(tag.trim().toLowerCase())),
   );
   const skillTagNames = dedupeByLower(rawTags.filter(isSkillMechanismConcept));
-  const knowledgeTagNames = dedupeByLower(rawTags.filter((tag) => !isDifficultyTag(tag) && !isSkillMechanismConcept(tag)));
+  const knowledgeTagNames = dedupeByLower(
+    rawTags.filter((tag) => !isDifficultyTag(tag) && !isSkillMechanismConcept(tag)),
+  );
 
   if (loading) {
     return (
@@ -696,9 +711,7 @@ export default function MapDetailPage() {
                   <span className={styles.steamMetaLabel}>{t("developer")}</span>
                   <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
                 </div>
-                {isAuthor &&
-                map.contentVersion != null &&
-                Number.isFinite(map.contentVersion) ? (
+                {isAuthor && map.contentVersion != null && Number.isFinite(map.contentVersion) ? (
                   <div className={styles.steamMetaRow}>
                     <span className={styles.steamMetaLabel}>
                       {t("mapDetailContentVersionLabel")}
@@ -848,7 +861,9 @@ export default function MapDetailPage() {
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h3
                 className={`${styles.modalTitle} ${
-                  purchaseModal.kind === "success" ? styles.modalTitleSuccess : styles.modalTitleError
+                  purchaseModal.kind === "success"
+                    ? styles.modalTitleSuccess
+                    : styles.modalTitleError
                 }`}
               >
                 {purchaseModal.kind === "success"

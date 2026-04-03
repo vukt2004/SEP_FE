@@ -203,8 +203,7 @@ export function MapCatalogDraftPreviewOverlay({
     if (images[0]) onAvatarFileChange(images[0]);
   };
 
-  const hasFileDrag = (e: React.DragEvent) =>
-    [...e.dataTransfer.types].includes("Files");
+  const hasFileDrag = (e: React.DragEvent) => [...e.dataTransfer.types].includes("Files");
 
   const scrollCarousel = (dir: -1 | 1) => {
     const el = carouselRef.current;
@@ -318,9 +317,7 @@ export function MapCatalogDraftPreviewOverlay({
               const list = Array.from(e.target.files ?? []);
               e.target.value = "";
               if (!list.length) return;
-              onGalleryFilesAdd(
-                [...galleryFiles, ...list].slice(0, galleryMaxFiles),
-              );
+              onGalleryFilesAdd([...galleryFiles, ...list].slice(0, galleryMaxFiles));
             }}
           />
 
@@ -421,10 +418,7 @@ export function MapCatalogDraftPreviewOverlay({
                   className={`${styles.steamCarousel} ${styles.catalogSteamCarousel}`}
                 >
                   {gallerySlides.map((item, idx) => (
-                    <div
-                      key={item.key}
-                      className={styles.catalogCarouselThumbCell}
-                    >
+                    <div key={item.key} className={styles.catalogCarouselThumbCell}>
                       <button
                         type="button"
                         className={`${styles.steamThumb} ${
@@ -510,10 +504,7 @@ export function MapCatalogDraftPreviewOverlay({
                     const url = galleryObjectUrls[i];
                     const isVid = fileLooksLikeVideo(f);
                     return (
-                      <div
-                        key={`${f.name}-${f.size}-${i}`}
-                        className={styles.catalogGallerySlot}
-                      >
+                      <div key={`${f.name}-${f.size}-${i}`} className={styles.catalogGallerySlot}>
                         <div className={styles.catalogGallerySlotFrame}>
                           <button
                             type="button"
@@ -542,9 +533,7 @@ export function MapCatalogDraftPreviewOverlay({
                                 <img src={url} alt="" />
                               )
                             ) : (
-                              <div className={styles.catalogGallerySlotPreviewPlaceholder}>
-                                …
-                              </div>
+                              <div className={styles.catalogGallerySlotPreviewPlaceholder}>…</div>
                             )}
                           </button>
                           <button
@@ -787,7 +776,11 @@ export function MapCatalogDraftPreviewOverlay({
                   <legend className={styles.catalogPublishModeLegend}>
                     {t("mapEditorCatalogPublishModeTitle")}
                   </legend>
-                  <div className={styles.catalogPublishModeOptions} role="radiogroup" aria-label={t("mapEditorCatalogPublishModeTitle")}>
+                  <div
+                    className={styles.catalogPublishModeOptions}
+                    role="radiogroup"
+                    aria-label={t("mapEditorCatalogPublishModeTitle")}
+                  >
                     <button
                       type="button"
                       role="radio"
@@ -827,9 +820,7 @@ export function MapCatalogDraftPreviewOverlay({
                   </div>
                 </fieldset>
               ) : null}
-              {persistedMapId &&
-              mapContentVersion != null &&
-              Number.isFinite(mapContentVersion) ? (
+              {persistedMapId && mapContentVersion != null && Number.isFinite(mapContentVersion) ? (
                 <p className={styles.catalogContentVersionLine}>
                   {t("mapEditorCatalogContentVersionLine").replace(
                     "{n}",
