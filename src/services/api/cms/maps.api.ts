@@ -9,6 +9,7 @@ import type {
   MapTagsResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
+import type { DuplicateMapAsNewRequest, UploadMapFromJsonParams } from "@/types/api/learner/maps";
 
 /**
  * CMS Maps API
@@ -87,32 +88,12 @@ export const cmsMapsApi = {
    * @param params - Upload parameters with map metadata and JSON file
    * @returns Upload result with created map ID
    */
-  uploadMapFromJson(params: {
-    Title: string;
-    Description: string;
-    Type: "Topdown" | "Platform";
-    Difficulty: number;
-    TimeLimitMs: number;
-    WinCondition: number;
-    Price: number;
-    MapDetailFile: File;
-    HintsJson?: string;
-    TagIdsCsv?: string;
-    LearnedTagsCsv?: string;
-    AvatarFile?: File | null;
-  }) {
+  uploadMapFromJson(params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
-    formData.append("Type", params.Type);
     formData.append("Difficulty", params.Difficulty.toString());
-    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
-    formData.append("WinCondition", params.WinCondition.toString());
-    formData.append("Price", params.Price.toString());
-
-    if (params.HintsJson) {
-      formData.append("HintsJson", params.HintsJson);
-    }
+    formData.append("Price", String(params.Price ?? 0));
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
@@ -122,10 +103,14 @@ export const cmsMapsApi = {
       formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
     }
 
-    formData.append("MapDetailFile", params.MapDetailFile);
+    formData.append("mapDetailFiles", params.MapDetailFile);
 
     if (params.AvatarFile) {
       formData.append("AvatarFile", params.AvatarFile);
+    }
+
+    for (const f of params.GalleryFiles ?? []) {
+      formData.append("GalleryFiles", f);
     }
 
     return cmsAxios.post<ApiResult>("/api/cms/maps/upload-json", formData, {
@@ -139,46 +124,50 @@ export const cmsMapsApi = {
    * Update an existing map from JSON file (draft only)
    * PUT /api/cms/maps/{id}/upload-json
    */
-  updateMapFromJson(
-    id: string,
-    params: {
-      Title: string;
-      Description: string;
-      Type: "Topdown" | "Platform";
-      Difficulty: number;
-      TimeLimitMs: number;
-      WinCondition: number;
-      Price: number;
-      MapDetailFile: File;
-      HintsJson?: string;
-      TagIdsCsv?: string;
-      AvatarFile?: File | null;
-    },
-  ) {
+  duplicateMapAsNew(id: string, body?: DuplicateMapAsNewRequest) {
+    return cmsAxios.post<ApiResult<string | { id: string }>>(
+      `/api/cms/maps/${id}/duplicate-as-new`,
+      body ?? {},
+    );
+  },
+
+  updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
-    formData.append("Type", params.Type);
     formData.append("Difficulty", params.Difficulty.toString());
-    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
-    formData.append("WinCondition", params.WinCondition.toString());
-    formData.append("Price", params.Price.toString());
-
-    if (params.HintsJson) {
-      formData.append("HintsJson", params.HintsJson);
-    }
+    formData.append("Price", String(params.Price ?? 0));
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
     }
 
-    formData.append("MapDetailFile", params.MapDetailFile);
+    if (params.LearnedTagsCsv) {
+      formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
+    }
+
+    formData.append("mapDetailFiles", params.MapDetailFile);
 
     if (params.AvatarFile) {
       formData.append("AvatarFile", params.AvatarFile);
     }
 
     return cmsAxios.put<ApiResult>(`/api/cms/maps/${id}/upload-json`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
+   * POST /api/cms/maps/{id}/gallery — form field "files" (one or more).
+   */
+  uploadMapGallery(id: string, files: File[]) {
+    const formData = new FormData();
+    for (const f of files) {
+      formData.append("files", f);
+    }
+    return cmsAxios.post<ApiResult>(`/api/cms/maps/${id}/gallery`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

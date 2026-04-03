@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
+import { ZoomIn, ZoomOut, Scan, ArrowLeft, Save } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
 import { EditorCanvas } from "../../tools/map-editor/components/EditorCanvas";
-import { LayerPanel } from "../../tools/map-editor/components/LayerPanel";
 import { createEmptyMap } from "../../tools/map-editor/utils/createEmptyMap";
+import type { MapUploadLevelInput } from "../../tools/map-editor/utils/buildMapUploadJson";
 import { MapEditorControls } from "./MapEditorControls";
 import type { MapData } from "../../shared/types/MapSchema";
 import { learnerMapsApi } from "../../services/api/learner/maps.api";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { tokenStorage } from "../../lib/storage/tokenStorage";
+import type { MapDetail, MapLevelItem } from "@/types/api/learner/maps";
 import type { RequiredBlockRule } from "../../shared/types/MapSchema";
 import blocksConfig from "../../shared/block/blocks-config.json";
 import {
@@ -17,6 +18,8 @@ import {
   getCurrentUserPlan,
   type SubscriptionPlan,
 } from "@/lib/auth/subscriptionPlan";
+import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
 
 type MapEditorRouteState = {
   mapId?: string;
@@ -405,6 +408,47 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
   return createEmptyMap(fallbackType, 20, 15, 32);
 };
 
+function extractHintsFromDetailJson(detailJson: unknown): string[] {
+  if (!detailJson || typeof detailJson !== "object") return [];
+  const rec = detailJson as Record<string, unknown>;
+  if (!("hints" in rec)) return [];
+  const h = rec.hints;
+  if (!Array.isArray(h)) return [];
+  const out: string[] = [];
+  for (const el of h) {
+    if (typeof el === "string") {
+      if (el.trim()) out.push(el);
+    } else if (el && typeof el === "object" && "content" in el) {
+      const c = (el as { content?: unknown }).content;
+      if (typeof c === "string" && c.trim()) out.push(c);
+    }
+  }
+  return out.slice(0, 3);
+}
+
+function levelItemToMapDetailLike(map: MapDetail, level: MapLevelItem): MapDetailLike {
+  const apiType = (level.type ?? map.type ?? "Topdown") as "Topdown" | "Platform";
+  return {
+    title: level.title ?? map.title,
+    description: map.description,
+    type: apiType,
+    difficulty: map.difficulty,
+    timeLimitMs: level.timeLimitMs ?? map.timeLimitMs ?? 60_000,
+    estimatedSteps: undefined,
+    winCondition: level.winCondition ?? map.winCondition ?? 1,
+    price: map.price,
+    hints: [],
+    mapDetailJson: level.detailJson,
+    activeSpec: map.activeSpec,
+  };
+}
+
+export type EditorLevelSlot = {
+  id: string;
+  hints: string[];
+  mapData: MapData;
+};
+
 interface EditorState {
   store: EditorStore | null;
   mapData: MapData | null;
@@ -416,21 +460,47 @@ interface EditorState {
   canRedo: boolean;
 }
 
+const newEmptySlot = (): EditorLevelSlot => ({
+  id: crypto.randomUUID(),
+  hints: [""],
+  mapData: createEmptyMap("platform", 20, 15, 32),
+});
+
 export default function MapEditor() {
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = (location.state ?? null) as MapEditorRouteState | null;
   const mapId = routeState?.mapId;
+  const { locale } = useLanguageStore();
+  const t = useMemo(() => getT(locale), [locale]);
+  const tt = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const [planLoading, setPlanLoading] = useState(true);
   const canCreateMap = canCreateMaps(userPlan);
   const isCreateMode = !mapId;
   const [zoom, setZoom] = useState(1);
+  const saveLevelRef = useRef<(() => Promise<void>) | null>(null);
+  const [headerSaveBusy, setHeaderSaveBusy] = useState(false);
+  const registerSaveLevelContent = useCallback((fn: () => Promise<void>) => {
+    saveLevelRef.current = fn;
+  }, []);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
-  const [editingMapHints, setEditingMapHints] = useState<string[]>([]);
+  const [editingMapContentVersion, setEditingMapContentVersion] = useState<number | null>(null);
+  const [mapCatalogTitle, setMapCatalogTitle] = useState("");
+  const [levelSlots, setLevelSlots] = useState<EditorLevelSlot[]>(() => {
+    const slot = newEmptySlot();
+    return [slot];
+  });
+  const [activeLevelIndex, setActiveLevelIndex] = useState(0);
+  const levelSlotsRef = useRef(levelSlots);
+  levelSlotsRef.current = levelSlots;
+
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
     const initialMap = createEmptyMap("platform", 20, 15, 32);
@@ -449,6 +519,123 @@ export default function MapEditor() {
   });
 
   const { store } = editorState;
+  const storeRef = useRef(store);
+  storeRef.current = store;
+
+  const selectLevel = useCallback(
+    (idx: number) => {
+      const s = storeRef.current;
+      if (!s || idx === activeLevelIndex || idx < 0 || idx >= levelSlotsRef.current.length) {
+        return;
+      }
+      setLevelSlots((prev) => {
+        const copy = [...prev];
+        copy[activeLevelIndex] = {
+          ...copy[activeLevelIndex],
+          mapData: structuredClone(s.getState()),
+        };
+        return copy;
+      });
+      setActiveLevelIndex(idx);
+    },
+    [activeLevelIndex],
+  );
+
+  const addLevel = useCallback(() => {
+    const s = storeRef.current;
+    if (!s) return;
+    setLevelSlots((prev) => {
+      const copy = [...prev];
+      copy[activeLevelIndex] = {
+        ...copy[activeLevelIndex],
+        mapData: structuredClone(s.getState()),
+      };
+      const base = copy[0]?.mapData;
+      const newMap = createEmptyMap(
+        base?.config.type === "topdown" ? "topdown" : "platform",
+        20,
+        15,
+        32,
+      );
+      if (base) {
+        newMap.config.difficulty = base.config.difficulty;
+        newMap.config.price = base.config.price;
+        newMap.config.description = base.config.description;
+      }
+      newMap.config.name = `Level ${copy.length + 1}`;
+      const next = [...copy, { id: crypto.randomUUID(), hints: [""] as string[], mapData: newMap }];
+      setActiveLevelIndex(next.length - 1);
+      return next;
+    });
+  }, [activeLevelIndex]);
+
+  const removeLevel = useCallback(
+    (idx: number) => {
+      const s = storeRef.current;
+      if (!s) return;
+      setLevelSlots((prev) => {
+        if (prev.length <= 1) return prev;
+        const copy = [...prev];
+        if (idx === activeLevelIndex) {
+          copy[activeLevelIndex] = {
+            ...copy[activeLevelIndex],
+            mapData: structuredClone(s.getState()),
+          };
+        }
+        const next = copy.filter((_, i) => i !== idx);
+        setActiveLevelIndex((i) => {
+          if (next.length === 0) return 0;
+          if (idx === activeLevelIndex) return Math.min(i, next.length - 1);
+          if (idx < i) return i - 1;
+          return i;
+        });
+        return next;
+      });
+    },
+    [activeLevelIndex],
+  );
+
+  const updateLevelHints = useCallback(
+    (hints: string[]) => {
+      setLevelSlots((prev) => {
+        const copy = [...prev];
+        if (!copy[activeLevelIndex]) return prev;
+        copy[activeLevelIndex] = { ...copy[activeLevelIndex], hints };
+        return copy;
+      });
+    },
+    [activeLevelIndex],
+  );
+
+  const buildUploadLevels = useCallback((): MapUploadLevelInput[] => {
+    const s = storeRef.current;
+    const slots = levelSlots.map((slot) => ({ ...slot }));
+    if (s) {
+      slots[activeLevelIndex] = {
+        ...slots[activeLevelIndex],
+        mapData: structuredClone(s.getState()),
+      };
+    }
+    return slots.map((slot, i) => ({
+      levelOrder: i,
+      mapData: slot.mapData,
+      hints: slot.hints,
+    }));
+  }, [levelSlots, activeLevelIndex]);
+
+  const getMapFormMeta = useCallback(() => {
+    const built = buildUploadLevels();
+    const first = built[0];
+    if (!first) {
+      return { title: "", description: "", difficulty: 1 as const, price: 0 };
+    }
+    return {
+      title: mapCatalogTitle.trim() || first.mapData.config.name || "Untitled",
+      description: first.mapData.config.description || "",
+      difficulty: first.mapData.config.difficulty,
+      price: first.mapData.config.price,
+    };
+  }, [buildUploadLevels, mapCatalogTitle]);
 
   useEffect(() => {
     let cancelled = false;
@@ -477,7 +664,7 @@ export default function MapEditor() {
     if (!mapId) {
       setEditingMapTagNames([]);
       setEditingMapAvatarUrl(null);
-      setEditingMapHints([]);
+      setMapCatalogTitle("");
       return;
     }
 
@@ -503,23 +690,54 @@ export default function MapEditor() {
 
         if (cancelled) return;
 
-        setEditingMapTagNames(
-          Array.isArray((response.data.data as MapDetailLike).tagNames)
-            ? ((response.data.data as MapDetailLike).tagNames ?? [])
-            : [],
-        );
-        setEditingMapAvatarUrl((response.data.data as MapDetailLike).avatarUrl ?? null);
-        setEditingMapHints(
-          Array.isArray((response.data.data as MapDetailLike).hints)
-            ? ((response.data.data as MapDetailLike).hints ?? [])
-                .map((hint) => hint.content)
-                .filter((content) => typeof content === "string" && content.trim().length > 0)
-            : [],
+        const raw = response.data.data as MapDetail;
+        setEditingMapTagNames(Array.isArray(raw.tagNames) ? raw.tagNames : []);
+        setEditingMapAvatarUrl((raw as MapDetailLike).avatarUrl ?? null);
+        setMapCatalogTitle(raw.title ?? "");
+        setEditingMapContentVersion(
+          typeof raw.contentVersion === "number" && Number.isFinite(raw.contentVersion)
+            ? raw.contentVersion
+            : null,
         );
 
-        const loadedMapData = mapDetailToEditorMapData(response.data.data as MapDetailLike);
+        const levels = raw.levels?.filter(Boolean) ?? [];
+        let slots: EditorLevelSlot[];
 
-        const loadedStore = new EditorStore(loadedMapData);
+        if (levels.length > 0) {
+          const sorted = [...levels].sort((a, b) => a.levelOrder - b.levelOrder);
+          slots = sorted.map((level) => {
+            const detailLike = levelItemToMapDetailLike(raw, level);
+            const mapData = mapDetailToEditorMapData(detailLike);
+            const fromJson = extractHintsFromDetailJson(level.detailJson);
+            const hintList =
+              fromJson.length > 0
+                ? fromJson
+                : Array.isArray(raw.hints)
+                  ? raw.hints.map((h) => h.content).filter((c) => c.trim().length > 0)
+                  : [];
+            return {
+              id: level.id,
+              hints: hintList.length > 0 ? hintList : [""],
+              mapData,
+            };
+          });
+        } else {
+          const legacyHints = Array.isArray(raw.hints)
+            ? raw.hints.map((h) => h.content).filter((c) => c.trim().length > 0)
+            : [];
+          slots = [
+            {
+              id: mapId,
+              hints: legacyHints.length > 0 ? legacyHints : [""],
+              mapData: mapDetailToEditorMapData(raw as MapDetailLike),
+            },
+          ];
+        }
+
+        setLevelSlots(slots);
+        setActiveLevelIndex(0);
+
+        const loadedStore = new EditorStore(structuredClone(slots[0].mapData));
         setEditorState({
           store: loadedStore,
           mapData: loadedStore.getState(),
@@ -548,6 +766,14 @@ export default function MapEditor() {
     };
   }, [mapId]);
 
+  useEffect(() => {
+    const s = storeRef.current;
+    if (!s) return;
+    const slot = levelSlotsRef.current[activeLevelIndex];
+    if (!slot) return;
+    s.loadMap(structuredClone(slot.mapData));
+  }, [activeLevelIndex]);
+
   // Subscribe to store changes
   useEffect(() => {
     if (!store) return;
@@ -570,10 +796,6 @@ export default function MapEditor() {
       unsubscribe();
     };
   }, [store]);
-
-  const handleLayerChange = (layer: "background" | "ground" | "foreground" | "collision") => {
-    store?.setActiveLayer(layer);
-  };
 
   const handleTileSelect = (tileId: number | null) => {
     store?.setSelectedTile(tileId);
@@ -601,14 +823,45 @@ export default function MapEditor() {
 
   const handleNameChange = (name: string) => {
     store?.setMapName(name);
+    if (levelSlots.length === 1) {
+      setMapCatalogTitle(name);
+    }
   };
+
+  const handleMapCatalogTitleChange = useCallback(
+    (title: string) => {
+      setMapCatalogTitle(title);
+      if (levelSlots.length === 1) {
+        store?.setMapName(title);
+      }
+    },
+    [levelSlots.length, store],
+  );
 
   const handleDescriptionChange = (description: string) => {
     store?.setMapDescription(description);
+    setLevelSlots((prev) =>
+      prev.map((slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: { ...slot.mapData.config, description },
+        },
+      })),
+    );
   };
 
   const handleDifficultyChange = (difficulty: 1 | 2 | 3 | 4 | 5) => {
     store?.setMapDifficulty(difficulty);
+    setLevelSlots((prev) =>
+      prev.map((slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: { ...slot.mapData.config, difficulty },
+        },
+      })),
+    );
   };
 
   const handleTimeLimitChange = (seconds: number) => {
@@ -637,6 +890,15 @@ export default function MapEditor() {
 
   const handlePriceChange = (price: number) => {
     store?.setMapPrice(price);
+    setLevelSlots((prev) =>
+      prev.map((slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: { ...slot.mapData.config, price },
+        },
+      })),
+    );
   };
 
   const handleBlockLimitChange = (blockLimit: number | null) => {
@@ -681,12 +943,12 @@ export default function MapEditor() {
       <div style={styles.container}>
         <div style={styles.header}>
           <button style={styles.backButton} onClick={() => navigate(-1)}>
-            <ArrowLeft size={15} /> Back
+            <ArrowLeft size={15} /> {tt("back", "Back")}
           </button>
         </div>
         <div style={styles.planBlockCard}>
-          <h1 style={styles.title}>Map Editor</h1>
-          <p style={styles.subtitle}>Checking subscription...</p>
+          <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
+          <p style={styles.subtitle}>{tt("mapEditorCheckingSubscription", "Checking subscription...")}</p>
         </div>
       </div>
     );
@@ -697,12 +959,12 @@ export default function MapEditor() {
       <div style={styles.container}>
         <div style={styles.header}>
           <button style={styles.backButton} onClick={() => navigate(-1)}>
-            <ArrowLeft size={15} /> Back
+            <ArrowLeft size={15} /> {tt("back", "Back")}
           </button>
         </div>
         <div style={styles.planBlockCard}>
-          <h1 style={styles.title}>Map Editor</h1>
-          <p style={styles.subtitle}>Upgrade to Pro to create maps</p>
+          <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
+          <p style={styles.subtitle}>{tt("mapEditorUpgradeToCreateMaps", "Upgrade to Pro to create maps")}</p>
         </div>
       </div>
     );
@@ -711,15 +973,67 @@ export default function MapEditor() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button style={styles.backButton} onClick={() => navigate(-1)}>
-          <ArrowLeft size={15} /> Back
-        </button>
-        <div>
-          <h1 style={styles.title}>Map Editor</h1>
+        <div style={styles.headerLeft}>
+          <button type="button" style={styles.backButton} onClick={() => navigate(-1)}>
+            <ArrowLeft size={15} /> {tt("back", "Back")}
+          </button>
+        </div>
+        <div style={styles.headerCenter}>
+          <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
           {mapId && (
-            <p style={styles.subtitle}>{loadingMap ? "Loading map..." : `Editing map: ${mapId}`}</p>
+            <p style={styles.subtitle}>
+              {loadingMap
+                ? tt("mapEditorLoadingMap", "Loading map...")
+                : tt("mapEditorEditingMap", "Editing map: {id}").replace("{id}", mapId)}
+            </p>
           )}
           {loadError && <p style={styles.errorText}>{loadError}</p>}
+          {!loadError && mapData && (
+            <div style={styles.levelTabs}>
+              {levelSlots.map((_, i) => (
+                <button
+                  key={levelSlots[i]?.id ?? i}
+                  type="button"
+                  onClick={() => selectLevel(i)}
+                  style={{
+                    ...styles.levelTab,
+                    ...(i === activeLevelIndex ? styles.levelTabActive : {}),
+                  }}
+                >
+                  {tt("mapEditorLevelButton", "Level {n}").replace("{n}", String(i + 1))}
+                </button>
+              ))}
+              <button type="button" onClick={addLevel} style={styles.levelTabAdd}>
+                {tt("mapEditorAddLevel", "+ Level")}
+              </button>
+              {levelSlots.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeLevel(activeLevelIndex)}
+                  style={styles.levelTabRemove}
+                >
+                  {tt("mapEditorRemoveLevel", "Remove")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div style={styles.headerRight}>
+          {mapData && store ? (
+            <button
+              type="button"
+              style={{
+                ...styles.headerSaveButton,
+                ...(headerSaveBusy ? { opacity: 0.65, cursor: "not-allowed" as const } : {}),
+              }}
+              onClick={() => void saveLevelRef.current?.()}
+              disabled={headerSaveBusy}
+            >
+              <Save size={16} /> {tt("mapEditorHeaderSave", "Save")}
+            </button>
+          ) : (
+            <span style={styles.headerRightSpacer} aria-hidden />
+          )}
         </div>
       </div>
 
@@ -729,10 +1043,18 @@ export default function MapEditor() {
             <MapEditorControls
               sectionMode="left"
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}
-              initialHints={editingMapHints}
+              initialHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
+              mapCatalogTitle={mapCatalogTitle}
+              onMapCatalogTitleChange={handleMapCatalogTitleChange}
+              levelHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
+              onLevelHintsChange={updateLevelHints}
+              buildUploadLevels={buildUploadLevels}
+              getMapFormMeta={getMapFormMeta}
+              levelSlotCount={levelSlots.length}
               mapData={mapData}
               userPlan={userPlan}
               activeLayer={activeLayer}
@@ -741,7 +1063,6 @@ export default function MapEditor() {
               selectedTool={selectedTool}
               canUndo={canUndo}
               canRedo={canRedo}
-              onLayerChange={handleLayerChange}
               onTileSelect={handleTileSelect}
               onObjectSelect={handleObjectSelect}
               onPortalColorChange={handlePortalColorChange}
@@ -783,7 +1104,11 @@ export default function MapEditor() {
                 >
                   <ZoomIn size={14} />
                 </button>
-                <button style={styles.zoomButton} onClick={() => setZoom(1)} title="Reset Zoom">
+                <button
+                  style={styles.zoomButton}
+                  onClick={() => setZoom(1)}
+                  title={tt("mapEditorResetZoom", "Reset zoom")}
+                >
                   <Scan size={14} />
                 </button>
               </div>
@@ -806,14 +1131,22 @@ export default function MapEditor() {
           </section>
 
           <aside style={styles.rightSidebar}>
-            <LayerPanel store={store} />
             <MapEditorControls
               sectionMode="right"
+              editorStore={store}
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}
-              initialHints={editingMapHints}
+              initialHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
+              mapCatalogTitle={mapCatalogTitle}
+              onMapCatalogTitleChange={handleMapCatalogTitleChange}
+              levelHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
+              onLevelHintsChange={updateLevelHints}
+              buildUploadLevels={buildUploadLevels}
+              getMapFormMeta={getMapFormMeta}
+              levelSlotCount={levelSlots.length}
               mapData={mapData}
               userPlan={userPlan}
               activeLayer={activeLayer}
@@ -822,7 +1155,6 @@ export default function MapEditor() {
               selectedTool={selectedTool}
               canUndo={canUndo}
               canRedo={canRedo}
-              onLayerChange={handleLayerChange}
               onTileSelect={handleTileSelect}
               onObjectSelect={handleObjectSelect}
               onPortalColorChange={handlePortalColorChange}
@@ -846,6 +1178,8 @@ export default function MapEditor() {
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
               onObjectMetadataChange={handleObjectMetadataChange}
+              registerSaveLevelContent={registerSaveLevelContent}
+              onSavingLevelContentChange={setHeaderSaveBusy}
             />
           </aside>
         </div>
@@ -865,17 +1199,54 @@ const styles: Record<string, React.CSSProperties> = {
       "radial-gradient(circle at 20% 0%, rgba(59, 130, 246, 0.12), transparent 30%), #eef2f7",
   },
   header: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, auto) minmax(0, 1fr) minmax(0, auto)",
     alignItems: "center",
-    justifyContent: "center",
+    gap: "12px",
     width: "100%",
     maxWidth: "1800px",
-    position: "relative",
     padding: "14px 16px",
     borderRadius: "16px",
     border: "1px solid #dbe3ef",
     background: "linear-gradient(180deg, #ffffff, #f8fafc)",
     boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+  },
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  headerCenter: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    minWidth: 0,
+    textAlign: "center",
+  },
+  headerRight: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    minWidth: "120px",
+  },
+  headerRightSpacer: {
+    display: "inline-block",
+    width: "1px",
+    height: "1px",
+  },
+  headerSaveButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 18px",
+    fontSize: "14px",
+    fontWeight: "700",
+    borderRadius: "12px",
+    border: "1px solid #0d9488",
+    background: "linear-gradient(180deg, #14b8a6, #0d9488)",
+    color: "#fff",
+    cursor: "pointer",
+    boxShadow: "0 4px 14px rgba(13, 148, 136, 0.35)",
   },
   title: {
     fontSize: "30px",
@@ -888,6 +1259,54 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     color: "#64748b",
     margin: 0,
+  },
+  errorText: {
+    fontSize: "13px",
+    color: "#b91c1c",
+    margin: "6px 0 0",
+  },
+  levelTabs: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: "10px",
+  },
+  levelTab: {
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    borderRadius: "8px",
+    border: "1px solid #cbd5e1",
+    background: "#fff",
+    color: "#334155",
+    cursor: "pointer",
+  },
+  levelTabActive: {
+    border: "1px solid #3b82f6",
+    background: "#eff6ff",
+    color: "#1d4ed8",
+  },
+  levelTabAdd: {
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    borderRadius: "8px",
+    border: "1px dashed #94a3b8",
+    background: "#f8fafc",
+    color: "#475569",
+    cursor: "pointer",
+  },
+  levelTabRemove: {
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 600,
+    borderRadius: "8px",
+    border: "1px solid #fecaca",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    cursor: "pointer",
   },
   planBlockCard: {
     display: "grid",
@@ -902,8 +1321,6 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
   },
   backButton: {
-    position: "absolute",
-    left: "16px",
     padding: "8px 14px",
     fontSize: "13px",
     fontWeight: "600",

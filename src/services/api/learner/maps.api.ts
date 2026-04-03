@@ -9,6 +9,8 @@ import type {
   MapOwnershipResult,
   MapInfoResult,
   MapTagsResult,
+  UpdateMapMetadataParams,
+  DuplicateMapAsNewRequest,
 } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 
@@ -104,19 +106,20 @@ export const learnerMapsApi = {
    * @param params - Upload parameters with map metadata and JSON file
    * @returns Upload result with created map ID
    */
+  /**
+   * Cập nhật metadata map (draft) — không gửi file JSON level.
+   * PUT /api/learner/maps/{id}
+   */
+  updateMapMetadata(id: string, body: UpdateMapMetadataParams) {
+    return learnerAxios.put<ApiResult>(`/api/learner/maps/${id}`, body);
+  },
+
   uploadMapFromJson(params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
-    formData.append("Type", params.Type);
     formData.append("Difficulty", params.Difficulty.toString());
-    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
-    formData.append("WinCondition", params.WinCondition.toString());
-    formData.append("Price", params.Price.toString());
-
-    if (params.HintsJson) {
-      formData.append("HintsJson", params.HintsJson);
-    }
+    formData.append("Price", String(params.Price ?? 0));
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
@@ -126,10 +129,14 @@ export const learnerMapsApi = {
       formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
     }
 
-    formData.append("MapDetailFile", params.MapDetailFile);
+    formData.append("mapDetailFiles", params.MapDetailFile);
 
     if (params.AvatarFile) {
       formData.append("AvatarFile", params.AvatarFile);
+    }
+
+    for (const f of params.GalleryFiles ?? []) {
+      formData.append("GalleryFiles", f);
     }
 
     return learnerAxios.post<UploadMapApiResult>("/api/learner/maps/upload-json", formData, {
@@ -147,19 +154,23 @@ export const learnerMapsApi = {
    * @param params - Upload parameters with map metadata and JSON file
    * @returns Update result
    */
+  /**
+   * Tạo bản ghi map mới từ map nguồn (MapId mới, contentVersion = 1). Map nguồn không đổi.
+   * POST /api/learner/maps/{id}/duplicate-as-new
+   */
+  duplicateMapAsNew(id: string, body?: DuplicateMapAsNewRequest) {
+    return learnerAxios.post<ApiResult<string | { id: string }>>(
+      `/api/learner/maps/${id}/duplicate-as-new`,
+      body ?? {},
+    );
+  },
+
   updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
-    formData.append("Type", params.Type);
     formData.append("Difficulty", params.Difficulty.toString());
-    formData.append("TimeLimitMs", params.TimeLimitMs.toString());
-    formData.append("WinCondition", params.WinCondition.toString());
-    formData.append("Price", params.Price.toString());
-
-    if (params.HintsJson) {
-      formData.append("HintsJson", params.HintsJson);
-    }
+    formData.append("Price", String(params.Price ?? 0));
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
@@ -169,7 +180,7 @@ export const learnerMapsApi = {
       formData.append("LearnedTagsCsv", params.LearnedTagsCsv);
     }
 
-    formData.append("MapDetailFile", params.MapDetailFile);
+    formData.append("mapDetailFiles", params.MapDetailFile);
 
     if (params.AvatarFile) {
       formData.append("AvatarFile", params.AvatarFile);
@@ -194,6 +205,22 @@ export const learnerMapsApi = {
     formData.append("avatar", avatar);
 
     return learnerAxios.post<ApiResult>(`/api/learner/maps/${id}/avatar`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
+   * Append gallery media to an existing map (images/videos).
+   * POST /api/learner/maps/{id}/gallery — form field "files" (one or more).
+   */
+  uploadMapGallery(id: string, files: File[]) {
+    const formData = new FormData();
+    for (const f of files) {
+      formData.append("files", f);
+    }
+    return learnerAxios.post<ApiResult>(`/api/learner/maps/${id}/gallery`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

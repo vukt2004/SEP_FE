@@ -37,6 +37,9 @@ interface GameResultsModalProps {
   onBackToMenu: () => void;
   /** Multiplayer: shown after auto/manual submit while waiting for other players */
   multiplayerFooterNote?: string | null;
+  /** Single-player campaign: next MapDetails level */
+  onNextLevel?: () => void;
+  nextLevelLabel?: string;
 }
 
 export const GameResultsModal: React.FC<GameResultsModalProps> = ({
@@ -53,6 +56,8 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   onReset,
   onBackToMenu,
   multiplayerFooterNote,
+  onNextLevel,
+  nextLevelLabel = "Next level",
 }) => {
   if (!isOpen) return null;
 
@@ -262,6 +267,15 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         ) : null}
 
         <div style={styles.actions}>
+          {isWin && onNextLevel ? (
+            <button
+              type="button"
+              onClick={onNextLevel}
+              style={{ ...styles.secondaryButton, ...styles.primaryButton }}
+            >
+              ➡️ {nextLevelLabel}
+            </button>
+          ) : null}
           <button onClick={onReset} style={styles.secondaryButton}>
             🔄 Try Again
           </button>

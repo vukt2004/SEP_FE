@@ -50,6 +50,8 @@ export interface MapListItem {
   winCondition: number;
   conceptNames?: string[];
   avatarUrl: string | null;
+  contentVersion?: number;
+  updatedAt?: string | null;
 }
 
 /**
@@ -102,6 +104,17 @@ export interface MapConstraint {
   payload: string;
 }
 
+/** One level row from GET map detail (MapLevelItemDto). */
+export interface MapLevelItem {
+  id: string;
+  levelOrder: number;
+  title?: string | null;
+  detailJson?: unknown;
+  timeLimitMs?: number;
+  winCondition?: number;
+  type?: string;
+}
+
 /**
  * Detailed map information
  */
@@ -109,9 +122,9 @@ export interface MapDetail {
   id: string;
   title: string;
   description: string;
-  type: "Topdown" | "Platform";
+  type?: "Topdown" | "Platform";
   difficulty: number;
-  timeLimitMs: number;
+  timeLimitMs?: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
@@ -119,14 +132,17 @@ export interface MapDetail {
   editorialContent: string;
   unlockEditorialAfterStars: number;
   createdAt: string;
+  contentVersion?: number;
+  updatedAt?: string | null;
   activeSpec: MapActiveSpec;
   hints: MapHint[];
   constraints: MapConstraint[];
   tagNames: string[];
   conceptNames: string[];
-  winCondition: number;
+  winCondition?: number;
   avatarUrl?: string | null;
   mapDetailJson?: unknown; // Optional field that might be added by backend
+  levels?: MapLevelItem[];
 }
 
 /**

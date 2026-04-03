@@ -4,33 +4,50 @@ import type { ApiResult } from "../common";
 export type MapStatusEnum = "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
 
 /**
- * Request parameters for uploading a map from JSON
+ * Request parameters for uploading a map from JSON (multipart).
+ * Per-level type, timeLimitMs, winCondition, hints live inside the JSON file(s), not form fields.
  */
 export interface UploadMapFromJsonParams {
-  /** Map title */
   Title: string;
-  /** Map description */
   Description: string;
-  /** Map type: Topdown or Platform */
-  Type: "Topdown" | "Platform";
-  /** Difficulty level (1-5) */
   Difficulty: number;
-  /** Time limit in milliseconds */
-  TimeLimitMs: number;
-  /** Win condition type */
-  WinCondition: number;
-  /** Map price */
   Price: number;
-  /** JSON string of hints array */
-  HintsJson?: string;
-  /** Comma-separated tag IDs */
   TagIdsCsv?: string;
-  /** Comma-separated learned tag IDs */
   LearnedTagsCsv?: string;
-  /** Map detail JSON file */
+  /** One combined JSON ({ levels: [...] }) or legacy single-level JSON */
   MapDetailFile: File;
-  /** Avatar image file (optional) */
   AvatarFile?: File | null;
+  /** Optional gallery images/videos (BE: CreateMapFromJsonFileRequest.GalleryFiles). */
+  GalleryFiles?: File[];
+}
+
+/**
+ * PUT /api/learner/maps/{id} — chỉ metadata Map (không gửi Levels / MapDetailJson).
+ */
+export interface UpdateMapMetadataParams {
+  title: string;
+  description: string;
+  difficulty: number;
+  price?: number | null;
+  tagIds?: string[];
+  learnedTags?: string[];
+}
+
+/**
+ * POST /api/learner/maps/{id}/duplicate-as-new — tạo map mới (MapId mới), map nguồn không đổi.
+ * BE: DuplicateMapAsNewRequest (camelCase JSON).
+ */
+export interface DuplicateMapAsNewRequest {
+  title?: string | null;
+  description?: string | null;
+  difficulty?: number | null;
+  price?: number | null;
+  tagIds?: string[];
+  learnedTags?: string[];
+  editorialContent?: string | null;
+  unlockEditorialAfterStars?: number | null;
+  /** true = map mới published ngay; mặc định false = Draft */
+  autoPublish?: boolean;
 }
 
 /**
@@ -86,11 +103,19 @@ export interface Map {
   avatarUrl: string | null;
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;
+  /** Bắt đầu từ 1; tăng khi author update nội dung (PUT/upload-json). Dùng đồng bộ cache. */
+  contentVersion?: number;
+  /** ISO 8601 hoặc null */
+  updatedAt?: string | null;
   /**
    * true if this map is created by current user; false if it's only purchased/owned.
    * (Field is returned by GET /api/learner/maps/my-maps)
    */
   isAuthor?: boolean;
+  /** Present on GET map by id when backend returns full detail. */
+  levels?: MapLevelItem[];
+  /** Map store gallery (images/videos), ordered by sortOrder. */
+  gallery?: MapMediaItem[];
 }
 
 /**
@@ -170,6 +195,27 @@ export interface MapConstraint {
   payload: string;
 }
 
+/** One gallery item from GET map by id (MapMediaItemDto). */
+export interface MapMediaItem {
+  id: string;
+  url: string;
+  /** e.g. Image, Video — backend enum as string */
+  kind: string;
+  sortOrder: number;
+}
+
+/** One playable level row (MapDetails) from GET map detail — aligns with MapLevelItemDto. */
+export interface MapLevelItem {
+  id: string;
+  levelOrder: number;
+  title?: string | null;
+  detailJson?: unknown;
+  timeLimitMs?: number;
+  winCondition?: number;
+  /** "Topdown" | "Platform" from API */
+  type?: string;
+}
+
 /**
  * Detailed map information
  */
@@ -177,25 +223,32 @@ export interface MapDetail {
   id: string;
   title: string;
   description: string;
-  type: "Topdown" | "Platform";
+  /** Map-level; có thể thiếu khi BE chỉ gắn type theo từng phần tử `levels`. */
+  type?: "Topdown" | "Platform";
   difficulty: number;
-  timeLimitMs: number;
+  timeLimitMs?: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
-  editorialContent: string;
-  unlockEditorialAfterStars: number;
+  editorialContent?: string | null;
+  unlockEditorialAfterStars?: number;
   createdAt: string;
-  activeSpec: MapActiveSpec;
-  hints: MapHint[];
-  constraints: MapConstraint[];
+  contentVersion?: number;
+  updatedAt?: string | null;
+  activeSpec?: MapActiveSpec;
+  hints?: MapHint[];
+  constraints?: MapConstraint[];
   tagNames: string[];
-  conceptNames: string[];
-  winCondition: number;
+  conceptNames?: string[];
+  winCondition?: number;
   mapDetailJson?: unknown;
+  /** Ordered levels (Map 1–n MapDetails). Omitted on list endpoints. */
+  levels?: MapLevelItem[];
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;
+  avatarUrl?: string | null;
+  gallery?: MapMediaItem[];
 }
 
 /**
@@ -220,6 +273,8 @@ export interface MapInfo {
   avatarUrl: string | null;
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;
+  contentVersion?: number;
+  updatedAt?: string | null;
 }
 
 export type MapInfoResult = ApiResult<MapInfo>;

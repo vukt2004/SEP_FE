@@ -7,6 +7,8 @@ export type PlayModeLabel = "Single" | "Lobby" | "Competitive";
 
 export interface ValidateSolutionRequest {
   mapId: string;
+  /** Required when the map has multiple MapDetails rows (levels). */
+  mapDetailId?: string;
   language?: string;
   astSpec?: string | null;
   bytecodeSpec?: string | null;
