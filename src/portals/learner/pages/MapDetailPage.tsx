@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { isAxiosError } from "axios";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2 } from "lucide-react";
+import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2, ImagePlus, Video, Save, X } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import type { Map } from "@/types/api/learner/maps";
+import type { Map, MapTag } from "@/types/api/learner/maps";
+import { getFirstLevelPlayHint } from "@/utils/levelLoader";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
@@ -17,6 +18,11 @@ import { extractLearnedTags } from "@/lib/maps/learnedTags";
 type PurchaseModalState = {
   kind: "success" | "insufficient" | "error";
   message: string;
+};
+
+/** Set from map editor when opening catalog setup full-page flow. */
+export type MapDetailLocationState = {
+  mapCatalogSetup?: boolean;
 };
 
 const DIFFICULTY_TAG_NAMES = new Set(["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()));
@@ -87,18 +93,59 @@ function isSkillMechanismConcept(tagName: string): boolean {
   return SKILL_MECHANISM_CONCEPTS_LOWER.has(tagName.trim().toLowerCase());
 }
 
+const GALLERY_UPLOAD_MAX = 20;
+
+const HIDDEN_LEARNED_TAG_NAMES = new Set(["beginner", "expert", "easy", "medium", "hard"]);
+
+function isVideoMediaKind(kind: string): boolean {
+  return /video/i.test(kind);
+}
+
+/** Avatar first, then gallery by sortOrder; dedupe URLs. */
+function buildCarouselItems(map: Map | null): { url: string; kind: string; key: string }[] {
+  if (!map) return [];
+  const seen = new Set<string>();
+  const items: { url: string; kind: string; key: string }[] = [];
+  if (map.avatarUrl?.trim()) {
+    seen.add(map.avatarUrl);
+    items.push({ url: map.avatarUrl, kind: "Image", key: "avatar" });
+  }
+  const gallery = [...(map.gallery ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+  for (const g of gallery) {
+    const u = g.url?.trim();
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    items.push({ url: u, kind: g.kind || "Image", key: g.id });
+  }
+  return items;
+}
+
 export default function MapDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, locale } = useTranslation();
   const [map, setMap] = useState<Map | null>(null);
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [heroImageFailed, setHeroImageFailed] = useState(false);
-  const [carouselIndex, setCarouselIndex] = useState(0);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [currentMediaLoadError, setCurrentMediaLoadError] = useState(false);
+  const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
+  const [loadingMapTags, setLoadingMapTags] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editDifficulty, setEditDifficulty] = useState(1);
+  const [editPrice, setEditPrice] = useState(0);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [pendingGalleryFiles, setPendingGalleryFiles] = useState<File[]>([]);
+  const [savingMetadata, setSavingMetadata] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -116,7 +163,7 @@ export default function MapDetailPage() {
 
       const mapResponse = await learnerMapsApi.getMapById(id, true);
       if (mapResponse.data.isSuccess && mapResponse.data.data) {
-        setMap(mapResponse.data.data as unknown as Map);
+        setMap(mapResponse.data.data as Map);
       } else {
         setError(mapResponse.data.message || t("failedLoadMapDetails"));
         return;
@@ -139,14 +186,69 @@ export default function MapDetailPage() {
   }, [loadMap]);
 
   useEffect(() => {
-    setHeroImageFailed(false);
+    setCarouselIndex(0);
+    setCurrentMediaLoadError(false);
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadTags = async () => {
+      try {
+        setLoadingMapTags(true);
+        const res = await learnerMapsApi.getMapTags();
+        if (!cancelled && res.data.isSuccess && Array.isArray(res.data.data)) {
+          setAvailableMapTags(res.data.data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (!cancelled) setLoadingMapTags(false);
+      }
+    };
+    void loadTags();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!map) return;
+    setEditTitle(map.title);
+    setEditDescription(map.description ?? "");
+    setEditDifficulty(Math.min(5, Math.max(1, map.difficulty)));
+    setEditPrice(map.price ?? 0);
+  }, [map]);
+
+  useEffect(() => {
+    if (!map || availableMapTags.length === 0) return;
+    const raw = map.tagNames ?? [];
+    const nameSet = new Set(raw.map((n) => n.trim().toLowerCase()));
+    const ids = availableMapTags
+      .filter((tag) => nameSet.has(tag.name.trim().toLowerCase()))
+      .map((tag) => tag.id);
+    setSelectedTagIds(ids);
+    const learnedNames = extractLearnedTags(map);
+    const learnedSet = new Set(learnedNames.map((x) => x.trim().toLowerCase()));
+    const learnedPool = availableMapTags.filter(
+      (tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase()),
+    );
+    const lIds = learnedPool
+      .filter((tag) => learnedSet.has(tag.name.trim().toLowerCase()))
+      .map((tag) => tag.id);
+    setSelectedLearnedTagIds(lIds);
+  }, [map, availableMapTags]);
+
+  useEffect(() => {
+    setCurrentMediaLoadError(false);
+  }, [carouselIndex]);
+
   const handleStartMap = () => {
-    if (map) {
-      const isPlatform = map.type === "Platform";
-      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
-        state: { levelId: map.id },
+    if (map && playHint) {
+      navigate(playHint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+        state: {
+          levelId: map.id,
+          ...(playHint.mapDetailId ? { mapDetailId: playHint.mapDetailId } : {}),
+        },
       });
     }
   };
@@ -194,6 +296,73 @@ export default function MapDetailPage() {
     }
   };
 
+  const toggleTagSelection = (tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((x) => x !== tagId) : [...prev, tagId],
+    );
+  };
+
+  const toggleLearnedTagSelection = (tagId: string) => {
+    setSelectedLearnedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((x) => x !== tagId) : [...prev, tagId],
+    );
+  };
+
+  const learnedKnowledgeTags = useMemo(
+    () => availableMapTags.filter((tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase())),
+    [availableMapTags],
+  );
+
+  const handleSaveAuthorMetadata = async () => {
+    const setup =
+      (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
+    if (!map?.id || ownership?.isAuthor !== true || !setup) return;
+    const titleTrim = editTitle.trim();
+    if (!titleTrim) {
+      alert(t("mapDetailEditTitleRequired"));
+      return;
+    }
+    try {
+      setSavingMetadata(true);
+      const res = await learnerMapsApi.updateMapMetadata(map.id, {
+        title: titleTrim,
+        description: editDescription,
+        difficulty: editDifficulty,
+        price: editPrice,
+        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
+      });
+      if (!res.data.isSuccess) {
+        alert(t("mapDetailMetadataSaveFailed").replace("{message}", res.data.message || ""));
+        return;
+      }
+      if (avatarFile) {
+        const ar = await learnerMapsApi.uploadMapAvatar(map.id, avatarFile);
+        if (!ar.data.isSuccess) {
+          alert(t("mapDetailAvatarUploadFailed").replace("{message}", ar.data.message || ""));
+          return;
+        }
+      }
+      if (pendingGalleryFiles.length > 0) {
+        const gr = await learnerMapsApi.uploadMapGallery(map.id, pendingGalleryFiles);
+        if (!gr.data.isSuccess) {
+          alert(t("mapDetailGalleryUploadFailed").replace("{message}", gr.data.message || ""));
+          return;
+        }
+      }
+      setAvatarFile(null);
+      setPendingGalleryFiles([]);
+      await loadMap();
+      alert(t("mapDetailMetadataSaved"));
+      navigate(".", { replace: true, state: {} });
+    } catch (e) {
+      console.error(e);
+      alert(t("mapDetailMetadataSaveError"));
+    } finally {
+      setSavingMetadata(false);
+    }
+  };
+
   const formatCreatedAt = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
@@ -226,7 +395,19 @@ export default function MapDetailPage() {
   };
 
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
-  const previews = map?.avatarUrl && !heroImageFailed ? [map.avatarUrl] : [];
+  const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
+  const carouselItems = useMemo(() => buildCarouselItems(map), [map]);
+  const isAuthor = ownership?.isAuthor === true;
+  const mapCatalogSetup =
+    (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
+  const showCatalogSetupForm = mapCatalogSetup && isAuthor;
+  const currentMedia = carouselItems[carouselIndex] ?? null;
+
+  useEffect(() => {
+    if (carouselItems.length > 0 && carouselIndex >= carouselItems.length) {
+      setCarouselIndex(0);
+    }
+  }, [carouselItems.length, carouselIndex]);
 
   const rawTags = map?.tagNames ?? [];
   const learnedTags = map ? extractLearnedTags(map) : [];
@@ -308,13 +489,24 @@ export default function MapDetailPage() {
           {/* Left: large media + carousel */}
           <div className={styles.steamMedia}>
             <div className={styles.steamPlayer}>
-              {map.avatarUrl && !heroImageFailed ? (
-                <img
-                  src={previews[carouselIndex] ?? map.avatarUrl}
-                  alt=""
-                  className={styles.steamPlayerImg}
-                  onError={() => setHeroImageFailed(true)}
-                />
+              {carouselItems.length > 0 && currentMedia && !currentMediaLoadError ? (
+                isVideoMediaKind(currentMedia.kind) ? (
+                  <video
+                    key={currentMedia.key}
+                    src={currentMedia.url}
+                    className={styles.steamPlayerVideo}
+                    controls
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    key={currentMedia.key}
+                    src={currentMedia.url}
+                    alt=""
+                    className={styles.steamPlayerImg}
+                    onError={() => setCurrentMediaLoadError(true)}
+                  />
+                )
               ) : (
                 <div className={styles.steamPlayerPlaceholder}>
                   <span role="img" aria-label="Game">
@@ -327,49 +519,204 @@ export default function MapDetailPage() {
               )}
             </div>
 
-            {previews.length > 0 && (
+            {carouselItems.length > 0 && (
               <div className={styles.steamCarousel}>
-                {previews.map((url, idx) => (
+                {carouselItems.map((item, idx) => (
                   <button
-                    key={idx}
+                    key={item.key}
                     type="button"
                     className={`${styles.steamThumb} ${
                       carouselIndex === idx ? styles.steamThumbActive : ""
                     }`}
                     onClick={() => setCarouselIndex(idx)}
                   >
-                    <img src={url} alt="" />
+                    {isVideoMediaKind(item.kind) ? (
+                      <div className={styles.steamThumbVideoWrap}>
+                        <video
+                          src={item.url}
+                          className={styles.steamThumbVideo}
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                        <span className={styles.steamThumbVideoBadge} aria-hidden>
+                          <Video size={18} />
+                        </span>
+                      </div>
+                    ) : (
+                      <img src={item.url} alt="" />
+                    )}
                   </button>
                 ))}
-              </div>
-            )}
-            {previews.length === 0 && map.avatarUrl && !heroImageFailed && (
-              <div className={styles.steamCarousel}>
-                <div className={`${styles.steamThumb} ${styles.steamThumbActive}`}>
-                  <img src={map.avatarUrl} alt="" />
-                </div>
               </div>
             )}
           </div>
 
           {/* Right: sidebar – nhóm thông tin rõ ràng */}
           <div className={styles.steamSidebar}>
-            <section className={styles.steamSidebarSection}>
-              <h1 className={styles.steamTitle}>{map.title}</h1>
-              {map.description ? (
-                <p className={styles.steamDesc}>{map.description}</p>
-              ) : (
-                <p className={`${styles.steamDesc} ${styles.steamDescEmpty}`}>
-                  {t("noDescriptionProvided")}
-                </p>
-              )}
-            </section>
+            {showCatalogSetupForm && (
+              <section className={`${styles.steamSidebarSection} ${styles.authorEditSection}`}>
+                <h2 className={styles.steamSectionTitle}>{t("mapDetailEditSectionTitle")}</h2>
+                <label className={styles.authorLabel}>{t("mapDetailFieldTitle")}</label>
+                <input
+                  type="text"
+                  className={styles.authorInput}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+                <label className={styles.authorLabel}>{t("mapDetailFieldDescription")}</label>
+                <textarea
+                  className={styles.authorTextarea}
+                  rows={4}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+                <label className={styles.authorLabel}>{t("mapDetailFieldDifficulty")}</label>
+                <select
+                  className={styles.authorSelect}
+                  value={editDifficulty}
+                  onChange={(e) => setEditDifficulty(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}/5
+                    </option>
+                  ))}
+                </select>
+                <label className={styles.authorLabel}>{t("mapDetailFieldPrice")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  className={styles.authorInput}
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(Math.max(0, Number(e.target.value) || 0))}
+                />
+                <label className={styles.authorLabel}>{t("mapDetailFieldTags")}</label>
+                <div className={styles.authorTagChips}>
+                  {loadingMapTags ? (
+                    <span className={styles.steamDescEmpty}>{t("mapDetailLoadingTags")}</span>
+                  ) : (
+                    availableMapTags.map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        className={`${styles.authorTagChip} ${
+                          selectedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
+                        }`}
+                        onClick={() => toggleTagSelection(tag.id)}
+                      >
+                        {tag.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+                <label className={styles.authorLabel}>{t("mapDetailFieldLearnedTags")}</label>
+                <div className={styles.authorTagChips}>
+                  {learnedKnowledgeTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className={`${styles.authorTagChip} ${
+                        selectedLearnedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
+                      }`}
+                      onClick={() => toggleLearnedTagSelection(tag.id)}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className={styles.authorFileHidden}
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className={styles.authorFileHidden}
+                  onChange={(e) => {
+                    const list = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    if (!list.length) return;
+                    setPendingGalleryFiles((prev) =>
+                      [...prev, ...list].slice(0, GALLERY_UPLOAD_MAX),
+                    );
+                  }}
+                />
+                <div className={styles.authorMediaActions}>
+                  <button
+                    type="button"
+                    className={styles.authorMediaBtn}
+                    onClick={() => avatarInputRef.current?.click()}
+                  >
+                    <ImagePlus size={14} /> {t("mapDetailChangeAvatar")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.authorMediaBtn}
+                    onClick={() => galleryInputRef.current?.click()}
+                  >
+                    <ImagePlus size={14} /> {t("mapDetailAddGallery")}
+                  </button>
+                </div>
+                {avatarFile && (
+                  <p className={styles.authorFileHint}>
+                    {t("mapDetailAvatarSelected")}: {avatarFile.name}
+                  </p>
+                )}
+                {pendingGalleryFiles.length > 0 && (
+                  <ul className={styles.authorGalleryList}>
+                    {pendingGalleryFiles.map((f, i) => (
+                      <li key={`${f.name}-${f.size}-${i}`} className={styles.authorGalleryRow}>
+                        <span className={styles.authorGalleryName}>{f.name}</span>
+                        <button
+                          type="button"
+                          className={styles.authorGalleryRemove}
+                          onClick={() =>
+                            setPendingGalleryFiles((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          aria-label={t("mapDetailRemoveGalleryFile")}
+                        >
+                          <X size={16} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  type="button"
+                  className={styles.authorSaveBtn}
+                  disabled={savingMetadata}
+                  onClick={() => void handleSaveAuthorMetadata()}
+                >
+                  <Save size={16} />{" "}
+                  {savingMetadata ? t("mapDetailSavingMetadata") : t("mapDetailSaveMetadata")}
+                </button>
+              </section>
+            )}
+
+            {!showCatalogSetupForm && (
+              <section className={styles.steamSidebarSection}>
+                <h1 className={styles.steamTitle}>{map.title}</h1>
+                {map.description ? (
+                  <p className={styles.steamDesc}>{map.description}</p>
+                ) : (
+                  <p className={`${styles.steamDesc} ${styles.steamDescEmpty}`}>
+                    {t("noDescriptionProvided")}
+                  </p>
+                )}
+              </section>
+            )}
 
             <section className={styles.steamSidebarSection}>
               <div className={styles.steamWinCondition}>
                 <span className={styles.steamWinLabel}>{t("winCondition")}</span>
                 <span className={styles.steamWinValue}>
-                  {getWinConditionLabel(map.winCondition)}
+                  {getWinConditionLabel(playHint?.winCondition ?? map?.winCondition ?? 1)}
                 </span>
               </div>
             </section>
@@ -390,7 +737,7 @@ export default function MapDetailPage() {
                 <div className={styles.steamMetaRow}>
                   <span className={styles.steamMetaLabel}>{t("type")}</span>
                   <span className={styles.steamMetaValue}>
-                    {map.type === "Platform" ? t("platformer") : t("puzzleLogic")}
+                    {playHint?.isPlatform ? t("platformer") : t("puzzleLogic")}
                   </span>
                 </div>
                 <div className={styles.steamMetaRow}>

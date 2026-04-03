@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
 import { EngineState, GameEngine } from "../../modules/engine/core/GameEngine";
@@ -12,6 +12,7 @@ import type {
 import { StepExecutor } from "../../modules/executor/StepExecutor";
 import { LevelType, createGameConfig } from "../../modules/engine/core/GameConfig";
 import { loadLevelFromAPI, loadLevelFromMockData } from "../../utils/levelLoader";
+import type { MapLevelItem } from "../../types/api/learner/maps";
 import BlocklyWorkspace from "../../tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "../../tools/block-editor/blocks/registerGenerators";
 import { ROUTES } from "@/lib/constants/routes";
@@ -117,6 +118,38 @@ export default function PlatformGameView() {
   const levelId = (location.state as { levelId?: string })?.levelId;
   const levelFile = (location.state as { levelFile?: string })?.levelFile;
   const multiplayerRoomId = (location.state as { multiplayerRoomId?: string })?.multiplayerRoomId;
+  const mapDetailIdFromState = (location.state as { mapDetailId?: string })?.mapDetailId;
+
+  const playMapDetailIdRef = useRef<string | null>(null);
+  const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
+  const [activeMapDetailId, setActiveMapDetailId] = useState<string | null>(null);
+
+  const nextCampaignLevelId = useMemo(() => {
+    if (!campaignLevels.length || !activeMapDetailId) return null;
+    const i = campaignLevels.findIndex((l) => l.id === activeMapDetailId);
+    if (i < 0 || i >= campaignLevels.length - 1) return null;
+    return campaignLevels[i + 1].id;
+  }, [campaignLevels, activeMapDetailId]);
+
+  const campaignProgressLabel = useMemo(() => {
+    if (campaignLevels.length <= 1 || !activeMapDetailId) return null;
+    const i = campaignLevels.findIndex((l) => l.id === activeMapDetailId);
+    if (i < 0) return null;
+    return `Level ${i + 1} / ${campaignLevels.length}`;
+  }, [campaignLevels, activeMapDetailId]);
+
+  const handleNextCampaignLevel = useCallback(() => {
+    if (!levelId || !nextCampaignLevelId) return;
+    const isPlatform = mapConfig?.type === "platform";
+    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+      replace: true,
+      state: {
+        levelId,
+        mapDetailId: nextCampaignLevelId,
+        multiplayerRoomId,
+      },
+    });
+  }, [levelId, nextCampaignLevelId, mapConfig?.type, multiplayerRoomId, navigate]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -216,12 +249,29 @@ export default function PlatformGameView() {
 
     const initGame = async () => {
       try {
+        historyRecordedRef.current = false;
         setIsLoading(true);
 
         // Load level from API or fallback to mock data
         const levelResult = levelId
-          ? await loadLevelFromAPI(levelId)
+          ? await loadLevelFromAPI(levelId, { mapDetailId: mapDetailIdFromState })
           : await loadLevelFromMockData(levelFile || "level-platform-01");
+
+        if (levelId && levelResult.mapConfig?.type === "topdown") {
+          navigate(ROUTES.GAME, {
+            replace: true,
+            state: {
+              levelId,
+              mapDetailId: mapDetailIdFromState,
+              multiplayerRoomId,
+            },
+          });
+          return;
+        }
+
+        playMapDetailIdRef.current = levelResult.mapDetailId;
+        setCampaignLevels(levelResult.levels ?? []);
+        setActiveMapDetailId(levelResult.mapDetailId);
 
         if (levelResult.mapConfig) {
           setMapConfig(levelResult.mapConfig as MapConfig);
@@ -229,7 +279,10 @@ export default function PlatformGameView() {
 
         const levelDefinition = levelResult.level;
         setBlockConstraints(levelDefinition.blockConstraints ?? null);
-        setLevelTitle(levelDefinition.name || levelDefinition.id || "Level");
+        const rowMeta = levelResult.levels?.find((l) => l.id === levelResult.mapDetailId) ?? levelResult.levels?.[0];
+        setLevelTitle(
+          rowMeta?.title?.trim() || levelDefinition.name || levelDefinition.id || "Level",
+        );
         setHasDoor(levelDefinition.objects?.some((obj: any) => obj.type === "door") ?? false);
 
         // Set canvas size based on level dimensions
@@ -330,7 +383,7 @@ export default function PlatformGameView() {
     return () => {
       if (cleanup) cleanup();
     };
-  }, [levelId, levelFile, showWarningToast]);
+  }, [levelId, levelFile, mapDetailIdFromState, showWarningToast]);
 
   // Handle Blockly workspace ready
   const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
@@ -858,6 +911,7 @@ export default function PlatformGameView() {
         stepsUsed: gameResult?.stepCount ?? 0,
         blocksUsed: gameResult?.blocksUsed ?? lastRunBlockCountRef.current,
         time: gameResult?.elapsedTime ?? timerElapsedRef.current,
+        mapDetailId: playMapDetailIdRef.current ?? undefined,
       });
       if (res.data?.isSuccess) {
         setSubmitted(true);
@@ -910,6 +964,7 @@ export default function PlatformGameView() {
               stepsUsed: gameResult.stepCount,
               blocksUsed: gameResult.blocksUsed,
               time: gameResult.elapsedTime,
+              mapDetailId: playMapDetailIdRef.current ?? undefined,
             });
 
             if (res.data?.isSuccess) {
@@ -942,6 +997,7 @@ export default function PlatformGameView() {
         const program = generateAST(workspaceRef.current);
         await learnerGameplayApi.validateSolution({
           mapId: levelId,
+          mapDetailId: playMapDetailIdRef.current ?? undefined,
           language: "Blockly",
           astSpec: gameResult.isWin ? JSON.stringify(program) : null,
           playMode: 0, // Single
@@ -1359,7 +1415,22 @@ export default function PlatformGameView() {
             </button>
           </div>
 
-          <div style={{ padding: "8px 16px", background: "color-mix(in srgb, var(--primary) 8%, var(--surface))", borderBottom: "1px solid var(--border)", fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ padding: "8px 16px", background: "color-mix(in srgb, var(--primary) 8%, var(--surface))", borderBottom: "1px solid var(--border)", fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+            {campaignProgressLabel ? (
+              <span
+                style={{
+                  marginRight: "8px",
+                  padding: "2px 8px",
+                  borderRadius: "8px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  fontWeight: 800,
+                  fontSize: "12px",
+                }}
+              >
+                {campaignProgressLabel}
+              </span>
+            ) : null}
             <strong>{t("gameObjectiveLabel")}:</strong> {objectiveText}
           </div>
 
@@ -1671,6 +1742,12 @@ export default function PlatformGameView() {
           multiplayerFooterNote={
             multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null
           }
+          onNextLevel={
+            gameResult.isWin && nextCampaignLevelId && !multiplayerRoomId
+              ? handleNextCampaignLevel
+              : undefined
+          }
+          nextLevelLabel="Next level"
           onReset={() => {
             handlePlayAgainFromResults();
           }}

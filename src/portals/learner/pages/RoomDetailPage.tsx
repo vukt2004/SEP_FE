@@ -24,6 +24,16 @@ import type { LobbyRoomDetailResponse, LobbyPlayerDto } from "@/types/api/learne
 import type { Map as ApiMap } from "@/types/api/learner/maps";
 import styles from "./RoomDetailPage.module.css";
 import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
+import { getFirstLevelPlayHint } from "@/utils/levelLoader";
+
+function lobbyPlayNavigationState(mapId: string, roomIdForState: string, mapPayload: unknown) {
+  const hint = getFirstLevelPlayHint(mapPayload);
+  return {
+    levelId: mapId,
+    multiplayerRoomId: roomIdForState,
+    ...(hint.mapDetailId ? { mapDetailId: hint.mapDetailId } : {}),
+  };
+}
 
 const ROOM_STATUS_MAP: Record<number | string, LobbyRoomDetailResponse["status"]> = {
   0: "Waiting",
@@ -171,15 +181,14 @@ export default function RoomDetailPage() {
               .getMapById(mapId)
               .then((res) => {
                 const map = res.data?.data;
-                const type = map?.type;
-                const isPlatform = type === "Platform";
-                navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
-                  state: { levelId: mapId, multiplayerRoomId: roomIdForState },
+                const hint = getFirstLevelPlayHint(map);
+                navigate(hint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+                  state: lobbyPlayNavigationState(mapId, roomIdForState, map),
                 });
               })
               .catch(() => {
                 navigate(ROUTES.PLATFORM, {
-                  state: { levelId: mapId, multiplayerRoomId: roomIdForState },
+                  state: lobbyPlayNavigationState(mapId, roomIdForState, null),
                 });
               });
           }
@@ -261,14 +270,14 @@ export default function RoomDetailPage() {
           .getMapById(room.selectedMapId!)
           .then((resMap) => {
             const map = resMap.data?.data;
-            const isPlatform = map?.type === "Platform";
-            navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
-              state: { levelId: room.selectedMapId, multiplayerRoomId: roomId },
+            const hint = getFirstLevelPlayHint(map);
+            navigate(hint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, map),
             });
           })
           .catch(() => {
             navigate(ROUTES.PLATFORM, {
-              state: { levelId: room.selectedMapId, multiplayerRoomId: roomId },
+              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, null),
             });
           });
       } else {
