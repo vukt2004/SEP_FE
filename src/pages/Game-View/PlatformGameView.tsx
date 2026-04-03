@@ -47,6 +47,7 @@ import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { AlertToast } from "@/shared/components/AlertToast";
 import { useTranslation } from "@/lib/i18n/translations";
 import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
+import { markCampaignLevelCompleted, markCampaignLevelStarted } from "@/lib/game/campaignProgress";
 
 /**
  * PlatformGameView - Platformer game view with block editor and gravity physics.
@@ -71,6 +72,7 @@ export default function PlatformGameView() {
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
   const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [resultsDockVisible, setResultsDockVisible] = useState(false);
   const historyRecordedRef = useRef(false);
   const [audioSystem, setAudioSystem] = useState<
     import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
@@ -103,6 +105,7 @@ export default function PlatformGameView() {
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
   const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
+  const [showResultPopup, setShowResultPopup] = useState(true);
   const [hasDoor, setHasDoor] = useState(false);
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const timerElapsedRef = useRef(0);
@@ -119,6 +122,8 @@ export default function PlatformGameView() {
   const levelFile = (location.state as { levelFile?: string })?.levelFile;
   const multiplayerRoomId = (location.state as { multiplayerRoomId?: string })?.multiplayerRoomId;
   const mapDetailIdFromState = (location.state as { mapDetailId?: string })?.mapDetailId;
+  const levelSelectPath =
+    levelId != null ? ROUTES.LEARNER_MAP_LEVEL_SELECT(levelId) : ROUTES.LEARNER_MAPS_BROWSE;
 
   const playMapDetailIdRef = useRef<string | null>(null);
   const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
@@ -150,6 +155,14 @@ export default function PlatformGameView() {
       },
     });
   }, [levelId, nextCampaignLevelId, mapConfig?.type, multiplayerRoomId, navigate]);
+
+  const handleBackToMapFlow = useCallback(() => {
+    if (multiplayerRoomId) {
+      void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+      return;
+    }
+    navigate(levelSelectPath);
+  }, [levelSelectPath, multiplayerRoomId, navigate]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -272,6 +285,9 @@ export default function PlatformGameView() {
         playMapDetailIdRef.current = levelResult.mapDetailId;
         setCampaignLevels(levelResult.levels ?? []);
         setActiveMapDetailId(levelResult.mapDetailId);
+        if (levelId && levelResult.mapDetailId) {
+          markCampaignLevelStarted(levelId, levelResult.mapDetailId);
+        }
 
         if (levelResult.mapConfig) {
           setMapConfig(levelResult.mapConfig as MapConfig);
@@ -317,6 +333,9 @@ export default function PlatformGameView() {
         const handleWin = () => {
           if (executorRef.current) executorRef.current.stop();
           setIsExecutorRunning(false);
+          if (levelId && playMapDetailIdRef.current) {
+            markCampaignLevelCompleted(levelId, playMapDetailIdRef.current);
+          }
           setGameResult({
             isWin: true,
             stepCount: engine.getStepCount(),
@@ -324,9 +343,18 @@ export default function PlatformGameView() {
             elapsedTime: timerElapsedRef.current,
             fruitsCollected: engine.getCollectedFruitsCount(),
           });
-          setTimeout(() => {
-            setShowResultsModal(true);
-          }, 1500);
+          if (showResultPopup) {
+            setTimeout(() => {
+              setResultsDockVisible(false);
+              setShowResultsModal(true);
+              setTimeout(() => {
+                // Keep the results visible briefly before auto-reset.
+                handlePlayAgainFromResults({ preserveResult: true });
+              }, 1200);
+            }, 1500);
+          } else {
+            handlePlayAgainFromResults({ preserveResult: true });
+          }
         };
         engine.on("win", handleWin);
 
@@ -383,7 +411,7 @@ export default function PlatformGameView() {
     return () => {
       if (cleanup) cleanup();
     };
-  }, [levelId, levelFile, mapDetailIdFromState, showWarningToast]);
+  }, [levelId, levelFile, mapDetailIdFromState, showWarningToast, showResultPopup]);
 
   // Handle Blockly workspace ready
   const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
@@ -649,15 +677,18 @@ export default function PlatformGameView() {
     setIsExecutorRunning(false);
     setCollectedFruits(0);
     setShowResultsModal(false);
+    setResultsDockVisible(false);
     setShowExecutionIncompleteModal(false);
     setShowTrapFailedModal(false);
+    setGameResult(null);
     setExecVariables({});
     setLastRemoved(null);
     setLiveSteps(0);
     fruitCollectedPulseRef.current = false;
   };
 
-  const handlePlayAgainFromResults = () => {
+  const handlePlayAgainFromResults = (options?: { preserveResult?: boolean }) => {
+    const preserveResult = options?.preserveResult ?? false;
     historyRecordedRef.current = false;
     setSubmitted(false);
     timeLimitTriggeredRef.current = false;
@@ -665,10 +696,6 @@ export default function PlatformGameView() {
     if (executorRef.current) {
       executorRef.current.stop();
       executorRef.current = null;
-    }
-
-    if (workspaceRef.current) {
-      workspaceRef.current.clear();
     }
 
     if (engineRef.current) {
@@ -684,16 +711,22 @@ export default function PlatformGameView() {
 
     setIsExecutorRunning(false);
     setCollectedFruits(0);
-    setShowResultsModal(false);
+    if (!preserveResult) {
+      setShowResultsModal(false);
+    }
+    setResultsDockVisible(false);
     setShowExecutionIncompleteModal(false);
     setShowTrapFailedModal(false);
+    if (!preserveResult) {
+      setGameResult(null);
+    }
     setExecVariables({});
     setLastRemoved(null);
     setBlocksUsed(0);
     setLiveSteps(0);
     setRevealedHints(0);
     setIsLevelStarted(false);
-    setShowMissionModal(true);
+    setShowMissionModal(!preserveResult);
     fruitCollectedPulseRef.current = false;
     resetGameTimerForLevelStart();
   };
@@ -888,15 +921,30 @@ export default function PlatformGameView() {
       elapsedTime: Math.min(elapsedDisplay, limit),
       fruitsCollected: engine.getCollectedFruitsCount(),
     });
-    setShowResultsModal(true);
+    if (showResultPopup) {
+      setResultsDockVisible(false);
+      setShowResultsModal(true);
+    }
   }, [
     mapConfig?.timeLimitSeconds,
     isLevelStarted,
     showResultsModal,
+    showResultPopup,
     elapsedDisplay,
     showWarningToast,
     t,
   ]);
+
+  const handleMinimizeResults = useCallback(() => {
+    setShowResultsModal(false);
+    setResultsDockVisible(true);
+  }, []);
+
+  const handleCloseResults = useCallback(() => {
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+  }, []);
 
   const handleMultiplayerSubmit = async () => {
     if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
@@ -942,7 +990,7 @@ export default function PlatformGameView() {
   // - Single player: call POST `/api/learner/gameplay/validate`
   // - Multiplayer: call POST `/api/learner/lobby/rooms/:roomId/submit`
   useEffect(() => {
-    if (!showResultsModal || !gameResult) return;
+    if (!gameResult) return;
     if (historyRecordedRef.current) return;
     historyRecordedRef.current = true;
 
@@ -1023,7 +1071,7 @@ export default function PlatformGameView() {
         historyRecordedRef.current = false;
       }
     })();
-  }, [showResultsModal, gameResult, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
+  }, [gameResult, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
 
   const handleEndMultiplayerGame = async () => {
     if (!multiplayerRoomId) return;
@@ -1168,11 +1216,7 @@ export default function PlatformGameView() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
           <button
             onClick={() => {
-              if (multiplayerRoomId) {
-                void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
-              } else {
-                navigate(ROUTES.LEARNER_MAPS_BROWSE);
-              }
+              handleBackToMapFlow();
             }}
             style={controlButtonStyle("neutral", false, hoveredControl === "back")}
             onMouseEnter={() => setHoveredControl("back")}
@@ -1276,6 +1320,7 @@ export default function PlatformGameView() {
               {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
             </button>
           )}
+
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
@@ -1358,7 +1403,7 @@ export default function PlatformGameView() {
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
               {/* Time */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: elapsedDisplay > timeLimit ? "var(--danger)" : elapsedDisplay >= timeLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
-                ⏱️ <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} resetSignal={timerResetSignal} onElapsedTimeChange={handleTimerElapsedChange} compact isActive={isLevelStarted && !showResultsModal} />
+                ⏱️ <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} resetSignal={timerResetSignal} onElapsedTimeChange={handleTimerElapsedChange} compact isActive={isLevelStarted && !gameResult} />
                 {timeLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {timeLimit}s</span>}
               </div>
 
@@ -1727,7 +1772,7 @@ export default function PlatformGameView() {
       />
 
       {/* Game Results Modal */}
-      {gameResult && (
+      {gameResult && showResultPopup && (
         <GameResultsModal
           isOpen={showResultsModal}
           isWin={gameResult.isWin}
@@ -1751,9 +1796,43 @@ export default function PlatformGameView() {
           onReset={() => {
             handlePlayAgainFromResults();
           }}
-          onBackToMenu={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
+          onBackToMenu={handleBackToMapFlow}
+          onMinimize={handleMinimizeResults}
+          onClose={handleCloseResults}
+          resultPopupEnabled={showResultPopup}
+          onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
+          resultPopupOnLabel={t("gameResultPopupOn")}
+          resultPopupOffLabel={t("gameResultPopupOff")}
         />
       )}
+
+      {resultsDockVisible && gameResult ? (
+        <button
+          type="button"
+          onClick={() => {
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+          }}
+          style={{
+            position: "fixed",
+            right: "16px",
+            bottom: "16px",
+            zIndex: 1001,
+            border: "1px solid var(--border)",
+            borderRadius: "999px",
+            padding: "8px 14px",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--text)",
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, white 8%), var(--surface-2))",
+            boxShadow: "0 8px 20px rgba(2, 6, 23, 0.28)",
+            cursor: "pointer",
+          }}
+        >
+          {t("gameResultPopupRestore")}
+        </button>
+      ) : null}
     </div>
   );
 }

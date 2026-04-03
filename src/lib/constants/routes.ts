@@ -25,6 +25,7 @@ export const ROUTES = {
   LEARNER_MAPS: "/app/my-maps",
   LEARNER_MARKETPLACE: "/app/marketplace",
   LEARNER_MAP_DETAIL: "/app/map/:id",
+  LEARNER_MAP_LEVEL_SELECT: (id: string) => `/app/map/${id}/levels`,
   LEARNER_ROOM_CREATE: "/app/room/create",
   LEARNER_ROOM_JOIN: "/app/room/join",
   /** Room detail/waiting – use with /app/room/:roomId (roomId must be single segment, no slashes) */

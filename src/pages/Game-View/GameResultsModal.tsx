@@ -35,11 +35,17 @@ interface GameResultsModalProps {
   blockLimit: number | null;
   onReset: () => void;
   onBackToMenu: () => void;
+  onMinimize?: () => void;
+  onClose?: () => void;
   /** Multiplayer: shown after auto/manual submit while waiting for other players */
   multiplayerFooterNote?: string | null;
   /** Single-player campaign: next MapDetails level */
   onNextLevel?: () => void;
   nextLevelLabel?: string;
+  resultPopupEnabled?: boolean;
+  onToggleResultPopup?: () => void;
+  resultPopupOnLabel?: string;
+  resultPopupOffLabel?: string;
 }
 
 export const GameResultsModal: React.FC<GameResultsModalProps> = ({
@@ -55,11 +61,25 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   blockLimit,
   onReset,
   onBackToMenu,
+  onMinimize,
+  onClose,
   multiplayerFooterNote,
   onNextLevel,
   nextLevelLabel = "Next level",
 }) => {
   if (!isOpen) return null;
+  const [isWindowExpanded, setIsWindowExpanded] = React.useState(false);
+
+  const modalStyle: React.CSSProperties = {
+    ...styles.modal,
+    ...(isWindowExpanded
+      ? {
+          width: "min(96vw, 960px)",
+          maxWidth: "96vw",
+          maxHeight: "96vh",
+        }
+      : {}),
+  };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -137,7 +157,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
               color: passed ? "var(--success, #047857)" : "var(--danger, #b91c1c)",
             }}
           >
-            {valueText} {passed ? "✅" : "❌"}
+            {valueText}
           </div>
         </div>
 
@@ -175,74 +195,102 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         }
       `}</style>
 
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <div style={styles.headerIcon}>{isWin ? "🏆" : "😔"}</div>
-          <h2
-            style={{
-              ...styles.title,
-              color: isWin ? "var(--success, #059669)" : "var(--danger, #dc2626)",
-            }}
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.windowControls}>
+          <button
+            type="button"
+            aria-label="Minimize results window"
+            title="Minimize"
+            style={{ ...styles.windowControlButton, ...styles.windowControlMin }}
+            onClick={() => onMinimize?.()}
           >
-            {isWin ? "Level Complete!" : "Game Over"}
-          </h2>
-          <p style={styles.subtitle}>{subtitle}</p>
+            −
+          </button>
+          <button
+            type="button"
+            aria-label="Maximize results window"
+            title={isWindowExpanded ? "Restore" : "Maximize"}
+            style={{ ...styles.windowControlButton, ...styles.windowControlMax }}
+            onClick={() => setIsWindowExpanded((prev) => !prev)}
+          >
+            {isWindowExpanded ? "◱" : "□"}
+          </button>
+          <button
+            type="button"
+            aria-label="Close results window"
+            title="Close"
+            style={{ ...styles.windowControlButton, ...styles.windowControlClose }}
+            onClick={() => onClose?.()}
+          >
+            ×
+          </button>
         </div>
 
-        <div style={styles.starsSection}>
-          {[0, 1, 2].map((index) => {
-            const filled = index < stars;
-            return (
-              <span
-                key={`star-${index}`}
-                style={{
-                  ...styles.star,
-                  color: filled ? "var(--warning, #f59e0b)" : "var(--border, #cbd5e1)",
-                  textShadow: filled ? "0 6px 14px rgba(245, 158, 11, 0.35)" : "none",
-                  animation: `starPop 320ms ease ${(index + 1) * 80}ms both`,
-                }}
-              >
-                ★
-              </span>
-            );
-          })}
+        <div style={styles.heroSection}>
+          <div style={styles.header}>
+            <div style={styles.headerIcon}>{isWin ? "🏆" : "😔"}</div>
+            <h2 style={styles.title}>{isWin ? "Level Complete!" : "Game Over"}</h2>
+            <p style={styles.subtitle}>{subtitle.toUpperCase()}</p>
+          </div>
+
+          <div style={styles.starsSection}>
+            {[0, 1, 2].map((index) => {
+              const filled = index < stars;
+              return (
+                <span
+                  key={`star-${index}`}
+                  style={{
+                    ...styles.star,
+                    color: filled ? "#ffd84d" : "rgba(255, 255, 255, 0.35)",
+                    textShadow: filled ? "0 3px 10px rgba(255, 216, 77, 0.45)" : "none",
+                    animation: `starPop 320ms ease ${(index + 1) * 80}ms both`,
+                  }}
+                >
+                  ★
+                </span>
+              );
+            })}
+          </div>
         </div>
 
-        <div style={styles.statsSection}>
-          <MetricRow
-            icon="⏱️"
-            label="Time"
-            current={Math.max(0, Number(elapsedTime.toFixed(2)))}
-            limit={numericLimits.timeStarLimit}
-            passed={timePassed}
-            valueText={formatTime(elapsedTime)}
-          />
+        <div style={styles.bodySection}>
+          <div style={styles.statsSection}>
+            <MetricRow
+              icon="⏱️"
+              label="Time"
+              current={Math.max(0, Number(elapsedTime.toFixed(2)))}
+              limit={numericLimits.timeStarLimit}
+              passed={timePassed}
+              valueText={formatTime(elapsedTime)}
+            />
 
-          <MetricRow
-            icon="👣"
-            label="Steps"
-            current={stepCount}
-            limit={numericLimits.stepEstimated}
-            passed={stepsPassed}
-            valueText={String(stepCount)}
-          />
+            <MetricRow
+              icon="👣"
+              label="Steps"
+              current={stepCount}
+              limit={numericLimits.stepEstimated}
+              passed={stepsPassed}
+              valueText={String(stepCount)}
+            />
 
-          <MetricRow
-            icon="🧩"
-            label="Blocks"
-            current={blocksUsed}
-            limit={numericLimits.blockLimit}
-            passed={blocksPassed}
-            valueText={String(blocksUsed)}
-          />
+            <MetricRow
+              icon="🧩"
+              label="Blocks"
+              current={blocksUsed}
+              limit={numericLimits.blockLimit}
+              passed={blocksPassed}
+              valueText={String(blocksUsed)}
+            />
 
-          <div style={styles.metricCard}>
-            <div style={styles.metricTopRow}>
-              <div style={styles.metricLabel}>
-                <span>🍎</span>
-                <strong>Fruits</strong>
+            <div style={styles.metricCard}>
+              <div style={styles.metricTopRow}>
+                <div style={styles.metricLabel}>
+                  <span>🍎</span>
+                  <strong>Fruits</strong>
+                </div>
+                <div style={styles.metricValue}>{fruitsCollected}</div>
               </div>
-              <div style={styles.metricValue}>{fruitsCollected}</div>
+              <div style={styles.progressCaption}>{`${fruitsCollected} collected`}</div>
             </div>
           </div>
         </div>
@@ -267,21 +315,28 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         ) : null}
 
         <div style={styles.actions}>
-          {isWin && onNextLevel ? (
-            <button
-              type="button"
-              onClick={onNextLevel}
-              style={{ ...styles.secondaryButton, ...styles.primaryButton }}
-            >
-              ➡️ {nextLevelLabel}
-            </button>
-          ) : null}
-          <button onClick={onReset} style={styles.secondaryButton}>
-            🔄 Try Again
-          </button>
-          <button onClick={onBackToMenu} style={{ ...styles.secondaryButton, ...styles.menuButton }}>
-            ← Back to Menu
-          </button>
+          {isWin ? (
+            <>
+              <button onClick={onBackToMenu} style={{ ...styles.secondaryButton, ...styles.returnButton }}>
+                ← Return
+              </button>
+              <button
+                onClick={onNextLevel ?? onBackToMenu}
+                style={{ ...styles.secondaryButton, ...styles.primaryButton }}
+              >
+                {onNextLevel ? `${nextLevelLabel} →` : "Next Level →"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onReset} style={{ ...styles.secondaryButton, ...styles.returnButton }}>
+                Replay
+              </button>
+              <button onClick={onBackToMenu} style={{ ...styles.secondaryButton, ...styles.primaryButton }}>
+                ← Return
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -303,15 +358,15 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "16px",
   },
   modal: {
-    backgroundColor: "var(--surface)",
-    borderRadius: "18px",
-    padding: "28px",
-    maxWidth: "560px",
+    backgroundColor: "#f3f5f7",
+    borderRadius: "20px",
+    padding: "0 0 12px",
+    maxWidth: "520px",
     width: "100%",
-    maxHeight: "92vh",
-    overflowY: "auto",
-    boxShadow: "0 24px 52px rgba(2, 6, 23, 0.4)",
-    border: "1px solid var(--border)",
+    maxHeight: "calc(100vh - 20px)",
+    overflow: "hidden",
+    boxShadow: "0 18px 46px rgba(15, 23, 42, 0.28)",
+    border: "1px solid rgba(148, 163, 184, 0.35)",
     position: "relative",
     animation: "resultsModalFade 220ms ease",
   },
@@ -326,51 +381,98 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--text-2)",
     padding: "4px 8px",
   },
+  windowControls: {
+    position: "absolute",
+    top: "12px",
+    right: "14px",
+    display: "flex",
+    gap: "8px",
+    zIndex: 2,
+  },
+  windowControlButton: {
+    width: "24px",
+    height: "24px",
+    borderRadius: "6px",
+    border: "1px solid var(--border)",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "13px",
+    fontWeight: 700,
+    lineHeight: 1,
+    cursor: "pointer",
+  },
+  windowControlMin: {
+    background: "#f2d8b3",
+    color: "#334155",
+  },
+  windowControlMax: {
+    background: "#cbe7d0",
+    color: "#334155",
+  },
+  windowControlClose: {
+    background: "#f2c3c6",
+    color: "#334155",
+  },
+  heroSection: {
+    background: "linear-gradient(180deg, #2c5aa0 0%, #244b88 100%)",
+    padding: "54px 20px 18px",
+    borderTopLeftRadius: "20px",
+    borderTopRightRadius: "20px",
+    color: "#ffffff",
+  },
+  bodySection: {
+    padding: "12px 16px 0",
+  },
   header: {
     textAlign: "center",
-    marginBottom: "14px",
+    marginBottom: "4px",
   },
   headerIcon: {
-    fontSize: "54px",
-    marginBottom: "10px",
+    fontSize: "44px",
+    marginBottom: "4px",
   },
   title: {
     margin: 0,
-    fontSize: "30px",
+    fontSize: "28px",
     fontWeight: 800,
+    lineHeight: 1.1,
+    color: "#ffffff",
+    textShadow: "0 2px 0 rgba(15, 23, 42, 0.25)",
   },
   subtitle: {
-    margin: "8px 0 0",
-    fontSize: "15px",
-    color: "var(--text-2)",
-    fontWeight: 700,
+    margin: "4px 0 0",
+    fontSize: "13px",
+    letterSpacing: "1.1px",
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: 800,
   },
   starsSection: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    gap: "10px",
-    marginBottom: "18px",
+    gap: "8px",
+    marginBottom: "2px",
   },
   star: {
-    fontSize: "40px",
+    fontSize: "28px",
     lineHeight: 1,
   },
   statsSection: {
     display: "flex",
     flexDirection: "column",
-    gap: "10px",
-    background: "var(--surface-2)",
-    border: "1px solid var(--border)",
-    borderRadius: "12px",
-    padding: "12px",
-    marginBottom: "16px",
+    gap: "6px",
+    background: "#e8ecef",
+    border: "1px solid #d6dce2",
+    borderRadius: "14px",
+    padding: "10px",
+    marginBottom: "10px",
   },
   metricCard: {
-    backgroundColor: "var(--surface)",
-    border: "1px solid var(--border)",
+    backgroundColor: "#f2f4f7",
+    border: "1px solid #e1e7ee",
     borderRadius: "10px",
-    padding: "10px",
+    padding: "8px 10px",
   },
   metricTopRow: {
     display: "flex",
@@ -382,21 +484,21 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     gap: "6px",
-    color: "var(--text)",
-    fontSize: "15px",
+    color: "#1f2a44",
+    fontSize: "14px",
   },
   metricValue: {
-    fontSize: "18px",
+    fontSize: "16px",
     fontWeight: 800,
-    color: "var(--text)",
+    color: "#1f2a44",
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
   },
   progressTrack: {
-    marginTop: "8px",
-    height: "8px",
+    marginTop: "5px",
+    height: "6px",
     width: "100%",
     borderRadius: "999px",
-    background: "color-mix(in srgb, var(--border) 70%, transparent)",
+    background: "#d0d6dd",
     overflow: "hidden",
   },
   progressFill: {
@@ -405,42 +507,42 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "width 0.3s ease",
   },
   progressCaption: {
-    marginTop: "6px",
-    fontSize: "12px",
-    color: "var(--text-2)",
+    marginTop: "3px",
+    fontSize: "11px",
+    color: "#7b8896",
     fontWeight: 700,
     textAlign: "right",
   },
   actions: {
     display: "flex",
-    gap: "10px",
-    flexWrap: "wrap",
+    gap: "8px",
+    flexWrap: "nowrap",
+    padding: "0 16px",
   },
   primaryButton: {
-    flex: "1 1 100%",
-    padding: "13px 16px",
-    background: "linear-gradient(180deg, #2563eb, #1d4ed8)",
+    flex: "1 1 160px",
+    padding: "11px 12px",
+    background: "linear-gradient(180deg, #3b82f6, #2563eb)",
     color: "#ffffff",
     border: "1px solid #1d4ed8",
-    borderRadius: "10px",
-    fontSize: "16px",
+    borderRadius: "12px",
+    fontSize: "14px",
     fontWeight: 800,
     cursor: "pointer",
-    boxShadow: "0 10px 20px rgba(37, 99, 235, 0.3)",
+    boxShadow: "0 8px 18px rgba(37, 99, 235, 0.28)",
   },
   secondaryButton: {
-    flex: "1 1 180px",
-    padding: "12px 14px",
-    backgroundColor: "var(--warning)",
-    color: "#ffffff",
-    border: "1px solid color-mix(in srgb, var(--warning) 70%, black 30%)",
-    borderRadius: "10px",
-    fontSize: "15px",
+    flex: "1 1 160px",
+    padding: "11px 11px",
+    backgroundColor: "#edf1f5",
+    color: "#334155",
+    border: "1px solid #dbe3ea",
+    borderRadius: "12px",
+    fontSize: "14px",
     fontWeight: 700,
     cursor: "pointer",
   },
-  menuButton: {
-    backgroundColor: "var(--text-2)",
-    border: "1px solid color-mix(in srgb, var(--text-2) 75%, black 25%)",
+  returnButton: {
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.8)",
   },
 };

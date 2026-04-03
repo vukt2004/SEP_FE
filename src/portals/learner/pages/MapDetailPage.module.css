@@ -56,7 +56,6 @@
   gap: 0;
   align-items: start;
   margin-bottom: 0;
-  min-height: 420px;
   background: linear-gradient(90deg, var(--bg) 0%, var(--bg) 70%, var(--surface) 100%);
 }
 
@@ -70,18 +69,21 @@
 .steamPlayer {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 480px;
-  min-height: 280px;
+  min-height: 0;
   background: var(--surface-2);
   border-radius: 3px;
   overflow: hidden;
   border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
 }
 
 .steamPlayerImg {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 520px;
   object-fit: contain;
   display: block;
   background: var(--surface-2);
@@ -89,7 +91,8 @@
 
 .steamPlayerVideo {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 520px;
   object-fit: contain;
   display: block;
   background: #000;
@@ -117,7 +120,7 @@
 .steamCarousel {
   display: flex;
   gap: 8px;
-  padding: 12px 0 20px;
+  padding: 10px 0 8px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
 }
@@ -262,6 +265,36 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--text-2);
+}
+
+.campaignProgressText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.campaignCurrentText {
+  margin: 0;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.campaignProgressBar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.campaignProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 70%, white 30%));
 }
 
 /* Product details – lưới 2 cột, label + value trên 1 dòng */
