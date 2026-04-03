@@ -69,30 +69,53 @@ export class AssetDefinitionLoader {
    * @returns Parsed tileset registry
    */
   async loadTileset(tilesetName: string): Promise<Record<number, TileDefinition>> {
-    const mergedCacheKey = `merged:${tilesetName}`;
-    if (this.tilesetCache.has(mergedCacheKey)) {
-      return this.tilesetCache.get(mergedCacheKey)!;
+    const { tier, name } = this.parseTieredTilesetName(tilesetName);
+    const resolvedTier: AssetTier = tier ?? "basic";
+    const cacheKey = `single:${resolvedTier}:${name}`;
+
+    if (this.tilesetCache.has(cacheKey)) {
+      return this.tilesetCache.get(cacheKey)!;
     }
 
     try {
-      const tieredGroups = await this.loadTieredTilesets(tilesetName, "creator");
-      const mergedTileset: Record<number, TileDefinition> = {};
+      const tieredGroups = await this.loadTieredTilesets(name, "creator");
+      const selectedGroup =
+        tieredGroups.find((group) => group.tier === resolvedTier) ??
+        (tier ? undefined : tieredGroups[0]);
 
-      for (const group of tieredGroups) {
-        Object.assign(mergedTileset, group.tileset);
+      if (!selectedGroup) {
+        throw new Error(`Tileset not found: ${name} (tier: ${resolvedTier}) for game type: ${this.gameType}`);
       }
 
-      if (Object.keys(mergedTileset).length === 0) {
-        throw new Error(`Tileset not found: ${tilesetName} for game type: ${this.gameType}`);
-      }
-
-      this.tilesetCache.set(mergedCacheKey, mergedTileset);
-      return mergedTileset;
+      this.tilesetCache.set(cacheKey, selectedGroup.tileset);
+      return selectedGroup.tileset;
     } catch (error) {
       throw new Error(
         `Failed to load tileset "${tilesetName}" for game type "${this.gameType}": ${error}`,
       );
     }
+  }
+
+  private parseTieredTilesetName(tilesetName: string): { tier?: AssetTier; name: string } {
+    const normalized = tilesetName.trim();
+    const slashIndex = normalized.indexOf("/");
+
+    if (slashIndex <= 0) {
+      return { name: normalized };
+    }
+
+    const tierCandidate = normalized.slice(0, slashIndex) as AssetTier;
+    const name = normalized.slice(slashIndex + 1).trim();
+
+    if (!name) {
+      return { name: normalized };
+    }
+
+    if (!ASSET_TIERS.includes(tierCandidate)) {
+      return { name: normalized };
+    }
+
+    return { tier: tierCandidate, name };
   }
 
   async loadTieredTilesets(
