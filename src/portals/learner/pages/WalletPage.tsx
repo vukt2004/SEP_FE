@@ -385,8 +385,9 @@ function CashflowMiniChart({
   const padX = 12;
   const padY = 14;
 
-  const minVal = cumulative.length ? Math.min(...cumulative) : 0;
-  const maxVal = cumulative.length ? Math.max(...cumulative) : 0;
+  // Keep the y-axis anchored from 0 to make labels predictable.
+  const minVal = 0;
+  const maxVal = cumulative.length ? Math.max(0, ...cumulative) : 0;
   const range = Math.max(1, maxVal - minVal);
 
   const xAt = (i: number) =>
@@ -406,9 +407,22 @@ function CashflowMiniChart({
     points.length > 0
       ? `${linePath} L ${points[points.length - 1].x.toFixed(2)} ${(height - padY).toFixed(2)} L ${points[0].x.toFixed(2)} ${(height - padY).toFixed(2)} Z`
       : "";
-  const trendUp = cumulative.length >= 2 ? cumulative[cumulative.length - 1] >= cumulative[0] : true;
-  const lineColor = trendUp ? "rgba(34,197,94,0.95)" : "rgba(245,158,11,0.95)";
-  const areaColor = trendUp ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.14)";
+  const lineUpColor = "rgba(34,197,94,0.95)";
+  const lineDownColor = "rgba(245,158,11,0.95)";
+  const areaColor = "rgba(148,163,184,0.14)";
+
+  const segments = points.slice(1).map((p, idx) => {
+    const prev = points[idx];
+    const delta = p.v - prev.v;
+    return {
+      x1: prev.x,
+      y1: prev.y,
+      x2: p.x,
+      y2: p.y,
+      color: delta >= 0 ? lineUpColor : lineDownColor,
+    };
+  });
+
   const gridTicks = 4;
   const gridValues = Array.from({ length: gridTicks + 1 }, (_, i) => maxVal - (range * i) / gridTicks);
   const formatTick = (n: number) =>
@@ -466,17 +480,42 @@ function CashflowMiniChart({
         {points.length > 0 ? (
           <>
             <path d={areaPath} fill={areaColor} />
-            <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" />
+            {segments.map((s, idx) => (
+              <line
+                key={`seg-${idx}`}
+                x1={s.x1}
+                y1={s.y1}
+                x2={s.x2}
+                y2={s.y2}
+                stroke={s.color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            ))}
             {points.map((p, idx) => (
+              // Color each point based on its local movement direction.
+              (() => {
+                const pointColor =
+                  idx === 0
+                    ? flowValues[0] >= 0
+                      ? lineUpColor
+                      : lineDownColor
+                    : points[idx].v - points[idx - 1].v >= 0
+                      ? lineUpColor
+                      : lineDownColor;
+
+                return (
               <circle
                 key={idx}
                 cx={p.x}
                 cy={p.y}
                 r={idx === points.length - 1 ? 3.8 : 2.4}
-                fill={idx === points.length - 1 ? lineColor : "rgba(255,255,255,0.92)"}
-                stroke={lineColor}
+                fill={idx === points.length - 1 ? pointColor : "rgba(255,255,255,0.92)"}
+                stroke={pointColor}
                 strokeWidth="1.2"
               />
+                );
+              })()
             ))}
           </>
         ) : null}
