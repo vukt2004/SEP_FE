@@ -83,6 +83,8 @@ export interface LobbySubmitSolutionRequest {
   blocksUsed?: number;
   /** Thời gian chơi (giây), khớp timer màn chơi */
   time?: number;
+  /** MapDetails.Id của level đang nộp — bắt buộc khi map có nhiều level. */
+  mapDetailId?: string;
 }
 
 /** One row in ranking after all submitted */

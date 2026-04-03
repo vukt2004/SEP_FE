@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff, Layers } from "lucide-react";
 import type { EditorStore } from "../store/editorStore";
+import { useLanguageStore } from "@/stores/language.store";
+import { getT } from "@/lib/i18n/translations";
 
 interface LayerPanelProps {
   store: EditorStore;
+  /** Omit the "Layer Visibility" heading (e.g. when the parent section already has a title). */
+  hideTitle?: boolean;
+  /** Flatten chrome: no outer card border/shadow — use inside another card/section. */
+  embedded?: boolean;
 }
 
 /**
@@ -12,7 +18,13 @@ interface LayerPanelProps {
  * Displays visibility toggles for all map layers.
  * Allows users to show/hide individual layers for easier editing.
  */
-export function LayerPanel({ store }: LayerPanelProps) {
+export function LayerPanel({ store, hideTitle = false, embedded = false }: LayerPanelProps) {
+  const { locale } = useLanguageStore();
+  const t = useMemo(() => getT(locale), [locale]);
+  const tt = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
   const [, forceUpdate] = useState({});
 
   // Subscribe to store changes
@@ -32,12 +44,13 @@ export function LayerPanel({ store }: LayerPanelProps) {
   // Define layers in render order
   const layers: Array<{
     key: "background" | "ground" | "foreground" | "collision";
-    label: string;
+    labelKey: string;
+    labelFallback: string;
   }> = [
-    { key: "background", label: "Background" },
-    { key: "ground", label: "Ground" },
-    { key: "foreground", label: "Foreground" },
-    { key: "collision", label: "Collision" },
+    { key: "background", labelKey: "mapEditorLayerBackground", labelFallback: "Background" },
+    { key: "ground", labelKey: "mapEditorLayerGround", labelFallback: "Ground" },
+    { key: "foreground", labelKey: "mapEditorLayerForeground", labelFallback: "Foreground" },
+    { key: "collision", labelKey: "mapEditorLayerCollision", labelFallback: "Collision" },
   ];
 
   const handleToggle = (layer: "background" | "ground" | "foreground" | "collision") => {
@@ -52,12 +65,14 @@ export function LayerPanel({ store }: LayerPanelProps) {
   };
 
   return (
-    <div style={styles.container}>
-      <h3 style={styles.title}>
-        <Layers size={16} /> Layer Visibility
-      </h3>
+    <div style={embedded ? styles.containerEmbedded : styles.container}>
+      {!hideTitle && (
+        <h3 style={styles.title}>
+          <Layers size={16} /> {tt("mapEditorLayerVisibilityTitle", "Layer Visibility")}
+        </h3>
+      )}
       <div style={styles.layerList}>
-        {layers.map(({ key, label }) => (
+        {layers.map(({ key, labelKey, labelFallback }) => (
           <div
             key={key}
             style={{
@@ -73,7 +88,7 @@ export function LayerPanel({ store }: LayerPanelProps) {
                   backgroundColor: layerIndicatorColor(key),
                 }}
               />
-              <span style={styles.layerName}>{label}</span>
+              <span style={styles.layerName}>{tt(labelKey, labelFallback)}</span>
             </span>
             <button
               style={{
@@ -84,7 +99,11 @@ export function LayerPanel({ store }: LayerPanelProps) {
                 e.stopPropagation();
                 handleToggle(key);
               }}
-              title={layerVisibility[key] ? "Click to hide" : "Click to show"}
+              title={
+                layerVisibility[key]
+                  ? tt("mapEditorLayerClickToHide", "Click to hide")
+                  : tt("mapEditorLayerClickToShow", "Click to show")
+              }
             >
               {layerVisibility[key] ? <Eye size={14} /> : <EyeOff size={14} />}
             </button>
@@ -103,6 +122,14 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #e2e8f0",
     borderRadius: "14px",
     boxShadow: "0 6px 18px rgba(15, 23, 42, 0.08)",
+  },
+  containerEmbedded: {
+    width: "100%",
+    padding: 0,
+    background: "transparent",
+    border: "none",
+    borderRadius: 0,
+    boxShadow: "none",
   },
   title: {
     margin: "0 0 12px 0",
