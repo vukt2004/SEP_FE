@@ -108,7 +108,9 @@ export default function GameView() {
   const levelSelectPath =
     levelId != null ? ROUTES.LEARNER_MAP_LEVEL_SELECT(levelId) : ROUTES.LEARNER_MAPS_BROWSE;
   const mapDetailPath =
-    levelId != null ? ROUTES.LEARNER_MAP_DETAIL.replace(":id", levelId) : ROUTES.LEARNER_MAPS_BROWSE;
+    levelId != null
+      ? ROUTES.LEARNER_MAP_DETAIL.replace(":id", levelId)
+      : ROUTES.LEARNER_MAPS_BROWSE;
 
   const playMapDetailIdRef = useRef<string | null>(null);
   const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);

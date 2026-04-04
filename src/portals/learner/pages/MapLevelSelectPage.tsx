@@ -55,8 +55,8 @@ export default function MapLevelSelectPage() {
           setOwnership(ownershipRes.data.data);
         }
 
-              // Extract play history from API response
-              const historyData = historyRes.data as ApiResult<PaginationResult<MapPlayHistoryItem>>;
+        // Extract play history from API response
+        const historyData = historyRes.data as ApiResult<PaginationResult<MapPlayHistoryItem>>;
         if (historyData?.isSuccess && historyData?.data?.items) {
           setPlayHistory(historyData.data.items);
         }
@@ -119,8 +119,7 @@ export default function MapLevelSelectPage() {
       // Current level logic:
       // - If started but not completed, it's current
       // - If unlocked but never attempted, it's current
-      const isCurrent =
-        isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
+      const isCurrent = isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
 
       return {
         levelId: level.id,
