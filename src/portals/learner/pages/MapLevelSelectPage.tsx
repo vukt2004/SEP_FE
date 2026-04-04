@@ -76,7 +76,15 @@ export default function MapLevelSelectPage() {
     };
   }, [id, t]);
 
-  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
+  const trialLimit = Math.max(0, Number(map?.freeTrialAttemptLimit ?? 0));
+  const trialUsedAttempts = playHistory.length;
+  const trialRemainingAttempts = Math.max(0, trialLimit - trialUsedAttempts);
+  const canUseTrial =
+    ownership?.isOwned !== true &&
+    map?.isPublished === true &&
+    (map?.price ?? 0) > 0 &&
+    trialRemainingAttempts > 0;
+  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
 
   const campaignLevels = useMemo(() => {
     const levels = map?.levels ?? [];

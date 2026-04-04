@@ -26,6 +26,24 @@ const HINTS: Record<ScoreKey, string> = {
   blocksScore: "Using required block types efficiently",
 };
 
+const EXPLANATIONS: Record<ScoreKey, string> = {
+  baseScore:
+    "Điểm nền khi người chơi hoàn thành màn. Tăng mục này sẽ giảm chênh lệch giữa người chơi nhanh/chậm.",
+  timeScore:
+    "Điểm thưởng theo tốc độ hoàn thành. Màn kết thúc càng nhanh (so với time limit) thì phần này càng cao.",
+  stepsScore:
+    "Điểm thưởng theo số bước hợp lý. Đi ít bước hơn, gần đường tối ưu hơn sẽ nhận nhiều điểm hơn.",
+  blocksScore:
+    "Điểm thưởng cho cách dùng block. Dùng đúng block yêu cầu, ít lặp dư thừa sẽ được cộng tốt hơn.",
+};
+
+const TUNING_GUIDE: Record<ScoreKey, string> = {
+  baseScore: "Tăng để ưu tiên việc hoàn thành màn hơn là tối ưu kỹ thuật.",
+  timeScore: "Tăng để khuyến khích người chơi giải nhanh.",
+  stepsScore: "Tăng để khuyến khích tư duy đường đi tối ưu.",
+  blocksScore: "Tăng để khuyến khích tư duy thuật toán/block sạch.",
+};
+
 /** Muted, theme-friendly accents */
 const CHANNELS: Record<
   ScoreKey,
@@ -321,6 +339,19 @@ const GameplaySettingsPage: React.FC = () => {
               ))}
             </div>
 
+            <section className="gss-guide" aria-label="Scoring component explanations">
+              {KEYS.map((key) => (
+                <article key={`guide-${key}`} className="gss-guide-item">
+                  <div className="gss-guide-title-row">
+                    <span className="gss-guide-dot" style={{ background: CHANNELS[key].dot }} />
+                    <strong>{LABELS[key]}</strong>
+                  </div>
+                  <p className="gss-guide-text">{EXPLANATIONS[key]}</p>
+                  <p className="gss-guide-tip">{TUNING_GUIDE[key]}</p>
+                </article>
+              ))}
+            </section>
+
             <div className="gss-sliders">
               {KEYS.map((key, index) => {
                 const ch = CHANNELS[key];
@@ -362,6 +393,7 @@ const GameplaySettingsPage: React.FC = () => {
                       value={weights[index]}
                       onChange={(e) => onSliderChange(index as 0 | 1 | 2 | 3, Number(e.target.value))}
                     />
+                    <p className="gss-slider-note">{EXPLANATIONS[key]}</p>
                   </div>
                 );
               })}
@@ -592,6 +624,47 @@ const GameplaySettingsPage: React.FC = () => {
           color: var(--text);
         }
 
+        .gss-guide {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          margin: 0 0 12px;
+        }
+        .gss-guide-item {
+          border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--surface-2) 62%, var(--surface));
+          padding: 8px 10px;
+          display: grid;
+          gap: 3px;
+        }
+        .gss-guide-title-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text);
+          font-size: 12px;
+        }
+        .gss-guide-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .gss-guide-text {
+          margin: 0;
+          color: var(--text-2);
+          font-size: 12px;
+          line-height: 1.35;
+        }
+        .gss-guide-tip {
+          margin: 0;
+          color: var(--muted);
+          font-size: 11px;
+          line-height: 1.3;
+          font-style: italic;
+        }
+
         .gss-sliders {
           display: flex;
           flex-direction: column;
@@ -724,6 +797,13 @@ const GameplaySettingsPage: React.FC = () => {
           box-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
 
+        .gss-slider-note {
+          margin: 6px 0 0;
+          color: var(--text-2);
+          font-size: 12px;
+          line-height: 1.35;
+        }
+
         .gss-footer {
           display: flex;
           flex-wrap: wrap;
@@ -772,6 +852,12 @@ const GameplaySettingsPage: React.FC = () => {
         }
         .gss-btn--ghost:not(:disabled):hover {
           background: var(--surface-2);
+        }
+
+        @media (max-width: 760px) {
+          .gss-guide {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

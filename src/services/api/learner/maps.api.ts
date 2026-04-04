@@ -120,6 +120,9 @@ export const learnerMapsApi = {
     formData.append("Description", params.Description);
     formData.append("Difficulty", params.Difficulty.toString());
     formData.append("Price", String(params.Price ?? 0));
+    if (typeof params.FreeTrialAttemptLimit === "number") {
+      formData.append("FreeTrialAttemptLimit", String(Math.max(0, params.FreeTrialAttemptLimit)));
+    }
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
@@ -171,6 +174,9 @@ export const learnerMapsApi = {
     formData.append("Description", params.Description);
     formData.append("Difficulty", params.Difficulty.toString());
     formData.append("Price", String(params.Price ?? 0));
+    if (typeof params.FreeTrialAttemptLimit === "number") {
+      formData.append("FreeTrialAttemptLimit", String(Math.max(0, params.FreeTrialAttemptLimit)));
+    }
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);

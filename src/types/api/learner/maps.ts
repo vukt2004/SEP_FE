@@ -12,6 +12,8 @@ export interface UploadMapFromJsonParams {
   Description: string;
   Difficulty: number;
   Price: number;
+  /** Optional free trial attempt limit per user. 0/undefined = no trial. */
+  FreeTrialAttemptLimit?: number;
   TagIdsCsv?: string;
   LearnedTagsCsv?: string;
   /** One combined JSON ({ levels: [...] }) or legacy single-level JSON */
@@ -29,6 +31,7 @@ export interface UpdateMapMetadataParams {
   description: string;
   difficulty: number;
   price?: number | null;
+  freeTrialAttemptLimit?: number | null;
   tagIds?: string[];
   learnedTags?: string[];
 }
@@ -42,6 +45,7 @@ export interface DuplicateMapAsNewRequest {
   description?: string | null;
   difficulty?: number | null;
   price?: number | null;
+  freeTrialAttemptLimit?: number | null;
   tagIds?: string[];
   learnedTags?: string[];
   editorialContent?: string | null;
@@ -94,6 +98,7 @@ export interface Map {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   /** Display name of the map creator (when returned by API) */
   createdByUserName?: string | null;
@@ -230,6 +235,7 @@ export interface MapDetail {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   editorialContent?: string | null;
   unlockEditorialAfterStars?: number;
@@ -265,6 +271,7 @@ export interface MapInfo {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   createdByUserName: string;
   createdAt: string;

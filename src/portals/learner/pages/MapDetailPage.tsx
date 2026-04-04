@@ -117,6 +117,7 @@ export default function MapDetailPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editDifficulty, setEditDifficulty] = useState(1);
   const [editPrice, setEditPrice] = useState(0);
+  const [editFreeTrialAttemptLimit, setEditFreeTrialAttemptLimit] = useState(0);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -205,6 +206,7 @@ export default function MapDetailPage() {
     setEditDescription(map.description ?? "");
     setEditDifficulty(Math.min(5, Math.max(1, map.difficulty)));
     setEditPrice(map.price ?? 0);
+    setEditFreeTrialAttemptLimit(Math.max(0, Number(map.freeTrialAttemptLimit ?? 0)));
   }, [map]);
 
   useEffect(() => {
@@ -352,6 +354,7 @@ export default function MapDetailPage() {
         description: editDescription,
         difficulty: editDifficulty,
         price: editPrice,
+        freeTrialAttemptLimit: Math.max(0, Number(editFreeTrialAttemptLimit || 0)),
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
       });
@@ -417,7 +420,15 @@ export default function MapDetailPage() {
     return t("adminTeam");
   };
 
-  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
+  const trialLimit = Math.max(0, Number(map?.freeTrialAttemptLimit ?? 0));
+  const trialUsedAttempts = playHistory.length;
+  const trialRemainingAttempts = Math.max(0, trialLimit - trialUsedAttempts);
+  const canUseTrial =
+    ownership?.isOwned !== true &&
+    map?.isPublished === true &&
+    (map?.price ?? 0) > 0 &&
+    trialRemainingAttempts > 0;
+  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
   const campaignLevels = useMemo(() => {
     const levels = map?.levels ?? [];
@@ -681,6 +692,18 @@ export default function MapDetailPage() {
                   value={editPrice}
                   onChange={(e) => setEditPrice(Math.max(0, Number(e.target.value) || 0))}
                 />
+                <label className={styles.authorLabel}>
+                  {locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  className={styles.authorInput}
+                  value={editFreeTrialAttemptLimit}
+                  onChange={(e) =>
+                    setEditFreeTrialAttemptLimit(Math.max(0, Number(e.target.value) || 0))
+                  }
+                />
                 <label className={styles.authorLabel}>{t("mapDetailFieldTags")}</label>
                 <div className={styles.authorTagChips}>
                   {loadingMapTags ? (
@@ -848,6 +871,16 @@ export default function MapDetailPage() {
                         : t("hard")}
                   </span>
                 </div>
+                {trialLimit > 0 && (
+                  <div className={styles.steamMetaRow}>
+                    <span className={styles.steamMetaLabel}>
+                      {locale.startsWith("vi") ? "Lượt chơi thử" : "Free trial"}
+                    </span>
+                    <span className={styles.steamMetaValue}>
+                      {trialRemainingAttempts}/{trialLimit}
+                    </span>
+                  </div>
+                )}
               </div>
             </section>
 

@@ -492,6 +492,7 @@ export default function MapEditor() {
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
   const [editingMapContentVersion, setEditingMapContentVersion] = useState<number | null>(null);
+  const [mapFreeTrialAttemptLimit, setMapFreeTrialAttemptLimit] = useState(0);
   const [mapCatalogTitle, setMapCatalogTitle] = useState("");
   const [levelSlots, setLevelSlots] = useState<EditorLevelSlot[]>(() => {
     const slot = newEmptySlot();
@@ -627,15 +628,22 @@ export default function MapEditor() {
     const built = buildUploadLevels();
     const first = built[0];
     if (!first) {
-      return { title: "", description: "", difficulty: 1 as const, price: 0 };
+      return {
+        title: "",
+        description: "",
+        difficulty: 1 as const,
+        price: 0,
+        freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
+      };
     }
     return {
       title: mapCatalogTitle.trim() || first.mapData.config.name || "Untitled",
       description: first.mapData.config.description || "",
       difficulty: first.mapData.config.difficulty,
       price: first.mapData.config.price,
+      freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
     };
-  }, [buildUploadLevels, mapCatalogTitle]);
+  }, [buildUploadLevels, mapCatalogTitle, mapFreeTrialAttemptLimit]);
 
   useEffect(() => {
     let cancelled = false;
@@ -665,6 +673,7 @@ export default function MapEditor() {
       setEditingMapTagNames([]);
       setEditingMapAvatarUrl(null);
       setMapCatalogTitle("");
+      setMapFreeTrialAttemptLimit(0);
       return;
     }
 
@@ -699,6 +708,7 @@ export default function MapEditor() {
             ? raw.contentVersion
             : null,
         );
+        setMapFreeTrialAttemptLimit(Math.max(0, Number(raw.freeTrialAttemptLimit ?? 0)));
 
         const levels = raw.levels?.filter(Boolean) ?? [];
         let slots: EditorLevelSlot[];
@@ -1080,6 +1090,8 @@ export default function MapEditor() {
               onWinConditionChange={handleWinConditionChange}
               onLevelObjectiveChange={handleLevelObjectiveChange}
               onPriceChange={handlePriceChange}
+              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
               onBlockLimitChange={handleBlockLimitChange}
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
@@ -1173,6 +1185,8 @@ export default function MapEditor() {
               onLevelObjectiveChange={handleLevelObjectiveChange}
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
+              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
               onBlockLimitChange={handleBlockLimitChange}
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}

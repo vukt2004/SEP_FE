@@ -66,7 +66,8 @@ export function LobbyMapPickerGrid({
         {maps.map((m) => {
           const isPlatform = m.type === "Platform";
           const previewUrl =
-            m.avatarUrl?.trim() || m.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+            m.avatarUrl?.trim() ||
+            m.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
             m.gallery?.[0]?.url?.trim() ||
             null;
           return (
