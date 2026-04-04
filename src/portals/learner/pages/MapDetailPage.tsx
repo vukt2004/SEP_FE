@@ -522,7 +522,11 @@ export default function MapDetailPage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
-          <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
+            className={styles.backBtn}
+          >
             <ArrowLeft size={18} /> {t("back")}
           </button>
           <div className={styles.errorCard}>{error || t("mapNotFound")}</div>
@@ -542,7 +546,7 @@ export default function MapDetailPage() {
       >
         <motion.button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
           className={styles.backBtn}
           whileHover={{ x: -4 }}
           whileTap={{ scale: 0.98 }}

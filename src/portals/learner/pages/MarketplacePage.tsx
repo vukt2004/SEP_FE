@@ -89,10 +89,16 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
   const avatarUrl =
     (apiMap as ApiMap & { AvatarUrl?: string | null }).avatarUrl ??
     (apiMap as ApiMap & { AvatarUrl?: string | null }).AvatarUrl;
+  const galleryPreviewUrl =
+    apiMap.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ??
+    apiMap.gallery?.[0]?.url?.trim() ??
+    null;
   const thumbnail =
     avatarUrl && typeof avatarUrl === "string" && avatarUrl.trim() !== ""
       ? avatarUrl.trim()
-      : thumbnailPalettes[paletteIndex];
+      : galleryPreviewUrl && galleryPreviewUrl.trim() !== ""
+        ? galleryPreviewUrl.trim()
+        : thumbnailPalettes[paletteIndex];
 
   return {
     id: apiMap.id,
