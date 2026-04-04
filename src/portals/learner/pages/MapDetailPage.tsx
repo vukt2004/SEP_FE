@@ -5,17 +5,19 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Lock,
-  Gamepad2,
   Heart,
   Bell,
   Share2,
   ImagePlus,
   Video,
+  PlayCircle,
   Save,
   X,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import type { Map, MapTag } from "@/types/api/learner/maps";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import type { Map, MapLevelItem, MapTag } from "@/types/api/learner/maps";
+import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
@@ -102,6 +104,7 @@ export default function MapDetailPage() {
   const { t, locale } = useTranslation();
   const [map, setMap] = useState<Map | null>(null);
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
+  const [playHistory, setPlayHistory] = useState<MapPlayHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -136,7 +139,12 @@ export default function MapDetailPage() {
       setLoading(true);
       setError(null);
 
-      const mapResponse = await learnerMapsApi.getMapById(id, true);
+      const [mapResponse, ownershipResponse, historyResponse] = await Promise.all([
+        learnerMapsApi.getMapById(id, true),
+        learnerMapsApi.checkMapOwnership(id),
+        learnerGameplayApi.getMyPlayHistory({ mapId: id, pageSize: 100 }),
+      ]);
+
       if (mapResponse.data.isSuccess && mapResponse.data.data) {
         setMap(mapResponse.data.data as Map);
       } else {
@@ -144,9 +152,14 @@ export default function MapDetailPage() {
         return;
       }
 
-      const ownershipResponse = await learnerMapsApi.checkMapOwnership(id);
-      if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
+      if (ownershipResponse.data?.isSuccess && ownershipResponse.data.data) {
         setOwnership(ownershipResponse.data.data);
+      }
+
+      // Extract play history from API response
+      const historyData = historyResponse.data as ApiResult<PaginationResult<MapPlayHistoryItem>>;
+      if (historyData?.isSuccess && historyData?.data?.items) {
+        setPlayHistory(historyData.data.items);
       }
     } catch (err) {
       setError(t("errorLoadMapDetails"));
@@ -218,14 +231,47 @@ export default function MapDetailPage() {
   }, [carouselIndex]);
 
   const handleStartMap = () => {
-    if (map && playHint) {
-      navigate(playHint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+    if (!map || !playHint) return;
+
+    if (campaignLevels.length <= 1) {
+      const selectedLevel: MapLevelItem | undefined = campaignLevels[0];
+      const selectedMapDetailId = selectedLevel?.id ?? playHint.mapDetailId;
+      const isPlatform =
+        typeof selectedLevel?.type === "string"
+          ? selectedLevel.type.trim().toLowerCase() === "platform"
+          : playHint.isPlatform;
+
+      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
         state: {
           levelId: map.id,
-          ...(playHint.mapDetailId ? { mapDetailId: playHint.mapDetailId } : {}),
+          ...(selectedMapDetailId ? { mapDetailId: selectedMapDetailId } : {}),
         },
       });
+      return;
     }
+
+    if (!startedCampaign) {
+      navigate(ROUTES.LEARNER_MAP_LEVEL_SELECT(map.id));
+      return;
+    }
+
+    const currentLevel =
+      campaignLevels.find((level) => level.id === currentCampaignLevelId) ?? campaignLevels[0];
+    const currentState = campaignLevelStates.find((row) => row.levelId === currentLevel?.id);
+
+    // If there is no active in-progress level, let learner choose explicitly.
+    if (!currentLevel || !currentState || currentState.isCompleted || currentState.isLocked) {
+      navigate(ROUTES.LEARNER_MAP_LEVEL_SELECT(map.id));
+      return;
+    }
+
+    const isPlatform = (currentLevel.type ?? "").trim().toLowerCase() === "platform";
+    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+      state: {
+        levelId: map.id,
+        mapDetailId: currentLevel.id,
+      },
+    });
   };
 
   const handleBuyMap = async () => {
@@ -373,6 +419,53 @@ export default function MapDetailPage() {
 
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
+  const campaignLevels = useMemo(() => {
+    const levels = map?.levels ?? [];
+    return [...levels].sort((a, b) => a.levelOrder - b.levelOrder);
+  }, [map?.levels]);
+
+  // Calculate campaign states from API play history
+  const campaignLevelStates = useMemo(() => {
+    if (!campaignLevels.length) return [];
+
+    const completedBySubmission = new Map<string, boolean>();
+    const attemptedLevelIds = new Set<string>();
+
+    for (const historyItem of playHistory) {
+      attemptedLevelIds.add(historyItem.id);
+      if (historyItem.isCompleted) {
+        completedBySubmission.set(historyItem.id, true);
+      }
+    }
+
+    return campaignLevels.map((level, index) => {
+      const isCompleted = completedBySubmission.has(level.id);
+      const isAttempted = attemptedLevelIds.has(level.id);
+      const isUnlocked =
+        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+      const isLocked = !isUnlocked;
+      const isCurrent = isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
+
+      return {
+        levelId: level.id,
+        levelOrder: index,
+        isLocked,
+        isUnlocked,
+        isCompleted,
+        isCurrent,
+      };
+    });
+  }, [campaignLevels, playHistory]);
+
+  const currentCampaignLevelId = useMemo(() => {
+    const current = campaignLevelStates.find((state) => state.isCurrent);
+    return current?.levelId ?? null;
+  }, [campaignLevelStates]);
+
+  const startedCampaign = useMemo(() => {
+    return playHistory.length > 0;
+  }, [playHistory]);
+
   const carouselItems = useMemo(() => buildCarouselItems(map), [map]);
   const isAuthor = ownership?.isAuthor === true;
   const mapCatalogSetup =
@@ -493,6 +586,22 @@ export default function MapDetailPage() {
                     {t("previewNotAvailable")}
                   </span>
                 </div>
+              )}
+
+              {canPlay && (
+                <motion.button
+                  type="button"
+                  className={styles.steamPlayerPlayOverlay}
+                  onClick={handleStartMap}
+                  aria-label={startedCampaign ? t("continuePlaying") : t("play")}
+                >
+                  <span className={styles.steamPlayerPlayIcon}>
+                    <PlayCircle size={26} />
+                  </span>
+                  <span className={styles.steamPlayerPlayText}>
+                    {startedCampaign ? t("continuePlaying") : t("play")}
+                  </span>
+                </motion.button>
               )}
             </div>
 
@@ -807,17 +916,7 @@ export default function MapDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          {canPlay ? (
-            <motion.button
-              type="button"
-              onClick={handleStartMap}
-              className={styles.steamFooterPrimary}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <Gamepad2 size={20} /> {t("play")}
-            </motion.button>
-          ) : (
+          {!canPlay ? (
             <motion.button
               type="button"
               onClick={handleBuyMap}
@@ -829,7 +928,7 @@ export default function MapDetailPage() {
               <Lock size={18} /> {isPurchasing ? "Purchasing..." : t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
             </motion.button>
-          )}
+          ) : null}
           <motion.button
             type="button"
             className={styles.steamFooterSecondary}
