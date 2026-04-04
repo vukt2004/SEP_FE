@@ -33,8 +33,11 @@ export const cmsOrbitCoinApi = {
   },
 
   getExchangeRateHistory(fromCurrency = "OrbitCoin", toCurrency = "VND", take = 20) {
-    return cmsAxios.get<ApiResult<CmsExchangeRateDto[]>>("/api/cms/orbitcoin/exchange-rate/history", {
-      params: { fromCurrency, toCurrency, take },
-    });
+    return cmsAxios.get<ApiResult<CmsExchangeRateDto[]>>(
+      "/api/cms/orbitcoin/exchange-rate/history",
+      {
+        params: { fromCurrency, toCurrency, take },
+      },
+    );
   },
 };

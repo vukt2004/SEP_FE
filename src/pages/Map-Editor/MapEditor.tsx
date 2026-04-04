@@ -208,7 +208,9 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         ),
         timeStarThresholdPercent: clampTimeStarThresholdPercent(
           toNumber(
-            isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined,
+            isRecord(sourceJson.metadata)
+              ? sourceJson.metadata.timeStarThresholdPercent
+              : undefined,
             toNumber(configRaw.timeStarThresholdPercent, 100),
           ),
         ),
@@ -228,11 +230,11 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
         levelObjective:
-          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+          isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
             ? sourceJson.metadata.levelObjective
             : typeof configRaw.levelObjective === "string"
               ? configRaw.levelObjective
-              : ""),
+              : "",
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -365,24 +367,32 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
         timeStarThresholdPercent: clampTimeStarThresholdPercent(
-          toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined, 100),
+          toNumber(
+            isRecord(sourceJson.metadata)
+              ? sourceJson.metadata.timeStarThresholdPercent
+              : undefined,
+            100,
+          ),
         ),
         estimatedSteps: Math.max(
           1,
           Math.floor(
             toNumber(
               detail.estimatedSteps,
-              toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined, 50),
+              toNumber(
+                isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined,
+                50,
+              ),
             ),
           ),
         ),
         winCondition: clampWinCondition(detail.winCondition),
         levelObjective:
-          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+          isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
             ? sourceJson.metadata.levelObjective
             : typeof sourceJson.levelObjective === "string"
               ? sourceJson.levelObjective
-              : ""),
+              : "",
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -958,7 +968,9 @@ export default function MapEditor() {
         </div>
         <div style={styles.planBlockCard}>
           <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
-          <p style={styles.subtitle}>{tt("mapEditorCheckingSubscription", "Checking subscription...")}</p>
+          <p style={styles.subtitle}>
+            {tt("mapEditorCheckingSubscription", "Checking subscription...")}
+          </p>
         </div>
       </div>
     );
@@ -974,7 +986,9 @@ export default function MapEditor() {
         </div>
         <div style={styles.planBlockCard}>
           <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
-          <p style={styles.subtitle}>{tt("mapEditorUpgradeToCreateMaps", "Upgrade to Pro to create maps")}</p>
+          <p style={styles.subtitle}>
+            {tt("mapEditorUpgradeToCreateMaps", "Upgrade to Pro to create maps")}
+          </p>
         </div>
       </div>
     );

@@ -149,7 +149,15 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
 
   return (
     <div style={{ padding: 24, display: "grid", gap: 16 }}>
-      <div style={{ ...cardStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+      <div
+        style={{
+          ...cardStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div
             style={{
@@ -165,7 +173,9 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
             <Coins size={20} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>OrbitCoin Exchange Rate</h2>
+            <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>
+              OrbitCoin Exchange Rate
+            </h2>
             <p style={{ margin: "4px 0 0", color: "var(--text-2)", fontSize: 14 }}>
               Manage conversion rate between OrbitCoin and VND for future top-up orders.
             </p>
@@ -211,19 +221,39 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
 
       <div style={{ ...cardStyle, display: "grid", gap: 14 }}>
         {loading ? (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}>
+          <div
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}
+          >
             <Loader2 size={16} className="spin" /> Loading...
           </div>
         ) : null}
 
         {error ? (
-          <div style={{ color: "var(--danger)", fontSize: 14, background: "color-mix(in srgb, var(--danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--danger) 35%, transparent)", borderRadius: 10, padding: "10px 12px" }}>
+          <div
+            style={{
+              color: "var(--danger)",
+              fontSize: 14,
+              background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--danger) 35%, transparent)",
+              borderRadius: 10,
+              padding: "10px 12px",
+            }}
+          >
             {error}
           </div>
         ) : null}
 
         {success ? (
-          <div style={{ color: "var(--ok)", fontSize: 14, background: "color-mix(in srgb, var(--ok) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--ok) 35%, transparent)", borderRadius: 10, padding: "10px 12px" }}>
+          <div
+            style={{
+              color: "var(--ok)",
+              fontSize: 14,
+              background: "color-mix(in srgb, var(--ok) 10%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--ok) 35%, transparent)",
+              borderRadius: 10,
+              padding: "10px 12px",
+            }}
+          >
             {success}
           </div>
         ) : null}
@@ -251,7 +281,13 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
           <div>
             <label style={labelStyle}>Effective from (optional)</label>
             <input
@@ -323,7 +359,14 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                   gap: 6,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <div style={{ color: "var(--text)", fontWeight: 600 }}>
                     {item.rate.toLocaleString("vi-VN")} VND / 1 OrbitCoin
                   </div>
@@ -338,7 +381,8 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                   </div>
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                  Effective: {item.effectiveFrom ? new Date(item.effectiveFrom).toLocaleString() : "-"}
+                  Effective:{" "}
+                  {item.effectiveFrom ? new Date(item.effectiveFrom).toLocaleString() : "-"}
                   {" -> "}
                   {item.effectiveTo ? new Date(item.effectiveTo).toLocaleString() : "No end"}
                 </div>

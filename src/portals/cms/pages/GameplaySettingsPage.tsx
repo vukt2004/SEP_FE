@@ -45,10 +45,7 @@ const TUNING_GUIDE: Record<ScoreKey, string> = {
 };
 
 /** Muted, theme-friendly accents */
-const CHANNELS: Record<
-  ScoreKey,
-  { accent: string; accentSoft: string; dot: string }
-> = {
+const CHANNELS: Record<ScoreKey, { accent: string; accentSoft: string; dot: string }> = {
   baseScore: {
     accent: "#6366f1",
     accentSoft: "color-mix(in srgb, #6366f1 22%, var(--surface))",
@@ -222,7 +219,10 @@ const GameplaySettingsPage: React.FC = () => {
   }, [load]);
 
   const total = weights[0] + weights[1] + weights[2] + weights[3];
-  const dirty = useMemo(() => weights.some((w, i) => w !== serverWeights[i]), [weights, serverWeights]);
+  const dirty = useMemo(
+    () => weights.some((w, i) => w !== serverWeights[i]),
+    [weights, serverWeights],
+  );
 
   const onSliderChange = (index: 0 | 1 | 2 | 3, value: number) => {
     setWeights(redistributeWeights(weights, index, value));
@@ -262,163 +262,174 @@ const GameplaySettingsPage: React.FC = () => {
 
   return (
     <>
-    <div className="gss-page">
-      <div className="gss-shell">
-        <header className="gss-hero">
-          <div className="gss-hero-icon" aria-hidden>
-            <Percent size={18} strokeWidth={2.5} />
-          </div>
-          <div className="gss-hero-main">
-            <div className="gss-hero-row">
-              <h1 className="gss-title">Map solve scoring</h1>
-              {configKey ? <span className="gss-key-pill">{configKey}</span> : null}
-              <button
-                type="button"
-                className="gss-info-btn"
-                title="Validate-solution weights (engine metrics). Changing one slider adjusts the other three; total is always 100%. Tip: keep Base moderate so time and efficiency still matter."
-                aria-label="More about map solve scoring"
-              >
-                <Info size={15} strokeWidth={2.25} aria-hidden />
-              </button>
+      <div className="gss-page">
+        <div className="gss-shell">
+          <header className="gss-hero">
+            <div className="gss-hero-icon" aria-hidden>
+              <Percent size={18} strokeWidth={2.5} />
             </div>
-            <p className="gss-tagline">Four weights, always 100% total — drag any slider to rebalance the rest.</p>
-          </div>
-        </header>
-
-        {loading ? (
-          <div className="gss-loading">
-            <Loader2 size={22} className="gss-spin" />
-            <span>Loading configuration…</span>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="gss-alert gss-alert--err" role="alert">
-            {error}
-          </div>
-        ) : null}
-
-        {!loading ? (
-          <div className="gss-card">
-            <div className="gss-card-head">
-              <span className="gss-card-head-label">Distribution</span>
-              <span className={total === 100 ? "gss-total gss-total--ok" : "gss-total gss-total--bad"}>
-                Σ = {total}%
-              </span>
+            <div className="gss-hero-main">
+              <div className="gss-hero-row">
+                <h1 className="gss-title">Map solve scoring</h1>
+                {configKey ? <span className="gss-key-pill">{configKey}</span> : null}
+                <button
+                  type="button"
+                  className="gss-info-btn"
+                  title="Validate-solution weights (engine metrics). Changing one slider adjusts the other three; total is always 100%. Tip: keep Base moderate so time and efficiency still matter."
+                  aria-label="More about map solve scoring"
+                >
+                  <Info size={15} strokeWidth={2.25} aria-hidden />
+                </button>
+              </div>
+              <p className="gss-tagline">
+                Four weights, always 100% total — drag any slider to rebalance the rest.
+              </p>
             </div>
+          </header>
 
-            <div className="gss-bar-wrap" aria-hidden>
-              {weights.map((w, i) => {
-                const key = KEYS[i];
-                const ch = CHANNELS[key];
-                if (w <= 0) return null;
-                return (
-                  <div
-                    key={key}
-                    className="gss-bar-seg"
-                    style={{
-                      flexGrow: w,
-                      flexBasis: 0,
-                      minWidth: Math.max(w * 0.5, 4),
-                      background: ch.accent,
-                      boxShadow: `inset 0 1px 0 color-mix(in srgb, white 35%, transparent)`,
-                    }}
-                    title={`${LABELS[key]}: ${w}%`}
-                  />
-                );
-              })}
+          {loading ? (
+            <div className="gss-loading">
+              <Loader2 size={22} className="gss-spin" />
+              <span>Loading configuration…</span>
             </div>
+          ) : null}
 
-            <div className="gss-legend" role="list">
-              {KEYS.map((key, i) => (
-                <span key={key} className="gss-legend-chip" role="listitem" title={LABELS[key]}>
-                  <span className="gss-legend-dot" style={{ background: CHANNELS[key].dot }} />
-                  <span className="gss-legend-name">{LABELS[key]}</span>
-                  <span className="gss-legend-val">{weights[i]}%</span>
+          {error ? (
+            <div className="gss-alert gss-alert--err" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          {!loading ? (
+            <div className="gss-card">
+              <div className="gss-card-head">
+                <span className="gss-card-head-label">Distribution</span>
+                <span
+                  className={total === 100 ? "gss-total gss-total--ok" : "gss-total gss-total--bad"}
+                >
+                  Σ = {total}%
                 </span>
-              ))}
-            </div>
+              </div>
 
-            <section className="gss-guide" aria-label="Scoring component explanations">
-              {KEYS.map((key) => (
-                <article key={`guide-${key}`} className="gss-guide-item">
-                  <div className="gss-guide-title-row">
-                    <span className="gss-guide-dot" style={{ background: CHANNELS[key].dot }} />
-                    <strong>{LABELS[key]}</strong>
-                  </div>
-                  <p className="gss-guide-text">{EXPLANATIONS[key]}</p>
-                  <p className="gss-guide-tip">{TUNING_GUIDE[key]}</p>
-                </article>
-              ))}
-            </section>
-
-            <div className="gss-sliders">
-              {KEYS.map((key, index) => {
-                const ch = CHANNELS[key];
-                const pct = `${weights[index]}%`;
-                return (
-                  <div
-                    key={key}
-                    className="gss-slider-card"
-                    style={
-                      {
-                        ["--gss-accent" as string]: ch.accent,
-                        ["--gss-pct" as string]: pct,
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div className="gss-slider-top">
-                      <div className="gss-slider-labels">
-                        <span className="gss-slider-dot" style={{ background: ch.dot }} />
-                        <label
-                          className="gss-slider-title"
-                          htmlFor={`score-slider-${key}`}
-                          title={HINTS[key]}
-                        >
-                          {LABELS[key]}
-                        </label>
-                      </div>
-                      <output className="gss-slider-badge" htmlFor={`score-slider-${key}`}>
-                        {weights[index]}
-                        <span className="gss-slider-badge-unit">%</span>
-                      </output>
-                    </div>
-                    <input
-                      id={`score-slider-${key}`}
-                      className="gss-range"
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={weights[index]}
-                      onChange={(e) => onSliderChange(index as 0 | 1 | 2 | 3, Number(e.target.value))}
+              <div className="gss-bar-wrap" aria-hidden>
+                {weights.map((w, i) => {
+                  const key = KEYS[i];
+                  const ch = CHANNELS[key];
+                  if (w <= 0) return null;
+                  return (
+                    <div
+                      key={key}
+                      className="gss-bar-seg"
+                      style={{
+                        flexGrow: w,
+                        flexBasis: 0,
+                        minWidth: Math.max(w * 0.5, 4),
+                        background: ch.accent,
+                        boxShadow: `inset 0 1px 0 color-mix(in srgb, white 35%, transparent)`,
+                      }}
+                      title={`${LABELS[key]}: ${w}%`}
                     />
-                    <p className="gss-slider-note">{EXPLANATIONS[key]}</p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              <div className="gss-legend" role="list">
+                {KEYS.map((key, i) => (
+                  <span key={key} className="gss-legend-chip" role="listitem" title={LABELS[key]}>
+                    <span className="gss-legend-dot" style={{ background: CHANNELS[key].dot }} />
+                    <span className="gss-legend-name">{LABELS[key]}</span>
+                    <span className="gss-legend-val">{weights[i]}%</span>
+                  </span>
+                ))}
+              </div>
+
+              <section className="gss-guide" aria-label="Scoring component explanations">
+                {KEYS.map((key) => (
+                  <article key={`guide-${key}`} className="gss-guide-item">
+                    <div className="gss-guide-title-row">
+                      <span className="gss-guide-dot" style={{ background: CHANNELS[key].dot }} />
+                      <strong>{LABELS[key]}</strong>
+                    </div>
+                    <p className="gss-guide-text">{EXPLANATIONS[key]}</p>
+                    <p className="gss-guide-tip">{TUNING_GUIDE[key]}</p>
+                  </article>
+                ))}
+              </section>
+
+              <div className="gss-sliders">
+                {KEYS.map((key, index) => {
+                  const ch = CHANNELS[key];
+                  const pct = `${weights[index]}%`;
+                  return (
+                    <div
+                      key={key}
+                      className="gss-slider-card"
+                      style={
+                        {
+                          ["--gss-accent" as string]: ch.accent,
+                          ["--gss-pct" as string]: pct,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <div className="gss-slider-top">
+                        <div className="gss-slider-labels">
+                          <span className="gss-slider-dot" style={{ background: ch.dot }} />
+                          <label
+                            className="gss-slider-title"
+                            htmlFor={`score-slider-${key}`}
+                            title={HINTS[key]}
+                          >
+                            {LABELS[key]}
+                          </label>
+                        </div>
+                        <output className="gss-slider-badge" htmlFor={`score-slider-${key}`}>
+                          {weights[index]}
+                          <span className="gss-slider-badge-unit">%</span>
+                        </output>
+                      </div>
+                      <input
+                        id={`score-slider-${key}`}
+                        className="gss-range"
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={weights[index]}
+                        onChange={(e) =>
+                          onSliderChange(index as 0 | 1 | 2 | 3, Number(e.target.value))
+                        }
+                      />
+                      <p className="gss-slider-note">{EXPLANATIONS[key]}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <footer className="gss-footer">
+                <button
+                  type="button"
+                  className="gss-btn gss-btn--primary"
+                  disabled={saving || !dirty}
+                  onClick={() => void handleSave()}
+                >
+                  {saving ? <Loader2 size={18} className="gss-spin" /> : <Save size={18} />}
+                  Save changes
+                </button>
+                <button
+                  type="button"
+                  className="gss-btn gss-btn--ghost"
+                  disabled={!dirty || saving}
+                  onClick={handleReset}
+                >
+                  <RotateCcw size={18} />
+                  Discard
+                </button>
+              </footer>
             </div>
+          ) : null}
+        </div>
 
-            <footer className="gss-footer">
-              <button
-                type="button"
-                className="gss-btn gss-btn--primary"
-                disabled={saving || !dirty}
-                onClick={() => void handleSave()}
-              >
-                {saving ? <Loader2 size={18} className="gss-spin" /> : <Save size={18} />}
-                Save changes
-              </button>
-              <button type="button" className="gss-btn gss-btn--ghost" disabled={!dirty || saving} onClick={handleReset}>
-                <RotateCcw size={18} />
-                Discard
-              </button>
-            </footer>
-          </div>
-        ) : null}
-      </div>
-
-      <style>{`
+        <style>{`
         .gss-page {
           min-height: 100%;
           padding: 12px min(16px, 3vw) 20px;
@@ -860,10 +871,10 @@ const GameplaySettingsPage: React.FC = () => {
           }
         }
       `}</style>
-    </div>
-    {saveToast ? (
-      <AlertToast type="success" message={saveToast} onClose={dismissSaveToast} />
-    ) : null}
+      </div>
+      {saveToast ? (
+        <AlertToast type="success" message={saveToast} onClose={dismissSaveToast} />
+      ) : null}
     </>
   );
 };

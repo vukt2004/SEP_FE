@@ -276,17 +276,16 @@ function MapsContent() {
           return { id, isOwned: false };
         }
       }),
-    )
-      .then((results) => {
-        if (!alive) return;
-        setOwnershipByMapId((prev) => {
-          const next = { ...prev };
-          for (const r of results) {
-            next[r.id] = r.isOwned;
-          }
-          return next;
-        });
+    ).then((results) => {
+      if (!alive) return;
+      setOwnershipByMapId((prev) => {
+        const next = { ...prev };
+        for (const r of results) {
+          next[r.id] = r.isOwned;
+        }
+        return next;
       });
+    });
 
     return () => {
       alive = false;
@@ -338,9 +337,10 @@ function MapsContent() {
 
   const recommendedIdOrder = useMemo(() => {
     type RecommendationMapItem = { mapId?: string; MapId?: string };
-    const r = recommendations as
-      | { recommendedMaps?: RecommendationMapItem[]; RecommendedMaps?: RecommendationMapItem[] }
-      | null;
+    const r = recommendations as {
+      recommendedMaps?: RecommendationMapItem[];
+      RecommendedMaps?: RecommendationMapItem[];
+    } | null;
     const recommendedMaps = r?.recommendedMaps ?? r?.RecommendedMaps ?? [];
     const ids = (recommendedMaps ?? []).map((x) => x.mapId ?? x.MapId);
     // Normalize for stable matching (Guid comparison is case-insensitive).
