@@ -902,7 +902,11 @@ const GameplaySettingsPage: React.FC = () => {
           <div className="gss-guide-modal" onClick={(e) => e.stopPropagation()}>
             <div className="gss-guide-modal-head">
               <h2 className="gss-guide-modal-title">Scoring Components Guide</h2>
-              <button type="button" className="gss-guide-close" onClick={() => setShowGuideModal(false)}>
+              <button
+                type="button"
+                className="gss-guide-close"
+                onClick={() => setShowGuideModal(false)}
+              >
                 Close
               </button>
             </div>
