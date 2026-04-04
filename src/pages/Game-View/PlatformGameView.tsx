@@ -26,16 +26,7 @@ import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
-import {
-  ArrowLeft,
-  Play,
-  Pause,
-  RotateCcw,
-  SkipForward,
-  Eraser,
-  Send,
-  Flag,
-} from "lucide-react";
+import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send, Flag } from "lucide-react";
 import type { MapConfig } from "../../shared/types/MapSchema";
 import type { LevelBlockConstraints } from "../../modules/map-system/types";
 import blocksConfig from "../../shared/block/blocks-config.json";
@@ -124,6 +115,8 @@ export default function PlatformGameView() {
   const mapDetailIdFromState = (location.state as { mapDetailId?: string })?.mapDetailId;
   const levelSelectPath =
     levelId != null ? ROUTES.LEARNER_MAP_LEVEL_SELECT(levelId) : ROUTES.LEARNER_MAPS_BROWSE;
+  const mapDetailPath =
+    levelId != null ? ROUTES.LEARNER_MAP_DETAIL.replace(":id", levelId) : ROUTES.LEARNER_MAPS_BROWSE;
 
   const playMapDetailIdRef = useRef<string | null>(null);
   const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
@@ -161,8 +154,8 @@ export default function PlatformGameView() {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
       return;
     }
-    navigate(levelSelectPath);
-  }, [levelSelectPath, multiplayerRoomId, navigate]);
+    navigate(campaignLevels.length <= 1 ? mapDetailPath : levelSelectPath);
+  }, [campaignLevels.length, levelSelectPath, mapDetailPath, multiplayerRoomId, navigate]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -295,7 +288,9 @@ export default function PlatformGameView() {
 
         const levelDefinition = levelResult.level;
         setBlockConstraints(levelDefinition.blockConstraints ?? null);
-        const rowMeta = levelResult.levels?.find((l) => l.id === levelResult.mapDetailId) ?? levelResult.levels?.[0];
+        const rowMeta =
+          levelResult.levels?.find((l) => l.id === levelResult.mapDetailId) ??
+          levelResult.levels?.[0];
         setLevelTitle(
           rowMeta?.title?.trim() || levelDefinition.name || levelDefinition.id || "Level",
         );
@@ -450,7 +445,7 @@ export default function PlatformGameView() {
             const player = engine.getPlayer();
             const dist = Math.max(
               Math.abs(player.targetPixelX - player.pixelX),
-              Math.abs(player.targetPixelY - player.pixelY)
+              Math.abs(player.targetPixelY - player.pixelY),
             );
             return Math.max(500, dist / 0.5);
           }
@@ -509,7 +504,9 @@ export default function PlatformGameView() {
         for (const rule of constraints.requiredBlocks || []) {
           const used = blockUsage[rule.type] ?? 0;
           if (used < rule.minCount) {
-            showWarningToast(`${t("requiredBlockMissing")}: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`);
+            showWarningToast(
+              `${t("requiredBlockMissing")}: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`,
+            );
             return;
           }
         }
@@ -518,7 +515,9 @@ export default function PlatformGameView() {
         if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
           const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
           if (totalUsed > blockLimit) {
-            showWarningToast(`${t("blockLimitExceeded")} (${totalUsed}/${blockLimit}). ${t("runningAnyway")}.`);
+            showWarningToast(
+              `${t("blockLimitExceeded")} (${totalUsed}/${blockLimit}). ${t("runningAnyway")}.`,
+            );
           }
         }
       }
@@ -622,28 +621,32 @@ export default function PlatformGameView() {
       executorRef.current = executor;
 
       setIsExecutorRunning(true);
-      executor.run((result) => {
-        const engine = engineRef.current;
-        if (engine) {
-          engine.executeCommand(result.command);
-          setLiveSteps(engine.getStepCount());
+      executor.run(
+        (result) => {
+          const engine = engineRef.current;
+          if (engine) {
+            engine.executeCommand(result.command);
+            setLiveSteps(engine.getStepCount());
 
-          const player = engine.getPlayer();
-          const dist = Math.max(
-            Math.abs(player.targetPixelX - player.pixelX),
-            Math.abs(player.targetPixelY - player.pixelY)
-          );
-          return Math.max(500, dist / 0.5);
-        }
-        return 500;
-      }, 500, () => {
-        setIsExecutorRunning(false);
-        const engine = engineRef.current;
-        if (!engine || engine.hasWon() || engine.getState() === EngineState.Failed) {
-          return;
-        }
-        setShowExecutionIncompleteModal(true);
-      });
+            const player = engine.getPlayer();
+            const dist = Math.max(
+              Math.abs(player.targetPixelX - player.pixelX),
+              Math.abs(player.targetPixelY - player.pixelY),
+            );
+            return Math.max(500, dist / 0.5);
+          }
+          return 500;
+        },
+        500,
+        () => {
+          setIsExecutorRunning(false);
+          const engine = engineRef.current;
+          if (!engine || engine.hasWon() || engine.getState() === EngineState.Failed) {
+            return;
+          }
+          setShowExecutionIncompleteModal(true);
+        },
+      );
     } catch (err) {
       console.error("Failed to run program:", err);
       alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
@@ -792,7 +795,7 @@ export default function PlatformGameView() {
   const derivedBannedTypesForWorkspace =
     normalizedAllowedTypes.length > 0
       ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
-      : blockConstraints?.bannedBlocks ?? [];
+      : (blockConstraints?.bannedBlocks ?? []);
   const allowedBlocks = normalizedAllowedTypes.map((type) => toBlockLabel(type));
   const bannedBlocks = derivedBannedTypesForWorkspace.map((type) => toBlockLabel(type));
   const totalHints = hints.length;
@@ -984,7 +987,10 @@ export default function PlatformGameView() {
   };
 
   const isGuid = (value?: string | null): value is string =>
-    Boolean(value) && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value as string);
+    Boolean(value) &&
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      value as string,
+    );
 
   // Auto-save play history when the game ends.
   // - Single player: call POST `/api/learner/gameplay/validate`
@@ -1041,7 +1047,9 @@ export default function PlatformGameView() {
         if (!isGuid(levelId)) return;
         if (!workspaceRef.current) return;
 
-        const before = gameResult.isWin ? await learnerProfileApi.getMyXpProfile().catch(() => null) : null;
+        const before = gameResult.isWin
+          ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+          : null;
         const program = generateAST(workspaceRef.current);
         await learnerGameplayApi.validateSolution({
           mapId: levelId,
@@ -1115,7 +1123,10 @@ export default function PlatformGameView() {
     };
   };
 
-  const timeLimit = mapConfig?.timeLimitSeconds && mapConfig.timeLimitSeconds > 0 ? mapConfig.timeLimitSeconds : Number.POSITIVE_INFINITY;
+  const timeLimit =
+    mapConfig?.timeLimitSeconds && mapConfig.timeLimitSeconds > 0
+      ? mapConfig.timeLimitSeconds
+      : Number.POSITIVE_INFINITY;
   const timeStarThresholdPercent =
     mapConfig?.timeStarThresholdPercent && Number.isFinite(mapConfig.timeStarThresholdPercent)
       ? Math.max(1, Math.min(100, Math.floor(mapConfig.timeStarThresholdPercent)))
@@ -1123,18 +1134,27 @@ export default function PlatformGameView() {
   const timeStarLimit = Number.isFinite(timeLimit)
     ? timeLimit * (timeStarThresholdPercent / 100)
     : Number.POSITIVE_INFINITY;
-  const stepLimit = mapConfig?.estimatedSteps && mapConfig.estimatedSteps > 0 ? mapConfig.estimatedSteps : Number.POSITIVE_INFINITY;
-  const blockLimit = blockConstraints?.blockLimit && blockConstraints.blockLimit > 0 ? blockConstraints.blockLimit : Number.POSITIVE_INFINITY;
+  const stepLimit =
+    mapConfig?.estimatedSteps && mapConfig.estimatedSteps > 0
+      ? mapConfig.estimatedSteps
+      : Number.POSITIVE_INFINITY;
+  const blockLimit =
+    blockConstraints?.blockLimit && blockConstraints.blockLimit > 0
+      ? blockConstraints.blockLimit
+      : Number.POSITIVE_INFINITY;
 
   let currentStars = 0;
   if (elapsedDisplay <= timeStarLimit) currentStars++;
   if (liveSteps <= stepLimit) currentStars++;
   if (blocksUsed <= blockLimit) currentStars++;
 
-  const currentElapsedForDetails = showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
+  const currentElapsedForDetails =
+    showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
   const currentStepsForDetails = showResultsModal && gameResult ? gameResult.stepCount : liveSteps;
-  const currentBlocksForDetails = showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
-  const currentFruitsForDetails = showResultsModal && gameResult ? gameResult.fruitsCollected : collectedFruits;
+  const currentBlocksForDetails =
+    showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
+  const currentFruitsForDetails =
+    showResultsModal && gameResult ? gameResult.fruitsCollected : collectedFruits;
 
   return (
     <div
@@ -1147,7 +1167,9 @@ export default function PlatformGameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
-      {xpToast ? <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} /> : null}
+      {xpToast ? (
+        <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} />
+      ) : null}
       {warningToast && (
         <div
           role="status"
@@ -1320,7 +1342,6 @@ export default function PlatformGameView() {
               {showDoorKeyHints ? t("hideDoorKey") : t("showDoorKey")}
             </button>
           )}
-
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
@@ -1340,9 +1361,7 @@ export default function PlatformGameView() {
         <div style={{ padding: "20px", color: "var(--danger)" }}>
           <h3>{t("errorLoadingGame")}</h3>
           <p>{error}</p>
-          <p style={{ fontSize: "12px", marginTop: "10px" }}>
-            {t("checkBrowserConsole")}
-          </p>
+          <p style={{ fontSize: "12px", marginTop: "10px" }}>{t("checkBrowserConsole")}</p>
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -1402,33 +1421,100 @@ export default function PlatformGameView() {
           >
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
               {/* Time */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: elapsedDisplay > timeLimit ? "var(--danger)" : elapsedDisplay >= timeLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
-                ⏱️ <GameTimer engineRef={engineRef} isLoading={isLoading} error={error} resetSignal={timerResetSignal} onElapsedTimeChange={handleTimerElapsedChange} compact isActive={isLevelStarted && !gameResult} />
-                {timeLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {timeLimit}s</span>}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color:
+                    elapsedDisplay > timeLimit
+                      ? "var(--danger)"
+                      : elapsedDisplay >= timeLimit * 0.8
+                        ? "var(--warning)"
+                        : "var(--text)",
+                }}
+              >
+                ⏱️{" "}
+                <GameTimer
+                  engineRef={engineRef}
+                  isLoading={isLoading}
+                  error={error}
+                  resetSignal={timerResetSignal}
+                  onElapsedTimeChange={handleTimerElapsedChange}
+                  compact
+                  isActive={isLevelStarted && !gameResult}
+                />
+                {timeLimit !== Number.POSITIVE_INFINITY && (
+                  <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {timeLimit}s</span>
+                )}
               </div>
 
               {/* Steps */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: liveSteps > stepLimit ? "var(--danger)" : liveSteps >= stepLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color:
+                    liveSteps > stepLimit
+                      ? "var(--danger)"
+                      : liveSteps >= stepLimit * 0.8
+                        ? "var(--warning)"
+                        : "var(--text)",
+                }}
+              >
                 👣 <strong>{liveSteps}</strong>
-                {stepLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {stepLimit}</span>}
+                {stepLimit !== Number.POSITIVE_INFINITY && (
+                  <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {stepLimit}</span>
+                )}
               </div>
 
               {/* Blocks */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: blocksUsed > blockLimit ? "var(--danger)" : blocksUsed >= blockLimit * 0.8 ? "var(--warning)" : "var(--text)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color:
+                    blocksUsed > blockLimit
+                      ? "var(--danger)"
+                      : blocksUsed >= blockLimit * 0.8
+                        ? "var(--warning)"
+                        : "var(--text)",
+                }}
+              >
                 🧩 <strong>{blocksUsed}</strong>
-                {blockLimit !== Number.POSITIVE_INFINITY && <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {blockLimit}</span>}
+                {blockLimit !== Number.POSITIVE_INFINITY && (
+                  <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {blockLimit}</span>
+                )}
               </div>
 
               {/* Fruits */}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}
+              >
                 🍎 <strong>{collectedFruits}</strong>
-                {mapConfig?.requiredFruits ? <span style={{ opacity: 0.7, fontSize: "12px" }}>/ {mapConfig.requiredFruits}</span> : ""}
+                {mapConfig?.requiredFruits ? (
+                  <span style={{ opacity: 0.7, fontSize: "12px" }}>
+                    / {mapConfig.requiredFruits}
+                  </span>
+                ) : (
+                  ""
+                )}
               </div>
 
               {/* Stars */}
               <div style={{ display: "flex", alignItems: "center", gap: "2px", marginLeft: "8px" }}>
-                {[0, 1, 2].map(i => (
-                  <span key={i} style={{ color: i < currentStars ? "var(--warning)" : "var(--border)", fontSize: "16px" }}>★</span>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      color: i < currentStars ? "var(--warning)" : "var(--border)",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ★
+                  </span>
                 ))}
               </div>
             </div>
@@ -1460,7 +1546,19 @@ export default function PlatformGameView() {
             </button>
           </div>
 
-          <div style={{ padding: "8px 16px", background: "color-mix(in srgb, var(--primary) 8%, var(--surface))", borderBottom: "1px solid var(--border)", fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+          <div
+            style={{
+              padding: "8px 16px",
+              background: "color-mix(in srgb, var(--primary) 8%, var(--surface))",
+              borderBottom: "1px solid var(--border)",
+              fontSize: "13px",
+              color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              flexWrap: "wrap",
+            }}
+          >
             {campaignProgressLabel ? (
               <span
                 style={{
@@ -1598,7 +1696,9 @@ export default function PlatformGameView() {
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>{t("blockEditorTitle")}</h3>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>
+                {t("blockEditorTitle")}
+              </h3>
               <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-2)" }}>
                 {t("blockEditorSubtitle")}
               </p>
@@ -1784,9 +1884,7 @@ export default function PlatformGameView() {
           timeStarThresholdPercent={mapConfig?.timeStarThresholdPercent ?? 100}
           stepEstimated={mapConfig?.estimatedSteps ?? null}
           blockLimit={blockConstraints?.blockLimit ?? null}
-          multiplayerFooterNote={
-            multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null
-          }
+          multiplayerFooterNote={multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null}
           onNextLevel={
             gameResult.isWin && nextCampaignLevelId && !multiplayerRoomId
               ? handleNextCampaignLevel

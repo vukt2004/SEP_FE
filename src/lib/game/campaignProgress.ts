@@ -79,10 +79,7 @@ export function markCampaignLevelCompleted(mapId: string, levelId: string): void
   writeStore(store);
 }
 
-export function getCampaignCurrentLevelId(
-  mapId: string,
-  levels: MapLevelItem[],
-): string | null {
+export function getCampaignCurrentLevelId(mapId: string, levels: MapLevelItem[]): string | null {
   const ordered = orderedLevels(levels);
   if (!ordered.length) return null;
 

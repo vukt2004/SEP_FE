@@ -115,7 +115,13 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   );
 
   const subtitle =
-    stars === 3 ? "Perfect!" : stars === 2 ? "Great job!" : stars === 1 ? "Good effort!" : "Try again!";
+    stars === 3
+      ? "Perfect!"
+      : stars === 2
+        ? "Great job!"
+        : stars === 1
+          ? "Good effort!"
+          : "Try again!";
 
   const timePassed = elapsedTime <= numericLimits.timeStarLimit;
   const stepsPassed = stepCount <= numericLimits.stepEstimated;
@@ -181,9 +187,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   };
 
   return (
-    <div
-      style={styles.overlay}
-    >
+    <div style={styles.overlay}>
       <style>{`
         @keyframes resultsModalFade {
           from { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -302,7 +306,8 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
               padding: "12px 14px",
               borderRadius: "12px",
               background: "color-mix(in srgb, var(--info, #2563eb) 14%, var(--surface-2, #f1f5f9))",
-              border: "1px solid color-mix(in srgb, var(--info, #2563eb) 35%, var(--border, #e2e8f0))",
+              border:
+                "1px solid color-mix(in srgb, var(--info, #2563eb) 35%, var(--border, #e2e8f0))",
               fontSize: "14px",
               fontWeight: 700,
               color: "var(--text)",
@@ -317,7 +322,10 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         <div style={styles.actions}>
           {isWin ? (
             <>
-              <button onClick={onBackToMenu} style={{ ...styles.secondaryButton, ...styles.returnButton }}>
+              <button
+                onClick={onBackToMenu}
+                style={{ ...styles.secondaryButton, ...styles.returnButton }}
+              >
                 ← Return
               </button>
               <button
@@ -329,10 +337,16 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
             </>
           ) : (
             <>
-              <button onClick={onReset} style={{ ...styles.secondaryButton, ...styles.returnButton }}>
+              <button
+                onClick={onReset}
+                style={{ ...styles.secondaryButton, ...styles.returnButton }}
+              >
                 Replay
               </button>
-              <button onClick={onBackToMenu} style={{ ...styles.secondaryButton, ...styles.primaryButton }}>
+              <button
+                onClick={onBackToMenu}
+                style={{ ...styles.secondaryButton, ...styles.primaryButton }}
+              >
                 ← Return
               </button>
             </>

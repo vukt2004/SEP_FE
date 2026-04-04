@@ -3,14 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Lock, PlayCircle, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import type { Map, MapLevelItem, MapOwnershipData } from "@/types/api/learner/maps";
+import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
+import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
-import {
-  buildCampaignLevelStates,
-  getCampaignCurrentLevelId,
-  getCampaignProgressCounts,
-} from "@/lib/game/campaignProgress";
 import styles from "./MapLevelSelectPage.module.css";
 
 export default function MapLevelSelectPage() {
@@ -20,6 +18,7 @@ export default function MapLevelSelectPage() {
 
   const [map, setMap] = useState<Map | null>(null);
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
+  const [playHistory, setPlayHistory] = useState<MapPlayHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +36,10 @@ export default function MapLevelSelectPage() {
         setLoading(true);
         setError(null);
 
-        const [mapRes, ownershipRes] = await Promise.all([
+        const [mapRes, ownershipRes, historyRes] = await Promise.all([
           learnerMapsApi.getMapById(id, true),
           learnerMapsApi.checkMapOwnership(id),
+          learnerGameplayApi.getMyPlayHistory({ mapId: id, pageSize: 100 }),
         ]);
 
         if (!mounted) return;
@@ -53,6 +53,12 @@ export default function MapLevelSelectPage() {
 
         if (ownershipRes.data.isSuccess && ownershipRes.data.data) {
           setOwnership(ownershipRes.data.data);
+        }
+
+              // Extract play history from API response
+              const historyData = historyRes.data as ApiResult<PaginationResult<MapPlayHistoryItem>>;
+        if (historyData?.isSuccess && historyData?.data?.items) {
+          setPlayHistory(historyData.data.items);
         }
       } catch (err) {
         console.error(err);
@@ -77,20 +83,66 @@ export default function MapLevelSelectPage() {
     return [...levels].sort((a, b) => a.levelOrder - b.levelOrder);
   }, [map?.levels]);
 
-  const currentLevelId = useMemo(() => {
-    if (!map?.id) return null;
-    return getCampaignCurrentLevelId(map.id, campaignLevels);
-  }, [map?.id, campaignLevels]);
-
+  // Calculate level states from API play history
   const levelStates = useMemo(() => {
-    if (!map?.id) return [];
-    return buildCampaignLevelStates(map.id, campaignLevels, currentLevelId);
-  }, [map?.id, campaignLevels, currentLevelId]);
+    if (!campaignLevels.length) return [];
+
+    // Map of levelId -> completion status from API
+    const completedLevels = new Set(
+      playHistory.filter((h) => h.isCompleted).map((h) => h.submissionId || h.id),
+    );
+
+    // Determine which level IDs have been attempted/completed
+    const completedBySubmission = new Map<string, boolean>();
+    const attemptedLevelIds = new Set<string>();
+
+    for (const historyItem of playHistory) {
+      attemptedLevelIds.add(historyItem.id);
+      if (historyItem.isCompleted) {
+        completedBySubmission.set(historyItem.id, true);
+      }
+    }
+
+    // Build states for all levels based on sequential unlock logic
+    return campaignLevels.map((level, index) => {
+      const isCompleted = completedBySubmission.has(level.id) || completedLevels.has(level.id);
+      const isAttempted = attemptedLevelIds.has(level.id);
+
+      // Level is unlocked if:
+      // 1. It's the first level, OR
+      // 2. Previous level is completed
+      const isUnlocked =
+        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+
+      const isLocked = !isUnlocked;
+
+      // Current level logic:
+      // - If started but not completed, it's current
+      // - If unlocked but never attempted, it's current
+      const isCurrent =
+        isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
+
+      return {
+        levelId: level.id,
+        levelOrder: index,
+        isLocked,
+        isUnlocked,
+        isCompleted,
+        isCurrent,
+      };
+    });
+  }, [campaignLevels, playHistory]);
 
   const progress = useMemo(() => {
-    if (!map?.id) return { completed: 0, total: campaignLevels.length };
-    return getCampaignProgressCounts(map.id, campaignLevels);
-  }, [map?.id, campaignLevels]);
+    const completed = levelStates.filter((state) => state.isCompleted).length;
+    const total = campaignLevels.length;
+    return { completed, total };
+  }, [levelStates, campaignLevels.length]);
+
+  const currentLevelId = useMemo(() => {
+    const current = levelStates.find((state) => state.isCurrent);
+    return current?.levelId ?? null;
+  }, [levelStates]);
 
   const stateByLevelId = useMemo(() => {
     return new Map(levelStates.map((item) => [item.levelId, item]));
@@ -237,7 +289,9 @@ export default function MapLevelSelectPage() {
         </div>
 
         <div className={styles.legendRow}>
-          <span className={`${styles.legendItem} ${styles.legendCurrent}`}>{t("levelCurrent")}</span>
+          <span className={`${styles.legendItem} ${styles.legendCurrent}`}>
+            {t("levelCurrent")}
+          </span>
           <span className={`${styles.legendItem} ${styles.legendReady}`}>{t("levelReady")}</span>
           <span className={`${styles.legendItem} ${styles.legendDone}`}>{t("completed")}</span>
           <span className={`${styles.legendItem} ${styles.legendLocked}`}>{t("locked")}</span>
