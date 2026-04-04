@@ -158,6 +158,7 @@ function tupleToBody(w: WeightsTuple): {
 const GameplaySettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveToast, setSaveToast] = useState<string | null>(null);
   const saveToastTimerRef = useRef<number | null>(null);
@@ -275,8 +276,9 @@ const GameplaySettingsPage: React.FC = () => {
                 <button
                   type="button"
                   className="gss-info-btn"
-                  title="Validate-solution weights (engine metrics). Changing one slider adjusts the other three; total is always 100%. Tip: keep Base moderate so time and efficiency still matter."
+                  title="Open scoring guide"
                   aria-label="More about map solve scoring"
+                  onClick={() => setShowGuideModal(true)}
                 >
                   <Info size={15} strokeWidth={2.25} aria-hidden />
                 </button>
@@ -343,19 +345,6 @@ const GameplaySettingsPage: React.FC = () => {
                 ))}
               </div>
 
-              <section className="gss-guide" aria-label="Scoring component explanations">
-                {KEYS.map((key) => (
-                  <article key={`guide-${key}`} className="gss-guide-item">
-                    <div className="gss-guide-title-row">
-                      <span className="gss-guide-dot" style={{ background: CHANNELS[key].dot }} />
-                      <strong>{LABELS[key]}</strong>
-                    </div>
-                    <p className="gss-guide-text">{EXPLANATIONS[key]}</p>
-                    <p className="gss-guide-tip">{TUNING_GUIDE[key]}</p>
-                  </article>
-                ))}
-              </section>
-
               <div className="gss-sliders">
                 {KEYS.map((key, index) => {
                   const ch = CHANNELS[key];
@@ -399,7 +388,6 @@ const GameplaySettingsPage: React.FC = () => {
                           onSliderChange(index as 0 | 1 | 2 | 3, Number(e.target.value))
                         }
                       />
-                      <p className="gss-slider-note">{EXPLANATIONS[key]}</p>
                     </div>
                   );
                 })}
@@ -501,7 +489,7 @@ const GameplaySettingsPage: React.FC = () => {
           border: none;
           border-radius: 8px;
           color: var(--muted);
-          cursor: help;
+          cursor: pointer;
           flex-shrink: 0;
           background: transparent;
           padding: 0;
@@ -633,47 +621,6 @@ const GameplaySettingsPage: React.FC = () => {
           font-weight: 800;
           font-variant-numeric: tabular-nums;
           color: var(--text);
-        }
-
-        .gss-guide {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px;
-          margin: 0 0 12px;
-        }
-        .gss-guide-item {
-          border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-          border-radius: 10px;
-          background: color-mix(in srgb, var(--surface-2) 62%, var(--surface));
-          padding: 8px 10px;
-          display: grid;
-          gap: 3px;
-        }
-        .gss-guide-title-row {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          color: var(--text);
-          font-size: 12px;
-        }
-        .gss-guide-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-        .gss-guide-text {
-          margin: 0;
-          color: var(--text-2);
-          font-size: 12px;
-          line-height: 1.35;
-        }
-        .gss-guide-tip {
-          margin: 0;
-          color: var(--muted);
-          font-size: 11px;
-          line-height: 1.3;
-          font-style: italic;
         }
 
         .gss-sliders {
@@ -808,11 +755,89 @@ const GameplaySettingsPage: React.FC = () => {
           box-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
 
-        .gss-slider-note {
-          margin: 6px 0 0;
+        .gss-guide-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1200;
+          padding: 16px;
+        }
+        .gss-guide-modal {
+          width: min(760px, 100%);
+          max-height: min(80vh, 680px);
+          overflow: auto;
+          border-radius: 14px;
+          border: 1px solid var(--border);
+          background: var(--surface);
+          box-shadow: 0 26px 56px -24px rgba(0, 0, 0, 0.45);
+          padding: 14px;
+        }
+        .gss-guide-modal-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+        .gss-guide-modal-title {
+          margin: 0;
+          color: var(--text);
+          font-size: 17px;
+          font-weight: 800;
+        }
+        .gss-guide-close {
+          border: 1px solid var(--border);
+          background: var(--surface-2);
+          color: var(--text);
+          border-radius: 9px;
+          padding: 6px 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .gss-guide-close:hover {
+          background: color-mix(in srgb, var(--surface-2) 80%, white 20%);
+        }
+        .gss-guide-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .gss-guide-item {
+          border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--surface-2) 62%, var(--surface));
+          padding: 9px 10px;
+          display: grid;
+          gap: 4px;
+        }
+        .gss-guide-title-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text);
+          font-size: 12px;
+        }
+        .gss-guide-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .gss-guide-text {
+          margin: 0;
           color: var(--text-2);
           font-size: 12px;
           line-height: 1.35;
+        }
+        .gss-guide-tip {
+          margin: 0;
+          color: var(--muted);
+          font-size: 11px;
+          line-height: 1.3;
+          font-style: italic;
         }
 
         .gss-footer {
@@ -866,12 +891,40 @@ const GameplaySettingsPage: React.FC = () => {
         }
 
         @media (max-width: 760px) {
-          .gss-guide {
+          .gss-guide-grid {
             grid-template-columns: 1fr;
           }
         }
       `}</style>
       </div>
+      {showGuideModal ? (
+        <div className="gss-guide-modal-backdrop" onClick={() => setShowGuideModal(false)}>
+          <div className="gss-guide-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="gss-guide-modal-head">
+              <h2 className="gss-guide-modal-title">Scoring Components Guide</h2>
+              <button
+                type="button"
+                className="gss-guide-close"
+                onClick={() => setShowGuideModal(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="gss-guide-grid" aria-label="Scoring component explanations">
+              {KEYS.map((key) => (
+                <article key={`guide-${key}`} className="gss-guide-item">
+                  <div className="gss-guide-title-row">
+                    <span className="gss-guide-dot" style={{ background: CHANNELS[key].dot }} />
+                    <strong>{LABELS[key]}</strong>
+                  </div>
+                  <p className="gss-guide-text">{EXPLANATIONS[key]}</p>
+                  <p className="gss-guide-tip">{TUNING_GUIDE[key]}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
       {saveToast ? (
         <AlertToast type="success" message={saveToast} onClose={dismissSaveToast} />
       ) : null}
