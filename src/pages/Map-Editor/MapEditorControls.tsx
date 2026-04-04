@@ -102,6 +102,8 @@ interface MapEditorControlsProps {
   onLevelObjectiveChange?: (objective: string) => void;
   onRequiredFruitsChange?: (requiredFruits: number) => void;
   onPriceChange?: (price: number) => void;
+  freeTrialAttemptLimit?: number;
+  onFreeTrialAttemptLimitChange?: (value: number) => void;
   onBlockLimitChange?: (blockLimit: number | null) => void;
   onAllowedBlocksChange?: (allowedBlocks: string[]) => void;
   onRequiredBlocksChange?: (requiredBlocks: RequiredBlockRule[]) => void;
@@ -124,6 +126,7 @@ interface MapEditorControlsProps {
     description: string;
     difficulty: number;
     price: number;
+    freeTrialAttemptLimit?: number;
   };
   /** Number of MapDetail levels in the editor; used to clarify map-wide vs per-level UI (e.g. one thumbnail for whole map). */
   levelSlotCount?: number;
@@ -319,6 +322,8 @@ export function MapEditorControls({
   onLevelObjectiveChange,
   onRequiredFruitsChange,
   onPriceChange,
+  freeTrialAttemptLimit,
+  onFreeTrialAttemptLimitChange,
   onBlockLimitChange,
   onAllowedBlocksChange,
   onRequiredBlocksChange,
@@ -1020,6 +1025,9 @@ export function MapEditorControls({
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
           price: formMeta.price,
+          ...(typeof formMeta.freeTrialAttemptLimit === "number"
+            ? { freeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+            : {}),
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
           learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
         });
@@ -1239,6 +1247,9 @@ export function MapEditorControls({
         Description: formMeta.description || "Map created with Map Editor",
         Difficulty: formMeta.difficulty,
         Price: formMeta.price,
+        ...(typeof formMeta.freeTrialAttemptLimit === "number"
+          ? { FreeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+          : {}),
         TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
         LearnedTagsCsv:
           selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds.join(",") : undefined,
@@ -1252,6 +1263,9 @@ export function MapEditorControls({
         Description: payload.Description,
         Difficulty: payload.Difficulty,
         Price: payload.Price,
+        ...(typeof payload.FreeTrialAttemptLimit === "number"
+          ? { FreeTrialAttemptLimit: payload.FreeTrialAttemptLimit }
+          : {}),
         TagIdsCsv: payload.TagIdsCsv,
         LearnedTagsCsv: payload.LearnedTagsCsv,
         MapDetailFile: payload.MapDetailFile,
@@ -1271,6 +1285,9 @@ export function MapEditorControls({
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
           price: formMeta.price ?? 0,
+          ...(typeof formMeta.freeTrialAttemptLimit === "number"
+            ? { freeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+            : {}),
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
           learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
           autoPublish: false,
@@ -2099,10 +2116,26 @@ export function MapEditorControls({
                           alignItems: "stretch",
                         }}
                       >
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <label style={styles.label}>
+                            {tt("mapEditorFreeTrialAttempts", "Free trial attempts")}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={Math.max(0, Number(freeTrialAttemptLimit ?? 0))}
+                            onChange={(e) =>
+                              onFreeTrialAttemptLimitChange?.(
+                                Math.max(0, Number(e.target.value) || 0),
+                              )
+                            }
+                            style={styles.input}
+                          />
+                        </div>
                         <button
                           style={{ ...styles.actionButton, ...styles.saveButton }}
                           onClick={() => {
-                            if (isLearner) {
+                            if (userType !== "unknown") {
                               setShowCatalogDraftPreview(true);
                               return;
                             }
@@ -2112,15 +2145,10 @@ export function MapEditorControls({
                           title={
                             userType === "unknown"
                               ? tt("mapEditorLoginToSaveMapsTitle", "Please login to save maps")
-                              : isLearner
-                                ? tt(
-                                    "mapEditorMapInfoButtonTitleLearner",
-                                    "Opens your map detail page to edit store listing (title, description, difficulty, price, tags, images).",
-                                  )
-                                : tt(
-                                    "mapEditorMapInfoButtonTitle",
-                                    "Edit title, description, difficulty, price, tags (map metadata only)",
-                                  )
+                              : tt(
+                                  "mapEditorMapInfoButtonTitleLearner",
+                                  "Open store listing editor (title, description, difficulty, price, tags, images).",
+                                )
                           }
                         >
                           <Save size={14} /> {tt("mapEditorMapInfoButton", "Map info")}
@@ -2132,7 +2160,7 @@ export function MapEditorControls({
                           'To save layout and MapDetail (JSON), open the Level tab and use "Save level content".',
                         )}
                       </p>
-                      {isLearner && (
+                      {userType !== "unknown" && (
                         <p style={{ ...styles.helpText, marginTop: 6 }}>
                           {tt(
                             "mapEditorMapTabCatalogHintLearner",
@@ -2981,7 +3009,7 @@ export function MapEditorControls({
         </div>
       )}
 
-      {showRightPanel && isLearner && (
+      {showRightPanel && userType !== "unknown" && (
         <MapCatalogDraftPreviewOverlay
           open={showCatalogDraftPreview}
           onClose={() => setShowCatalogDraftPreview(false)}
@@ -3002,6 +3030,8 @@ export function MapEditorControls({
           onDifficultyChange={(d) => onDifficultyChange?.(d)}
           price={mapData.config.price ?? 0}
           onPriceChange={(p) => onPriceChange?.(p)}
+          freeTrialAttemptLimit={Math.max(0, Number(freeTrialAttemptLimit ?? 0))}
+          onFreeTrialAttemptLimitChange={(v) => onFreeTrialAttemptLimitChange?.(v)}
           loadingMapTags={loadingMapTags}
           availableMapTags={availableMapTags}
           learnedKnowledgeTags={learnedKnowledgeTags}

@@ -254,7 +254,6 @@ function MapsContent() {
   // Map ownership: used to sort playable maps to the top.
   // Endpoint: GET /api/learner/maps/{id}/check-ownership
   const [ownershipByMapId, setOwnershipByMapId] = useState<Record<string, boolean | undefined>>({});
-  const [ownershipLoading, setOwnershipLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -265,8 +264,6 @@ function MapsContent() {
       .filter((id) => ownershipByMapId[id] === undefined);
 
     if (idsToFetch.length === 0) return;
-
-    setOwnershipLoading(true);
 
     Promise.all(
       idsToFetch.map(async (id) => {
@@ -279,49 +276,51 @@ function MapsContent() {
           return { id, isOwned: false };
         }
       }),
-    )
-      .then((results) => {
-        if (!alive) return;
-        setOwnershipByMapId((prev) => {
-          const next = { ...prev };
-          for (const r of results) {
-            next[r.id] = r.isOwned;
-          }
-          return next;
-        });
-      })
-      .finally(() => {
-        if (!alive) return;
-        setOwnershipLoading(false);
+    ).then((results) => {
+      if (!alive) return;
+      setOwnershipByMapId((prev) => {
+        const next = { ...prev };
+        for (const r of results) {
+          next[r.id] = r.isOwned;
+        }
+        return next;
       });
+    });
 
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maps, ownershipByMapId]);
 
   const lockedFromOwnership = useMemo(() => {
     const s = new Set<string>();
     for (const m of maps) {
       if (m.price <= 0) continue;
+      if ((m.freeTrialAttemptLimit ?? 0) > 0) continue;
       if (completed.has(m.id) || m.id in inProgress) continue;
       if (ownershipByMapId[m.id] === false) s.add(m.id);
     }
     return s;
   }, [maps, ownershipByMapId, completed, inProgress]);
 
-  const lockedUnion = useMemo(() => new Set([...locked, ...lockedFromOwnership]), [locked, lockedFromOwnership]);
+  const lockedUnion = useMemo(
+    () => new Set([...locked, ...lockedFromOwnership]),
+    [locked, lockedFromOwnership],
+  );
 
-  const isPlayableMap = (m: ApiMap): boolean => {
-    if (completed.has(m.id) || m.id in inProgress) return true;
-    if (m.price === 0) return true;
+  const isPlayableMap = useCallback(
+    (m: ApiMap): boolean => {
+      if (completed.has(m.id) || m.id in inProgress) return true;
+      if (m.price === 0) return true;
+      if ((m.freeTrialAttemptLimit ?? 0) > 0) return true;
 
-    // While ownership is still loading/unknown, keep map order unchanged (don't push it down too early).
-    const owned = ownershipByMapId[m.id];
-    if (owned === undefined) return true;
-    return owned;
-  };
+      // While ownership is still loading/unknown, keep map order unchanged (don't push it down too early).
+      const owned = ownershipByMapId[m.id];
+      if (owned === undefined) return true;
+      return owned;
+    },
+    [completed, inProgress, ownershipByMapId],
+  );
 
   // Stable sort: playable maps first, keep existing order within each group.
   const mapsSortedPlayable = useMemo(() => {
@@ -334,12 +333,16 @@ function MapsContent() {
         return a.i - b.i;
       })
       .map((x) => x.m);
-  }, [maps, ownershipByMapId, ownershipLoading, completed, inProgress]);
+  }, [maps, isPlayableMap]);
 
   const recommendedIdOrder = useMemo(() => {
-    const r: any = recommendations;
+    type RecommendationMapItem = { mapId?: string; MapId?: string };
+    const r = recommendations as {
+      recommendedMaps?: RecommendationMapItem[];
+      RecommendedMaps?: RecommendationMapItem[];
+    } | null;
     const recommendedMaps = r?.recommendedMaps ?? r?.RecommendedMaps ?? [];
-    const ids: string[] = (recommendedMaps ?? []).map((x: any) => x.mapId ?? x.MapId);
+    const ids = (recommendedMaps ?? []).map((x) => x.mapId ?? x.MapId);
     // Normalize for stable matching (Guid comparison is case-insensitive).
     return ids.filter(Boolean).map((id) => String(id).toLowerCase());
   }, [recommendations]);
@@ -438,19 +441,17 @@ function MapsContent() {
       const recommendedSet = new Set(recommendedIdOrder);
       list = list
         .filter((m) => recommendedSet.has(m.id.toLowerCase()))
-        .sort(
-          (a, b) => {
-            // In "recommended" tab: unlocked/available first, then locked at the end.
-            const aLocked = lockedUnion.has(a.id);
-            const bLocked = lockedUnion.has(b.id);
-            if (aLocked !== bLocked) return aLocked ? 1 : -1;
+        .sort((a, b) => {
+          // In "recommended" tab: unlocked/available first, then locked at the end.
+          const aLocked = lockedUnion.has(a.id);
+          const bLocked = lockedUnion.has(b.id);
+          if (aLocked !== bLocked) return aLocked ? 1 : -1;
 
-            return (
-              (recommendedIdIndex.get(a.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER) -
-              (recommendedIdIndex.get(b.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER)
-            );
-          },
-        )
+          return (
+            (recommendedIdIndex.get(a.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER) -
+            (recommendedIdIndex.get(b.id.toLowerCase()) ?? Number.MAX_SAFE_INTEGER)
+          );
+        })
         .slice(0, 6);
     }
     if (mainTab === "progress") {
@@ -528,181 +529,195 @@ function MapsContent() {
         {/* Steam-like left filters */}
         <div className={styles.steamLayout}>
           <aside className={styles.filterSidebar}>
-          <div className={styles.filterSidebarHeader}>
-            <span className={styles.filterSidebarTitle}>{t("filtersPanel")}</span>
-            {hasActiveFilters && (
-              <button type="button" className={styles.clearAllFiltersBtn} onClick={clearAllFilters}>
-                {t("clearAllFilters")}
-              </button>
-            )}
-          </div>
-
-          <div className={styles.filterGroups}>
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel} id="filter-search-label">
-                {t("mapsSearchLabel")}
-              </span>
-              <label className={styles.searchBar} htmlFor="maps-search" aria-labelledby="filter-search-label">
-                <Search size={18} aria-hidden />
-                <input
-                  id="maps-search"
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={t("searchMapPlaceholder")}
-                />
-              </label>
+            <div className={styles.filterSidebarHeader}>
+              <span className={styles.filterSidebarTitle}>{t("filtersPanel")}</span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className={styles.clearAllFiltersBtn}
+                  onClick={clearAllFilters}
+                >
+                  {t("clearAllFilters")}
+                </button>
+              )}
             </div>
 
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>{t("difficulty")}</span>
-              <select
-                className={styles.filterSelect}
-                value={difficultyFilter}
-                onChange={(e) => setDifficultyFilter(e.target.value)}
-                aria-label={t("difficulty")}
-              >
-                <option value="all">{t("filterAll")}</option>
-                <option value={1}>1/5</option>
-                <option value={2}>2/5</option>
-                <option value={3}>3/5</option>
-                <option value={4}>4/5</option>
-                <option value={5}>5/5</option>
-              </select>
-            </div>
+            <div className={styles.filterGroups}>
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel} id="filter-search-label">
+                  {t("mapsSearchLabel")}
+                </span>
+                <label
+                  className={styles.searchBar}
+                  htmlFor="maps-search"
+                  aria-labelledby="filter-search-label"
+                >
+                  <Search size={18} aria-hidden />
+                  <input
+                    id="maps-search"
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={t("searchMapPlaceholder")}
+                  />
+                </label>
+              </div>
 
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>
-                {t("programmingKnowledge")} <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
-              </span>
-              <div className={styles.conceptFieldWrap}>
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("difficulty")}</span>
                 <select
                   className={styles.filterSelect}
-                  value={knowledgeConceptPicker}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setKnowledgeConceptPicker(value);
-                    if (value === "all") return;
-                    setSelectedKnowledgeConcepts((prev) => (prev.includes(value) ? prev : [...prev, value]));
-                  }}
-                  aria-label={t("addConcept")}
-                  title={t("conceptsMultiSelectHint")}
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  aria-label={t("difficulty")}
                 >
-                  <option value="all">— {t("addConcept")} —</option>
-                  {knowledgeConceptOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {getConceptLabel(name, locale)}
-                    </option>
-                  ))}
+                  <option value="all">{t("filterAll")}</option>
+                  <option value={1}>1/5</option>
+                  <option value={2}>2/5</option>
+                  <option value={3}>3/5</option>
+                  <option value={4}>4/5</option>
+                  <option value={5}>5/5</option>
                 </select>
+              </div>
 
-                <div className={styles.conceptChipsRow}>
-                  {selectedKnowledgeConcepts.map((concept) => (
-                    <button
-                      key={concept}
-                      type="button"
-                      className={styles.conceptChip}
-                      onClick={() => {
-                        const next = selectedKnowledgeConcepts.filter((x) => x !== concept);
-                        setSelectedKnowledgeConcepts(next);
-                        if (knowledgeConceptPicker === concept && next.length === 0) {
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>
+                  {t("programmingKnowledge")}{" "}
+                  <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
+                </span>
+                <div className={styles.conceptFieldWrap}>
+                  <select
+                    className={styles.filterSelect}
+                    value={knowledgeConceptPicker}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setKnowledgeConceptPicker(value);
+                      if (value === "all") return;
+                      setSelectedKnowledgeConcepts((prev) =>
+                        prev.includes(value) ? prev : [...prev, value],
+                      );
+                    }}
+                    aria-label={t("addConcept")}
+                    title={t("conceptsMultiSelectHint")}
+                  >
+                    <option value="all">— {t("addConcept")} —</option>
+                    {knowledgeConceptOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {getConceptLabel(name, locale)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className={styles.conceptChipsRow}>
+                    {selectedKnowledgeConcepts.map((concept) => (
+                      <button
+                        key={concept}
+                        type="button"
+                        className={styles.conceptChip}
+                        onClick={() => {
+                          const next = selectedKnowledgeConcepts.filter((x) => x !== concept);
+                          setSelectedKnowledgeConcepts(next);
+                          if (knowledgeConceptPicker === concept && next.length === 0) {
+                            setKnowledgeConceptPicker("all");
+                          }
+                        }}
+                        title={t("conceptMatchAll")}
+                      >
+                        {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                      </button>
+                    ))}
+                    {selectedKnowledgeConcepts.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.clearConceptsBtn}
+                        onClick={() => {
+                          setSelectedKnowledgeConcepts([]);
                           setKnowledgeConceptPicker("all");
-                        }
-                      }}
-                      title={t("conceptMatchAll")}
-                    >
-                      {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
-                    </button>
-                  ))}
-                  {selectedKnowledgeConcepts.length > 0 && (
-                    <button
-                      type="button"
-                      className={styles.clearConceptsBtn}
-                      onClick={() => {
-                        setSelectedKnowledgeConcepts([]);
-                        setKnowledgeConceptPicker("all");
-                      }}
-                    >
-                      {t("filterAll")}
-                    </button>
-                  )}
+                        }}
+                      >
+                        {t("filterAll")}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>
-                {t("skillMechanism")} <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
-              </span>
-              <div className={styles.conceptFieldWrap}>
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>
+                  {t("skillMechanism")}{" "}
+                  <span className={styles.filterHint}>({t("conceptsMultiSelectHint")})</span>
+                </span>
+                <div className={styles.conceptFieldWrap}>
+                  <select
+                    className={styles.filterSelect}
+                    value={mechanismConceptPicker}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMechanismConceptPicker(value);
+                      if (value === "all") return;
+                      setSelectedMechanismConcepts((prev) =>
+                        prev.includes(value) ? prev : [...prev, value],
+                      );
+                    }}
+                    aria-label={t("addConcept")}
+                    title={t("conceptsMultiSelectHint")}
+                  >
+                    <option value="all">— {t("addConcept")} —</option>
+                    {mechanismConceptOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {getConceptLabel(name, locale)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className={styles.conceptChipsRow}>
+                    {selectedMechanismConcepts.map((concept) => (
+                      <button
+                        key={concept}
+                        type="button"
+                        className={styles.conceptChip}
+                        onClick={() => {
+                          const next = selectedMechanismConcepts.filter((x) => x !== concept);
+                          setSelectedMechanismConcepts(next);
+                          if (mechanismConceptPicker === concept && next.length === 0) {
+                            setMechanismConceptPicker("all");
+                          }
+                        }}
+                        title={t("conceptMatchAll")}
+                      >
+                        {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                      </button>
+                    ))}
+                    {selectedMechanismConcepts.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.clearConceptsBtn}
+                        onClick={() => {
+                          setSelectedMechanismConcepts([]);
+                          setMechanismConceptPicker("all");
+                        }}
+                      >
+                        {t("filterAll")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("sortByLabel")}</span>
                 <select
                   className={styles.filterSelect}
-                  value={mechanismConceptPicker}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setMechanismConceptPicker(value);
-                    if (value === "all") return;
-                    setSelectedMechanismConcepts((prev) => (prev.includes(value) ? prev : [...prev, value]));
-                  }}
-                  aria-label={t("addConcept")}
-                  title={t("conceptsMultiSelectHint")}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  aria-label={t("sortByLabel")}
                 >
-                  <option value="all">— {t("addConcept")} —</option>
-                  {mechanismConceptOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {getConceptLabel(name, locale)}
-                    </option>
-                  ))}
+                  <option value="recommended">{t("sortRecommended")}</option>
+                  <option value="newest">{t("sortNewest")}</option>
+                  <option value="most_played">{t("sortMostPlayed")}</option>
                 </select>
-
-                <div className={styles.conceptChipsRow}>
-                  {selectedMechanismConcepts.map((concept) => (
-                    <button
-                      key={concept}
-                      type="button"
-                      className={styles.conceptChip}
-                      onClick={() => {
-                        const next = selectedMechanismConcepts.filter((x) => x !== concept);
-                        setSelectedMechanismConcepts(next);
-                        if (mechanismConceptPicker === concept && next.length === 0) {
-                          setMechanismConceptPicker("all");
-                        }
-                      }}
-                      title={t("conceptMatchAll")}
-                    >
-                      {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
-                    </button>
-                  ))}
-                  {selectedMechanismConcepts.length > 0 && (
-                    <button
-                      type="button"
-                      className={styles.clearConceptsBtn}
-                      onClick={() => {
-                        setSelectedMechanismConcepts([]);
-                        setMechanismConceptPicker("all");
-                      }}
-                    >
-                      {t("filterAll")}
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
-
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>{t("sortByLabel")}</span>
-              <select
-                className={styles.filterSelect}
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                aria-label={t("sortByLabel")}
-              >
-                <option value="recommended">{t("sortRecommended")}</option>
-                <option value="newest">{t("sortNewest")}</option>
-                <option value="most_played">{t("sortMostPlayed")}</option>
-              </select>
-            </div>
-          </div>
           </aside>
         </div>
 
@@ -715,7 +730,11 @@ function MapsContent() {
                 className={`${styles.mainTab} ${mainTab === tab ? styles.mainTabActive : ""}`}
                 onClick={() => setMainTab(tab)}
               >
-                {tab === "all" ? t("allMaps") : tab === "recommended" ? t("recommended") : t("myProgress")}
+                {tab === "all"
+                  ? t("allMaps")
+                  : tab === "recommended"
+                    ? t("recommended")
+                    : t("myProgress")}
               </button>
             ))}
           </div>
@@ -729,7 +748,12 @@ function MapsContent() {
               </h2>
               <div className={styles.continueGrid}>
                 {inProgressMaps.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
+                  const { status, progressPercent } = getMapStatus(
+                    map.id,
+                    inProgress,
+                    completed,
+                    lockedUnion,
+                  );
                   return (
                     <MapCard
                       key={map.id}
@@ -758,7 +782,12 @@ function MapsContent() {
               </h2>
               <div className={styles.recommendedGrid}>
                 {recommendedMaps.map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
+                  const { status, progressPercent } = getMapStatus(
+                    map.id,
+                    inProgress,
+                    completed,
+                    lockedUnion,
+                  );
                   return (
                     <MapCard
                       key={map.id}
@@ -787,7 +816,12 @@ function MapsContent() {
               </h2>
               <div className={styles.beginnerGrid}>
                 {beginnerMaps.slice(0, 4).map((map) => {
-                  const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
+                  const { status, progressPercent } = getMapStatus(
+                    map.id,
+                    inProgress,
+                    completed,
+                    lockedUnion,
+                  );
                   return (
                     <MapCard
                       key={map.id}
@@ -823,7 +857,12 @@ function MapsContent() {
               ) : (
                 <div className={styles.mapsGrid}>
                   {allMapsForGrid.map((map) => {
-                    const { status, progressPercent } = getMapStatus(map.id, inProgress, completed, lockedUnion);
+                    const { status, progressPercent } = getMapStatus(
+                      map.id,
+                      inProgress,
+                      completed,
+                      lockedUnion,
+                    );
                     return (
                       <MapCard
                         key={map.id}
@@ -877,7 +916,11 @@ function MapCard({
   const isLocked = status === "locked";
   const diffTier = getDifficultyTier(map.difficulty);
   const difficultyClass =
-    diffTier === "easy" ? styles.difficultyEasy : diffTier === "medium" ? styles.difficultyMedium : styles.difficultyHard;
+    diffTier === "easy"
+      ? styles.difficultyEasy
+      : diffTier === "medium"
+        ? styles.difficultyMedium
+        : styles.difficultyHard;
   const tagNames = map.tagNames ?? [];
   const learnedTags = extractLearnedTags(map).map((name) => getConceptLabel(name, locale));
   const conceptTags = tagNames.filter((name) => !isDifficultyTag(name));
@@ -887,13 +930,16 @@ function MapCard({
       .map((name) => getConceptLabel(name, locale))
       .join(", ") || "—";
   const previewUrl =
-    map.avatarUrl?.trim() || map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+    map.avatarUrl?.trim() ||
+    map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
     map.gallery?.[0]?.url?.trim() ||
     null;
 
   const cardContent = (
     <>
-      <div className={`${styles.thumb} ${size === "large" ? styles.thumbLarge : size === "medium" ? styles.thumbMedium : ""} ${isLocked ? styles.thumbLocked : ""}`}>
+      <div
+        className={`${styles.thumb} ${size === "large" ? styles.thumbLarge : size === "medium" ? styles.thumbMedium : ""} ${isLocked ? styles.thumbLocked : ""}`}
+      >
         {previewUrl ? (
           <img
             src={previewUrl}
@@ -940,10 +986,10 @@ function MapCard({
       </div>
 
       <div className={styles.cardInfo}>
-        <h3 className={styles.cardTitle} title={map.title}>{map.title}</h3>
-        {map.description && (
-          <p className={styles.cardDesc}>{map.description}</p>
-        )}
+        <h3 className={styles.cardTitle} title={map.title}>
+          {map.title}
+        </h3>
+        {map.description && <p className={styles.cardDesc}>{map.description}</p>}
         <div className={styles.cardMeta}>
           <span className={styles.metaItem}>
             <Clock size={14} aria-hidden />

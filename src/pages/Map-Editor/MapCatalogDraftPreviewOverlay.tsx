@@ -36,6 +36,8 @@ export type MapCatalogDraftPreviewOverlayProps = {
   onDifficultyChange: (value: 1 | 2 | 3 | 4 | 5) => void;
   price: number;
   onPriceChange: (value: number) => void;
+  freeTrialAttemptLimit: number;
+  onFreeTrialAttemptLimitChange: (value: number) => void;
   loadingMapTags: boolean;
   availableMapTags: MapTag[];
   learnedKnowledgeTags: MapTag[];
@@ -88,6 +90,8 @@ export function MapCatalogDraftPreviewOverlay({
   onDifficultyChange,
   price,
   onPriceChange,
+  freeTrialAttemptLimit,
+  onFreeTrialAttemptLimitChange,
   loadingMapTags,
   availableMapTags,
   learnedKnowledgeTags,
@@ -689,6 +693,23 @@ export function MapCatalogDraftPreviewOverlay({
                     value={price}
                     onChange={(e) => onPriceChange(Math.max(0, Number(e.target.value) || 0))}
                     aria-label={t("mapDetailFieldPrice")}
+                  />
+                </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>
+                    {locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    className={styles.catalogMetaField}
+                    value={Math.max(0, Number(freeTrialAttemptLimit || 0))}
+                    onChange={(e) =>
+                      onFreeTrialAttemptLimitChange(Math.max(0, Number(e.target.value) || 0))
+                    }
+                    aria-label={
+                      locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"
+                    }
                   />
                 </div>
               </div>
