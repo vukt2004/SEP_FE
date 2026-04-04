@@ -886,13 +886,17 @@ function MapCard({
       .slice(0, 2)
       .map((name) => getConceptLabel(name, locale))
       .join(", ") || "—";
+  const previewUrl =
+    map.avatarUrl?.trim() || map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+    map.gallery?.[0]?.url?.trim() ||
+    null;
 
   const cardContent = (
     <>
       <div className={`${styles.thumb} ${size === "large" ? styles.thumbLarge : size === "medium" ? styles.thumbMedium : ""} ${isLocked ? styles.thumbLocked : ""}`}>
-        {map.avatarUrl ? (
+        {previewUrl ? (
           <img
-            src={map.avatarUrl}
+            src={previewUrl}
             alt=""
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";

@@ -424,6 +424,10 @@ const MapCard: React.FC<MapCardProps> = ({
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
   const learnedTags = extractLearnedTags(map);
+  const previewUrl =
+    map.avatarUrl?.trim() || map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+    map.gallery?.[0]?.url?.trim() ||
+    null;
 
   return (
     <div
@@ -465,9 +469,9 @@ const MapCard: React.FC<MapCardProps> = ({
             justifyContent: "center",
           }}
         >
-          {map.avatarUrl ? (
+          {previewUrl ? (
             <img
-              src={map.avatarUrl}
+              src={previewUrl}
               alt={map.title}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
               onError={(e) => {

@@ -723,6 +723,14 @@ export const MapsPage: React.FC = () => {
                     e.currentTarget.style.background = "transparent";
                   }}
                 >
+                  {(() => {
+                    const previewUrl =
+                      map.avatarUrl?.trim() ||
+                      map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+                      map.gallery?.[0]?.url?.trim() ||
+                      null;
+
+                    return (
                   <td style={{ padding: "12px 16px", textAlign: "center" }}>
                     <div
                       style={{
@@ -737,9 +745,9 @@ export const MapsPage: React.FC = () => {
                         justifyContent: "center",
                       }}
                     >
-                      {map.avatarUrl ? (
+                      {previewUrl ? (
                         <img
-                          src={map.avatarUrl}
+                          src={previewUrl}
                           alt={map.title}
                           style={{
                             width: "100%",
@@ -755,6 +763,8 @@ export const MapsPage: React.FC = () => {
                       )}
                     </div>
                   </td>
+                    );
+                  })()}
                   <td style={{ padding: "16px" }}>
                     <div>
                       <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
