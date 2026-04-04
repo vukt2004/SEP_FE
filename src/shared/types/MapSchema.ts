@@ -9,8 +9,8 @@
  * Map configuration defining basic properties
  */
 export interface MapConfig {
-  /** Map type: platform (side-scrolling) or topdown (overhead view) */
-  type: "platform" | "topdown";
+  /** Map type: platform (side-scrolling), topdown (overhead), or snake */
+  type: "platform" | "topdown" | "snake";
   /** Map width in tiles */
   width: number;
   /** Map height in tiles */

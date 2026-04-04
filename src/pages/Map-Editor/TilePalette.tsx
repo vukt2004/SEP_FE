@@ -6,6 +6,7 @@ import {
   type TileDefinition,
   type TieredTilesetGroup,
 } from "../../modules/engine/assets";
+import snakeTilesetRaw from "../../shared/assets/platformer/snake/tilesets/default.json";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
 import type { AssetTier, SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
@@ -38,8 +39,12 @@ type PaletteTileEntry = {
   key: string;
 };
 
-function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
-  return mapType === "platform" ? "platformer" : "topdown";
+type SnakeTilesetConfig = {
+  tiles?: Record<string, TileDefinition>;
+};
+
+function mapTypeToGameType(mapType: "platform" | "topdown" | "snake"): GameType {
+  return mapType === "topdown" ? "topdown" : "platformer";
 }
 
 export function TilePalette({
@@ -62,8 +67,22 @@ export function TilePalette({
 
     async function loadTileset() {
       try {
-        const tilesetLoader = new TilesetLoader(gameType);
-        const tieredTilesets = await tilesetLoader.loadTieredTilesetDefinitions(tilesetName, userPlan);
+        let tieredTilesets: TieredTilesetGroup[];
+
+        if (mapData.config.type === "snake") {
+          const snakeTilesRaw = (snakeTilesetRaw as SnakeTilesetConfig).tiles ?? {};
+          const snakeTileset: Record<number, TileDefinition> = {};
+          for (const [id, tileDef] of Object.entries(snakeTilesRaw)) {
+            const tileId = Number.parseInt(id, 10);
+            if (!Number.isNaN(tileId)) {
+              snakeTileset[tileId] = tileDef;
+            }
+          }
+          tieredTilesets = [{ tier: "basic", locked: false, tileset: snakeTileset }];
+        } else {
+          const tilesetLoader = new TilesetLoader(gameType);
+          tieredTilesets = await tilesetLoader.loadTieredTilesetDefinitions(tilesetName, userPlan);
+        }
 
         if (cancelled) return;
         setTilesetGroups(tieredTilesets);
@@ -95,7 +114,7 @@ export function TilePalette({
     return () => {
       cancelled = true;
     };
-  }, [tilesetName, gameType, userPlan]);
+  }, [tilesetName, gameType, mapData.config.type, userPlan]);
 
   useEffect(() => {
     if (selectedTile === null) {
@@ -111,6 +130,7 @@ export function TilePalette({
     });
 
     if (selectedVariants.length === 0) {
+      onTileSelect(null);
       return;
     }
 

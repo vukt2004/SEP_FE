@@ -2,6 +2,7 @@
 export const ROUTES = {
   LANDING: "/",
   GAME: "/game",
+  APPLE_WORM: "/apple-worm",
   PLATFORM: "/platform",
   MAP_EDITOR: "/map-editor",
   GAMEMENU: "/game-menu",

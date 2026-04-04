@@ -21,13 +21,14 @@ import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
-import { TilePalette} from "./TilePalette";
+import { TilePalette } from "./TilePalette";
 import {
   ObjectSpriteLoader,
   ObjectSpriteCache,
   type ObjectDefinition,
   type TieredObjectsGroup,
 } from "../../modules/engine/assets";
+import snakeObjectsRaw from "../../shared/assets/platformer/snake/object/objects.json";
 import blocksConfig from "../../shared/block/blocks-config.json";
 import { cmsMapsApi } from "../../services/api/cms/maps.api";
 import { learnerMapsApi } from "../../services/api/learner/maps.api";
@@ -67,9 +68,13 @@ type MapEditorLocationState = {
 /**
  * Convert MapData config type to GameType
  */
-function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
-  return mapType === "platform" ? "platformer" : "topdown";
+function mapTypeToGameType(mapType: "platform" | "topdown" | "snake"): GameType {
+  return mapType === "topdown" ? "topdown" : "platformer";
 }
+
+type SnakeObjectsConfig = {
+  objects?: Record<string, ObjectDefinition>;
+};
 
 interface MapEditorControlsProps {
   mapData: MapData;
@@ -87,7 +92,7 @@ interface MapEditorControlsProps {
   onResize: (width: number, height: number, tileSize: number) => void;
   onUndo: () => void;
   onRedo: () => void;
-  onTypeChange?: (type: "platform" | "topdown") => void;
+  onTypeChange?: (type: "platform" | "topdown" | "snake") => void;
   onNameChange?: (name: string) => void;
   onDescriptionChange?: (description: string) => void;
   onDifficultyChange?: (difficulty: 1 | 2 | 3 | 4 | 5) => void;
@@ -536,9 +541,16 @@ export function MapEditorControls({
 
     async function loadObjects() {
       try {
-        // Create loader with current game type
-        const objectLoader = new ObjectSpriteLoader(gameType);
-        const tieredDefs = await objectLoader.loadTieredObjectDefinitions("objects", userPlan);
+        const tieredDefs: TieredObjectsGroup[] =
+          mapData.config.type === "snake"
+            ? [
+                {
+                  tier: "basic",
+                  locked: false,
+                  objects: (snakeObjectsRaw as SnakeObjectsConfig).objects ?? {},
+                },
+              ]
+            : await new ObjectSpriteLoader(gameType).loadTieredObjectDefinitions("objects", userPlan);
         const mergedDefs = tieredDefs.reduce<Record<string, ObjectDefinition>>((acc, group) => {
           return { ...acc, ...group.objects };
         }, {});
@@ -574,7 +586,7 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, objectCache, onObjectDefinitionsLoaded, showLeftPanel, userPlan]);
+  }, [gameType, mapData.config.type, objectCache, onObjectDefinitionsLoaded, showLeftPanel, userPlan]);
 
   useEffect(() => {
     if (selectedObjectId === null) {
@@ -590,6 +602,7 @@ export function MapEditorControls({
     });
 
     if (selectedVariants.length === 0) {
+      onObjectSelect(null);
       return;
     }
 
@@ -1431,11 +1444,12 @@ export function MapEditorControls({
               <label style={styles.label}>{tt("mapEditorMapTypeMap", "Map Type")}</label>
               <select
                 value={mapData.config.type}
-                onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown")}
+                onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown" | "snake")}
                 style={styles.select}
               >
                 <option value="platform">{tt("mapEditorGameTypePlatform", "Platform")}</option>
                 <option value="topdown">{tt("mapEditorGameTypeTopDown", "Top-down")}</option>
+                <option value="snake">{tt("mapEditorGameTypeSnake", "Snake")}</option>
               </select>
             </div>
             <div style={styles.mapInfoCard}>

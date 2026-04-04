@@ -190,7 +190,12 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
 
     return {
       config: {
-        type: configRaw.type === "topdown" ? "topdown" : "platform",
+        type:
+          configRaw.type === "topdown"
+            ? "topdown"
+            : configRaw.type === "snake"
+              ? "snake"
+              : "platform",
         width,
         height,
         tileSize,
@@ -551,7 +556,11 @@ export default function MapEditor() {
       };
       const base = copy[0]?.mapData;
       const newMap = createEmptyMap(
-        base?.config.type === "topdown" ? "topdown" : "platform",
+        base?.config.type === "topdown"
+          ? "topdown"
+          : base?.config.type === "snake"
+            ? "snake"
+            : "platform",
         20,
         15,
         32,
@@ -811,7 +820,7 @@ export default function MapEditor() {
     store?.resize(width, height, tileSize);
   };
 
-  const handleTypeChange = (type: "platform" | "topdown") => {
+  const handleTypeChange = (type: "platform" | "topdown" | "snake") => {
     store?.setMapType(type);
   };
 

@@ -1,7 +1,8 @@
 import platformerObjects from "../../../shared/assets/platformer/basic/objects/objects.json";
 import topdownObjects from "../../../shared/assets/topdown/basic/objects/objects.json";
+import snakeObjects from "../../../shared/assets/platformer/snake/object/objects.json";
 
-type MapType = "platform" | "topdown";
+type MapType = "platform" | "topdown" | "snake";
 
 type ObjectDefinitionsFile = {
   objects?: Record<string, { name?: string }>;
@@ -46,14 +47,25 @@ const platformSupportedCharacters = extractSupportedCharacters(
   platformerObjects as ObjectDefinitionsFile,
 );
 const topdownSupportedCharacters = extractSupportedCharacters(topdownObjects as ObjectDefinitionsFile);
+const snakeSupportedCharacters = extractSupportedCharacters(snakeObjects as ObjectDefinitionsFile);
 
 export function getSupportedUnlockCharacters(mapType: MapType): string[] {
-  const set = mapType === "platform" ? platformSupportedCharacters : topdownSupportedCharacters;
+  const set =
+    mapType === "platform"
+      ? platformSupportedCharacters
+      : mapType === "snake"
+        ? snakeSupportedCharacters
+        : topdownSupportedCharacters;
   return Array.from(set).sort();
 }
 
 export function sanitizeUnlockCode(input: string, mapType: MapType): string {
-  const set = mapType === "platform" ? platformSupportedCharacters : topdownSupportedCharacters;
+  const set =
+    mapType === "platform"
+      ? platformSupportedCharacters
+      : mapType === "snake"
+        ? snakeSupportedCharacters
+        : topdownSupportedCharacters;
   const normalized = input.toUpperCase();
   let sanitized = "";
 

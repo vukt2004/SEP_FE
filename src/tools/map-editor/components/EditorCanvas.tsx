@@ -11,8 +11,8 @@ interface EditorCanvasProps {
 /**
  * Convert MapData config type to GameType
  */
-function mapTypeToGameType(mapType: "platform" | "topdown"): GameType {
-  return mapType === "platform" ? "platformer" : "topdown";
+function mapTypeToGameType(mapType: "platform" | "topdown" | "snake"): GameType {
+  return mapType === "topdown" ? "topdown" : "platformer";
 }
 
 /**
@@ -34,6 +34,7 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
   const lastPaintedTileRef = useRef<{ x: number; y: number } | null>(null);
 
   const mapData = store.getState();
+  const mapType = mapData.config.type;
   const gameType = mapTypeToGameType(mapData.config.type);
   const rendererRef = useRef<TileRenderer | null>(null);
 
@@ -42,12 +43,12 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
    */
   useEffect(() => {
     // Create or recreate renderer with the correct game type
-    rendererRef.current = new TileRenderer(gameType);
+    rendererRef.current = new TileRenderer(gameType, mapType);
 
     rendererRef.current.loadTileset("default").then(() => {
       forceUpdate({}); // Re-render once tileset and objects are loaded
     });
-  }, [gameType]);
+  }, [gameType, mapType]);
 
   /**
    * Subscribe to store changes and set up rendering

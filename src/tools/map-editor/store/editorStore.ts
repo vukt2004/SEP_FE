@@ -656,7 +656,12 @@ export class EditorStore {
    * @param height - Map height in tiles
    * @param tileSize - Tile size in pixels
    */
-  resetMap(type: "platform" | "topdown", width: number, height: number, tileSize: number): void {
+  resetMap(
+    type: "platform" | "topdown" | "snake",
+    width: number,
+    height: number,
+    tileSize: number,
+  ): void {
     this.saveHistory();
 
     this.mapData = createEmptyMap(type, width, height, tileSize);
@@ -778,7 +783,7 @@ export class EditorStore {
     this.notify();
   }
 
-  setMapType(type: "platform" | "topdown"): void {
+  setMapType(type: "platform" | "topdown" | "snake"): void {
     this.saveHistory();
     this.mapData.config.type = type;
     this.notify();
