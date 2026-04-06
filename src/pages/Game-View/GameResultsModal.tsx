@@ -332,7 +332,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
                 onClick={onNextLevel ?? onBackToMenu}
                 style={{ ...styles.secondaryButton, ...styles.primaryButton }}
               >
-                {onNextLevel ? `${nextLevelLabel} →` : "Next Level →"}
+                {onNextLevel ? `${nextLevelLabel} →` : "Back to game →"}
               </button>
             </>
           ) : (

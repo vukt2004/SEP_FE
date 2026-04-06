@@ -132,8 +132,19 @@ export default function GameView() {
 
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
-    const isPlatform = mapConfig?.type === "platform";
-    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+    
+    // Close the game result modal and clear results
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+    
+    const nextRoute =
+      mapConfig?.type === "platform"
+        ? ROUTES.PLATFORM
+        : mapConfig?.type === "snake"
+          ? ROUTES.SNAKE
+          : ROUTES.GAME;
+    navigate(nextRoute, {
       replace: true,
       state: {
         levelId,
@@ -263,11 +274,14 @@ export default function GameView() {
           ? await loadLevelFromAPI(levelId, { mapDetailId: mapDetailIdFromState })
           : await loadLevelFromMockData(levelFile || "level-tutorial-01");
 
-        if (levelId && levelResult.mapConfig?.type === "platform") {
-          navigate(ROUTES.PLATFORM, {
+        const resolvedMapType = levelResult.mapConfig?.type;
+        if (resolvedMapType === "platform" || resolvedMapType === "snake") {
+          const targetRoute = resolvedMapType === "snake" ? ROUTES.SNAKE : ROUTES.PLATFORM;
+          navigate(targetRoute, {
             replace: true,
             state: {
               levelId,
+              levelFile,
               mapDetailId: mapDetailIdFromState,
               multiplayerRoomId,
             },

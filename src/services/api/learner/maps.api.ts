@@ -276,4 +276,15 @@ export const learnerMapsApi = {
   purchaseMap(id: string) {
     return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/maps/${id}/purchase`);
   },
+
+  /**
+   * Delete a map (author only, draft maps)
+   * DELETE /api/learner/maps/{id}
+   *
+   * @param id - Map ID to delete
+   * @returns Delete result
+   */
+  deleteMap(id: string) {
+    return learnerAxios.delete<ApiResult<null>>(`/api/learner/maps/${id}`);
+  },
 };

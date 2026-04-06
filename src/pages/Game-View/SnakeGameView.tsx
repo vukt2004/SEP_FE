@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
 import { ArrowLeft, Eraser, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
 import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
@@ -13,6 +13,7 @@ import { animationRegistry } from "@/modules/engine/systems/animation/animationR
 import type { AnimationDefinition } from "@/modules/engine/systems/animation/animationTypes";
 import BlocklyWorkspace from "@/tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "@/tools/block-editor/blocks/registerGenerators";
+import { loadLevelFromAPI } from "@/utils/levelLoader";
 import snakeAssetRaw from "@/shared/assets/platformer/snake/object/snake.json";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
@@ -60,7 +61,14 @@ const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 
-const SNAKE_MAP_URL = "/mockdata/snakemap.json";
+const DEFAULT_SNAKE_MAP_FILE = "snakemap";
+
+type SnakeGameLocationState = {
+  levelId?: string;
+  mapDetailId?: string;
+  levelFile?: string;
+  mapUrl?: string;
+};
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -124,8 +132,16 @@ function resolveBodySpriteKey(a: Dir, b: Dir): keyof SnakePartSet["body"] {
   return "bottomRight";
 }
 
-async function loadSnakeLevel(): Promise<LevelDefinition> {
-  const res = await fetch(SNAKE_MAP_URL);
+async function loadSnakeLevelFromMock(pathOrFile?: string): Promise<LevelDefinition> {
+  const raw = (pathOrFile ?? DEFAULT_SNAKE_MAP_FILE).trim();
+  const resolvedUrl =
+    raw.startsWith("/")
+      ? raw
+      : raw.endsWith(".json")
+        ? `/mockdata/${raw}`
+        : `/mockdata/${raw}.json`;
+
+  const res = await fetch(resolvedUrl);
   if (!res.ok) throw new Error(`Failed to load snake map: ${res.status}`);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = (await res.json()) as any;
@@ -148,6 +164,17 @@ async function loadSnakeLevel(): Promise<LevelDefinition> {
   };
 }
 
+async function loadSnakeLevel(options: SnakeGameLocationState): Promise<LevelDefinition> {
+  if (options.levelId) {
+    const apiLevel = await loadLevelFromAPI(options.levelId, {
+      mapDetailId: options.mapDetailId,
+    });
+    return apiLevel.level;
+  }
+
+  return loadSnakeLevelFromMock(options.mapUrl ?? options.levelFile);
+}
+
 function cloneObjects(level: LevelDefinition): NonNullable<LevelDefinition["objects"]> {
   return (level.objects || []).map((obj) => ({
     ...obj,
@@ -158,6 +185,12 @@ function cloneObjects(level: LevelDefinition): NonNullable<LevelDefinition["obje
 
 export default function SnakeGameView() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = (location.state ?? null) as SnakeGameLocationState | null;
+  const levelId = routeState?.levelId;
+  const mapDetailId = routeState?.mapDetailId;
+  const levelFile = routeState?.levelFile;
+  const mapUrl = routeState?.mapUrl;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -191,6 +224,8 @@ export default function SnakeGameView() {
   const [isCompactLayout, setIsCompactLayout] = useState(false);
 
   const [statusText, setStatusText] = useState("Press Start Level, then Run your block program.");
+  const [levelTitle, setLevelTitle] = useState("Snake");
+  const [levelObjective, setLevelObjective] = useState("Collect all apples with gravity and avoid your own body.");
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [liveSteps, setLiveSteps] = useState(0);
   const [blocksUsed, setBlocksUsed] = useState(0);
@@ -592,17 +627,26 @@ export default function SnakeGameView() {
 
     let disposed = false;
     let engine: GameEngine | null = null;
+    let onFruitCollected: ((event: Extract<EngineEvent, { type: "fruitCollected" }>) => void) | null = null;
+    let onFailed: (() => void) | null = null;
     setIsLoading(true);
     setError(null);
 
     const initGame = async () => {
       try {
-        const level = await loadSnakeLevel();
+        const level = await loadSnakeLevel({ levelId, mapDetailId, levelFile, mapUrl });
         if (disposed) return;
 
         // Count fruits from loaded map
         const fruitCount = (level.objects ?? []).filter((o) => o.type === "fruit").length;
         applesTargetRef.current = fruitCount;
+        setLevelTitle(level.name || "Snake");
+        const objectiveFromMap = (level.metadata?.levelObjective ?? "").trim();
+        setLevelObjective(
+          objectiveFromMap.length > 0
+            ? objectiveFromMap
+            : "Collect all apples with gravity and avoid your own body.",
+        );
 
         levelRef.current = level;
         initialObjectsRef.current = cloneObjects(level);
@@ -622,7 +666,7 @@ export default function SnakeGameView() {
         engine = new GameEngine(level, TILE_SIZE, ctx, config, "platformer");
         engineRef.current = engine;
 
-        const onFruitCollected = (event: Extract<EngineEvent, { type: "fruitCollected" }>) => {
+        onFruitCollected = (event: Extract<EngineEvent, { type: "fruitCollected" }>) => {
           setCollectedFruits(event.totalCollected);
           fruitCollectedPulseRef.current = true;
           growthUnitsRef.current += 1;
@@ -635,7 +679,7 @@ export default function SnakeGameView() {
           }
         };
 
-        const onFailed = () => {
+        onFailed = () => {
           triggerSnakeFailure("Game over.");
         };
 
@@ -652,7 +696,7 @@ export default function SnakeGameView() {
         setIsLoading(false);
       } catch (err) {
         if (disposed) return;
-        setError(err instanceof Error ? err.message : "Failed to initialize Apple Worm level.");
+        setError(err instanceof Error ? err.message : "Failed to initialize snake level.");
         setIsLoading(false);
       }
     };
@@ -662,8 +706,12 @@ export default function SnakeGameView() {
     return () => {
       disposed = true;
       if (engine) {
-        engine.off("fruitCollected", () => {});
-        engine.off("engine:failed", () => {});
+        if (onFruitCollected) {
+          engine.off("fruitCollected", onFruitCollected);
+        }
+        if (onFailed) {
+          engine.off("engine:failed", onFailed);
+        }
         engine.stop();
       }
       executorRef.current?.stop();
@@ -673,6 +721,10 @@ export default function SnakeGameView() {
     applyLogicalFacingToEngine,
     finishRunAsResult,
     hideDefaultPlayerSprite,
+    levelFile,
+    levelId,
+    mapDetailId,
+    mapUrl,
     restoreDefaultPlayerSprite,
     triggerSnakeFailure,
   ]);
@@ -1098,7 +1150,7 @@ export default function SnakeGameView() {
               color: "var(--text)",
             }}
           >
-            <strong>Objective:</strong> Collect all apples with gravity and avoid your own body.
+            <strong>Objective:</strong> {levelObjective}
           </div>
 
           <div
@@ -1293,7 +1345,7 @@ export default function SnakeGameView() {
 
       <LevelMissionModal
         isOpen={showMissionModal && !isLoading && !error}
-        levelTitle="Apple Worm"
+        levelTitle={levelTitle}
         goal="Collect all apples"
         blockLimit={null}
         requiredBlocks={[]}

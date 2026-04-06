@@ -29,7 +29,12 @@ export function buildMapUploadJsonString(levels: MapUploadLevelInput[]): string 
       };
       const timeLimitMs = Math.max(1, Math.floor(lv.mapData.config.timeLimitSeconds ?? 1)) * 1000;
       const winCondition = lv.mapData.config.winCondition === 2 ? 2 : 1;
-      const type = lv.mapData.config.type === "topdown" ? "Topdown" : "Platform";
+      const type =
+        lv.mapData.config.type === "topdown"
+          ? "Topdown"
+          : lv.mapData.config.type === "snake"
+            ? "Snake"
+            : "Platform";
       return {
         levelOrder: lv.levelOrder,
         title,

@@ -41,7 +41,7 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: ROUTES.APPLE_WORM,
+    path: ROUTES.SNAKE,
     errorElement: <RouteErrorPage />,
     element: (
       <React.Suspense fallback={<AppLoader />}>

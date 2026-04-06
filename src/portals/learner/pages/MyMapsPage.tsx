@@ -30,6 +30,7 @@ import {
   CalendarDays,
   ListFilter,
   ArrowUpDown,
+  Trash2,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -87,6 +88,7 @@ type MapCardProps = {
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
+  onDelete: (mapId: string) => void;
 };
 
 type MapListProps = {
@@ -103,6 +105,7 @@ type MapListProps = {
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
+  onDelete: (mapId: string) => void;
 };
 
 const getDifficultyBadgeStyle = (difficulty: number): React.CSSProperties => {
@@ -419,6 +422,7 @@ const MapCard: React.FC<MapCardProps> = ({
   onPublish,
   onRate,
   onReport,
+  onDelete,
 }) => {
   const { t } = useTranslation();
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
@@ -689,6 +693,12 @@ const MapCard: React.FC<MapCardProps> = ({
               </button>
             </>
           )}
+
+          {isAuthor && map.mapStatus === "Draft" && (
+            <button onClick={() => onDelete(map.id)} style={actionBtnStyle("danger")}>
+              <Trash2 size={14} /> {t("delete")}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -709,6 +719,7 @@ export const MapList: React.FC<MapListProps> = ({
   onPublish,
   onRate,
   onReport,
+  onDelete,
 }) => {
   return (
     <div style={{ display: "grid", gap: "12px" }}>
@@ -728,6 +739,7 @@ export const MapList: React.FC<MapListProps> = ({
           onPublish={onPublish}
           onRate={onRate}
           onReport={onReport}
+          onDelete={onDelete}
         />
       ))}
     </div>
@@ -764,6 +776,22 @@ export const MyMapsPage: React.FC = () => {
   const [reportReason, setReportReason] = useState("");
   const [reportDetails, setReportDetails] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
+
+  // Modal state for delete confirmation
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; mapId: string | null; mapTitle: string }>({
+    open: false,
+    mapId: null,
+    mapTitle: "",
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Modal state for submit-for-review confirmation
+  const [submitReviewModal, setSubmitReviewModal] = useState<{ open: boolean; mapId: string | null; mapTitle: string }>({
+    open: false,
+    mapId: null,
+    mapTitle: "",
+  });
+  const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -852,25 +880,35 @@ export const MyMapsPage: React.FC = () => {
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit", roleContext: "learner" } });
   };
 
-  const handleSubmitForReview = async (mapId: string) => {
-    if (!confirm(t("confirmSubmitMapForReview"))) {
-      return;
-    }
+  const handleOpenSubmitReviewModal = (mapId: string) => {
+    const map = maps.find((m) => m.id === mapId);
+    setSubmitReviewModal({ open: true, mapId, mapTitle: map?.title ?? "" });
+  };
+
+  const handleCloseSubmitReviewModal = () => {
+    if (submitReviewLoading) return;
+    setSubmitReviewModal({ open: false, mapId: null, mapTitle: "" });
+  };
+
+  const handleConfirmSubmitReview = async () => {
+    if (!submitReviewModal.mapId) return;
     try {
-      setLoading(true);
+      setSubmitReviewLoading(true);
       setError(null);
-      const response = await learnerMapsApi.submitMapForReview(mapId);
+      const response = await learnerMapsApi.submitMapForReview(submitReviewModal.mapId);
       if (response.data.isSuccess) {
-        alert(t("gameSubmittedForReviewSuccess"));
+        handleCloseSubmitReviewModal();
         fetchMaps();
       } else {
         setError(response.data.message || t("failedSubmitReview"));
+        handleCloseSubmitReviewModal();
       }
     } catch (err) {
       setError(t("failedSubmitReview"));
       console.error("Submit error:", err);
+      handleCloseSubmitReviewModal();
     } finally {
-      setLoading(false);
+      setSubmitReviewLoading(false);
     }
   };
 
@@ -896,6 +934,41 @@ export const MyMapsPage: React.FC = () => {
       console.error("Publish error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenDeleteModal = (mapId: string) => {
+    const map = maps.find((m) => m.id === mapId);
+    setDeleteModal({ open: true, mapId, mapTitle: map?.title ?? "" });
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (deleteLoading) return;
+    setDeleteModal({ open: false, mapId: null, mapTitle: "" });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.mapId) return;
+
+    try {
+      setDeleteLoading(true);
+      setError(null);
+
+      const response = await learnerMapsApi.deleteMap(deleteModal.mapId);
+
+      if (response.data.isSuccess) {
+        handleCloseDeleteModal();
+        fetchMaps();
+      } else {
+        setError(response.data.message || t("failedDeleteMap"));
+        handleCloseDeleteModal();
+      }
+    } catch (err) {
+      setError(t("failedDeleteMap"));
+      console.error("Delete map error:", err);
+      handleCloseDeleteModal();
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1280,10 +1353,11 @@ export const MyMapsPage: React.FC = () => {
               getDifficultyLabel={getDifficultyLabel}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
-              onSubmitForReview={handleSubmitForReview}
+              onSubmitForReview={handleOpenSubmitReviewModal}
               onPublish={handlePublishMap}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
+              onDelete={handleOpenDeleteModal}
             />
 
             {/* Pagination */}
@@ -1609,6 +1683,252 @@ export const MyMapsPage: React.FC = () => {
                   }}
                 >
                   {reportLoading ? t("submitting") : t("submitReport")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Submit for Review Confirm Modal */}
+        {submitReviewModal.open && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={handleCloseSubmitReviewModal}
+          >
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "16px",
+                padding: "28px 28px 24px",
+                maxWidth: "460px",
+                width: "90%",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Icon + heading */}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    minWidth: "44px",
+                    borderRadius: "12px",
+                    background: "rgba(34,197,94,0.14)",
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Send size={20} color="#166534" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
+                    {t("submitForReviewModalTitle")}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
+                    {t("submitForReviewModalSubtitle")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Map name */}
+              {submitReviewModal.mapTitle && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    color: "var(--text)",
+                    fontWeight: 600,
+                    marginBottom: "20px",
+                  }}
+                >
+                  {submitReviewModal.mapTitle}
+                </div>
+              )}
+
+              {/* Warning text */}
+              <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "24px", lineHeight: 1.6 }}>
+                {t("submitForReviewModalWarning")}
+              </p>
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={handleCloseSubmitReviewModal}
+                  disabled={submitReviewLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: submitReviewLoading ? "not-allowed" : "pointer",
+                    opacity: submitReviewLoading ? 0.5 : 1,
+                  }}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  onClick={handleConfirmSubmitReview}
+                  disabled={submitReviewLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "#166534",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: submitReviewLoading ? "not-allowed" : "pointer",
+                    opacity: submitReviewLoading ? 0.6 : 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Send size={14} />
+                  {submitReviewLoading ? t("submitting") : t("submitForReview")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Delete Confirm Modal */}
+        {deleteModal.open && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={handleCloseDeleteModal}
+          >
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "16px",
+                padding: "28px 28px 24px",
+                maxWidth: "440px",
+                width: "90%",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Icon + heading */}
+              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    minWidth: "44px",
+                    borderRadius: "12px",
+                    background: "rgba(239,68,68,0.14)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Trash2 size={20} color="#dc2626" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
+                    {t("deleteMapTitle")}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
+                    {t("deleteMapSubtitle")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Map name */}
+              {deleteModal.mapTitle && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    color: "var(--text)",
+                    fontWeight: 600,
+                    marginBottom: "20px",
+                  }}
+                >
+                  {deleteModal.mapTitle}
+                </div>
+              )}
+
+              {/* Warning text */}
+              <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "24px", lineHeight: 1.6 }}>
+                {t("deleteMapWarning")}
+              </p>
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={handleCloseDeleteModal}
+                  disabled={deleteLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: deleteLoading ? "not-allowed" : "pointer",
+                    opacity: deleteLoading ? 0.5 : 1,
+                  }}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={deleteLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "#dc2626",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: deleteLoading ? "not-allowed" : "pointer",
+                    opacity: deleteLoading ? 0.6 : 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Trash2 size={14} />
+                  {deleteLoading ? t("deleting") : t("deleteMapTitle")}
                 </button>
               </div>
             </div>
