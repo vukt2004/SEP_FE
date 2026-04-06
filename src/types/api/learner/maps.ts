@@ -12,6 +12,8 @@ export interface UploadMapFromJsonParams {
   Description: string;
   Difficulty: number;
   Price: number;
+  /** Optional free trial attempt limit per user. 0/undefined = no trial. */
+  FreeTrialAttemptLimit?: number;
   TagIdsCsv?: string;
   LearnedTagsCsv?: string;
   /** One combined JSON ({ levels: [...] }) or legacy single-level JSON */
@@ -29,8 +31,27 @@ export interface UpdateMapMetadataParams {
   description: string;
   difficulty: number;
   price?: number | null;
+  freeTrialAttemptLimit?: number | null;
   tagIds?: string[];
   learnedTags?: string[];
+}
+
+/**
+ * POST /api/learner/maps/{id}/duplicate-as-new — tạo map mới (MapId mới), map nguồn không đổi.
+ * BE: DuplicateMapAsNewRequest (camelCase JSON).
+ */
+export interface DuplicateMapAsNewRequest {
+  title?: string | null;
+  description?: string | null;
+  difficulty?: number | null;
+  price?: number | null;
+  freeTrialAttemptLimit?: number | null;
+  tagIds?: string[];
+  learnedTags?: string[];
+  editorialContent?: string | null;
+  unlockEditorialAfterStars?: number | null;
+  /** true = map mới published ngay; mặc định false = Draft */
+  autoPublish?: boolean;
 }
 
 /**
@@ -77,6 +98,7 @@ export interface Map {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   /** Display name of the map creator (when returned by API) */
   createdByUserName?: string | null;
@@ -86,6 +108,10 @@ export interface Map {
   avatarUrl: string | null;
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;
+  /** Bắt đầu từ 1; tăng khi author update nội dung (PUT/upload-json). Dùng đồng bộ cache. */
+  contentVersion?: number;
+  /** ISO 8601 hoặc null */
+  updatedAt?: string | null;
   /**
    * true if this map is created by current user; false if it's only purchased/owned.
    * (Field is returned by GET /api/learner/maps/my-maps)
@@ -209,10 +235,13 @@ export interface MapDetail {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   editorialContent?: string | null;
   unlockEditorialAfterStars?: number;
   createdAt: string;
+  contentVersion?: number;
+  updatedAt?: string | null;
   activeSpec?: MapActiveSpec;
   hints?: MapHint[];
   constraints?: MapConstraint[];
@@ -242,6 +271,7 @@ export interface MapInfo {
   isPublished: boolean;
   mapStatus: MapStatusEnum;
   price: number;
+  freeTrialAttemptLimit?: number;
   createdByUserId: string;
   createdByUserName: string;
   createdAt: string;
@@ -250,6 +280,8 @@ export interface MapInfo {
   avatarUrl: string | null;
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;
+  contentVersion?: number;
+  updatedAt?: string | null;
 }
 
 export type MapInfoResult = ApiResult<MapInfo>;

@@ -14,12 +14,15 @@ import { useNavigate, generatePath } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
+import { localizeTagName } from "@/lib/maps/tagLocalization";
 import type { MapTag } from "@/types/api/learner/maps";
 import { ROUTES } from "@/lib/constants/routes";
 import "@/shared/styles/tokens.css";
 import styles from "@/portals/learner/pages/MapDetailPage.module.css";
 
 const DEFAULT_GALLERY_MAX = 20;
+
+export type CatalogListingSaveMode = "overwrite" | "newListing";
 
 export type MapCatalogDraftPreviewOverlayProps = {
   open: boolean;
@@ -33,6 +36,8 @@ export type MapCatalogDraftPreviewOverlayProps = {
   onDifficultyChange: (value: 1 | 2 | 3 | 4 | 5) => void;
   price: number;
   onPriceChange: (value: number) => void;
+  freeTrialAttemptLimit: number;
+  onFreeTrialAttemptLimitChange: (value: number) => void;
   loadingMapTags: boolean;
   availableMapTags: MapTag[];
   learnedKnowledgeTags: MapTag[];
@@ -49,6 +54,11 @@ export type MapCatalogDraftPreviewOverlayProps = {
   galleryMaxFiles?: number;
   onSaveToServer: () => void | Promise<void>;
   saving: boolean;
+  /** Khi đang sửa map đã có id: chọn ghi đè (PUT) hay map mới (duplicate + PUT) */
+  catalogListingSaveMode?: CatalogListingSaveMode;
+  onCatalogListingSaveModeChange?: (mode: CatalogListingSaveMode) => void;
+  /** GET map detail — hiển thị phiên bản nội dung (contentVersion) */
+  mapContentVersion?: number | null;
 };
 
 function isVideoMediaKind(kind: string): boolean {
@@ -80,6 +90,8 @@ export function MapCatalogDraftPreviewOverlay({
   onDifficultyChange,
   price,
   onPriceChange,
+  freeTrialAttemptLimit,
+  onFreeTrialAttemptLimitChange,
   loadingMapTags,
   availableMapTags,
   learnedKnowledgeTags,
@@ -96,6 +108,9 @@ export function MapCatalogDraftPreviewOverlay({
   galleryMaxFiles = DEFAULT_GALLERY_MAX,
   onSaveToServer,
   saving,
+  catalogListingSaveMode = "overwrite",
+  onCatalogListingSaveModeChange,
+  mapContentVersion = null,
 }: MapCatalogDraftPreviewOverlayProps) {
   const { locale } = useLanguageStore();
   const t = useMemo(() => getT(locale), [locale]);
@@ -161,14 +176,22 @@ export function MapCatalogDraftPreviewOverlay({
   const filteredGeneralTags = useMemo(() => {
     const q = tagSearchGeneral.trim().toLowerCase();
     if (!q) return availableMapTags;
-    return availableMapTags.filter((tag) => tag.name.toLowerCase().includes(q));
-  }, [availableMapTags, tagSearchGeneral]);
+    return availableMapTags.filter((tag) => {
+      const raw = tag.name.toLowerCase();
+      const localized = localizeTagName(tag.name, locale).toLowerCase();
+      return raw.includes(q) || localized.includes(q);
+    });
+  }, [availableMapTags, locale, tagSearchGeneral]);
 
   const filteredLearnedTags = useMemo(() => {
     const q = tagSearchLearned.trim().toLowerCase();
     if (!q) return learnedKnowledgeTags;
-    return learnedKnowledgeTags.filter((tag) => tag.name.toLowerCase().includes(q));
-  }, [learnedKnowledgeTags, tagSearchLearned]);
+    return learnedKnowledgeTags.filter((tag) => {
+      const raw = tag.name.toLowerCase();
+      const localized = localizeTagName(tag.name, locale).toLowerCase();
+      return raw.includes(q) || localized.includes(q);
+    });
+  }, [learnedKnowledgeTags, locale, tagSearchLearned]);
 
   const currentHero = gallerySlides[gallerySlideIndex] ?? null;
 
@@ -184,8 +207,7 @@ export function MapCatalogDraftPreviewOverlay({
     if (images[0]) onAvatarFileChange(images[0]);
   };
 
-  const hasFileDrag = (e: React.DragEvent) =>
-    [...e.dataTransfer.types].includes("Files");
+  const hasFileDrag = (e: React.DragEvent) => [...e.dataTransfer.types].includes("Files");
 
   const scrollCarousel = (dir: -1 | 1) => {
     const el = carouselRef.current;
@@ -299,9 +321,7 @@ export function MapCatalogDraftPreviewOverlay({
               const list = Array.from(e.target.files ?? []);
               e.target.value = "";
               if (!list.length) return;
-              onGalleryFilesAdd(
-                [...galleryFiles, ...list].slice(0, galleryMaxFiles),
-              );
+              onGalleryFilesAdd([...galleryFiles, ...list].slice(0, galleryMaxFiles));
             }}
           />
 
@@ -402,10 +422,7 @@ export function MapCatalogDraftPreviewOverlay({
                   className={`${styles.steamCarousel} ${styles.catalogSteamCarousel}`}
                 >
                   {gallerySlides.map((item, idx) => (
-                    <div
-                      key={item.key}
-                      className={styles.catalogCarouselThumbCell}
-                    >
+                    <div key={item.key} className={styles.catalogCarouselThumbCell}>
                       <button
                         type="button"
                         className={`${styles.steamThumb} ${
@@ -491,10 +508,7 @@ export function MapCatalogDraftPreviewOverlay({
                     const url = galleryObjectUrls[i];
                     const isVid = fileLooksLikeVideo(f);
                     return (
-                      <div
-                        key={`${f.name}-${f.size}-${i}`}
-                        className={styles.catalogGallerySlot}
-                      >
+                      <div key={`${f.name}-${f.size}-${i}`} className={styles.catalogGallerySlot}>
                         <div className={styles.catalogGallerySlotFrame}>
                           <button
                             type="button"
@@ -523,9 +537,7 @@ export function MapCatalogDraftPreviewOverlay({
                                 <img src={url} alt="" />
                               )
                             ) : (
-                              <div className={styles.catalogGallerySlotPreviewPlaceholder}>
-                                …
-                              </div>
+                              <div className={styles.catalogGallerySlotPreviewPlaceholder}>…</div>
                             )}
                           </button>
                           <button
@@ -683,6 +695,23 @@ export function MapCatalogDraftPreviewOverlay({
                     aria-label={t("mapDetailFieldPrice")}
                   />
                 </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>
+                    {locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    className={styles.catalogMetaField}
+                    value={Math.max(0, Number(freeTrialAttemptLimit || 0))}
+                    onChange={(e) =>
+                      onFreeTrialAttemptLimitChange(Math.max(0, Number(e.target.value) || 0))
+                    }
+                    aria-label={
+                      locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"
+                    }
+                  />
+                </div>
               </div>
             </section>
 
@@ -715,7 +744,7 @@ export function MapCatalogDraftPreviewOverlay({
                         }`}
                         onClick={() => onToggleTag(tag.id)}
                       >
-                        {tag.name}
+                        {localizeTagName(tag.name, locale)}
                       </button>
                     ))}
                   </div>
@@ -724,7 +753,7 @@ export function MapCatalogDraftPreviewOverlay({
             </section>
 
             <section className={styles.steamSidebarSection}>
-              <h2 className={styles.steamSectionTitle}>{t("youWillLearn")}</h2>
+              <h2 className={styles.steamSectionTitle}>{t("mapEditorCatalogYouWillLearnTitle")}</h2>
               <input
                 type="search"
                 className={styles.catalogTagSearch}
@@ -754,7 +783,7 @@ export function MapCatalogDraftPreviewOverlay({
                         }`}
                         onClick={() => onToggleLearnedTag(tag.id)}
                       >
-                        {tag.name}
+                        {localizeTagName(tag.name, locale)}
                       </button>
                     ))}
                   </div>
@@ -763,6 +792,63 @@ export function MapCatalogDraftPreviewOverlay({
             </section>
 
             <div className={styles.steamFooter}>
+              {persistedMapId && onCatalogListingSaveModeChange ? (
+                <fieldset className={styles.catalogPublishModeFieldset}>
+                  <legend className={styles.catalogPublishModeLegend}>
+                    {t("mapEditorCatalogPublishModeTitle")}
+                  </legend>
+                  <div
+                    className={styles.catalogPublishModeOptions}
+                    role="radiogroup"
+                    aria-label={t("mapEditorCatalogPublishModeTitle")}
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={catalogListingSaveMode === "overwrite"}
+                      className={`${styles.catalogPublishModeBtn} ${
+                        catalogListingSaveMode === "overwrite"
+                          ? styles.catalogPublishModeBtnActive
+                          : ""
+                      }`}
+                      onClick={() => onCatalogListingSaveModeChange("overwrite")}
+                    >
+                      <span className={styles.catalogPublishModeBtnLabel}>
+                        {t("mapEditorCatalogPublishOverwrite")}
+                      </span>
+                      <span className={styles.catalogPublishModeBtnHint}>
+                        {t("mapEditorCatalogPublishOverwriteHint")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={catalogListingSaveMode === "newListing"}
+                      className={`${styles.catalogPublishModeBtn} ${
+                        catalogListingSaveMode === "newListing"
+                          ? styles.catalogPublishModeBtnActive
+                          : ""
+                      }`}
+                      onClick={() => onCatalogListingSaveModeChange("newListing")}
+                    >
+                      <span className={styles.catalogPublishModeBtnLabel}>
+                        {t("mapEditorCatalogPublishNewListing")}
+                      </span>
+                      <span className={styles.catalogPublishModeBtnHint}>
+                        {t("mapEditorCatalogPublishNewListingHint")}
+                      </span>
+                    </button>
+                  </div>
+                </fieldset>
+              ) : null}
+              {persistedMapId && mapContentVersion != null && Number.isFinite(mapContentVersion) ? (
+                <p className={styles.catalogContentVersionLine}>
+                  {t("mapEditorCatalogContentVersionLine").replace(
+                    "{n}",
+                    String(mapContentVersion),
+                  )}
+                </p>
+              ) : null}
               <button
                 type="button"
                 className={styles.steamFooterPrimary}
@@ -773,7 +859,9 @@ export function MapCatalogDraftPreviewOverlay({
                 {saving
                   ? t("mapEditorCatalogPreviewSaving")
                   : persistedMapId
-                    ? t("mapEditorCatalogPreviewSaveUpdate")
+                    ? catalogListingSaveMode === "newListing"
+                      ? t("mapEditorCatalogPreviewSaveAsNewListing")
+                      : t("mapEditorCatalogPreviewSaveUpdate")
                     : t("mapEditorCatalogPreviewSaveCreate")}
               </button>
               {persistedMapId ? (

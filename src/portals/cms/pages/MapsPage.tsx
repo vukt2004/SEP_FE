@@ -167,7 +167,7 @@ export const MapsPage: React.FC = () => {
       await cmsMapsApi.approveMap(selectedMapForAction.id, {
         reviewNote: reviewNote || undefined,
       });
-        alert("Game approved successfully!");
+      alert("Game approved successfully!");
       setApproveModalOpen(false);
       setSelectedMapForAction(null);
       setReviewNote("");
@@ -189,7 +189,7 @@ export const MapsPage: React.FC = () => {
       await cmsMapsApi.rejectMap(selectedMapForAction.id, {
         rejectReason: rejectReason || undefined,
       });
-        alert("Game rejected successfully!");
+      alert("Game rejected successfully!");
       setRejectModalOpen(false);
       setSelectedMapForAction(null);
       setRejectReason("");
@@ -723,38 +723,48 @@ export const MapsPage: React.FC = () => {
                     e.currentTarget.style.background = "transparent";
                   }}
                 >
-                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                    <div
-                      style={{
-                        width: "80px",
-                        height: "80px",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        backgroundColor: "var(--surface-2)",
-                        border: "1px solid var(--border)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {map.avatarUrl ? (
-                        <img
-                          src={map.avatarUrl}
-                          alt={map.title}
+                  {(() => {
+                    const previewUrl =
+                      map.avatarUrl?.trim() ||
+                      map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+                      map.gallery?.[0]?.url?.trim() ||
+                      null;
+
+                    return (
+                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                        <div
                           style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
+                            width: "80px",
+                            height: "80px",
+                            borderRadius: "8px",
+                            overflow: "hidden",
+                            backgroundColor: "var(--surface-2)",
+                            border: "1px solid var(--border)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                           }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: "20px" }}>🗺️</span>
-                      )}
-                    </div>
-                  </td>
+                        >
+                          {previewUrl ? (
+                            <img
+                              src={previewUrl}
+                              alt={map.title}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: "20px" }}>🗺️</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })()}
                   <td style={{ padding: "16px" }}>
                     <div>
                       <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>

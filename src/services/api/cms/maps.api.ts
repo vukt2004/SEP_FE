@@ -9,7 +9,7 @@ import type {
   MapTagsResult,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
-import type { UploadMapFromJsonParams } from "@/types/api/learner/maps";
+import type { DuplicateMapAsNewRequest, UploadMapFromJsonParams } from "@/types/api/learner/maps";
 
 /**
  * CMS Maps API
@@ -94,6 +94,9 @@ export const cmsMapsApi = {
     formData.append("Description", params.Description);
     formData.append("Difficulty", params.Difficulty.toString());
     formData.append("Price", String(params.Price ?? 0));
+    if (typeof params.FreeTrialAttemptLimit === "number") {
+      formData.append("FreeTrialAttemptLimit", String(Math.max(0, params.FreeTrialAttemptLimit)));
+    }
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);
@@ -124,12 +127,22 @@ export const cmsMapsApi = {
    * Update an existing map from JSON file (draft only)
    * PUT /api/cms/maps/{id}/upload-json
    */
+  duplicateMapAsNew(id: string, body?: DuplicateMapAsNewRequest) {
+    return cmsAxios.post<ApiResult<string | { id: string }>>(
+      `/api/cms/maps/${id}/duplicate-as-new`,
+      body ?? {},
+    );
+  },
+
   updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);
     formData.append("Description", params.Description);
     formData.append("Difficulty", params.Difficulty.toString());
     formData.append("Price", String(params.Price ?? 0));
+    if (typeof params.FreeTrialAttemptLimit === "number") {
+      formData.append("FreeTrialAttemptLimit", String(Math.max(0, params.FreeTrialAttemptLimit)));
+    }
 
     if (params.TagIdsCsv) {
       formData.append("TagIdsCsv", params.TagIdsCsv);

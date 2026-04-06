@@ -65,6 +65,11 @@ export function LobbyMapPickerGrid({
       <div className={styles.grid}>
         {maps.map((m) => {
           const isPlatform = m.type === "Platform";
+          const previewUrl =
+            m.avatarUrl?.trim() ||
+            m.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+            m.gallery?.[0]?.url?.trim() ||
+            null;
           return (
             <button
               key={m.id}
@@ -75,9 +80,9 @@ export function LobbyMapPickerGrid({
               disabled={disabled}
             >
               <div className={styles.thumb}>
-                {m.avatarUrl ? (
+                {previewUrl ? (
                   <img
-                    src={m.avatarUrl}
+                    src={previewUrl}
                     alt=""
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.display = "none";

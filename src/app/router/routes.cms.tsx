@@ -17,7 +17,12 @@ const CmsPackagesPage = React.lazy(() => import("@/portals/cms/pages/PackagesPag
 const CmsProfilePage = React.lazy(() => import("@/portals/cms/pages/ProfilePage"));
 const CmsComplaintsPage = React.lazy(() => import("@/portals/cms/pages/ComplaintsPage"));
 const CmsComplaintDetailPage = React.lazy(() => import("@/portals/cms/pages/ComplaintDetailPage"));
-const CmsGameplaySettingsPage = React.lazy(() => import("@/portals/cms/pages/GameplaySettingsPage"));
+const CmsGameplaySettingsPage = React.lazy(
+  () => import("@/portals/cms/pages/GameplaySettingsPage"),
+);
+const CmsOrbitCoinExchangeRatePage = React.lazy(
+  () => import("@/portals/cms/pages/OrbitCoinExchangeRatePage"),
+);
 
 // Optional: if you want a separate role guard, you can wrap dashboard/routes with it.
 // import { RequireCmsRole } from "@/portals/cms/guards/RequireCmsRole";
@@ -49,6 +54,10 @@ export const cmsRoutes: RouteObject = {
     {
       path: "gameplay",
       element: <CmsGameplaySettingsPage />,
+    },
+    {
+      path: "orbitcoin",
+      element: <CmsOrbitCoinExchangeRatePage />,
     },
     {
       path: "reports",

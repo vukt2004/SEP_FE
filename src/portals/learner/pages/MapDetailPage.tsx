@@ -2,18 +2,31 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { isAxiosError } from "axios";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Lock, Gamepad2, Heart, Bell, Share2, ImagePlus, Video, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Lock,
+  Heart,
+  Bell,
+  Share2,
+  ImagePlus,
+  Video,
+  PlayCircle,
+  Save,
+  X,
+} from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
-import type { Map, MapTag } from "@/types/api/learner/maps";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import type { Map, MapLevelItem, MapTag } from "@/types/api/learner/maps";
+import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
-import type { LocaleId } from "@/lib/i18n/translations";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import { localizeTagName } from "@/lib/maps/tagLocalization";
 
 type PurchaseModalState = {
   kind: "success" | "insufficient" | "error";
@@ -25,7 +38,9 @@ export type MapDetailLocationState = {
   mapCatalogSetup?: boolean;
 };
 
-const DIFFICULTY_TAG_NAMES = new Set(["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()));
+const DIFFICULTY_TAG_NAMES = new Set(
+  ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
+);
 
 const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
   // Vietnamese
@@ -46,44 +61,6 @@ const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
   "strategy",
   "logical thinking",
 ]);
-
-const CONCEPT_LABELS_VI: Record<string, string> = {
-  "Algorithm Basics": "Cơ bản thuật toán",
-  "Algorithm Design": "Thiết kế thuật toán",
-  Arrays: "Mảng",
-  "Computational Thinking": "Tư duy máy tính",
-  Conditionals: "Điều kiện",
-  Debugging: "Gỡ lỗi",
-  Functions: "Hàm",
-  "Logic Puzzle": "Câu đố logic",
-  "Logical Thinking": "Tư duy logic",
-  Loops: "Vòng lặp",
-  Objects: "Đối tượng",
-  "Obstacle Avoidance": "Tránh chướng ngại vật",
-  Operators: "Toán tử",
-  Optimization: "Tối ưu hóa",
-  Pathfinding: "Tìm đường",
-  "Pattern Recognition": "Nhận dạng mẫu",
-  Pointers: "Con trỏ",
-  "Problem Solving": "Giải quyết vấn đề",
-  Recursion: "Đệ quy",
-  "Resource Collection": "Thu thập tài nguyên",
-  Strategy: "Chiến lược",
-  Variables: "Biến",
-  "If Else": "If / Else",
-  "If/Else": "If / Else",
-};
-
-function getConceptLabel(name: string, locale: LocaleId): string {
-  if (locale === "vi") {
-    const exact = CONCEPT_LABELS_VI[name];
-    if (exact) return exact;
-    const lower = name.toLowerCase();
-    const entry = Object.entries(CONCEPT_LABELS_VI).find(([k]) => k.toLowerCase() === lower);
-    if (entry) return entry[1];
-  }
-  return name;
-}
 
 function isDifficultyTag(tagName: string): boolean {
   return DIFFICULTY_TAG_NAMES.has(tagName.trim().toLowerCase());
@@ -127,6 +104,7 @@ export default function MapDetailPage() {
   const { t, locale } = useTranslation();
   const [map, setMap] = useState<Map | null>(null);
   const [ownership, setOwnership] = useState<MapOwnershipData | null>(null);
+  const [playHistory, setPlayHistory] = useState<MapPlayHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -139,6 +117,7 @@ export default function MapDetailPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editDifficulty, setEditDifficulty] = useState(1);
   const [editPrice, setEditPrice] = useState(0);
+  const [editFreeTrialAttemptLimit, setEditFreeTrialAttemptLimit] = useState(0);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -161,7 +140,12 @@ export default function MapDetailPage() {
       setLoading(true);
       setError(null);
 
-      const mapResponse = await learnerMapsApi.getMapById(id, true);
+      const [mapResponse, ownershipResponse, historyResponse] = await Promise.all([
+        learnerMapsApi.getMapById(id, true),
+        learnerMapsApi.checkMapOwnership(id),
+        learnerGameplayApi.getMyPlayHistory({ mapId: id, pageSize: 100 }),
+      ]);
+
       if (mapResponse.data.isSuccess && mapResponse.data.data) {
         setMap(mapResponse.data.data as Map);
       } else {
@@ -169,9 +153,14 @@ export default function MapDetailPage() {
         return;
       }
 
-      const ownershipResponse = await learnerMapsApi.checkMapOwnership(id);
-      if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
+      if (ownershipResponse.data?.isSuccess && ownershipResponse.data.data) {
         setOwnership(ownershipResponse.data.data);
+      }
+
+      // Extract play history from API response
+      const historyData = historyResponse.data as ApiResult<PaginationResult<MapPlayHistoryItem>>;
+      if (historyData?.isSuccess && historyData?.data?.items) {
+        setPlayHistory(historyData.data.items);
       }
     } catch (err) {
       setError(t("errorLoadMapDetails"));
@@ -217,6 +206,7 @@ export default function MapDetailPage() {
     setEditDescription(map.description ?? "");
     setEditDifficulty(Math.min(5, Math.max(1, map.difficulty)));
     setEditPrice(map.price ?? 0);
+    setEditFreeTrialAttemptLimit(Math.max(0, Number(map.freeTrialAttemptLimit ?? 0)));
   }, [map]);
 
   useEffect(() => {
@@ -243,14 +233,47 @@ export default function MapDetailPage() {
   }, [carouselIndex]);
 
   const handleStartMap = () => {
-    if (map && playHint) {
-      navigate(playHint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+    if (!map || !playHint) return;
+
+    if (campaignLevels.length <= 1) {
+      const selectedLevel: MapLevelItem | undefined = campaignLevels[0];
+      const selectedMapDetailId = selectedLevel?.id ?? playHint.mapDetailId;
+      const isPlatform =
+        typeof selectedLevel?.type === "string"
+          ? selectedLevel.type.trim().toLowerCase() === "platform"
+          : playHint.isPlatform;
+
+      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
         state: {
           levelId: map.id,
-          ...(playHint.mapDetailId ? { mapDetailId: playHint.mapDetailId } : {}),
+          ...(selectedMapDetailId ? { mapDetailId: selectedMapDetailId } : {}),
         },
       });
+      return;
     }
+
+    if (!startedCampaign) {
+      navigate(ROUTES.LEARNER_MAP_LEVEL_SELECT(map.id));
+      return;
+    }
+
+    const currentLevel =
+      campaignLevels.find((level) => level.id === currentCampaignLevelId) ?? campaignLevels[0];
+    const currentState = campaignLevelStates.find((row) => row.levelId === currentLevel?.id);
+
+    // If there is no active in-progress level, let learner choose explicitly.
+    if (!currentLevel || !currentState || currentState.isCompleted || currentState.isLocked) {
+      navigate(ROUTES.LEARNER_MAP_LEVEL_SELECT(map.id));
+      return;
+    }
+
+    const isPlatform = (currentLevel.type ?? "").trim().toLowerCase() === "platform";
+    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+      state: {
+        levelId: map.id,
+        mapDetailId: currentLevel.id,
+      },
+    });
   };
 
   const handleBuyMap = async () => {
@@ -309,13 +332,15 @@ export default function MapDetailPage() {
   };
 
   const learnedKnowledgeTags = useMemo(
-    () => availableMapTags.filter((tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase())),
+    () =>
+      availableMapTags.filter(
+        (tag) => !HIDDEN_LEARNED_TAG_NAMES.has(tag.name.trim().toLowerCase()),
+      ),
     [availableMapTags],
   );
 
   const handleSaveAuthorMetadata = async () => {
-    const setup =
-      (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
+    const setup = (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
     if (!map?.id || ownership?.isAuthor !== true || !setup) return;
     const titleTrim = editTitle.trim();
     if (!titleTrim) {
@@ -329,6 +354,7 @@ export default function MapDetailPage() {
         description: editDescription,
         difficulty: editDifficulty,
         price: editPrice,
+        freeTrialAttemptLimit: Math.max(0, Number(editFreeTrialAttemptLimit || 0)),
         tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
       });
@@ -394,8 +420,63 @@ export default function MapDetailPage() {
     return t("adminTeam");
   };
 
-  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0);
+  const trialLimit = Math.max(0, Number(map?.freeTrialAttemptLimit ?? 0));
+  const trialUsedAttempts = playHistory.length;
+  const trialRemainingAttempts = Math.max(0, trialLimit - trialUsedAttempts);
+  const canUseTrial =
+    ownership?.isOwned !== true &&
+    map?.isPublished === true &&
+    (map?.price ?? 0) > 0 &&
+    trialRemainingAttempts > 0;
+  const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
+  const campaignLevels = useMemo(() => {
+    const levels = map?.levels ?? [];
+    return [...levels].sort((a, b) => a.levelOrder - b.levelOrder);
+  }, [map?.levels]);
+
+  // Calculate campaign states from API play history
+  const campaignLevelStates = useMemo(() => {
+    if (!campaignLevels.length) return [];
+
+    const completedBySubmission = new Map<string, boolean>();
+    const attemptedLevelIds = new Set<string>();
+
+    for (const historyItem of playHistory) {
+      attemptedLevelIds.add(historyItem.id);
+      if (historyItem.isCompleted) {
+        completedBySubmission.set(historyItem.id, true);
+      }
+    }
+
+    return campaignLevels.map((level, index) => {
+      const isCompleted = completedBySubmission.has(level.id);
+      const isAttempted = attemptedLevelIds.has(level.id);
+      const isUnlocked =
+        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+      const isLocked = !isUnlocked;
+      const isCurrent = isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
+
+      return {
+        levelId: level.id,
+        levelOrder: index,
+        isLocked,
+        isUnlocked,
+        isCompleted,
+        isCurrent,
+      };
+    });
+  }, [campaignLevels, playHistory]);
+
+  const currentCampaignLevelId = useMemo(() => {
+    const current = campaignLevelStates.find((state) => state.isCurrent);
+    return current?.levelId ?? null;
+  }, [campaignLevelStates]);
+
+  const startedCampaign = useMemo(() => {
+    return playHistory.length > 0;
+  }, [playHistory]);
+
   const carouselItems = useMemo(() => buildCarouselItems(map), [map]);
   const isAuthor = ownership?.isAuthor === true;
   const mapCatalogSetup =
@@ -429,12 +510,12 @@ export default function MapDetailPage() {
   };
 
   const difficultyTagNames = dedupeByLower(
-    rawTags
-      .filter(isDifficultyTag)
-      .map((tag) => normalizeDifficultyTag(tag.trim().toLowerCase())),
+    rawTags.filter(isDifficultyTag).map((tag) => normalizeDifficultyTag(tag.trim().toLowerCase())),
   );
   const skillTagNames = dedupeByLower(rawTags.filter(isSkillMechanismConcept));
-  const knowledgeTagNames = dedupeByLower(rawTags.filter((tag) => !isDifficultyTag(tag) && !isSkillMechanismConcept(tag)));
+  const knowledgeTagNames = dedupeByLower(
+    rawTags.filter((tag) => !isDifficultyTag(tag) && !isSkillMechanismConcept(tag)),
+  );
 
   if (loading) {
     return (
@@ -452,7 +533,11 @@ export default function MapDetailPage() {
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
         <div className={styles.content}>
-          <button type="button" onClick={() => navigate(-1)} className={styles.backBtn}>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
+            className={styles.backBtn}
+          >
             <ArrowLeft size={18} /> {t("back")}
           </button>
           <div className={styles.errorCard}>{error || t("mapNotFound")}</div>
@@ -472,7 +557,7 @@ export default function MapDetailPage() {
       >
         <motion.button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(ROUTES.LEARNER_MAPS_BROWSE)}
           className={styles.backBtn}
           whileHover={{ x: -4 }}
           whileTap={{ scale: 0.98 }}
@@ -516,6 +601,22 @@ export default function MapDetailPage() {
                     {t("previewNotAvailable")}
                   </span>
                 </div>
+              )}
+
+              {canPlay && (
+                <motion.button
+                  type="button"
+                  className={styles.steamPlayerPlayOverlay}
+                  onClick={handleStartMap}
+                  aria-label={startedCampaign ? t("continuePlaying") : t("play")}
+                >
+                  <span className={styles.steamPlayerPlayIcon}>
+                    <PlayCircle size={26} />
+                  </span>
+                  <span className={styles.steamPlayerPlayText}>
+                    {startedCampaign ? t("continuePlaying") : t("play")}
+                  </span>
+                </motion.button>
               )}
             </div>
 
@@ -591,6 +692,18 @@ export default function MapDetailPage() {
                   value={editPrice}
                   onChange={(e) => setEditPrice(Math.max(0, Number(e.target.value) || 0))}
                 />
+                <label className={styles.authorLabel}>
+                  {locale.startsWith("vi") ? "Lượt chơi thử miễn phí" : "Free trial attempts"}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  className={styles.authorInput}
+                  value={editFreeTrialAttemptLimit}
+                  onChange={(e) =>
+                    setEditFreeTrialAttemptLimit(Math.max(0, Number(e.target.value) || 0))
+                  }
+                />
                 <label className={styles.authorLabel}>{t("mapDetailFieldTags")}</label>
                 <div className={styles.authorTagChips}>
                   {loadingMapTags ? (
@@ -605,7 +718,7 @@ export default function MapDetailPage() {
                         }`}
                         onClick={() => toggleTagSelection(tag.id)}
                       >
-                        {tag.name}
+                        {localizeTagName(tag.name, locale)}
                       </button>
                     ))
                   )}
@@ -621,7 +734,7 @@ export default function MapDetailPage() {
                       }`}
                       onClick={() => toggleLearnedTagSelection(tag.id)}
                     >
-                      {tag.name}
+                      {localizeTagName(tag.name, locale)}
                     </button>
                   ))}
                 </div>
@@ -734,6 +847,14 @@ export default function MapDetailPage() {
                   <span className={styles.steamMetaLabel}>{t("developer")}</span>
                   <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
                 </div>
+                {isAuthor && map.contentVersion != null && Number.isFinite(map.contentVersion) ? (
+                  <div className={styles.steamMetaRow}>
+                    <span className={styles.steamMetaLabel}>
+                      {t("mapDetailContentVersionLabel")}
+                    </span>
+                    <span className={styles.steamMetaValue}>{map.contentVersion}</span>
+                  </div>
+                ) : null}
                 <div className={styles.steamMetaRow}>
                   <span className={styles.steamMetaLabel}>{t("type")}</span>
                   <span className={styles.steamMetaValue}>
@@ -750,6 +871,16 @@ export default function MapDetailPage() {
                         : t("hard")}
                   </span>
                 </div>
+                {trialLimit > 0 && (
+                  <div className={styles.steamMetaRow}>
+                    <span className={styles.steamMetaLabel}>
+                      {locale.startsWith("vi") ? "Lượt chơi thử" : "Free trial"}
+                    </span>
+                    <span className={styles.steamMetaValue}>
+                      {trialRemainingAttempts}/{trialLimit}
+                    </span>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -760,7 +891,7 @@ export default function MapDetailPage() {
                   <div className={styles.steamTagsList}>
                     {learnedTags.map((tag) => (
                       <span key={tag} className={styles.steamTag}>
-                        {getConceptLabel(tag, locale)}
+                        {localizeTagName(tag, locale)}
                       </span>
                     ))}
                   </div>
@@ -775,7 +906,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {difficultyTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>
@@ -788,7 +919,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {knowledgeTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>
@@ -801,7 +932,7 @@ export default function MapDetailPage() {
                       <div className={styles.steamTagsList}>
                         {skillTagNames.map((tag) => (
                           <span key={tag} className={styles.steamTag}>
-                            {getConceptLabel(tag, locale)}
+                            {localizeTagName(tag, locale)}
                           </span>
                         ))}
                       </div>
@@ -822,17 +953,7 @@ export default function MapDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          {canPlay ? (
-            <motion.button
-              type="button"
-              onClick={handleStartMap}
-              className={styles.steamFooterPrimary}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <Gamepad2 size={20} /> {t("play")}
-            </motion.button>
-          ) : (
+          {!canPlay ? (
             <motion.button
               type="button"
               onClick={handleBuyMap}
@@ -844,7 +965,7 @@ export default function MapDetailPage() {
               <Lock size={18} /> {isPurchasing ? "Purchasing..." : t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
             </motion.button>
-          )}
+          ) : null}
           <motion.button
             type="button"
             className={styles.steamFooterSecondary}
@@ -876,7 +997,9 @@ export default function MapDetailPage() {
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h3
                 className={`${styles.modalTitle} ${
-                  purchaseModal.kind === "success" ? styles.modalTitleSuccess : styles.modalTitleError
+                  purchaseModal.kind === "success"
+                    ? styles.modalTitleSuccess
+                    : styles.modalTitleError
                 }`}
               >
                 {purchaseModal.kind === "success"

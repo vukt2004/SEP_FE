@@ -424,6 +424,11 @@ const MapCard: React.FC<MapCardProps> = ({
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
   const learnedTags = extractLearnedTags(map);
+  const previewUrl =
+    map.avatarUrl?.trim() ||
+    map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+    map.gallery?.[0]?.url?.trim() ||
+    null;
 
   return (
     <div
@@ -465,9 +470,9 @@ const MapCard: React.FC<MapCardProps> = ({
             justifyContent: "center",
           }}
         >
-          {map.avatarUrl ? (
+          {previewUrl ? (
             <img
-              src={map.avatarUrl}
+              src={previewUrl}
               alt={map.title}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
               onError={(e) => {
@@ -1026,8 +1031,7 @@ export const MyMapsPage: React.FC = () => {
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
     // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
     // Boolean(undefined) was false and hid Edit / showed Rate/Report incorrectly.
-    const isAuthor =
-      activeTab === "author" ? map.isAuthor !== false : Boolean(map.isAuthor);
+    const isAuthor = activeTab === "author" ? map.isAuthor !== false : Boolean(map.isAuthor);
     acc[map.id] = { isAuthor };
     return acc;
   }, {} as OwnershipMap);

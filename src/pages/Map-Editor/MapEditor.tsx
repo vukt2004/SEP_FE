@@ -213,7 +213,9 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         ),
         timeStarThresholdPercent: clampTimeStarThresholdPercent(
           toNumber(
-            isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined,
+            isRecord(sourceJson.metadata)
+              ? sourceJson.metadata.timeStarThresholdPercent
+              : undefined,
             toNumber(configRaw.timeStarThresholdPercent, 100),
           ),
         ),
@@ -233,11 +235,11 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
           toNumber(detail.winCondition, toNumber(configRaw.winCondition, 1)),
         ),
         levelObjective:
-          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+          isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
             ? sourceJson.metadata.levelObjective
             : typeof configRaw.levelObjective === "string"
               ? configRaw.levelObjective
-              : ""),
+              : "",
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -370,24 +372,32 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         difficulty: clampDifficulty(detail.difficulty),
         timeLimitSeconds: Math.max(1, Math.floor(detail.timeLimitMs / 1000)),
         timeStarThresholdPercent: clampTimeStarThresholdPercent(
-          toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.timeStarThresholdPercent : undefined, 100),
+          toNumber(
+            isRecord(sourceJson.metadata)
+              ? sourceJson.metadata.timeStarThresholdPercent
+              : undefined,
+            100,
+          ),
         ),
         estimatedSteps: Math.max(
           1,
           Math.floor(
             toNumber(
               detail.estimatedSteps,
-              toNumber(isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined, 50),
+              toNumber(
+                isRecord(sourceJson.metadata) ? sourceJson.metadata.estimatedSteps : undefined,
+                50,
+              ),
             ),
           ),
         ),
         winCondition: clampWinCondition(detail.winCondition),
         levelObjective:
-          (isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
+          isRecord(sourceJson.metadata) && typeof sourceJson.metadata.levelObjective === "string"
             ? sourceJson.metadata.levelObjective
             : typeof sourceJson.levelObjective === "string"
               ? sourceJson.levelObjective
-              : ""),
+              : "",
         requiredFruits: Math.max(
           0,
           toNumber(
@@ -496,6 +506,8 @@ export default function MapEditor() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
+  const [editingMapContentVersion, setEditingMapContentVersion] = useState<number | null>(null);
+  const [mapFreeTrialAttemptLimit, setMapFreeTrialAttemptLimit] = useState(0);
   const [mapCatalogTitle, setMapCatalogTitle] = useState("");
   const [levelSlots, setLevelSlots] = useState<EditorLevelSlot[]>(() => {
     const slot = newEmptySlot();
@@ -635,15 +647,22 @@ export default function MapEditor() {
     const built = buildUploadLevels();
     const first = built[0];
     if (!first) {
-      return { title: "", description: "", difficulty: 1 as const, price: 0 };
+      return {
+        title: "",
+        description: "",
+        difficulty: 1 as const,
+        price: 0,
+        freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
+      };
     }
     return {
       title: mapCatalogTitle.trim() || first.mapData.config.name || "Untitled",
       description: first.mapData.config.description || "",
       difficulty: first.mapData.config.difficulty,
       price: first.mapData.config.price,
+      freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
     };
-  }, [buildUploadLevels, mapCatalogTitle]);
+  }, [buildUploadLevels, mapCatalogTitle, mapFreeTrialAttemptLimit]);
 
   useEffect(() => {
     let cancelled = false;
@@ -673,6 +692,7 @@ export default function MapEditor() {
       setEditingMapTagNames([]);
       setEditingMapAvatarUrl(null);
       setMapCatalogTitle("");
+      setMapFreeTrialAttemptLimit(0);
       return;
     }
 
@@ -702,6 +722,12 @@ export default function MapEditor() {
         setEditingMapTagNames(Array.isArray(raw.tagNames) ? raw.tagNames : []);
         setEditingMapAvatarUrl((raw as MapDetailLike).avatarUrl ?? null);
         setMapCatalogTitle(raw.title ?? "");
+        setEditingMapContentVersion(
+          typeof raw.contentVersion === "number" && Number.isFinite(raw.contentVersion)
+            ? raw.contentVersion
+            : null,
+        );
+        setMapFreeTrialAttemptLimit(Math.max(0, Number(raw.freeTrialAttemptLimit ?? 0)));
 
         const levels = raw.levels?.filter(Boolean) ?? [];
         let slots: EditorLevelSlot[];
@@ -951,7 +977,9 @@ export default function MapEditor() {
         </div>
         <div style={styles.planBlockCard}>
           <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
-          <p style={styles.subtitle}>{tt("mapEditorCheckingSubscription", "Checking subscription...")}</p>
+          <p style={styles.subtitle}>
+            {tt("mapEditorCheckingSubscription", "Checking subscription...")}
+          </p>
         </div>
       </div>
     );
@@ -967,7 +995,9 @@ export default function MapEditor() {
         </div>
         <div style={styles.planBlockCard}>
           <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
-          <p style={styles.subtitle}>{tt("mapEditorUpgradeToCreateMaps", "Upgrade to Pro to create maps")}</p>
+          <p style={styles.subtitle}>
+            {tt("mapEditorUpgradeToCreateMaps", "Upgrade to Pro to create maps")}
+          </p>
         </div>
       </div>
     );
@@ -1046,6 +1076,7 @@ export default function MapEditor() {
             <MapEditorControls
               sectionMode="left"
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}
@@ -1082,6 +1113,8 @@ export default function MapEditor() {
               onWinConditionChange={handleWinConditionChange}
               onLevelObjectiveChange={handleLevelObjectiveChange}
               onPriceChange={handlePriceChange}
+              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
               onBlockLimitChange={handleBlockLimitChange}
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}
@@ -1137,6 +1170,7 @@ export default function MapEditor() {
               sectionMode="right"
               editorStore={store}
               editingMapId={mapId}
+              loadedMapContentVersion={editingMapContentVersion}
               editorMode={routeState?.mode}
               initialSelectedTagNames={editingMapTagNames}
               initialAvatarUrl={editingMapAvatarUrl}
@@ -1174,6 +1208,8 @@ export default function MapEditor() {
               onLevelObjectiveChange={handleLevelObjectiveChange}
               onRequiredFruitsChange={handleRequiredFruitsChange}
               onPriceChange={handlePriceChange}
+              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
               onBlockLimitChange={handleBlockLimitChange}
               onAllowedBlocksChange={handleAllowedBlocksChange}
               onRequiredBlocksChange={handleRequiredBlocksChange}

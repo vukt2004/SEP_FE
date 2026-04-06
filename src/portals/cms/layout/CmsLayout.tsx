@@ -23,6 +23,7 @@ import {
   LogOut,
   MessageSquareWarning,
   SlidersHorizontal,
+  Coins,
 } from "lucide-react";
 
 const CmsLayout: React.FC = () => {
@@ -40,6 +41,7 @@ const CmsLayout: React.FC = () => {
     { path: "/cms/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/cms/maps", label: "Maps", icon: Map },
     { path: ROUTES.CMS_GAMEPLAY, label: "Gameplay scoring", icon: SlidersHorizontal },
+    { path: ROUTES.CMS_ORBITCOIN, label: "OrbitCoin rate", icon: Coins },
     { path: "/cms/users", label: "Users", icon: Users },
     { path: "/cms/reports", label: "Reports", icon: Flag },
     { path: "/cms/packages", label: "Packages", icon: Package },

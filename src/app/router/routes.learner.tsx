@@ -21,6 +21,9 @@ const LearnerPaymentFailurePage = React.lazy(
 );
 const LearnerMyMapsPage = React.lazy(() => import("@/portals/learner/pages/MyMapsPage"));
 const LearnerMapDetailPage = React.lazy(() => import("@/portals/learner/pages/MapDetailPage"));
+const LearnerMapLevelSelectPage = React.lazy(
+  () => import("@/portals/learner/pages/MapLevelSelectPage"),
+);
 const LearnerMarketplacePage = React.lazy(() => import("@/portals/learner/pages/MarketplacePage"));
 const LearnerComplaintsPage = React.lazy(() => import("@/portals/learner/pages/ComplaintsPage"));
 const LearnerComplaintDetailPage = React.lazy(
@@ -90,6 +93,7 @@ export const learnerRoutes: RouteObject = {
     { path: "my-maps", element: <LearnerMyMapsPage /> },
     { path: "marketplace", element: <LearnerMarketplacePage /> },
     { path: "map/:id", element: <LearnerMapDetailPage /> },
+    { path: "map/:id/levels", element: <LearnerMapLevelSelectPage /> },
     { path: "room/create", element: <LearnerRoomCreatePage /> },
     { path: "room/join", element: <LearnerRoomJoinPage /> },
     { path: "room/result", element: <LearnerRoomResultPage /> },
