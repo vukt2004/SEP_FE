@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
 import type { Package } from "@/types/api/learner/packages";
 import type { ApiResult } from "@/types/api/common";
 import { useTranslation } from "@/lib/i18n/translations";
 import { clearCurrentUserPlanCache } from "@/lib/auth/subscriptionPlan";
+import { ROUTES } from "@/lib/constants/routes";
 import "@/shared/styles/tokens.css";
 import styles from "./PackagesPage.module.css";
 
@@ -19,12 +21,14 @@ type PurchaseModalState = {
 
 export default function PackagesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
+  const [lastFailedPackage, setLastFailedPackage] = useState<Package | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +75,7 @@ export default function PackagesPage() {
         kind: "error",
         message: response.data.message || "Failed to purchase package.",
       });
+      setLastFailedPackage(pkg);
     } catch (err) {
       if (isAxiosError(err)) {
         const body = err.response?.data as ApiResult<string> | undefined;
@@ -82,13 +87,30 @@ export default function PackagesPage() {
           kind: isInsufficientBalance ? "insufficient" : "error",
           message: body?.message || "Failed to purchase package.",
         });
+        setLastFailedPackage(pkg);
         return;
       }
       setPurchaseModal({ kind: "error", message: "Failed to purchase package." });
+      setLastFailedPackage(pkg);
       console.error(err);
     } finally {
       setPurchasingId(null);
     }
+  };
+
+  const handleReportPackagePurchaseIssue = () => {
+    if (!lastFailedPackage?.id || !purchaseModal) return;
+    const isInsufficient = purchaseModal.kind === "insufficient";
+    const params = new URLSearchParams({
+      prefill: `package-purchase-${purchaseModal.kind}-${lastFailedPackage.id}-${Date.now()}`,
+      openCreate: "1",
+      categoryKey: "AccessIssue",
+      packageId: lastFailedPackage.id,
+      subject: t("complaints.prefill.packagePurchaseSubject"),
+      description: t("complaints.prefill.packagePurchaseDescription"),
+    });
+
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
   const formatPrice = (price: number) => price.toLocaleString("en-US");
@@ -279,6 +301,15 @@ export default function PackagesPage() {
                 >
                   {t("back")}
                 </button>
+                {purchaseModal.kind !== "success" && (
+                  <button
+                    type="button"
+                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                    onClick={handleReportPackagePurchaseIssue}
+                  >
+                    {t("complaints.actions.reportIssue")}
+                  </button>
+                )}
               </div>
             </div>
           </div>

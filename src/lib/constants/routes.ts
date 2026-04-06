@@ -50,6 +50,7 @@ export const ROUTES = {
   CMS_MAPS: "/cms/maps",
   CMS_USERS: "/cms/users",
   CMS_COMPLAINTS: "/cms/complaints",
+  CMS_COMPLAINT_CATEGORIES: "/cms/complaints/categories",
   CMS_GAMEPLAY: "/cms/gameplay",
   CMS_ORBITCOIN: "/cms/orbitcoin",
 } as const;

@@ -17,6 +17,9 @@ const CmsPackagesPage = React.lazy(() => import("@/portals/cms/pages/PackagesPag
 const CmsProfilePage = React.lazy(() => import("@/portals/cms/pages/ProfilePage"));
 const CmsComplaintsPage = React.lazy(() => import("@/portals/cms/pages/ComplaintsPage"));
 const CmsComplaintDetailPage = React.lazy(() => import("@/portals/cms/pages/ComplaintDetailPage"));
+const CmsComplaintCategoryConfigsPage = React.lazy(
+  () => import("@/portals/cms/pages/ComplaintCategoryConfigsPage"),
+);
 const CmsGameplaySettingsPage = React.lazy(
   () => import("@/portals/cms/pages/GameplaySettingsPage"),
 );
@@ -74,6 +77,10 @@ export const cmsRoutes: RouteObject = {
     {
       path: "complaints/:id",
       element: <CmsComplaintDetailPage />,
+    },
+    {
+      path: "complaints/categories",
+      element: <CmsComplaintCategoryConfigsPage />,
     },
     {
       path: "profile",

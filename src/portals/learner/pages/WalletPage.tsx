@@ -5,9 +5,12 @@ import {
   CoinTransactionTypeEnum,
 } from "@/services/api/learner/orbitcoin.api";
 import { useTranslation } from "@/lib/i18n/translations";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/lib/constants/routes";
 
 export default function WalletPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<OrbitCoinTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +140,18 @@ export default function WalletPage() {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleReportOrbitCoinIssue = (tx: OrbitCoinTransaction) => {
+    const params = new URLSearchParams({
+      prefill: `orbit-tx-${tx.id}`,
+      openCreate: "1",
+      categoryKey: "RewardBalanceIssue",
+      orbitCoinTransactionId: tx.id,
+      subject: t("complaints.prefill.orbitCoinIssueSubject"),
+      description: t("complaints.prefill.orbitCoinIssueDescription"),
+    });
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  };
+
   const numericTopUp = Number(topUpAmount.replace(/,/g, ""));
 
   if (loading) {
@@ -207,7 +222,11 @@ export default function WalletPage() {
             {[10, 50, 100, 500].map((preset) => {
               const isActive = numericTopUp === preset;
               return (
-                <button key={preset} onClick={() => handlePresetClick(preset)} style={presetBtn(isActive)}>
+                <button
+                  key={preset}
+                  onClick={() => handlePresetClick(preset)}
+                  style={presetBtn(isActive)}
+                >
                   {preset.toLocaleString("en-US")}
                 </button>
               );
@@ -252,7 +271,9 @@ export default function WalletPage() {
           ) : transactions.length === 0 ? (
             <div style={styles.emptyState}>
               <div style={{ fontSize: 28, opacity: 0.55 }}>🧾</div>
-              <div style={{ color: "var(--muted)", fontSize: 14, fontWeight: 500 }}>{t("noTransactionsYet")}</div>
+              <div style={{ color: "var(--muted)", fontSize: 14, fontWeight: 500 }}>
+                {t("noTransactionsYet")}
+              </div>
             </div>
           ) : (
             <>
@@ -262,7 +283,12 @@ export default function WalletPage() {
               </div>
               <div style={{ display: "grid", gap: 12 }}>
                 {transactions.map((tx) => (
-                  <TransactionRow key={tx.id} transaction={tx} />
+                  <TransactionRow
+                    key={tx.id}
+                    transaction={tx}
+                    onReportIssue={() => handleReportOrbitCoinIssue(tx)}
+                    reportLabel={t("complaints.actions.reportIssue")}
+                  />
                 ))}
               </div>
 
@@ -297,7 +323,15 @@ export default function WalletPage() {
   );
 }
 
-function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) {
+function TransactionRow({
+  transaction,
+  onReportIssue,
+  reportLabel,
+}: {
+  transaction: OrbitCoinTransaction;
+  onReportIssue: () => void;
+  reportLabel: string;
+}) {
   const isCredit = transaction.transactionType === CoinTransactionTypeEnum.Credit;
   const sign = isCredit ? "+" : "-";
   const color = isCredit ? "var(--success)" : "var(--warning)";
@@ -335,6 +369,9 @@ function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) 
             {tBalanceLabel()}: {transaction.balanceAfter.toLocaleString("en-US")}
           </div>
         )}
+        <button type="button" onClick={onReportIssue} style={styles.txReportBtn}>
+          {reportLabel}
+        </button>
       </div>
     </div>
   );
@@ -370,7 +407,9 @@ function CashflowMiniChart({
     .slice(-20);
 
   const flowValues = sorted.map((tx) =>
-    tx.transactionType === CoinTransactionTypeEnum.Credit ? Math.abs(tx.amount) : -Math.abs(tx.amount),
+    tx.transactionType === CoinTransactionTypeEnum.Credit
+      ? Math.abs(tx.amount)
+      : -Math.abs(tx.amount),
   );
 
   const cumulative: number[] = [];
@@ -391,17 +430,13 @@ function CashflowMiniChart({
   const range = Math.max(1, maxVal - minVal);
 
   const xAt = (i: number) =>
-    cumulative.length <= 1
-      ? width / 2
-      : padX + (i * (width - padX * 2)) / (cumulative.length - 1);
+    cumulative.length <= 1 ? width / 2 : padX + (i * (width - padX * 2)) / (cumulative.length - 1);
   const yAt = (v: number) => padY + ((maxVal - v) * (height - padY * 2)) / range;
 
   const points = cumulative.map((v, i) => ({ x: xAt(i), y: yAt(v), v }));
   const linePath =
     points.length > 0
-      ? points
-          .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
-          .join(" ")
+      ? points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ")
       : "";
   const areaPath =
     points.length > 0
@@ -424,7 +459,10 @@ function CashflowMiniChart({
   });
 
   const gridTicks = 4;
-  const gridValues = Array.from({ length: gridTicks + 1 }, (_, i) => maxVal - (range * i) / gridTicks);
+  const gridValues = Array.from(
+    { length: gridTicks + 1 },
+    (_, i) => maxVal - (range * i) / gridTicks,
+  );
   const formatTick = (n: number) =>
     Math.round(n).toLocaleString("en-US", {
       maximumFractionDigits: 0,
@@ -464,13 +502,7 @@ function CashflowMiniChart({
                 opacity={idx === 0 || idx === gridValues.length - 1 ? 0.65 : 0.38}
                 strokeDasharray={idx === 0 || idx === gridValues.length - 1 ? "0" : "3 4"}
               />
-              <text
-                x={padX + 2}
-                y={y - 4}
-                fill="var(--muted)"
-                fontSize="10"
-                fontWeight="700"
-              >
+              <text x={padX + 2} y={y - 4} fill="var(--muted)" fontSize="10" fontWeight="700">
                 {formatTick(tick)}
               </text>
             </g>
@@ -492,7 +524,7 @@ function CashflowMiniChart({
                 strokeLinecap="round"
               />
             ))}
-            {points.map((p, idx) => (
+            {points.map((p, idx) =>
               // Color each point based on its local movement direction.
               (() => {
                 const pointColor =
@@ -505,18 +537,18 @@ function CashflowMiniChart({
                       : lineDownColor;
 
                 return (
-              <circle
-                key={idx}
-                cx={p.x}
-                cy={p.y}
-                r={idx === points.length - 1 ? 3.8 : 2.4}
-                fill={idx === points.length - 1 ? pointColor : "rgba(255,255,255,0.92)"}
-                stroke={pointColor}
-                strokeWidth="1.2"
-              />
+                  <circle
+                    key={idx}
+                    cx={p.x}
+                    cy={p.y}
+                    r={idx === points.length - 1 ? 3.8 : 2.4}
+                    fill={idx === points.length - 1 ? pointColor : "rgba(255,255,255,0.92)"}
+                    stroke={pointColor}
+                    strokeWidth="1.2"
+                  />
                 );
-              })()
-            ))}
+              })(),
+            )}
           </>
         ) : null}
       </svg>
@@ -561,7 +593,9 @@ function primaryBtn(disabled: boolean, fullWidth: boolean): React.CSSProperties 
     padding: "12px 20px",
     borderRadius: 12,
     border: "none",
-    background: disabled ? "color-mix(in srgb, var(--surface-2) 85%, transparent)" : "var(--primary)",
+    background: disabled
+      ? "color-mix(in srgb, var(--surface-2) 85%, transparent)"
+      : "var(--primary)",
     color: disabled ? "var(--muted)" : "#fff",
     fontWeight: 700,
     fontSize: 14,
@@ -694,7 +728,8 @@ const styles: Record<string, any> = {
     boxShadow: "0 10px 26px rgba(2,6,23,0.08)",
   },
   balanceCard: {
-    background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, var(--surface)) 0%, var(--surface) 75%)",
+    background:
+      "linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, var(--surface)) 0%, var(--surface) 75%)",
   },
   balanceLabel: {
     fontSize: 12,
@@ -841,6 +876,17 @@ const styles: Record<string, any> = {
   txDate: {
     color: "var(--muted)",
     fontSize: 12,
+  },
+  txReportBtn: {
+    marginTop: 4,
+    border: "1px solid var(--border)",
+    background: "var(--surface-2)",
+    color: "var(--text-2)",
+    borderRadius: 8,
+    fontSize: 11,
+    padding: "4px 8px",
+    cursor: "pointer",
+    fontWeight: 700,
   },
   txHead: {
     display: "flex",
