@@ -9,12 +9,23 @@ import {
   ObjectSpriteCache,
   type ObjectDefinition,
 } from "../../../modules/engine/assets";
+import snakeTilesetRaw from "../../../shared/assets/platformer/snake/tilesets/default.json";
+import snakeObjectsRaw from "../../../shared/assets/platformer/snake/object/objects.json";
+
+type SnakeTilesetConfig = {
+  tiles?: Record<string, TileDefinition>;
+};
+
+type SnakeObjectsConfig = {
+  objects?: Record<string, ObjectDefinition>;
+};
 
 /**
  * Grid renderer with tileset support
  * Handles loading and rendering of actual tile sprites
  */
 export class TileRenderer {
+  private mapType: MapData["config"]["type"];
   private tilesetLoader: TilesetLoader;
   private tilesetCache: TilesetCache;
   private currentTileset: Record<number, TileDefinition> | null = null;
@@ -27,7 +38,8 @@ export class TileRenderer {
   private objectDefinitionsByName: Record<string, ObjectDefinition> | null = null;
   private objectSpritesLoaded: boolean = false;
 
-  constructor(gameType: GameType) {
+  constructor(gameType: GameType, mapType: MapData["config"]["type"]) {
+    this.mapType = mapType;
     this.tilesetLoader = new TilesetLoader(gameType);
     this.tilesetCache = new TilesetCache();
     this.objectSpriteLoader = new ObjectSpriteLoader(gameType);
@@ -40,8 +52,12 @@ export class TileRenderer {
    */
   private async loadObjectSprites(): Promise<void> {
     try {
-      // Load object definitions from JSON
-      this.objectDefinitions = await this.objectSpriteLoader.loadObjectDefinitions("objects");
+      if (this.mapType === "snake") {
+        this.objectDefinitions = (snakeObjectsRaw as SnakeObjectsConfig).objects ?? {};
+      } else {
+        // Load object definitions from JSON
+        this.objectDefinitions = await this.objectSpriteLoader.loadObjectDefinitions("objects");
+      }
 
       // Build fast lookup by logical object name (player, goal, fruit, enemy, ...)
       const byName: Record<string, ObjectDefinition> = {};
@@ -74,8 +90,20 @@ export class TileRenderer {
    */
   async loadTileset(tilesetName: string = "default"): Promise<void> {
     try {
-      // Load tileset definition
-      this.currentTileset = await this.tilesetLoader.loadTilesetDefinition(tilesetName);
+      if (this.mapType === "snake") {
+        const snakeTilesRaw = (snakeTilesetRaw as SnakeTilesetConfig).tiles ?? {};
+        const snakeTileset: Record<number, TileDefinition> = {};
+        for (const [id, tileDef] of Object.entries(snakeTilesRaw)) {
+          const tileId = Number.parseInt(id, 10);
+          if (!Number.isNaN(tileId)) {
+            snakeTileset[tileId] = tileDef;
+          }
+        }
+        this.currentTileset = snakeTileset;
+      } else {
+        // Load tileset definition
+        this.currentTileset = await this.tilesetLoader.loadTilesetDefinition(tilesetName);
+      }
 
       // Preload all tileset images
       const imagePathsSet = new Set<string>();

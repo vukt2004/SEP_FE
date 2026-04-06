@@ -9,7 +9,7 @@ import { createEmptyLayer } from "./createEmptyLayer";
  * - Empty background and collision layers
  * - No objects (all null/empty arrays)
  *
- * @param type - Map type: "platform" or "topdown"
+ * @param type - Map type: "platform", "topdown", or "snake"
  * @param width - Map width in tiles (10-30)
  * @param height - Map height in tiles (10-30)
  * @param tileSize - Size of each tile in pixels
@@ -18,7 +18,7 @@ import { createEmptyLayer } from "./createEmptyLayer";
  * @returns Complete MapData object ready for editing
  */
 export function createEmptyMap(
-  type: "platform" | "topdown",
+  type: "platform" | "topdown" | "snake",
   width: number,
   height: number,
   tileSize: number,

@@ -1,0 +1,32 @@
+{
+	"name": "platformer-snake-assets",
+	"description": "Asset definition for Apple Worm / Snake graphics",
+	"basePath": "/assets/snake_graphics/Graphics",
+	"frameWidth": 40,
+	"frameHeight": 40,
+	"frameCount": 1,
+	"frameDuration": 100,
+	"loop": false,
+	"parts": {
+		"head": {
+			"up": "/assets/snake_graphics/Graphics/head_up.png",
+			"down": "/assets/snake_graphics/Graphics/head_down.png",
+			"left": "/assets/snake_graphics/Graphics/head_left.png",
+			"right": "/assets/snake_graphics/Graphics/head_right.png"
+		},
+		"body": {
+			"horizontal": "/assets/snake_graphics/Graphics/body_horizontal.png",
+			"vertical": "/assets/snake_graphics/Graphics/body_vertical.png",
+			"topLeft": "/assets/snake_graphics/Graphics/body_topleft.png",
+			"topRight": "/assets/snake_graphics/Graphics/body_topright.png",
+			"bottomLeft": "/assets/snake_graphics/Graphics/body_bottomleft.png",
+			"bottomRight": "/assets/snake_graphics/Graphics/body_bottomright.png"
+		},
+		"tail": {
+			"up": "/assets/snake_graphics/Graphics/tail_up.png",
+			"down": "/assets/snake_graphics/Graphics/tail_down.png",
+			"left": "/assets/snake_graphics/Graphics/tail_left.png",
+			"right": "/assets/snake_graphics/Graphics/tail_right.png"
+		}
+	}
+}

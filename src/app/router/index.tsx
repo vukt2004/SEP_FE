@@ -16,6 +16,7 @@ const LearnerVerifyOtpPage = React.lazy(() => import("@/portals/learner/pages/Ve
 const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 
 const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
+const SnakeGameView = React.lazy(() => import("../../pages/Game-View/SnakeGameView"));
 const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
 
 const MapEditor = React.lazy(() => import("../../pages/Map-Editor/MapEditor"));
@@ -36,6 +37,15 @@ const routes: RouteObject[] = [
     element: (
       <React.Suspense fallback={<AppLoader />}>
         <GameView />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: ROUTES.APPLE_WORM,
+    errorElement: <RouteErrorPage />,
+    element: (
+      <React.Suspense fallback={<AppLoader />}>
+        <SnakeGameView />
       </React.Suspense>
     ),
   },

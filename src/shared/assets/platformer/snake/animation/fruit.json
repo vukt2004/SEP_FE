@@ -1,0 +1,77 @@
+{
+  "objectType": "fruit",
+  "states": {
+    "default": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Apple.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "apple": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Apple.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "banana": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Bananas.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "cherry": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Cherries.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "kiwi": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Kiwi.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "melon": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Melon.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "orange": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Orange.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "strawberry": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Strawberry.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 17,
+      "frameDuration": 60,
+      "loop": true
+    },
+    "collected": {
+      "sprite": "../Pixel Adventure 1/Items/Fruits/Collected.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 6,
+      "frameDuration": 80,
+      "loop": false
+    }
+  }
+}

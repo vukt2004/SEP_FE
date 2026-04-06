@@ -1,0 +1,21 @@
+{
+  "objectType": "goal",
+  "states": {
+    "idle": {
+      "sprite": "../Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 10,
+      "frameDuration": 100,
+      "loop": true
+    },
+    "pressed": {
+      "sprite": "../Pixel Adventure 1/Items/Checkpoints/Checkpoint/Checkpoint (Flag Out) (64x64).png",
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "frameCount": 26,
+      "frameDuration": 50,
+      "loop": false
+    }
+  }
+}

@@ -29,7 +29,7 @@ export function buildMapUploadJsonString(levels: MapUploadLevelInput[]): string 
       };
       const timeLimitMs = Math.max(1, Math.floor(lv.mapData.config.timeLimitSeconds ?? 1)) * 1000;
       const winCondition = lv.mapData.config.winCondition === 2 ? 2 : 1;
-      const type = lv.mapData.config.type === "platform" ? "Platform" : "Topdown";
+      const type = lv.mapData.config.type === "topdown" ? "Topdown" : "Platform";
       return {
         levelOrder: lv.levelOrder,
         title,
@@ -58,8 +58,11 @@ export function validateLevelsForUpload(levels: MapUploadLevelInput[]): LevelVal
     const messages: string[] = [];
     const md = lv.mapData;
 
-    if (!md.config.type || (md.config.type !== "platform" && md.config.type !== "topdown")) {
-      messages.push("Level type must be topdown or platform.");
+    if (
+      !md.config.type ||
+      (md.config.type !== "platform" && md.config.type !== "topdown" && md.config.type !== "snake")
+    ) {
+      messages.push("Level type must be topdown, platform, or snake.");
     }
 
     const sec = md.config.timeLimitSeconds;
