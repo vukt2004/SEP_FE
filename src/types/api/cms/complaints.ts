@@ -21,9 +21,31 @@ export type CmsChangeComplaintStatusResult = ApiResult<string>;
 export type CmsComplaintMessageRequest = {
   content: string;
   isInternal: boolean;
+  attachments?: File[];
 };
 
 export type CmsComplaintMessageResult = ApiResult<string>;
 
 export type CmsComplaintListResult = ComplaintListResult;
 export type CmsComplaintDetailResult = ComplaintDetailResult;
+
+export type CmsComplaintCategoryConfigItem = {
+  categoryKey: string;
+  displayName: string;
+  description?: string | null;
+  isEnabled: boolean;
+  sortOrder: number;
+};
+
+export type CmsComplaintCategoryConfigListResult = ApiResult<CmsComplaintCategoryConfigItem[]>;
+
+export type CmsUpsertComplaintCategoryConfigRequest = {
+  displayName: string;
+  description?: string;
+  isEnabled: boolean;
+  sortOrder: number;
+};
+
+export type CmsUpsertComplaintCategoryConfigResult = ApiResult<string>;
+
+export type CmsDeleteComplaintCategoryConfigResult = ApiResult<string>;

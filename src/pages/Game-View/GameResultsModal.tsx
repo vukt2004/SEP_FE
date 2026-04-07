@@ -42,6 +42,8 @@ interface GameResultsModalProps {
   /** Single-player campaign: next MapDetails level */
   onNextLevel?: () => void;
   nextLevelLabel?: string;
+  onReportIssue?: () => void;
+  reportIssueLabel?: string;
   resultPopupEnabled?: boolean;
   onToggleResultPopup?: () => void;
   resultPopupOnLabel?: string;
@@ -66,6 +68,8 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   multiplayerFooterNote,
   onNextLevel,
   nextLevelLabel = "Next level",
+  onReportIssue,
+  reportIssueLabel = "Report issue",
 }) => {
   if (!isOpen) return null;
   const [isWindowExpanded, setIsWindowExpanded] = React.useState(false);
@@ -320,6 +324,14 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         ) : null}
 
         <div style={styles.actions}>
+          {onReportIssue ? (
+            <button
+              onClick={onReportIssue}
+              style={{ ...styles.secondaryButton, ...styles.reportButton }}
+            >
+              {reportIssueLabel}
+            </button>
+          ) : null}
           {isWin ? (
             <>
               <button
@@ -530,7 +542,7 @@ const styles: Record<string, React.CSSProperties> = {
   actions: {
     display: "flex",
     gap: "8px",
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
     padding: "0 16px",
   },
   primaryButton: {
@@ -558,5 +570,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   returnButton: {
     boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+  },
+  reportButton: {
+    background: "#fff3e0",
+    border: "1px solid #f1d19b",
+    color: "#7c3f00",
   },
 };

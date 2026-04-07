@@ -128,18 +128,42 @@ export default function PaymentFailurePage() {
   const showDbPending = Boolean(orderIdGuid && detailLoading);
   const showDbMissing = Boolean(orderIdGuid && detailAttempted && !depositDetail);
 
-  const dateStr =
-    showDbPending ? "…" : showDbMissing ? "—" : txAt ? formatPaymentDate(txAt, locale) : formatPaymentDate(clientFallbackRef.current, locale);
-  const timeStr =
-    showDbPending ? "…" : showDbMissing ? "—" : txAt ? formatPaymentTime(txAt, locale) : formatPaymentTime(clientFallbackRef.current, locale);
+  const dateStr = showDbPending
+    ? "…"
+    : showDbMissing
+      ? "—"
+      : txAt
+        ? formatPaymentDate(txAt, locale)
+        : formatPaymentDate(clientFallbackRef.current, locale);
+  const timeStr = showDbPending
+    ? "…"
+    : showDbMissing
+      ? "—"
+      : txAt
+        ? formatPaymentTime(txAt, locale)
+        : formatPaymentTime(clientFallbackRef.current, locale);
 
   const orderIdShort =
-    orderId && orderId.length > ORDER_ID_DISPLAY_LEN ? orderId.slice(0, ORDER_ID_DISPLAY_LEN) : orderId;
+    orderId && orderId.length > ORDER_ID_DISPLAY_LEN
+      ? orderId.slice(0, ORDER_ID_DISPLAY_LEN)
+      : orderId;
 
   const statusUi = useMemo(
     () => resolvePaymentStatusUi(depositDetail?.paymentStatus, t),
     [depositDetail?.paymentStatus, t],
   );
+
+  const handleReportPaymentIssue = () => {
+    const params = new URLSearchParams({
+      prefill: `payment-failure-${orderIdGuid || orderId || Date.now()}`,
+      openCreate: "1",
+      categoryKey: "PaymentIssue",
+      subject: t("complaints.prefill.paymentFailureSubject"),
+      description: t("complaints.prefill.paymentFailureDescription"),
+    });
+    if (orderIdGuid) params.set("paymentRecordId", orderIdGuid);
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  };
 
   const copyToClipboard = async (text: string, field: "id" | "code") => {
     try {
@@ -201,7 +225,9 @@ export default function PaymentFailurePage() {
 
         {(amountVnd != null || orbitCoinDisplay != null) && (
           <div style={styles.amountRow}>
-            {amountVnd != null ? <span style={styles.amountVnd}>{formatVnd(amountVnd, locale)}</span> : null}
+            {amountVnd != null ? (
+              <span style={styles.amountVnd}>{formatVnd(amountVnd, locale)}</span>
+            ) : null}
             {orbitCoinDisplay != null ? (
               <span style={styles.ocPill}>
                 {orbitCoinDisplay.toLocaleString("en-US")} {t("paymentBonusOc")}
@@ -260,7 +286,9 @@ export default function PaymentFailurePage() {
             <div
               style={{
                 ...styles.detailRow,
-                ...(lastDetailSection === "reason" ? { borderBottom: "none", paddingBottom: 0 } : {}),
+                ...(lastDetailSection === "reason"
+                  ? { borderBottom: "none", paddingBottom: 0 }
+                  : {}),
               }}
             >
               <span style={styles.detailLabel}>{t("paymentReason")}</span>
@@ -313,15 +341,31 @@ export default function PaymentFailurePage() {
         </div>
 
         <div style={styles.actions}>
-          <button type="button" style={styles.outlineBtn} onClick={() => navigate(ROUTES.LEARNER_WALLET)}>
+          <button type="button" style={styles.outlineBtn} onClick={handleReportPaymentIssue}>
+            <AlertTriangle size={16} aria-hidden />
+            {t("complaints.actions.reportIssue")}
+          </button>
+          <button
+            type="button"
+            style={styles.outlineBtn}
+            onClick={() => navigate(ROUTES.LEARNER_WALLET)}
+          >
             <RotateCcw size={16} aria-hidden />
             {t("paymentTryTopUpAgain")}
           </button>
-          <button type="button" style={styles.outlineBtn} onClick={() => navigate(ROUTES.LEARNER_WALLET)}>
+          <button
+            type="button"
+            style={styles.outlineBtn}
+            onClick={() => navigate(ROUTES.LEARNER_WALLET)}
+          >
             <ArrowLeft size={16} aria-hidden />
             {t("paymentBackToWallet")}
           </button>
-          <button type="button" style={styles.outlineBtn} onClick={() => navigate(ROUTES.LEARNER_MARKETPLACE)}>
+          <button
+            type="button"
+            style={styles.outlineBtn}
+            onClick={() => navigate(ROUTES.LEARNER_MARKETPLACE)}
+          >
             <Store size={16} aria-hidden />
             {t("paymentGoMarketplace")}
           </button>
@@ -335,7 +379,9 @@ function parseGuidOrderId(raw: string | null): string | null {
   if (!raw?.trim()) return null;
   const s = raw.trim();
   if (
-    !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(s)
+    !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      s,
+    )
   )
     return null;
   return s;
@@ -428,7 +474,9 @@ function FailureTimelineStep({
     );
 
   const lineColor =
-    variant === "warn" ? "rgba(239, 68, 68, 0.35)" : "color-mix(in srgb, var(--border) 90%, transparent)";
+    variant === "warn"
+      ? "rgba(239, 68, 68, 0.35)"
+      : "color-mix(in srgb, var(--border) 90%, transparent)";
 
   return (
     <div style={styles.ftRow}>
@@ -732,7 +780,8 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     fontWeight: 700,
     color: "var(--text)",
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+    fontFamily:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",

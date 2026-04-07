@@ -335,6 +335,25 @@ export default function MapDetailPage() {
     }
   };
 
+  const handleReportMapPurchaseIssue = () => {
+    if (!map?.id) return;
+    const isInsufficient = purchaseModal?.kind === "insufficient";
+    const params = new URLSearchParams({
+      prefill: `map-purchase-${purchaseModal?.kind || "unknown"}-${map.id}-${Date.now()}`,
+      openCreate: "1",
+      categoryKey: isInsufficient ? "PaymentIssue" : "AccessIssue",
+      mapId: map.id,
+      subject: isInsufficient
+        ? t("complaints.prefill.paymentFailureSubject")
+        : t("complaints.prefill.mapPurchaseSubject"),
+      description: isInsufficient
+        ? t("complaints.prefill.paymentFailureDescription")
+        : t("complaints.prefill.mapPurchaseDescription"),
+    });
+
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  };
+
   const toggleTagSelection = (tagId: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((x) => x !== tagId) : [...prev, tagId],
@@ -1043,6 +1062,15 @@ export default function MapDetailPage() {
                     }}
                   >
                     {t("play")}
+                  </button>
+                )}
+                {purchaseModal.kind !== "success" && (
+                  <button
+                    type="button"
+                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                    onClick={handleReportMapPurchaseIssue}
+                  >
+                    {t("complaints.actions.reportIssue")}
                   </button>
                 )}
               </div>
