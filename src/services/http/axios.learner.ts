@@ -42,15 +42,28 @@ function doRefresh(): Promise<string> {
     })
     .then((res) => {
       refreshPromise = null;
-      const token =
-        (res.data as { data?: { accessToken?: string }; accessToken?: string })?.data
-          ?.accessToken ?? (res.data as { accessToken?: string })?.accessToken;
+      console.log("[Refresh Token] Response status:", res.status);
+      console.log("[Refresh Token] Response data:", res.data);
+      
+      // Extract token with detailed logging
+      const dataWrapper = res.data as { data?: { accessToken?: string }; accessToken?: string };
+      const token = dataWrapper?.data?.accessToken ?? dataWrapper?.accessToken;
+      
+      console.log("[Refresh Token] Extracted token:", token ? "SUCCESS" : "FAILED");
       if (!token) throw new Error("No token in refresh response");
+      
       tokenStorage.setLearnerToken(token);
+      console.log("[Refresh Token] Token saved successfully");
       return token;
     })
     .catch((err) => {
       refreshPromise = null;
+      console.error("[Refresh Token] Error:", err.message);
+      console.error("[Refresh Token] Full error:", err);
+      if (err.response) {
+        console.error("[Refresh Token] Error response status:", err.response.status);
+        console.error("[Refresh Token] Error response data:", err.response.data);
+      }
       tokenStorage.removeLearnerToken();
       if (typeof window !== "undefined") {
         window.location.href = ROUTES.LEARNER_LOGIN;
@@ -72,10 +85,13 @@ learnerAxios.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    console.log("[Response]401 Error detected for URL:", config.url);
+
     // Never retry/refresh on endpoints that should not be handled here.
     // In particular, if `/refresh-token` itself returns 401 (refresh token expired),
     // we must let `doRefresh()` handle the logout/redirect.
     if (isLoginOnlyEndpoint(config.url) || isRefreshTokenEndpoint(config.url)) {
+      console.log("[Response] 401 on login/refresh endpoint, logging out");
       notifyApiError(error);
       return Promise.reject(error);
     }
@@ -83,6 +99,7 @@ learnerAxios.interceptors.response.use(
     // Avoid infinite retry loops for the same request.
     if ((config as { _retry?: boolean })._retry) {
       // If we already tried refresh once and still got 401, treat it as an auth failure.
+      console.log("[Response] Already retried once, giving up");
       tokenStorage.removeLearnerToken();
       if (typeof window !== "undefined") {
         window.location.href = ROUTES.LEARNER_LOGIN;
@@ -92,9 +109,11 @@ learnerAxios.interceptors.response.use(
     }
     (config as { _retry?: boolean })._retry = true;
 
+    console.log("[Response] Attempting token refresh for URL:", config.url);
     return doRefresh().then((newToken) => {
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${newToken}`;
+      console.log("[Response] Token refreshed, retrying original request");
       return learnerAxios.request(config);
     });
   },
