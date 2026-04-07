@@ -24,6 +24,7 @@ import {
   MessageSquareWarning,
   SlidersHorizontal,
   Coins,
+  Tags,
 } from "lucide-react";
 
 const CmsLayout: React.FC = () => {
@@ -46,6 +47,7 @@ const CmsLayout: React.FC = () => {
     { path: "/cms/reports", label: "Reports", icon: Flag },
     { path: "/cms/packages", label: "Packages", icon: Package },
     { path: "/cms/complaints", label: "Complaints", icon: MessageSquareWarning },
+    { path: ROUTES.CMS_COMPLAINT_CATEGORIES, label: "Complaint categories", icon: Tags },
   ];
 
   const isActive = (path: string) => location.pathname === path;

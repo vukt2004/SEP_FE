@@ -1,13 +1,103 @@
 import { useEffect, useMemo, useState } from "react";
+import { isAxiosError } from "axios";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
-import type { ComplaintStatus } from "@/types/api/complaints";
+import type { ComplaintItem, ComplaintStatus } from "@/types/api/complaints";
+import type {
+  ComplaintCategoryConfigItem,
+  CreateComplaintRequest,
+} from "@/types/api/learner/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
+import { AlertToast } from "@/shared/components/AlertToast";
 import { validateCreateComplaintForm } from "@/shared/components/complaints/complaint.utils";
-import { Search, SlidersHorizontal, Ticket, Hourglass, CheckCircle2, ChevronsUpDown } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  Ticket,
+  Hourglass,
+  CheckCircle2,
+  ChevronsUpDown,
+  Upload,
+  X,
+} from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 
 const pageSize = 10;
+
+const DEFAULT_COMPLAINT_CATEGORIES = [
+  {
+    categoryKey: "PaymentIssue",
+    sortOrder: 10,
+  },
+  {
+    categoryKey: "AccessIssue",
+    sortOrder: 20,
+  },
+  {
+    categoryKey: "GameplayScoringIssue",
+    sortOrder: 30,
+  },
+  {
+    categoryKey: "RewardBalanceIssue",
+    sortOrder: 40,
+  },
+  {
+    categoryKey: "TrialIssue",
+    sortOrder: 50,
+  },
+];
+
+const CATEGORY_CONTEXT_REQUIREMENTS: Record<string, string[]> = {
+  PaymentIssue: ["paymentRecordId", "mapId", "packageId"],
+  AccessIssue: ["mapId", "packageId"],
+  GameplayScoringIssue: ["submissionId", "playHistoryId"],
+  RewardBalanceIssue: ["xpTransactionId", "orbitCoinTransactionId", "submissionId", "mapId"],
+  TrialIssue: ["mapId", "playHistoryId"],
+};
+
+function normalizeCategoryOptions(items: ComplaintCategoryConfigItem[] | null | undefined) {
+  if (!items) return [] as ComplaintCategoryConfigItem[];
+  return items
+    .filter((item) => item.isEnabled)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.displayName.localeCompare(b.displayName));
+}
+
+function hasContextValue(context: CreateComplaintRequest["context"], field: string) {
+  const raw = context[field as keyof typeof context];
+  return typeof raw === "string" && raw.trim().length > 0;
+}
+
+function trimOrUndefined(value: string) {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function getContextLabel(t: (key: string) => string, key: string) {
+  const translated = t(`complaints.contextLabel.${key}`);
+  return translated === `complaints.contextLabel.${key}` ? key : translated;
+}
+
+function getCategoryDisplayName(
+  t: (key: string) => string,
+  item: ComplaintCategoryConfigItem | null,
+) {
+  if (!item) return "";
+  const translated = t(`complaints.runtimeCategory.${item.categoryKey}.displayName`);
+  return translated === `complaints.runtimeCategory.${item.categoryKey}.displayName`
+    ? item.displayName
+    : translated;
+}
+
+function getCategoryDescription(
+  t: (key: string) => string,
+  item: ComplaintCategoryConfigItem | null,
+) {
+  if (!item) return "";
+  const translated = t(`complaints.runtimeCategory.${item.categoryKey}.description`);
+  return translated === `complaints.runtimeCategory.${item.categoryKey}.description`
+    ? item.description
+    : translated;
+}
 
 function normalizeText(value: string) {
   return value
@@ -16,29 +106,45 @@ function normalizeText(value: string) {
     .toLowerCase();
 }
 
+function formatContextDisplayValue(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.length <= 18) return trimmed;
+  const guidLike =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed);
+  if (guidLike) return `${trimmed.slice(0, 8)}...${trimmed.slice(-4)}`;
+  return `${trimmed.slice(0, 12)}...${trimmed.slice(-6)}`;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getComplaintContextSummary(t: (key: string) => string, item: ComplaintItem) {
+  const displayTitle = item.contextResolved?.displayTitle?.trim();
+  const displaySubtitle = item.contextResolved?.displaySubtitle?.trim();
+  const referenceCode = item.contextResolved?.referenceCode?.trim();
+  const parts = [displayTitle, displaySubtitle, referenceCode].filter((value): value is string =>
+    Boolean(value),
+  );
+  if (parts.length > 0) return parts.join(" • ");
+
+  if (item.contextType || item.contextId) {
+    const idSuffix = item.contextId ? ` #${item.contextId.slice(0, 8)}` : "";
+    return `${item.contextType || t("complaints.context.unresolved")}${idSuffix}`;
+  }
+
+  if (item.categoryKey) return item.categoryKey;
+  return t("complaints.context.none");
+}
+
 export default function ComplaintsPage() {
-  const commonCategories = [
-    "Bug Report",
-    "Payment/Billing",
-    "Account/Login",
-    "Feature Request",
-    "Performance",
-    "UI/UX",
-    "Other",
-  ] as const;
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState<
-    Array<{
-      id: string;
-      subject: string;
-      category: string;
-      complaintStatus: ComplaintStatus;
-      createdAt: string;
-    }>
-  >([]);
+  const [items, setItems] = useState<ComplaintItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryToken, setRetryToken] = useState(0);
@@ -46,22 +152,54 @@ export default function ComplaintsPage() {
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [createForm, setCreateForm] = useState({ subject: "", category: "", description: "" });
-  const [categoryOption, setCategoryOption] = useState<string>("");
+  const [createForm, setCreateForm] = useState<CreateComplaintRequest>({
+    subject: "",
+    categoryKey: "",
+    description: "",
+    context: {
+      paymentRecordId: "",
+      mapId: "",
+      packageId: "",
+      submissionId: "",
+      playHistoryId: "",
+      xpTransactionId: "",
+      orbitCoinTransactionId: "",
+      occurredAt: "",
+    },
+  });
+  const [categoryOptions, setCategoryOptions] = useState<ComplaintCategoryConfigItem[]>([]);
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = useState(false);
+  const [categoryOptionsError, setCategoryOptionsError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [hoveredTicketId, setHoveredTicketId] = useState<string>("");
-  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
-  const [ticketPreviewMap, setTicketPreviewMap] = useState<Record<string, { description: string }>>({});
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState<string[]>([]);
+  const [attachmentError, setAttachmentError] = useState("");
   const [keywordInput, setKeywordInput] = useState(searchParams.get("keyword") ?? "");
   const [isKeywordComposing, setIsKeywordComposing] = useState(false);
-  const [sortBy, setSortBy] = useState<"id" | "subject" | "category" | "createdAt" | "status">("createdAt");
+  const [sortBy, setSortBy] = useState<"id" | "subject" | "category" | "createdAt" | "status">(
+    "createdAt",
+  );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const pageNumber = Number(searchParams.get("pageNumber") || "1");
   const status = (searchParams.get("status") as ComplaintStatus | null) ?? "";
   const keyword = searchParams.get("keyword") ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
+
+  const fallbackCategoryOptions = useMemo<ComplaintCategoryConfigItem[]>(
+    () =>
+      DEFAULT_COMPLAINT_CATEGORIES.map((item) => ({
+        categoryKey: item.categoryKey,
+        displayName: t(`complaints.runtimeCategory.${item.categoryKey}.displayName`),
+        description: t(`complaints.runtimeCategory.${item.categoryKey}.description`),
+        isEnabled: true,
+        sortOrder: item.sortOrder,
+        requiredAnyContextFields: CATEGORY_CONTEXT_REQUIREMENTS[item.categoryKey] ?? [],
+        allowManualContextInput: false,
+      })),
+    [t],
+  );
 
   useEffect(() => {
     setKeywordInput(keyword);
@@ -80,6 +218,84 @@ export default function ComplaintsPage() {
     const id = window.setTimeout(() => setCreateSuccess(""), 2800);
     return () => window.clearTimeout(id);
   }, [createSuccess]);
+
+  useEffect(() => {
+    const prefillToken = searchParams.get("prefill") || "";
+    if (!prefillToken) return;
+
+    const prefillCategoryKey = searchParams.get("categoryKey") || "";
+    const prefillSubject = searchParams.get("subject") || "";
+    const prefillDescription = searchParams.get("description") || "";
+    const prefillOpenCreate = searchParams.get("openCreate") === "1";
+
+    const prefillContext = {
+      paymentRecordId: searchParams.get("paymentRecordId") || "",
+      mapId: searchParams.get("mapId") || "",
+      packageId: searchParams.get("packageId") || "",
+      submissionId: searchParams.get("submissionId") || "",
+      playHistoryId: searchParams.get("playHistoryId") || "",
+      xpTransactionId: searchParams.get("xpTransactionId") || "",
+      orbitCoinTransactionId: searchParams.get("orbitCoinTransactionId") || "",
+      occurredAt: searchParams.get("occurredAt") || "",
+    };
+
+    setCreateForm((prev) => ({
+      subject: prefillSubject || prev.subject,
+      categoryKey: prefillCategoryKey || prev.categoryKey,
+      description: prefillDescription || prev.description,
+      context: {
+        paymentRecordId: prefillContext.paymentRecordId || prev.context.paymentRecordId || "",
+        mapId: prefillContext.mapId || prev.context.mapId || "",
+        packageId: prefillContext.packageId || prev.context.packageId || "",
+        submissionId: prefillContext.submissionId || prev.context.submissionId || "",
+        playHistoryId: prefillContext.playHistoryId || prev.context.playHistoryId || "",
+        xpTransactionId: prefillContext.xpTransactionId || prev.context.xpTransactionId || "",
+        orbitCoinTransactionId:
+          prefillContext.orbitCoinTransactionId || prev.context.orbitCoinTransactionId || "",
+        occurredAt: prefillContext.occurredAt || prev.context.occurredAt || "",
+      },
+    }));
+
+    if (prefillOpenCreate) setShowCreateForm(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const previewUrls = attachments.map((file) => URL.createObjectURL(file));
+    setAttachmentPreviewUrls(previewUrls);
+    return () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [attachments]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCategoryOptions() {
+      try {
+        setCategoryOptionsLoading(true);
+        setCategoryOptionsError("");
+
+        const learnerResult = await learnerComplaintsApi.getCategoryConfigs().catch(() => null);
+        const learnerItems = normalizeCategoryOptions(learnerResult?.data?.data);
+        if (learnerItems.length > 0) {
+          if (mounted) setCategoryOptions(learnerItems);
+          return;
+        }
+
+        if (mounted) {
+          setCategoryOptions(fallbackCategoryOptions);
+          setCategoryOptionsError(t("complaints.category.fallbackMessage"));
+        }
+      } finally {
+        if (mounted) setCategoryOptionsLoading(false);
+      }
+    }
+
+    loadCategoryOptions();
+    return () => {
+      mounted = false;
+    };
+  }, [fallbackCategoryOptions, t]);
 
   useEffect(() => {
     let mounted = true;
@@ -127,7 +343,17 @@ export default function ComplaintsPage() {
       if (dateFrom && new Date(item.createdAt) < new Date(dateFrom)) return false;
       if (dateTo && new Date(item.createdAt) > new Date(`${dateTo}T23:59:59`)) return false;
       if (keywordNorm) {
-        const haystack = normalizeText([item.subject, item.category].join(" "));
+        const haystack = normalizeText(
+          [
+            item.subject,
+            item.category,
+            item.categoryKey,
+            item.contextType || "",
+            item.contextResolved?.displayTitle || "",
+            item.contextResolved?.displaySubtitle || "",
+            item.contextResolved?.referenceCode || "",
+          ].join(" "),
+        );
         if (!haystack.includes(keywordNorm)) return false;
       }
       return true;
@@ -135,7 +361,10 @@ export default function ComplaintsPage() {
   }, [dateFrom, dateTo, items, keyword, status]);
 
   const pendingCount = useMemo(
-    () => filteredItems.filter((x) => x.complaintStatus === "Open" || x.complaintStatus === "InProgress").length,
+    () =>
+      filteredItems.filter(
+        (x) => x.complaintStatus === "Open" || x.complaintStatus === "InProgress",
+      ).length,
     [filteredItems],
   );
   const solvedCount = useMemo(
@@ -175,33 +404,125 @@ export default function ComplaintsPage() {
     () => sortedItems.slice((pageNumber - 1) * pageSize, pageNumber * pageSize),
     [pageNumber, sortedItems],
   );
-  const empty = useMemo(() => !loading && !error && pagedItems.length === 0, [error, loading, pagedItems.length]);
-  const hoveredTicket = useMemo(
-    () => pagedItems.find((item) => item.id === hoveredTicketId) ?? null,
-    [hoveredTicketId, pagedItems],
+  const empty = useMemo(
+    () => !loading && !error && pagedItems.length === 0,
+    [error, loading, pagedItems.length],
+  );
+  const activeCategory = useMemo(
+    () => categoryOptions.find((item) => item.categoryKey === createForm.categoryKey) ?? null,
+    [categoryOptions, createForm.categoryKey],
   );
 
-  useEffect(() => {
-    if (!hoveredTicketId || ticketPreviewMap[hoveredTicketId]) return;
-    let ignore = false;
-    async function hydrateTicketPreview() {
-      try {
-        const res = await learnerComplaintsApi.getComplaintById(hoveredTicketId);
-        const detail = res.data.data;
-        if (!res.data.isSuccess || !detail || ignore) return;
-        setTicketPreviewMap((prev) => ({
-          ...prev,
-          [hoveredTicketId]: { description: detail.description || "" },
-        }));
-      } catch {
-        // ignore preview errors
-      }
+  const requiredAnyContextFields = useMemo(
+    () =>
+      activeCategory?.requiredAnyContextFields ??
+      CATEGORY_CONTEXT_REQUIREMENTS[createForm.categoryKey] ??
+      [],
+    [activeCategory?.requiredAnyContextFields, createForm.categoryKey],
+  );
+
+  const allowManualContextInput = useMemo(
+    () => activeCategory?.allowManualContextInput ?? false,
+    [activeCategory?.allowManualContextInput],
+  );
+
+  const hasAnyRequiredContextValue = useMemo(
+    () => requiredAnyContextFields.some((field) => hasContextValue(createForm.context, field)),
+    [createForm.context, requiredAnyContextFields],
+  );
+
+  const prefilledContextEntries = useMemo(
+    () =>
+      requiredAnyContextFields
+        .map((field) => ({
+          field,
+          value: (createForm.context[field as keyof typeof createForm.context] as string) ?? "",
+        }))
+        .filter((item) => item.value.trim().length > 0),
+    [createForm.context, requiredAnyContextFields],
+  );
+
+  const showOccurredAtInput = useMemo(
+    () => allowManualContextInput || prefilledContextEntries.length > 0,
+    [allowManualContextInput, prefilledContextEntries.length],
+  );
+
+  const detailsStepDone = useMemo(
+    () => createForm.subject.trim().length > 0 && createForm.categoryKey.trim().length > 0,
+    [createForm.categoryKey, createForm.subject],
+  );
+
+  const descriptionStepDone = useMemo(
+    () => createForm.description.trim().length >= 20,
+    [createForm.description],
+  );
+
+  const contextStepDone = useMemo(() => {
+    if (requiredAnyContextFields.length === 0) return true;
+    if (allowManualContextInput) return true;
+    return hasAnyRequiredContextValue;
+  }, [allowManualContextInput, hasAnyRequiredContextValue, requiredAnyContextFields.length]);
+
+  const submitReady = detailsStepDone && descriptionStepDone && contextStepDone;
+  const createButtonDisabled =
+    creating || !submitReady || !!attachmentError || categoryOptionsLoading;
+
+  const missingFieldLabels = useMemo(() => {
+    const missing: string[] = [];
+
+    if (!createForm.subject.trim()) missing.push(t("complaints.subject"));
+    if (!createForm.categoryKey.trim()) missing.push(t("complaints.category"));
+    if (!createForm.description.trim()) {
+      missing.push(t("complaints.description"));
+    } else if (createForm.description.trim().length < 20) {
+      missing.push(t("complaints.progress.descriptionTooShort"));
     }
-    hydrateTicketPreview();
-    return () => {
-      ignore = true;
-    };
-  }, [hoveredTicketId, ticketPreviewMap]);
+
+    if (requiredAnyContextFields.length > 0 && !contextStepDone) {
+      missing.push(...requiredAnyContextFields.map((field) => getContextLabel(t, field)));
+    }
+
+    return missing;
+  }, [
+    contextStepDone,
+    createForm.categoryKey,
+    createForm.description,
+    createForm.subject,
+    requiredAnyContextFields,
+    t,
+  ]);
+
+  const submitHelperText = useMemo(() => {
+    if (creating) return t("complaints.progress.submitting");
+    if (submitReady) return t("complaints.progress.ready");
+    if (missingFieldLabels.length === 0) return t("complaints.progress.notReady");
+    return t("complaints.progress.missingFields").replace(
+      "{fields}",
+      missingFieldLabels.join(", "),
+    );
+  }, [creating, missingFieldLabels, submitReady, t]);
+
+  function handleAttachmentChange(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const nextFiles = Array.from(fileList);
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    nextFiles.forEach((file) => {
+      const isAllowedType = /^image\/(png|jpe?g|gif|webp)$/i.test(file.type);
+      const isAllowedSize = file.size <= 5 * 1024 * 1024;
+      if (isAllowedType && isAllowedSize) {
+        accepted.push(file);
+      } else {
+        rejected.push(file.name);
+      }
+    });
+    setAttachments((prev) => [...prev, ...accepted].slice(0, 5));
+    setAttachmentError(
+      rejected.length > 0
+        ? t("complaints.attachments.invalidFiles").replace("{count}", String(rejected.length))
+        : "",
+    );
+  }
 
   function updateQuery(key: string, value: string) {
     setSearchParams((p) => {
@@ -237,45 +558,228 @@ export default function ComplaintsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const errors = validateCreateComplaintForm(createForm);
+    const errors = validateCreateComplaintForm(
+      {
+        ...createForm,
+        requiredAnyContextFields,
+      },
+      {
+        subjectRequired: t("complaints.validation.subjectRequired"),
+        subjectMax: (limit) =>
+          t("complaints.validation.subjectMax").replace("{limit}", String(limit)),
+        categoryRequired: t("complaints.validation.categoryRequired"),
+        categoryKeyMax: (limit) =>
+          t("complaints.validation.categoryKeyMax").replace("{limit}", String(limit)),
+        descriptionRequired: t("complaints.validation.descriptionRequired"),
+        descriptionMax: (limit) =>
+          t("complaints.validation.descriptionMax").replace("{limit}", String(limit)),
+        contextRequiredAny: (labels) =>
+          t("complaints.validation.contextRequiredAny").replace(
+            "{fields}",
+            labels.map((field) => getContextLabel(t, field)).join(", "),
+          ),
+      },
+    );
     setFieldErrors(errors);
     setCreateError("");
     setCreateSuccess("");
     if (Object.keys(errors).length > 0) return;
     try {
       setCreating(true);
-      const res = await learnerComplaintsApi.createComplaint(createForm);
+      const payload: CreateComplaintRequest = {
+        subject: createForm.subject.trim(),
+        categoryKey: createForm.categoryKey,
+        description: createForm.description.trim(),
+        context: {
+          paymentRecordId: trimOrUndefined(createForm.context.paymentRecordId || ""),
+          mapId: trimOrUndefined(createForm.context.mapId || ""),
+          packageId: trimOrUndefined(createForm.context.packageId || ""),
+          submissionId: trimOrUndefined(createForm.context.submissionId || ""),
+          playHistoryId: trimOrUndefined(createForm.context.playHistoryId || ""),
+          xpTransactionId: trimOrUndefined(createForm.context.xpTransactionId || ""),
+          orbitCoinTransactionId: trimOrUndefined(createForm.context.orbitCoinTransactionId || ""),
+          occurredAt: createForm.context.occurredAt
+            ? new Date(createForm.context.occurredAt).toISOString()
+            : undefined,
+        },
+        attachments,
+      };
+      const res = await learnerComplaintsApi.createComplaint(payload);
       if (!res.data.isSuccess) {
         setCreateError(res.data.message || t("complaints.failedCreate"));
         return;
       }
-      setCreateForm({ subject: "", category: "", description: "" });
-      setCategoryOption("");
+      setCreateForm({
+        subject: "",
+        categoryKey: "",
+        description: "",
+        context: {
+          paymentRecordId: "",
+          mapId: "",
+          packageId: "",
+          submissionId: "",
+          playHistoryId: "",
+          xpTransactionId: "",
+          orbitCoinTransactionId: "",
+          occurredAt: "",
+        },
+      });
+      setAttachments([]);
+      setAttachmentError("");
       setCreateSuccess(res.data.message || t("complaints.createSuccess"));
       setRetryToken((x) => x + 1);
-    } catch {
-      setCreateError(t("complaints.failedCreate"));
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const messageFromApi = (err.response?.data as { message?: string } | undefined)?.message;
+        setCreateError(messageFromApi || err.message || t("complaints.failedCreate"));
+      } else {
+        setCreateError(t("complaints.failedCreate"));
+      }
     } finally {
       setCreating(false);
     }
   }
 
+  const createUi = {
+    panel: {
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      padding: 0,
+      overflow: "hidden",
+      background:
+        "linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, white 6%) 0%, var(--surface) 100%)",
+      boxShadow: "0 10px 24px rgba(2, 6, 23, 0.08)",
+    },
+    panelHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      padding: "14px 16px",
+      borderBottom: "1px solid var(--border)",
+      background:
+        "linear-gradient(90deg, color-mix(in srgb, var(--primary) 10%, transparent) 0%, color-mix(in srgb, var(--surface-2) 60%, transparent) 100%)",
+    },
+    panelTitleWrap: {
+      display: "grid",
+      gap: 2,
+    },
+    panelTitle: {
+      margin: 0,
+      fontWeight: 800,
+      fontSize: 18,
+      color: "var(--text)",
+    },
+    panelSubtitle: {
+      margin: 0,
+      fontSize: 13,
+      color: "var(--text-2)",
+      fontWeight: 500,
+    },
+    toggleBtn: {
+      border: "1px solid var(--border)",
+      borderRadius: 999,
+      padding: "9px 14px",
+      fontWeight: 700,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    formBody: {
+      display: "grid",
+      gap: 16,
+      padding: 16,
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+      gap: 16,
+      alignItems: "start" as const,
+    },
+    formColumn: {
+      display: "grid",
+      gap: 16,
+      alignContent: "start" as const,
+    },
+    card: {
+      border: "1px solid var(--border)",
+      borderRadius: 12,
+      padding: 14,
+      background: "color-mix(in srgb, var(--surface-2) 45%, transparent)",
+      display: "grid",
+      gap: 12,
+    },
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: 800,
+      color: "var(--text)",
+      letterSpacing: 0.1,
+    },
+    twoCol: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+      gap: 12,
+      alignItems: "start" as const,
+    },
+    field: {
+      display: "grid",
+      gap: 6,
+    },
+    label: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "var(--text)",
+    },
+    control: {
+      border: "1px solid var(--border)",
+      borderRadius: 10,
+      padding: "10px 12px",
+      background: "var(--surface)",
+      color: "var(--text)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+    },
+    helper: {
+      minHeight: 18,
+      fontSize: 13,
+      color: "var(--text-2)",
+    },
+    errorText: {
+      color: "var(--danger)",
+      fontSize: 12,
+    },
+    warningText: {
+      color: "#d97706",
+      fontSize: 12,
+    },
+    submitRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+      paddingTop: 6,
+    },
+    submitBtn: {
+      border: "none",
+      borderRadius: 12,
+      padding: "11px 18px",
+      background: "var(--primary)",
+      color: "white",
+      fontWeight: 700,
+      boxShadow: "0 10px 20px color-mix(in srgb, var(--primary) 30%, transparent)",
+    },
+  };
+
   return (
-    <div style={{ position: "relative", display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 16 }}>
       {createSuccess ? (
         <div
           style={{
-            position: "fixed",
-            top: 86,
-            right: 24,
-            zIndex: 60,
-            minWidth: 280,
-            maxWidth: 420,
             border: "1px solid rgba(34,197,94,0.35)",
             background: "var(--surface)",
             borderRadius: 12,
             padding: "10px 12px",
-            boxShadow: "0 10px 28px rgba(0,0,0,0.18)",
+            boxShadow: "0 8px 18px rgba(0,0,0,0.08)",
             display: "flex",
             alignItems: "center",
             gap: 10,
@@ -297,77 +801,130 @@ export default function ComplaintsPage() {
               fontSize: 16,
               lineHeight: 1,
             }}
-            aria-label="Close toast"
+            aria-label={t("complaints.closeToast")}
           >
             ×
           </button>
         </div>
       ) : null}
 
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          background:
-            "radial-gradient(900px 520px at 12% 12%, rgba(37,99,235,0.16), transparent 62%), radial-gradient(780px 520px at 86% 18%, rgba(249,115,22,0.12), transparent 64%), radial-gradient(680px 520px at 70% 86%, rgba(56,189,248,0.10), transparent 66%), linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, #ffffff) 0%, var(--bg) 100%)",
-          pointerEvents: "none",
-          zIndex: 0,
-          filter: "blur(0.2px)",
-        }}
-      />
-      <h1 style={{ margin: 0, position: "relative", zIndex: 1 }}>{t("complaints.mySupportTickets")}</h1>
+      {createError ? (
+        <AlertToast type="error" message={createError} onClose={() => setCreateError("")} />
+      ) : null}
+
+      <h1 style={{ margin: 0 }}>{t("complaints.mySupportTickets")}</h1>
 
       <div
         style={{
-          position: "relative",
-          zIndex: 1,
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))",
           gap: 12,
         }}
       >
-        <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(99, 102, 241, 0.12)", color: "#6366f1", display: "grid", placeItems: "center" }}>
+        <div
+          style={{
+            border: "1px solid color-mix(in srgb, #3b82f6 28%, var(--border))",
+            borderRadius: 12,
+            background:
+              "linear-gradient(140deg, color-mix(in srgb, #3b82f6 10%, var(--surface)) 0%, var(--surface) 70%)",
+            padding: 14,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(99, 102, 241, 0.12)",
+              color: "#6366f1",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
             <Ticket size={18} />
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{totalItems}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.totalTickets")}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+              {t("complaints.totalTickets")}
+            </div>
           </div>
         </div>
-        <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(245, 158, 11, 0.13)", color: "#d97706", display: "grid", placeItems: "center" }}>
+        <div
+          style={{
+            border: "1px solid color-mix(in srgb, #f59e0b 32%, var(--border))",
+            borderRadius: 12,
+            background:
+              "linear-gradient(140deg, color-mix(in srgb, #f59e0b 12%, var(--surface)) 0%, var(--surface) 70%)",
+            padding: 14,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(245, 158, 11, 0.13)",
+              color: "#d97706",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
             <Hourglass size={18} />
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{pendingCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.pendingTickets")}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+              {t("complaints.pendingTickets")}
+            </div>
           </div>
         </div>
-        <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(34, 197, 94, 0.13)", color: "#16a34a", display: "grid", placeItems: "center" }}>
+        <div
+          style={{
+            border: "1px solid color-mix(in srgb, #22c55e 28%, var(--border))",
+            borderRadius: 12,
+            background:
+              "linear-gradient(140deg, color-mix(in srgb, #22c55e 10%, var(--surface)) 0%, var(--surface) 70%)",
+            padding: 14,
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(34, 197, 94, 0.13)",
+              color: "#16a34a",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
             <CheckCircle2 size={18} />
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{solvedCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.solvedTickets")}</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+              {t("complaints.solvedTickets")}
+            </div>
           </div>
         </div>
       </div>
 
-      <section
-        style={{
-          position: "relative",
-          zIndex: 1,
-          border: "1px solid var(--border)",
-          borderRadius: 14,
-          padding: 16,
-          background: "var(--surface)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: showCreateForm ? 14 : 0 }}>
-          <h3 style={{ margin: 0 }}>{t("complaints.createTicket")}</h3>
+      <section style={createUi.panel}>
+        <div style={createUi.panelHeader}>
+          <div style={createUi.panelTitleWrap}>
+            <h3 style={createUi.panelTitle}>{t("complaints.createTicket")}</h3>
+            <p style={createUi.panelSubtitle}>{t("complaints.helpCenterDescription")}</p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -376,108 +933,382 @@ export default function ComplaintsPage() {
               setFieldErrors({});
             }}
             style={{
-              border: "none",
-              borderRadius: 10,
-              padding: "9px 14px",
-              background: showCreateForm ? "var(--bg)" : "var(--primary)",
-              color: showCreateForm ? "var(--text)" : "white",
-              fontWeight: 700,
-              cursor: "pointer",
+              ...createUi.toggleBtn,
+              background: showCreateForm ? "rgba(239, 68, 68, 0.10)" : "var(--primary)",
+              color: showCreateForm ? "#b91c1c" : "white",
+              borderColor: showCreateForm ? "rgba(239, 68, 68, 0.35)" : "var(--primary)",
             }}
           >
-            {showCreateForm ? "Close" : t("complaints.createTicket")}
+            {showCreateForm ? <X size={14} /> : null}
+            {showCreateForm ? t("complaints.close") : t("complaints.createTicket")}
           </button>
         </div>
         {showCreateForm ? (
-          <form onSubmit={handleCreate} style={{ display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-                {t("complaints.subject")}
-              </label>
-              <input
-                placeholder={t("complaints.subjectPlaceholder")}
-                value={createForm.subject}
-                onChange={(e) => setCreateForm((p) => ({ ...p, subject: e.target.value }))}
-                maxLength={200}
-                style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", background: "var(--bg)", color: "var(--text)" }}
-              />
-              {fieldErrors.subject ? <div style={{ color: "var(--danger)", fontSize: 12 }}>{fieldErrors.subject}</div> : null}
+          <form onSubmit={handleCreate} style={createUi.formBody}>
+            <div style={createUi.formGrid}>
+              <div style={createUi.formColumn}>
+                <div style={createUi.card}>
+                  <div style={createUi.cardTitle}>{t("complaints.ticketDetails")}</div>
+                  <div style={createUi.twoCol}>
+                    <div style={createUi.field}>
+                      <label style={createUi.label}>{t("complaints.subject")}</label>
+                      <input
+                        placeholder={t("complaints.subjectPlaceholder")}
+                        value={createForm.subject}
+                        onChange={(e) => setCreateForm((p) => ({ ...p, subject: e.target.value }))}
+                        maxLength={200}
+                        style={{ ...createUi.control, height: 44 }}
+                      />
+                      <div style={{ ...createUi.helper, ...createUi.errorText }}>
+                        {fieldErrors.subject || ""}
+                      </div>
+                    </div>
+
+                    <div style={createUi.field}>
+                      <label style={createUi.label}>{t("complaints.category")}</label>
+                      <select
+                        value={createForm.categoryKey}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setCreateForm((p) => ({ ...p, categoryKey: next }));
+                        }}
+                        disabled={categoryOptionsLoading}
+                        style={{ ...createUi.control, height: 44 }}
+                      >
+                        <option value="">
+                          {categoryOptionsLoading
+                            ? t("complaints.loadingCategories")
+                            : t("complaints.selectCategory")}
+                        </option>
+                        {categoryOptions.map((cat) => (
+                          <option key={cat.categoryKey} value={cat.categoryKey}>
+                            {getCategoryDisplayName(t, cat)}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ ...createUi.helper, ...createUi.errorText }}>
+                        {fieldErrors.categoryKey || ""}
+                      </div>
+                      <div
+                        style={{
+                          minHeight: categoryOptionsError ? 18 : 0,
+                          ...createUi.warningText,
+                        }}
+                      >
+                        {categoryOptionsError || ""}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={createUi.card}>
+                  <div style={createUi.cardTitle}>{t("complaints.context.title")}</div>
+                  {requiredAnyContextFields.length === 0 ? (
+                    <div style={{ ...createUi.helper, minHeight: "auto" }}>
+                      {t("complaints.context.selectCategoryHint")}
+                    </div>
+                  ) : null}
+
+                  {requiredAnyContextFields.length > 0 ? (
+                    allowManualContextInput ? (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                          gap: 10,
+                        }}
+                      >
+                        {requiredAnyContextFields.map((field) => (
+                          <div key={field} style={{ display: "grid", gap: 6 }}>
+                            <label style={{ fontSize: 12, color: "var(--text)" }}>
+                              {getContextLabel(t, field)}
+                            </label>
+                            <input
+                              value={
+                                (createForm.context[
+                                  field as keyof typeof createForm.context
+                                ] as string) ?? ""
+                              }
+                              onChange={(e) =>
+                                setCreateForm((p) => ({
+                                  ...p,
+                                  context: {
+                                    ...p.context,
+                                    [field]: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder={t("complaints.context.enterField").replace(
+                                "{field}",
+                                getContextLabel(t, field),
+                              )}
+                              style={{
+                                border: "1px solid var(--border)",
+                                borderRadius: 10,
+                                padding: "10px 12px",
+                                background: "var(--surface)",
+                                color: "var(--text)",
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {prefilledContextEntries.length > 0 ? (
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                              gap: 10,
+                            }}
+                          >
+                            {prefilledContextEntries.map((item) => (
+                              <div key={item.field} style={{ display: "grid", gap: 4 }}>
+                                <div
+                                  style={{
+                                    ...createUi.label,
+                                    color: "var(--text-2)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {getContextLabel(t, item.field)}
+                                </div>
+                                <div
+                                  style={{
+                                    ...createUi.control,
+                                    borderRadius: 10,
+                                    fontFamily:
+                                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                    fontSize: 13,
+                                  }}
+                                  title={item.value}
+                                >
+                                  {formatContextDisplayValue(item.value)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {!hasAnyRequiredContextValue ? (
+                          <div style={createUi.warningText}>
+                            {t("complaints.context.reportFromFlowHint")}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  ) : null}
+
+                  {showOccurredAtInput ? (
+                    <div style={{ ...createUi.field, maxWidth: 340 }}>
+                      <label style={createUi.label}>{t("complaints.context.occurredAt")}</label>
+                      <input
+                        type="datetime-local"
+                        value={createForm.context.occurredAt || ""}
+                        onChange={(e) =>
+                          setCreateForm((p) => ({
+                            ...p,
+                            context: {
+                              ...p.context,
+                              occurredAt: e.target.value,
+                            },
+                          }))
+                        }
+                        max={new Date().toISOString().slice(0, 16)}
+                        style={createUi.control}
+                      />
+                    </div>
+                  ) : null}
+                  {fieldErrors.context ? (
+                    <div style={createUi.errorText}>{fieldErrors.context}</div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div style={createUi.formColumn}>
+                <div style={createUi.card}>
+                  <div style={createUi.cardTitle}>{t("complaints.description")}</div>
+                  <textarea
+                    placeholder={t("complaints.descriptionPlaceholder")}
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
+                    maxLength={5000}
+                    rows={7}
+                    style={{ ...createUi.control, resize: "vertical", minHeight: 170 }}
+                  />
+                  <div style={{ ...createUi.helper, ...createUi.errorText }}>
+                    {fieldErrors.description || ""}
+                  </div>
+                </div>
+
+                <div style={createUi.card}>
+                  <div style={createUi.cardTitle}>{t("complaints.attachments.title")}</div>
+                  <label
+                    htmlFor="complaint-attachments"
+                    style={{
+                      border: "1px dashed color-mix(in srgb, var(--primary) 45%, var(--border))",
+                      borderRadius: 12,
+                      padding: "14px 12px",
+                      background: "color-mix(in srgb, var(--surface) 86%, white 14%)",
+                      display: "grid",
+                      gap: 4,
+                      textAlign: "center",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        color: "var(--primary)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Upload size={15} />
+                      {t("complaints.attachments.cta")}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      {t("complaints.attachments.rules")}
+                    </div>
+                  </label>
+                  <input
+                    id="complaint-attachments"
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    multiple
+                    onChange={(e) => {
+                      handleAttachmentChange(e.target.files);
+                      e.currentTarget.value = "";
+                    }}
+                    style={{ display: "none" }}
+                  />
+                  {attachments.length > 0 ? (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {attachments.map((file, idx) => (
+                        <div
+                          key={`${file.name}-${idx}`}
+                          style={{
+                            border: "1px solid var(--border)",
+                            borderRadius: 12,
+                            padding: 8,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            background: "var(--surface)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 10,
+                              border: "1px solid var(--border)",
+                              overflow: "hidden",
+                              flexShrink: 0,
+                              background: "var(--bg)",
+                              display: "grid",
+                              placeItems: "center",
+                            }}
+                          >
+                            {attachmentPreviewUrls[idx] ? (
+                              <img
+                                src={attachmentPreviewUrls[idx]}
+                                alt={file.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                                {t("complaints.attachments.preview")}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text)",
+                                fontWeight: 600,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {file.name}
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                              {formatFileSize(file.size)}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                            }
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 8,
+                              background: "var(--bg)",
+                              color: "var(--text)",
+                              cursor: "pointer",
+                              padding: "4px 8px",
+                              fontSize: 12,
+                            }}
+                          >
+                            {t("complaints.attachments.remove")}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      ...createUi.helper,
+                      color: attachmentError ? "var(--danger)" : "var(--text-2)",
+                      minHeight: 20,
+                    }}
+                  >
+                    {attachmentError || t("complaints.attachments.notice")}
+                  </div>
+                </div>
+
+                <div style={createUi.submitRow}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: submitReady ? "#15803d" : "var(--text-2)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {submitHelperText}
+                  </div>
+                  <button
+                    disabled={createButtonDisabled}
+                    type="submit"
+                    style={{
+                      ...createUi.submitBtn,
+                      cursor: createButtonDisabled ? "not-allowed" : "pointer",
+                      opacity: createButtonDisabled ? 0.7 : 1,
+                    }}
+                  >
+                    {creating ? t("submitting") : t("complaints.createTicket")}
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-                {t("complaints.category")}
-              </label>
-              <select
-                value={categoryOption}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setCategoryOption(next);
-                  if (next !== "Other") setCreateForm((p) => ({ ...p, category: next }));
-                  else setCreateForm((p) => ({ ...p, category: "" }));
-                }}
-                style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", background: "var(--bg)", color: "var(--text)" }}
-              >
-                <option value="">{t("complaints.selectCategory")}</option>
-                {commonCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {t(`complaints.category.${cat}`)}
-                  </option>
-                ))}
-              </select>
-              {categoryOption === "Other" ? (
-                <input
-                  placeholder={t("complaints.customCategoryPlaceholder")}
-                  value={createForm.category}
-                  onChange={(e) => setCreateForm((p) => ({ ...p, category: e.target.value }))}
-                  maxLength={50}
-                  style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", background: "var(--bg)", color: "var(--text)" }}
-                />
-              ) : null}
-              {fieldErrors.category ? <div style={{ color: "var(--danger)", fontSize: 12 }}>{fieldErrors.category}</div> : null}
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-              {t("complaints.description")}
-            </label>
-            <textarea
-              placeholder={t("complaints.descriptionPlaceholder")}
-              value={createForm.description}
-              onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
-              maxLength={5000}
-              rows={6}
-              style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", background: "var(--bg)", color: "var(--text)", resize: "vertical" }}
-            />
-            {fieldErrors.description ? <div style={{ color: "var(--danger)", fontSize: 12 }}>{fieldErrors.description}</div> : null}
-          </div>
-
-          {createError ? <div style={{ color: "var(--danger)" }}>{createError}</div> : null}
-          <div style={{ display: "flex", justifyContent: "end" }}>
-            <button
-              disabled={creating}
-              type="submit"
-              style={{ border: "none", borderRadius: 10, padding: "10px 16px", background: "var(--primary)", color: "white", fontWeight: 700, cursor: creating ? "not-allowed" : "pointer", opacity: creating ? 0.75 : 1 }}
-            >
-              {creating ? t("submitting") : t("complaints.createTicket")}
-            </button>
-          </div>
           </form>
         ) : null}
       </section>
 
       {error ? (
-        <div style={{ position: "relative", zIndex: 1, color: "var(--danger)" }}>
+        <div style={{ color: "var(--danger)" }}>
           {error} <button onClick={() => setRetryToken((x) => x + 1)}>{t("retry")}</button>
         </div>
       ) : null}
 
       <section
         style={{
-          position: "relative",
-          zIndex: 1,
           border: "1px solid var(--border)",
           borderRadius: 14,
           background: "var(--surface)",
@@ -485,7 +1316,15 @@ export default function ComplaintsPage() {
         }}
       >
         <div style={{ padding: 14, borderBottom: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "start",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <div>
               <div style={{ fontWeight: 700, fontSize: 18 }}>{t("complaints.supportTickets")}</div>
             </div>
@@ -526,7 +1365,16 @@ export default function ComplaintsPage() {
                 ))}
               </div>
               <div style={{ position: "relative" }}>
-                <Search size={15} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-2)" }} />
+                <Search
+                  size={15}
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-2)",
+                  }}
+                />
                 <input
                   placeholder={t("complaints.searchPlaceholder")}
                   value={keywordInput}
@@ -536,13 +1384,30 @@ export default function ComplaintsPage() {
                     setKeywordInput(e.currentTarget.value);
                   }}
                   onChange={(e) => setKeywordInput(e.target.value)}
-                  style={{ padding: "8px 12px 8px 32px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", minWidth: 320, width: 420, maxWidth: "52vw" }}
+                  style={{
+                    padding: "8px 12px 8px 32px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg)",
+                    minWidth: 320,
+                    width: 420,
+                    maxWidth: "52vw",
+                  }}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters((v) => !v)}
-                style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", background: showAdvancedFilters ? "rgba(59,130,246,0.12)" : "var(--bg)", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  background: showAdvancedFilters ? "rgba(59,130,246,0.12)" : "var(--bg)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                }}
               >
                 <SlidersHorizontal size={14} />
                 {t("complaints.filter.button")}
@@ -550,9 +1415,36 @@ export default function ComplaintsPage() {
             </div>
           </div>
           {showAdvancedFilters ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 8, marginTop: 10 }}>
-              <input type="date" value={dateFrom} onChange={(e) => updateQuery("dateFrom", e.target.value)} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", background: "var(--bg)" }} />
-              <input type="date" value={dateTo} onChange={(e) => updateQuery("dateTo", e.target.value)} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", background: "var(--bg)" }} />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+                gap: 8,
+                marginTop: 10,
+              }}
+            >
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => updateQuery("dateFrom", e.target.value)}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  background: "var(--bg)",
+                }}
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => updateQuery("dateTo", e.target.value)}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  background: "var(--bg)",
+                }}
+              />
             </div>
           ) : null}
         </div>
@@ -561,20 +1453,105 @@ export default function ComplaintsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-                <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("id")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", cursor: "pointer" }}>{t("complaints.table.ticketId")} <ChevronsUpDown size={13} /></button>
+                <th
+                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSort("id")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("complaints.table.ticketId")} <ChevronsUpDown size={13} />
+                  </button>
                 </th>
-                <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("subject")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", cursor: "pointer" }}>{t("complaints.table.subject")} <ChevronsUpDown size={13} /></button>
+                <th
+                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSort("subject")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("complaints.table.subject")} <ChevronsUpDown size={13} />
+                  </button>
                 </th>
-                <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("category")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", cursor: "pointer" }}>{t("complaints.table.category")} <ChevronsUpDown size={13} /></button>
+                <th
+                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSort("category")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("complaints.table.category")} <ChevronsUpDown size={13} />
+                  </button>
                 </th>
-                <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("createdAt")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", cursor: "pointer" }}>{t("complaints.table.createDate")} <ChevronsUpDown size={13} /></button>
+                <th
+                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSort("createdAt")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("complaints.table.createDate")} <ChevronsUpDown size={13} />
+                  </button>
                 </th>
-                <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("status")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", cursor: "pointer" }}>{t("complaints.table.status")} <ChevronsUpDown size={13} /></button>
+                <th
+                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSort("status")}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      color: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("complaints.table.status")} <ChevronsUpDown size={13} />
+                  </button>
                 </th>
               </tr>
             </thead>
@@ -585,11 +1562,8 @@ export default function ComplaintsPage() {
                   style={{
                     borderBottom: "1px solid var(--border)",
                     cursor: "pointer",
-                    background: hoveredTicketId === c.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent",
+                    background: "transparent",
                   }}
-                  onMouseEnter={() => setHoveredTicketId(c.id)}
-                  onMouseMove={(e) => setPreviewPos({ x: e.clientX + 16, y: e.clientY + 16 })}
-                  onMouseLeave={() => setHoveredTicketId((prev) => (prev === c.id ? "" : prev))}
                   onClick={() => navigate(`/app/complaints/${c.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -598,12 +1572,21 @@ export default function ComplaintsPage() {
                     }
                   }}
                   tabIndex={0}
-                  aria-label={`Open complaint ${c.subject}`}
+                  aria-label={t("complaints.openComplaintAria").replace("{subject}", c.subject)}
                 >
                   <td style={{ padding: 12, fontWeight: 700 }}>#{c.id.slice(0, 8)}</td>
                   <td style={{ padding: 12 }}>{c.subject}</td>
-                  <td style={{ padding: 12, color: "var(--text-2)" }}>{c.category}</td>
-                  <td style={{ padding: 12, color: "var(--text-2)" }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td style={{ padding: 12, color: "var(--text-2)" }}>
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <span>{c.category}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-2)", opacity: 0.9 }}>
+                        {getComplaintContextSummary(t, c)}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ padding: 12, color: "var(--text-2)" }}>
+                    {new Date(c.createdAt).toLocaleDateString()}
+                  </td>
                   <td style={{ padding: 12 }}>
                     <ComplaintStatusBadge status={c.complaintStatus} />
                   </td>
@@ -611,7 +1594,10 @@ export default function ComplaintsPage() {
               ))}
               {empty ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--text-2)" }}>
+                  <td
+                    colSpan={5}
+                    style={{ padding: 24, textAlign: "center", color: "var(--text-2)" }}
+                  >
                     {t("complaints.noComplaints")}
                   </td>
                 </tr>
@@ -621,12 +1607,27 @@ export default function ComplaintsPage() {
         </div>
 
         {!empty ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, color: "var(--text-2)", fontSize: 13 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 10,
+              padding: 12,
+              color: "var(--text-2)",
+              fontSize: 13,
+            }}
+          >
             <span>
               {t("complaints.page")} {pageNumber} {t("of")} {totalPages}
             </span>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <button type="button" disabled={pageNumber <= 1} onClick={() => goToPage(pageNumber - 1)}>
+              <button
+                type="button"
+                disabled={pageNumber <= 1}
+                onClick={() => goToPage(pageNumber - 1)}
+              >
                 {t("previous")}
               </button>
               {getPaginationItems(pageNumber, totalPages).map((item, idx) =>
@@ -651,43 +1652,17 @@ export default function ComplaintsPage() {
                   </button>
                 ),
               )}
-              <button type="button" disabled={pageNumber >= totalPages} onClick={() => goToPage(pageNumber + 1)}>
+              <button
+                type="button"
+                disabled={pageNumber >= totalPages}
+                onClick={() => goToPage(pageNumber + 1)}
+              >
                 {t("next")}
               </button>
             </div>
           </div>
         ) : null}
       </section>
-      {hoveredTicket ? (
-        <div
-          style={{
-            position: "fixed",
-            left: previewPos.x,
-            top: previewPos.y,
-            zIndex: 80,
-            pointerEvents: "none",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: "10px 12px",
-            background: "var(--surface)",
-            boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
-            display: "grid",
-            gap: 4,
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "var(--text-2)" }}>Quick preview</div>
-          <div style={{ fontWeight: 700 }}>
-            {hoveredTicket.category} • {hoveredTicket.id.replace(/-/g, "").slice(0, 5)}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {ticketPreviewMap[hoveredTicket.id]?.description || "Loading description..."}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-2)" }}>
-            {new Date(hoveredTicket.createdAt).toLocaleString()}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

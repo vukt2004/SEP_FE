@@ -84,6 +84,7 @@ export default function PlatformGameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
+  const [lastSubmissionId, setLastSubmissionId] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
@@ -158,6 +159,25 @@ export default function PlatformGameView() {
     }
     navigate(campaignLevels.length <= 1 ? mapDetailPath : levelSelectPath);
   }, [campaignLevels.length, levelSelectPath, mapDetailPath, multiplayerRoomId, navigate]);
+
+  const handleReportXpIssue = useCallback(() => {
+    if (!levelId) return;
+    const params = new URLSearchParams({
+      prefill: `xp-issue-${lastSubmissionId || Date.now()}`,
+      openCreate: "1",
+      categoryKey: "RewardBalanceIssue",
+      mapId: levelId,
+      subject: t("complaints.prefill.xpIssueSubject"),
+      description: t("complaints.prefill.xpIssueDescription"),
+    });
+    if (playMapDetailIdRef.current) {
+      params.set("mapDetailId", playMapDetailIdRef.current);
+    }
+    if (lastSubmissionId) {
+      params.set("submissionId", lastSubmissionId);
+    }
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  }, [lastSubmissionId, levelId, navigate, t]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -686,6 +706,7 @@ export default function PlatformGameView() {
     setShowExecutionIncompleteModal(false);
     setShowTrapFailedModal(false);
     setGameResult(null);
+    setLastSubmissionId(null);
     setExecVariables({});
     setLastRemoved(null);
     setLiveSteps(0);
@@ -724,6 +745,7 @@ export default function PlatformGameView() {
     setShowTrapFailedModal(false);
     if (!preserveResult) {
       setGameResult(null);
+      setLastSubmissionId(null);
     }
     setExecVariables({});
     setLastRemoved(null);
@@ -1053,7 +1075,7 @@ export default function PlatformGameView() {
           ? await learnerProfileApi.getMyXpProfile().catch(() => null)
           : null;
         const program = generateAST(workspaceRef.current);
-        await learnerGameplayApi.validateSolution({
+        const validateRes = await learnerGameplayApi.validateSolution({
           mapId: levelId,
           mapDetailId: playMapDetailIdRef.current ?? undefined,
           language: "Blockly",
@@ -1064,6 +1086,9 @@ export default function PlatformGameView() {
           clientBlocksUsed: gameResult.blocksUsed,
           clientElapsedSeconds: gameResult.elapsedTime,
         });
+        if (validateRes.isSuccess && validateRes.data?.submissionId) {
+          setLastSubmissionId(validateRes.data.submissionId);
+        }
         if (gameResult.isWin) {
           const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
           const beforeXp = before?.data?.currentXp ?? null;
@@ -1899,6 +1924,8 @@ export default function PlatformGameView() {
           onBackToMenu={handleBackToMapFlow}
           onMinimize={handleMinimizeResults}
           onClose={handleCloseResults}
+          onReportIssue={gameResult.isWin ? handleReportXpIssue : undefined}
+          reportIssueLabel={t("complaints.actions.reportIssue")}
           resultPopupEnabled={showResultPopup}
           onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
           resultPopupOnLabel={t("gameResultPopupOn")}
