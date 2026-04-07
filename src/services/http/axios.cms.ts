@@ -3,6 +3,7 @@ import { axiosBase } from "./axios.base";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
 import { ROUTES } from "@/lib/constants/routes";
 import type { AuthResponseResult } from "@/types/api/cms/auth";
+import { notifyApiError, notifyApiSuccess } from "@/services/http/apiToast";
 
 export const cmsAxios = axiosBase.create();
 
@@ -59,18 +60,24 @@ function doRefresh(): Promise<string> {
 }
 
 cmsAxios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    notifyApiSuccess(response);
+    return response;
+  },
   (error: AxiosError) => {
     const config = error.config;
     if (!config || !error.response || error.response.status !== 401) {
+      notifyApiError(error);
       return Promise.reject(error);
     }
     if (isLoginOnlyEndpoint(config.url)) {
+      notifyApiError(error);
       return Promise.reject(error);
     }
 
     // Never retry/refresh on `/refresh-token` itself.
     if (isRefreshTokenEndpoint(config.url)) {
+      notifyApiError(error);
       return Promise.reject(error);
     }
 
@@ -80,6 +87,7 @@ cmsAxios.interceptors.response.use(
       if (typeof window !== "undefined") {
         window.location.href = ROUTES.CMS_LOGIN;
       }
+      notifyApiError(error);
       return Promise.reject(error);
     }
     (config as { _retry?: boolean })._retry = true;
