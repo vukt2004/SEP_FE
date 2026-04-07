@@ -3,6 +3,7 @@ import { axiosBase } from "./axios.base";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
 import { ROUTES } from "@/lib/constants/routes";
 import type { AuthResponseResult } from "@/types/api/learner/auth";
+import { notifyApiError, notifyApiSuccess } from "@/services/http/apiToast";
 
 export const learnerAxios = axiosBase.create();
 
@@ -58,10 +59,14 @@ function doRefresh(): Promise<string> {
 }
 
 learnerAxios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    notifyApiSuccess(response);
+    return response;
+  },
   (error: AxiosError) => {
     const config = error.config;
     if (!config || !error.response || error.response.status !== 401) {
+      notifyApiError(error);
       return Promise.reject(error);
     }
 
@@ -69,6 +74,7 @@ learnerAxios.interceptors.response.use(
     // In particular, if `/refresh-token` itself returns 401 (refresh token expired),
     // we must let `doRefresh()` handle the logout/redirect.
     if (isLoginOnlyEndpoint(config.url) || isRefreshTokenEndpoint(config.url)) {
+      notifyApiError(error);
       return Promise.reject(error);
     }
 
@@ -79,6 +85,7 @@ learnerAxios.interceptors.response.use(
       if (typeof window !== "undefined") {
         window.location.href = ROUTES.LEARNER_LOGIN;
       }
+      notifyApiError(error);
       return Promise.reject(error);
     }
     (config as { _retry?: boolean })._retry = true;

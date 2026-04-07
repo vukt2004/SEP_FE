@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import type { CSSProperties } from "react";
 
 export type AlertToastType = "success" | "warning" | "error";
 
@@ -6,6 +7,7 @@ export function AlertToast(props: {
   type?: AlertToastType;
   message: string;
   onClose: () => void;
+  style?: CSSProperties;
 }) {
   const type = props.type ?? "success";
 
@@ -38,6 +40,7 @@ export function AlertToast(props: {
     <div
       role="status"
       aria-live="polite"
+      style={props.style}
       className={[
         "fixed right-6 top-[86px] z-[60] flex min-w-[280px] max-w-[420px] items-center gap-3 rounded-xl border px-3 py-2 shadow-xl",
         tone.border,
