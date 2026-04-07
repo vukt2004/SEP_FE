@@ -176,7 +176,8 @@ export default function MapLevelSelectPage() {
     if (!state || state.isLocked) return;
 
     const type = (level.type ?? "").trim().toLowerCase();
-    const target = type === "platform" ? ROUTES.PLATFORM : ROUTES.GAME;
+    const target =
+      type === "platform" ? ROUTES.PLATFORM : type === "snake" ? ROUTES.SNAKE : ROUTES.GAME;
 
     navigate(target, {
       state: {

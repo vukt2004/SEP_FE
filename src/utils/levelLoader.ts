@@ -59,10 +59,34 @@ function parseLevelsFromPayload(mapDetail: unknown): MapLevelItem[] {
   return out.sort((a, b) => a.levelOrder - b.levelOrder);
 }
 
-/** "Topdown" | "Platform" (any casing) → MapConfig engine type */
-function apiTypeToMapConfigType(apiType: string | undefined): "platform" | "topdown" {
+/** "Topdown" | "Platform" | "Snake" (any casing) → MapConfig engine type */
+function apiTypeToMapConfigType(apiType: string | undefined): "platform" | "topdown" | "snake" {
   const s = (apiType ?? "").trim().toLowerCase();
+  if (s === "snake") return "snake";
   return s === "platform" ? "platform" : "topdown";
+}
+
+function inferSnakeFromLevelData(levelData: unknown): boolean {
+  if (!levelData || typeof levelData !== "object") {
+    return false;
+  }
+
+  const ld = levelData as Record<string, unknown>;
+  const configType =
+    ld.config && typeof ld.config === "object"
+      ? (ld.config as Record<string, unknown>).type
+      : undefined;
+
+  if (typeof configType === "string" && configType.trim().toLowerCase() === "snake") {
+    return true;
+  }
+
+  const levelId = typeof ld.id === "string" ? ld.id.trim().toLowerCase() : "";
+  if (levelId.includes("snake")) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -78,6 +102,7 @@ export function getFirstMapDetailIdFromPayload(mapDetail: unknown): string | und
  */
 export function getFirstLevelPlayHint(mapDetail: unknown): {
   mapDetailId?: string;
+  mapType: "platform" | "topdown" | "snake";
   isPlatform: boolean;
   winCondition?: number;
   timeLimitMs?: number;
@@ -86,21 +111,29 @@ export function getFirstLevelPlayHint(mapDetail: unknown): {
   const first = levels[0];
   const md = mapDetail as Record<string, unknown>;
   const rootType = md.type ?? md.Type;
-  const fromLevel = (() => {
+  const fromLevelType = (() => {
     const t = first?.type;
     if (t == null || t === "") return undefined;
     const s = String(t).trim().toLowerCase();
-    if (s === "platform") return true;
-    if (s === "topdown") return false;
+    if (s === "platform") return "platform" as const;
+    if (s === "topdown") return "topdown" as const;
+    if (s === "snake") return "snake" as const;
     return undefined;
   })();
-  const fromRoot = rootType === "Platform" || rootType === "platform" ? true : rootType === "Topdown" || rootType === "topdown" ? false : undefined;
-  const isPlatform = fromLevel !== undefined ? fromLevel : fromRoot !== undefined ? fromRoot : false;
+  const fromRootType = (() => {
+    const s = typeof rootType === "string" ? rootType.trim().toLowerCase() : "";
+    if (s === "platform") return "platform" as const;
+    if (s === "topdown") return "topdown" as const;
+    if (s === "snake") return "snake" as const;
+    return undefined;
+  })();
+  const mapType = fromLevelType ?? fromRootType ?? "topdown";
+  const isPlatform = mapType === "platform";
   const winCondition =
     typeof first?.winCondition === "number" ? first.winCondition : num(md.winCondition);
   const timeLimitMs =
     typeof first?.timeLimitMs === "number" ? first.timeLimitMs : num(md.timeLimitMs);
-  return { mapDetailId: first?.id, isPlatform, winCondition, timeLimitMs };
+  return { mapDetailId: first?.id, mapType, isPlatform, winCondition, timeLimitMs };
 }
 
 function pickLevel(
@@ -164,7 +197,7 @@ export async function loadLevelFromAPI(
     }
 
     const mapDetail = response.data.data;
-    const md = mapDetail as Record<string, unknown>;
+    const md = mapDetail as unknown as Record<string, unknown>;
     const levels = parseLevelsFromPayload(mapDetail);
     const mapDetailJson =
       "mapDetailJson" in mapDetail && mapDetail.mapDetailJson != null
@@ -194,7 +227,8 @@ export async function loadLevelFromAPI(
 
     const typeFromApi =
       activeLevel?.type ?? (typeof md.type === "string" ? (md.type as string) : undefined) ?? "Topdown";
-    const gameType = apiTypeToMapConfigType(typeFromApi);
+    const typeFromApiNormalized = apiTypeToMapConfigType(typeFromApi);
+    const gameType = inferSnakeFromLevelData(levelData) ? "snake" : typeFromApiNormalized;
 
     const timeLimitMsResolved =
       (typeof activeLevel?.timeLimitMs === "number" ? activeLevel.timeLimitMs : undefined) ??
@@ -262,6 +296,7 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
       mapConfig = data.config;
     } else if (data.metadata || (data.width && data.height)) {
       mapConfig = {
+        type: inferSnakeFromLevelData(data) ? "snake" : undefined,
         timeStarThresholdPercent: data.metadata?.timeStarThresholdPercent,
         estimatedSteps: data.metadata?.estimatedSteps,
         levelObjective: data.metadata?.levelObjective,
@@ -269,6 +304,10 @@ export async function loadLevelFromMockData(levelId: string): Promise<LevelLoadR
         width: data.width,
         height: data.height,
       };
+    }
+
+    if (mapConfig && !mapConfig.type && inferSnakeFromLevelData(data)) {
+      mapConfig.type = "snake";
     }
 
     return {

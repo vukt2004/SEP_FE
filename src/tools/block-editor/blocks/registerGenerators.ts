@@ -203,6 +203,13 @@ function convertBlockToAST(block: Blockly.Block): ASTNode | null {
         blockId,
       };
 
+    case "body_ahead":
+      return {
+        type: "condition",
+        conditionType: "bodyAhead",
+        blockId,
+      };
+
     case "fruit_collected":
       return {
         type: "condition",

@@ -141,8 +141,25 @@ export default function PlatformGameView() {
 
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
-    const isPlatform = mapConfig?.type === "platform";
-    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+    
+    // Close the game result modal and clear results
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+    
+    const nextLevelTypeRaw = (
+      campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
+    )
+      .trim()
+      .toLowerCase();
+    const nextRoute =
+      nextLevelTypeRaw === "platform"
+        ? ROUTES.PLATFORM
+        : nextLevelTypeRaw === "snake"
+          ? ROUTES.SNAKE
+          : ROUTES.GAME;
+
+    navigate(nextRoute, {
       replace: true,
       state: {
         levelId,
@@ -150,7 +167,7 @@ export default function PlatformGameView() {
         multiplayerRoomId,
       },
     });
-  }, [levelId, nextCampaignLevelId, mapConfig?.type, multiplayerRoomId, navigate]);
+  }, [levelId, nextCampaignLevelId, campaignLevels, multiplayerRoomId, navigate]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
@@ -287,6 +304,18 @@ export default function PlatformGameView() {
 
         if (levelId && levelResult.mapConfig?.type === "topdown") {
           navigate(ROUTES.GAME, {
+            replace: true,
+            state: {
+              levelId,
+              mapDetailId: mapDetailIdFromState,
+              multiplayerRoomId,
+            },
+          });
+          return;
+        }
+
+        if (levelId && levelResult.mapConfig?.type === "snake") {
+          navigate(ROUTES.SNAKE, {
             replace: true,
             state: {
               levelId,
@@ -571,6 +600,8 @@ export default function PlatformGameView() {
             return engine.isEnemyAhead();
           case "trapAhead":
             return engine.isTrapAhead();
+          case "bodyAhead":
+            return false;
           case "fruitCollected":
             if (fruitCollectedPulseRef.current) {
               fruitCollectedPulseRef.current = false;

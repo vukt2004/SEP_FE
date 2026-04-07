@@ -93,7 +93,7 @@ export interface Map {
   title: string;
   description: string;
   difficulty: number;
-  type: "Topdown" | "Platform";
+  type: "Topdown" | "Platform" | "Snake";
   timeLimitMs: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
@@ -229,7 +229,7 @@ export interface MapDetail {
   title: string;
   description: string;
   /** Map-level; có thể thiếu khi BE chỉ gắn type theo từng phần tử `levels`. */
-  type?: "Topdown" | "Platform";
+  type?: "Topdown" | "Platform" | "Snake";
   difficulty: number;
   timeLimitMs?: number;
   isPublished: boolean;
@@ -266,7 +266,7 @@ export interface MapInfo {
   title: string;
   description: string;
   difficulty: number;
-  type: "Topdown" | "Platform";
+  type: "Topdown" | "Platform" | "Snake";
   timeLimitMs: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;

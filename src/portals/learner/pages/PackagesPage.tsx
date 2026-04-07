@@ -100,7 +100,6 @@ export default function PackagesPage() {
 
   const handleReportPackagePurchaseIssue = () => {
     if (!lastFailedPackage?.id || !purchaseModal) return;
-    const isInsufficient = purchaseModal.kind === "insufficient";
     const params = new URLSearchParams({
       prefill: `package-purchase-${purchaseModal.kind}-${lastFailedPackage.id}-${Date.now()}`,
       openCreate: "1",

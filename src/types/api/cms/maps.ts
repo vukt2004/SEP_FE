@@ -36,7 +36,7 @@ export interface MapListItem {
   title: string;
   description: string;
   difficulty: number;
-  type: "Topdown" | "Platform";
+  type: "Topdown" | "Platform" | "Snake";
   timeLimitMs: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
@@ -122,7 +122,7 @@ export interface MapDetail {
   id: string;
   title: string;
   description: string;
-  type?: "Topdown" | "Platform";
+  type?: "Topdown" | "Platform" | "Snake";
   difficulty: number;
   timeLimitMs?: number;
   isPublished: boolean;

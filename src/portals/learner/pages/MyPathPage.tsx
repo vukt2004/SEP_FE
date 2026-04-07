@@ -267,7 +267,7 @@ export default function MyPathPage() {
                         return;
                       }
                       if (!isConcept(nextItem) && nextItem.mapId) {
-                        navigate(ROUTES.PLATFORM, { state: { levelId: nextItem.mapId } });
+                        navigate(ROUTES.GAME, { state: { levelId: nextItem.mapId } });
                       }
                     }}
                   >
@@ -389,7 +389,7 @@ export default function MyPathPage() {
                                     return;
                                   }
                                   if (!concept && item.mapId) {
-                                    navigate(ROUTES.PLATFORM, { state: { levelId: item.mapId } });
+                                    navigate(ROUTES.GAME, { state: { levelId: item.mapId } });
                                   }
                                 }}
                               >

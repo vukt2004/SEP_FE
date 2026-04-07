@@ -182,12 +182,18 @@ export default function RoomDetailPage() {
               .then((res) => {
                 const map = res.data?.data;
                 const hint = getFirstLevelPlayHint(map);
-                navigate(hint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+                const targetRoute =
+                  hint.mapType === "platform"
+                    ? ROUTES.PLATFORM
+                    : hint.mapType === "snake"
+                      ? ROUTES.SNAKE
+                      : ROUTES.GAME;
+                navigate(targetRoute, {
                   state: lobbyPlayNavigationState(mapId, roomIdForState, map),
                 });
               })
               .catch(() => {
-                navigate(ROUTES.PLATFORM, {
+                navigate(ROUTES.GAME, {
                   state: lobbyPlayNavigationState(mapId, roomIdForState, null),
                 });
               });
@@ -271,12 +277,18 @@ export default function RoomDetailPage() {
           .then((resMap) => {
             const map = resMap.data?.data;
             const hint = getFirstLevelPlayHint(map);
-            navigate(hint.isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+            const targetRoute =
+              hint.mapType === "platform"
+                ? ROUTES.PLATFORM
+                : hint.mapType === "snake"
+                  ? ROUTES.SNAKE
+                  : ROUTES.GAME;
+            navigate(targetRoute, {
               state: lobbyPlayNavigationState(room.selectedMapId!, roomId, map),
             });
           })
           .catch(() => {
-            navigate(ROUTES.PLATFORM, {
+            navigate(ROUTES.GAME, {
               state: lobbyPlayNavigationState(room.selectedMapId!, roomId, null),
             });
           });

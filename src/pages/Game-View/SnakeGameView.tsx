@@ -1,18 +1,32 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
-import { ArrowLeft, Eraser, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { ArrowLeft, Eraser, Flag, Pause, Play, RotateCcw, Send, SkipForward } from "lucide-react";
 import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
 import { LevelType, createGameConfig } from "@/modules/engine/core/GameConfig";
-import type { LevelDefinition } from "@/modules/map-system/types";
+import type { LevelBlockConstraints, LevelDefinition } from "@/modules/map-system/types";
 import type { ExecutionResult } from "@/modules/executor/commands";
 import type { BlockProgram, ConditionType, PositionResolver } from "@/modules/executor/types";
 import type { EngineEvent } from "@/modules/engine/core/engineEvents";
 import { StepExecutor } from "@/modules/executor/StepExecutor";
 import { animationRegistry } from "@/modules/engine/systems/animation/animationRegistry";
 import type { AnimationDefinition } from "@/modules/engine/systems/animation/animationTypes";
+import type { MapConfig } from "@/shared/types/MapSchema";
+import type { MapLevelItem } from "@/types/api/learner/maps";
 import BlocklyWorkspace from "@/tools/block-editor/components/BlocklyWorkspace";
 import { generateAST } from "@/tools/block-editor/blocks/registerGenerators";
+import { loadLevelFromAPI } from "@/utils/levelLoader";
+import { ROUTES } from "@/lib/constants/routes";
+import { markCampaignLevelCompleted, markCampaignLevelStarted } from "@/lib/game/campaignProgress";
+import blocksConfig from "@/shared/block/blocks-config.json";
+import { useTranslation } from "@/lib/i18n/translations";
+import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
+import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
+import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
+import { AlertToast } from "@/shared/components/AlertToast";
+import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import snakeAssetRaw from "@/shared/assets/platformer/snake/object/snake.json";
 import { BlockCounter } from "./BlockCounter";
 import GameTimer from "./GameTimer";
@@ -21,6 +35,8 @@ import { LevelMissionModal } from "./LevelMissionModal";
 import { ExecutionIncompleteModal } from "./ExecutionIncompleteModal";
 import { TrapFailedModal } from "./TrapFailedModal";
 import { GameResultsModal } from "./GameResultsModal";
+import { HintModal, type GameplayHint } from "./HintModal";
+import { StatusDetailsModal } from "./StatusDetailsModal";
 
 interface CellPoint {
   row: number;
@@ -60,7 +76,24 @@ const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 
-const SNAKE_MAP_URL = "/mockdata/snakemap.json";
+const DEFAULT_SNAKE_MAP_FILE = "snakemap";
+
+type SnakeGameLocationState = {
+  levelId?: string;
+  mapDetailId?: string;
+  levelFile?: string;
+  mapUrl?: string;
+  multiplayerRoomId?: string;
+};
+
+type SnakeFailureReason = "trap" | "self";
+
+type SnakeLevelLoadResult = {
+  level: LevelDefinition;
+  mapConfig?: Partial<MapConfig>;
+  mapDetailId: string | null;
+  levels?: MapLevelItem[];
+};
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -124,13 +157,34 @@ function resolveBodySpriteKey(a: Dir, b: Dir): keyof SnakePartSet["body"] {
   return "bottomRight";
 }
 
-async function loadSnakeLevel(): Promise<LevelDefinition> {
-  const res = await fetch(SNAKE_MAP_URL);
+async function loadSnakeLevelFromMock(pathOrFile?: string): Promise<SnakeLevelLoadResult> {
+  const raw = (pathOrFile ?? DEFAULT_SNAKE_MAP_FILE).trim();
+  const resolvedUrl =
+    raw.startsWith("/")
+      ? raw
+      : raw.endsWith(".json")
+        ? `/mockdata/${raw}`
+        : `/mockdata/${raw}.json`;
+
+  const res = await fetch(resolvedUrl);
   if (!res.ok) throw new Error(`Failed to load snake map: ${res.status}`);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = (await res.json()) as any;
 
-  return {
+  const winConditionRaw =
+    typeof data?.winCondition === "number"
+      ? data.winCondition
+      : typeof data?.metadata?.winCondition === "number"
+        ? data.metadata.winCondition
+        : 1;
+  const requiredFruitsRaw =
+    typeof data?.metadata?.requiredFruits === "number" ? data.metadata.requiredFruits : undefined;
+  const requiredFruits =
+    typeof requiredFruitsRaw === "number" && Number.isFinite(requiredFruitsRaw)
+      ? Math.max(0, Math.floor(requiredFruitsRaw))
+      : undefined;
+
+  const level: LevelDefinition = {
     id: data.id as string,
     name: data.name as string,
     width: data.width as number,
@@ -146,6 +200,32 @@ async function loadSnakeLevel(): Promise<LevelDefinition> {
     objects: (data.objects ?? []) as LevelDefinition["objects"],
     metadata: data.metadata as LevelDefinition["metadata"],
   };
+
+  return {
+    level,
+    mapConfig: {
+      type: "snake",
+      winCondition: winConditionRaw === 2 ? 2 : 1,
+      ...(requiredFruits !== undefined ? { requiredFruits } : {}),
+    },
+    mapDetailId: null,
+  };
+}
+
+async function loadSnakeLevel(options: SnakeGameLocationState): Promise<SnakeLevelLoadResult> {
+  if (options.levelId) {
+    const apiLevel = await loadLevelFromAPI(options.levelId, {
+      mapDetailId: options.mapDetailId,
+    });
+    return {
+      level: apiLevel.level,
+      mapConfig: apiLevel.mapConfig,
+      mapDetailId: apiLevel.mapDetailId,
+      levels: apiLevel.levels,
+    };
+  }
+
+  return loadSnakeLevelFromMock(options.mapUrl ?? options.levelFile);
 }
 
 function cloneObjects(level: LevelDefinition): NonNullable<LevelDefinition["objects"]> {
@@ -157,7 +237,15 @@ function cloneObjects(level: LevelDefinition): NonNullable<LevelDefinition["obje
 }
 
 export default function SnakeGameView() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = (location.state ?? null) as SnakeGameLocationState | null;
+  const levelId = routeState?.levelId;
+  const mapDetailId = routeState?.mapDetailId;
+  const levelFile = routeState?.levelFile;
+  const mapUrl = routeState?.mapUrl;
+  const multiplayerRoomId = routeState?.multiplayerRoomId;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -168,6 +256,7 @@ export default function SnakeGameView() {
 
   const levelRef = useRef<LevelDefinition | null>(null);
   const initialObjectsRef = useRef<NonNullable<LevelDefinition["objects"]>>([]);
+  const baseCollisionRef = useRef<boolean[][]>([]);
   const snakeSegmentsRef = useRef<CellPoint[]>([]);
   const headDirectionRef = useRef<Dir>("right");
   const logicalFacingRef = useRef<Dir>("right");
@@ -175,6 +264,8 @@ export default function SnakeGameView() {
   const fruitCollectedPulseRef = useRef(false);
   const snakeFailedRef = useRef(false);
   const resultShownRef = useRef(false);
+  const historyRecordedRef = useRef(false);
+  const timeLimitTriggeredRef = useRef(false);
 
   const applesTargetRef = useRef(0);
   const snakeImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -190,20 +281,33 @@ export default function SnakeGameView() {
   const [isLevelStarted, setIsLevelStarted] = useState(false);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
 
-  const [statusText, setStatusText] = useState("Press Start Level, then Run your block program.");
+  const [statusText, setStatusText] = useState(t("snake.statusPressStart"));
+  const [levelTitle, setLevelTitle] = useState("Snake");
+  const [levelObjective, setLevelObjective] = useState(t("snake.objectiveDefault"));
   const [collectedFruits, setCollectedFruits] = useState(0);
   const [liveSteps, setLiveSteps] = useState(0);
   const [blocksUsed, setBlocksUsed] = useState(0);
+  const [mapConfig, setMapConfig] = useState<Partial<MapConfig> | null>(null);
+  const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
+  const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
+  const [activeMapDetailId, setActiveMapDetailId] = useState<string | null>(null);
 
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
+  const [snakeFailureReason, setSnakeFailureReason] = useState<SnakeFailureReason>("trap");
   const [showResultsModal, setShowResultsModal] = useState(false);
+  const [resultsDockVisible, setResultsDockVisible] = useState(false);
+  const [showStatusDetailsModal, setShowStatusDetailsModal] = useState(false);
+  const [hints, setHints] = useState<GameplayHint[]>([]);
+  const [showHintsModal, setShowHintsModal] = useState(false);
+  const [revealedHints, setRevealedHints] = useState(0);
 
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const [canvasRenderSize, setCanvasRenderSize] = useState({ width: 0, height: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
+  const [elapsedDisplay, setElapsedDisplay] = useState(0);
 
   const [audioSystem, setAudioSystem] = useState<
     import("../../modules/engine/systems/audio/AudioSystem").AudioSystem | null
@@ -215,6 +319,482 @@ export default function SnakeGameView() {
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
+  const [xpToast, setXpToast] = useState<string>("");
+  const [lastSubmissionId, setLastSubmissionId] = useState<string | null>(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [showResultPopup, setShowResultPopup] = useState(true);
+  const showResultPopupRef = useRef(true);
+
+  const nextCampaignLevelId = useMemo(() => {
+    if (!campaignLevels.length || !activeMapDetailId) return null;
+    const i = campaignLevels.findIndex((level) => level.id === activeMapDetailId);
+    if (i < 0 || i >= campaignLevels.length - 1) return null;
+    return campaignLevels[i + 1].id;
+  }, [campaignLevels, activeMapDetailId]);
+
+  const campaignProgressLabel = useMemo(() => {
+    if (campaignLevels.length <= 1 || !activeMapDetailId) return null;
+    const i = campaignLevels.findIndex((level) => level.id === activeMapDetailId);
+    if (i < 0) return null;
+    return `Level ${i + 1} / ${campaignLevels.length}`;
+  }, [campaignLevels, activeMapDetailId]);
+
+  const blockTypeLabelMap = useMemo(
+    () => new Map(blocksConfig.blocks.map((block) => [block.type, block.label])),
+    [],
+  );
+
+  const toBlockLabel = useCallback(
+    (type: string) => {
+      return blockTypeLabelMap.get(type) || type;
+    },
+    [blockTypeLabelMap],
+  );
+
+  const allBlockTypes = useMemo(() => blocksConfig.blocks.map((block) => block.type), []);
+  const normalizedAllowedTypes = useMemo(
+    () =>
+      Array.from(new Set(blockConstraints?.allowedBlocks ?? [])).filter((type) =>
+        allBlockTypes.includes(type),
+      ),
+    [allBlockTypes, blockConstraints?.allowedBlocks],
+  );
+
+  const derivedBannedTypesForWorkspace = useMemo(
+    () =>
+      normalizedAllowedTypes.length > 0
+        ? allBlockTypes.filter((type) => !normalizedAllowedTypes.includes(type))
+        : (blockConstraints?.bannedBlocks ?? []),
+    [allBlockTypes, blockConstraints?.bannedBlocks, normalizedAllowedTypes],
+  );
+
+  const requiredBlocks = useMemo(
+    () =>
+      (blockConstraints?.requiredBlocks ?? []).map((rule) => {
+        const label = toBlockLabel(rule.type);
+        return rule.minCount > 1 ? `${label} x${rule.minCount}` : label;
+      }),
+    [blockConstraints?.requiredBlocks, toBlockLabel],
+  );
+
+  const allowedBlocks = useMemo(
+    () => normalizedAllowedTypes.map((type) => toBlockLabel(type)),
+    [normalizedAllowedTypes, toBlockLabel],
+  );
+
+  const bannedBlocks = useMemo(
+    () => derivedBannedTypesForWorkspace.map((type) => toBlockLabel(type)),
+    [derivedBannedTypesForWorkspace, toBlockLabel],
+  );
+
+  const missionGoal = useMemo(() => {
+    if (mapConfig?.winCondition === 2) {
+      if (mapConfig.requiredFruits && mapConfig.requiredFruits > 0) {
+        return t("snake.goalCollectAndReach").replace("{n}", String(mapConfig.requiredFruits));
+      }
+      return t("snake.goalCollectAllAndReach");
+    }
+    return t("snake.goalReach");
+  }, [mapConfig?.requiredFruits, mapConfig?.winCondition, t]);
+
+  const timeLimit =
+    mapConfig?.timeLimitSeconds && mapConfig.timeLimitSeconds > 0
+      ? mapConfig.timeLimitSeconds
+      : Number.POSITIVE_INFINITY;
+  const timeStarThresholdPercent =
+    mapConfig?.timeStarThresholdPercent && Number.isFinite(mapConfig.timeStarThresholdPercent)
+      ? Math.max(1, Math.min(100, Math.floor(mapConfig.timeStarThresholdPercent)))
+      : 100;
+  const timeStarLimit = Number.isFinite(timeLimit)
+    ? timeLimit * (timeStarThresholdPercent / 100)
+    : Number.POSITIVE_INFINITY;
+  const stepLimit =
+    mapConfig?.estimatedSteps && mapConfig.estimatedSteps > 0
+      ? mapConfig.estimatedSteps
+      : Number.POSITIVE_INFINITY;
+  const blockLimit =
+    blockConstraints?.blockLimit && blockConstraints.blockLimit > 0
+      ? blockConstraints.blockLimit
+      : Number.POSITIVE_INFINITY;
+
+  let currentStars = 0;
+  if (elapsedDisplay <= timeStarLimit) currentStars++;
+  if (liveSteps <= stepLimit) currentStars++;
+  if (blocksUsed <= blockLimit) currentStars++;
+
+  const totalHints = hints.length;
+  const revealedHintCount = Math.min(revealedHints, totalHints);
+  const allHintsRevealed = totalHints > 0 && revealedHintCount >= totalHints;
+  const hintButtonState: "empty" | "progress" | "complete" =
+    revealedHintCount === 0 ? "empty" : allHintsRevealed ? "complete" : "progress";
+
+  const hintButtonStyles: Record<
+    "empty" | "progress" | "complete",
+    { background: string; border: string; color: string }
+  > = {
+    empty: {
+      background: "color-mix(in srgb, var(--text-2) 15%, var(--surface))",
+      border: "1px solid color-mix(in srgb, var(--text-2) 35%, var(--border))",
+      color: "var(--text)",
+    },
+    progress: {
+      background: "color-mix(in srgb, var(--warning) 28%, var(--surface))",
+      border: "1px solid color-mix(in srgb, var(--warning) 52%, var(--border))",
+      color: "var(--text)",
+    },
+    complete: {
+      background: "linear-gradient(180deg, #fcd34d 0%, #f59e0b 100%)",
+      border: "1px solid #d97706",
+      color: "#422006",
+    },
+  };
+
+  const currentElapsedForDetails = showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
+  const currentStepsForDetails = showResultsModal && gameResult ? gameResult.stepCount : liveSteps;
+  const currentBlocksForDetails = showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
+  const currentFruitsForDetails =
+    showResultsModal && gameResult ? gameResult.fruitsCollected : collectedFruits;
+
+  const handleNextCampaignLevel = useCallback(() => {
+    if (!levelId || !nextCampaignLevelId) return;
+
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+
+    const nextLevelTypeRaw = (
+      campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
+    )
+      .trim()
+      .toLowerCase();
+    const nextRoute =
+      nextLevelTypeRaw === "platform"
+        ? ROUTES.PLATFORM
+        : nextLevelTypeRaw === "snake"
+          ? ROUTES.SNAKE
+          : ROUTES.GAME;
+
+    navigate(nextRoute, {
+      replace: true,
+      state: {
+        levelId,
+        mapDetailId: nextCampaignLevelId,
+        multiplayerRoomId,
+      },
+    });
+  }, [campaignLevels, levelId, multiplayerRoomId, navigate, nextCampaignLevelId]);
+
+  const handleBackToMapFlow = useCallback(() => {
+    if (multiplayerRoomId) {
+      void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+      return;
+    }
+    navigate(-1);
+  }, [multiplayerRoomId, navigate]);
+
+  const handleMinimizeResults = useCallback(() => {
+    setShowResultsModal(false);
+    setResultsDockVisible(true);
+  }, []);
+
+  const handleCloseResults = useCallback(() => {
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+  }, []);
+
+  const handleMultiplayerSubmit = useCallback(async () => {
+    if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
+    setSubmitLoading(true);
+    try {
+      const program = generateAST(workspaceRef.current);
+      const astSpec = JSON.stringify(program);
+      const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+        language: "Blockly",
+        astSpec,
+        isWin: gameResult?.isWin ?? false,
+        stepsUsed: gameResult?.stepCount ?? 0,
+        blocksUsed: gameResult?.blocksUsed ?? blocksUsedRef.current,
+        time: gameResult?.elapsedTime ?? timerElapsedRef.current,
+        mapDetailId: activeMapDetailId ?? undefined,
+      });
+      if (res.data?.isSuccess) {
+        setSubmitted(true);
+        if (res.data?.data?.rankingIfAllSubmitted?.length && multiplayerRoomId) {
+          const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+            playerId: r.playerId,
+            score: r.score,
+            rank: r.rank,
+            status: r.status,
+          }));
+          navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
+          return;
+        }
+      } else {
+        window.alert(res.data?.message ?? "Submit failed.");
+      }
+    } catch {
+      window.alert("Submit failed.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  }, [activeMapDetailId, gameResult, multiplayerRoomId, navigate, submitLoading, submitted]);
+
+  const handleEndMultiplayerGame = useCallback(async () => {
+    if (!multiplayerRoomId) return;
+    try {
+      await learnerLobbyApi.endGame(multiplayerRoomId);
+      await leaveLobbyRoom(multiplayerRoomId);
+      navigate(ROUTES.LEARNER_LEARN);
+    } catch {
+      window.alert("Could not end game.");
+    }
+  }, [multiplayerRoomId, navigate]);
+
+  useEffect(() => {
+    if (!multiplayerRoomId) return;
+    let unsubRank: (() => void) | undefined;
+    let unsubEnd: (() => void) | undefined;
+    void gameLobbyHub.connect().then(() => {
+      unsubRank = gameLobbyHub.on("RankingUpdated", (ranking: unknown) => {
+        const arr = Array.isArray(ranking) ? ranking : [];
+        if (arr.length === 0 || !multiplayerRoomId) return;
+        const normalized = arr.map((r: Record<string, unknown>) => ({
+          playerId: String(r.playerId ?? r.PlayerId ?? ""),
+          score: Number(r.score ?? r.Score ?? 0),
+          rank: Number(r.rank ?? r.Rank ?? 0),
+          status: String(r.status ?? r.Status ?? ""),
+        }));
+        navigate(ROUTES.LEARNER_ROOM_RESULT, {
+          state: { ranking: normalized, roomId: multiplayerRoomId },
+        });
+      });
+      unsubEnd = gameLobbyHub.on("GameEnded", () => {
+        void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+      });
+    });
+    return () => {
+      unsubRank?.();
+      unsubEnd?.();
+    };
+  }, [multiplayerRoomId, navigate]);
+
+  const handleReportXpIssue = useCallback(() => {
+    if (!levelId) return;
+    const params = new URLSearchParams({
+      prefill: `xp-issue-${lastSubmissionId || Date.now()}`,
+      openCreate: "1",
+      categoryKey: "RewardBalanceIssue",
+      mapId: levelId,
+      subject: t("complaints.prefill.xpIssueSubject"),
+      description: t("complaints.prefill.xpIssueDescription"),
+    });
+    if (activeMapDetailId) {
+      params.set("mapDetailId", activeMapDetailId);
+    }
+    if (lastSubmissionId) {
+      params.set("submissionId", lastSubmissionId);
+    }
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  }, [activeMapDetailId, lastSubmissionId, levelId, navigate, t]);
+
+  const isGuid = (value?: string | null): value is string =>
+    Boolean(value) &&
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
+      value as string,
+    );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMapHints = async () => {
+      if (!levelId) {
+        if (isMounted) {
+          setHints([]);
+          setRevealedHints(0);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setRevealedHints(0);
+      }
+
+      try {
+        const response = await learnerMapsApi.getMapHints(levelId);
+
+        if (!isMounted) return;
+
+        if (response.data.isSuccess && Array.isArray(response.data.data)) {
+          const nextHints = response.data.data
+            .filter(
+              (hint): hint is GameplayHint =>
+                typeof hint?.orderNo === "number" && typeof hint?.content === "string",
+            )
+            .map((hint) => ({ orderNo: hint.orderNo, content: hint.content.trim() }))
+            .filter((hint) => hint.content.length > 0);
+
+          setHints(nextHints);
+          return;
+        }
+
+        setHints([]);
+      } catch (hintError) {
+        console.error("Failed to load map hints:", hintError);
+        if (isMounted) {
+          setHints([]);
+        }
+      }
+    };
+
+    void loadMapHints();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [levelId]);
+
+  useEffect(() => {
+    const limit = mapConfig?.timeLimitSeconds;
+    if (limit == null || !Number.isFinite(limit) || limit <= 0) return;
+    if (!isLevelStarted) return;
+    if (showResultsModal) return;
+    if (timeLimitTriggeredRef.current) return;
+    if (elapsedDisplay < limit) return;
+
+    timeLimitTriggeredRef.current = true;
+    setStatusText(t("gameTimeUpToast"));
+
+    executorRef.current?.stop();
+    setIsExecutorRunning(false);
+
+    const engine = engineRef.current;
+    if (!engine) return;
+    try {
+      engine.stop();
+    } catch {
+      // ignore stop errors during timeout transition
+    }
+
+    setGameResult({
+      isWin: false,
+      stepCount: engine.getStepCount(),
+      blocksUsed: blocksUsedRef.current,
+      elapsedTime: Math.min(elapsedDisplay, limit),
+      fruitsCollected: engine.getCollectedFruitsCount(),
+    });
+    if (showResultPopup) {
+      setResultsDockVisible(false);
+      setShowResultsModal(true);
+    } else {
+      setShowResultsModal(false);
+      setResultsDockVisible(false);
+    }
+  }, [
+    elapsedDisplay,
+    isLevelStarted,
+    mapConfig?.timeLimitSeconds,
+    showResultPopup,
+    showResultsModal,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!gameResult) return;
+    if (historyRecordedRef.current) return;
+    historyRecordedRef.current = true;
+
+    void (async () => {
+      try {
+        if (multiplayerRoomId) {
+          if (submitted || submitLoading || !workspaceRef.current) return;
+          setSubmitLoading(true);
+          try {
+            const program = generateAST(workspaceRef.current);
+            const astSpec = gameResult.isWin ? JSON.stringify(program) : null;
+
+            const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+              language: "Blockly",
+              astSpec,
+              isWin: gameResult.isWin,
+              stepsUsed: gameResult.stepCount,
+              blocksUsed: gameResult.blocksUsed,
+              time: gameResult.elapsedTime,
+              mapDetailId: activeMapDetailId ?? undefined,
+            });
+
+            if (res.data?.isSuccess) {
+              setSubmitted(true);
+              if (res.data?.data?.rankingIfAllSubmitted?.length) {
+                const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                  playerId: r.playerId,
+                  score: r.score,
+                  rank: r.rank,
+                  status: r.status,
+                }));
+                navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                  state: { ranking, roomId: multiplayerRoomId },
+                });
+              }
+            } else {
+              window.alert(res.data?.message ?? "Submit failed.");
+            }
+          } finally {
+            setSubmitLoading(false);
+          }
+          return;
+        }
+
+        if (!isGuid(levelId)) return;
+        if (!workspaceRef.current) return;
+
+        const before = gameResult.isWin
+          ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+          : null;
+        const program = generateAST(workspaceRef.current);
+        const validateRes = await learnerGameplayApi.validateSolution({
+          mapId: levelId,
+          mapDetailId: activeMapDetailId ?? undefined,
+          language: "Blockly",
+          astSpec: gameResult.isWin ? JSON.stringify(program) : null,
+          playMode: 0,
+          isWin: gameResult.isWin,
+          clientStepsUsed: gameResult.stepCount,
+          clientBlocksUsed: gameResult.blocksUsed,
+          clientElapsedSeconds: gameResult.elapsedTime,
+        });
+
+        if (validateRes.isSuccess && validateRes.data?.submissionId) {
+          setLastSubmissionId(validateRes.data.submissionId);
+        }
+
+        if (gameResult.isWin) {
+          const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+          const beforeXp = before?.data?.currentXp ?? null;
+          const afterXp = after?.data?.currentXp ?? null;
+          if (beforeXp != null && afterXp != null) {
+            const delta = afterXp - beforeXp;
+            if (delta > 0) {
+              setXpToast(`+${delta} XP`);
+              window.setTimeout(() => setXpToast(""), 2600);
+            }
+          }
+        }
+      } catch (saveErr) {
+        console.error("Failed to save play history", saveErr);
+        historyRecordedRef.current = false;
+      }
+    })();
+  }, [
+    activeMapDetailId,
+    gameResult,
+    levelId,
+    multiplayerRoomId,
+    navigate,
+    submitLoading,
+    submitted,
+  ]);
 
   useEffect(() => {
     collectedFruitsRef.current = collectedFruits;
@@ -223,6 +803,10 @@ export default function SnakeGameView() {
   useEffect(() => {
     blocksUsedRef.current = blocksUsed;
   }, [blocksUsed]);
+
+  useEffect(() => {
+    showResultPopupRef.current = showResultPopup;
+  }, [showResultPopup]);
 
   const restoreInitialObjects = useCallback(() => {
     const level = levelRef.current;
@@ -233,6 +817,44 @@ export default function SnakeGameView() {
       position: { ...obj.position },
       metadata: obj.metadata ? { ...obj.metadata } : undefined,
     }));
+  }, []);
+
+  const syncSnakeBodyCollision = useCallback((includeHeadSupport: boolean) => {
+    const level = levelRef.current;
+    if (!level || baseCollisionRef.current.length === 0) return;
+
+    const collision = level.layers.collision;
+
+    for (let row = 0; row < collision.length; row++) {
+      const baseRow = baseCollisionRef.current[row] ?? [];
+      const collisionRow = collision[row] ?? [];
+      for (let col = 0; col < collisionRow.length; col++) {
+        collisionRow[col] = Boolean(baseRow[col]);
+      }
+    }
+
+    for (const segment of snakeSegmentsRef.current) {
+      if (
+        segment.row >= 0 &&
+        segment.row < collision.length &&
+        segment.col >= 0 &&
+        segment.col < (collision[segment.row]?.length ?? 0)
+      ) {
+        collision[segment.row][segment.col] = true;
+      }
+    }
+
+    if (includeHeadSupport && engineRef.current) {
+      const head = engineRef.current.getPlayer();
+      if (
+        head.y >= 0 &&
+        head.y < collision.length &&
+        head.x >= 0 &&
+        head.x < (collision[head.y]?.length ?? 0)
+      ) {
+        collision[head.y][head.x] = true;
+      }
+    }
   }, []);
 
   const resetWormRuntime = useCallback(() => {
@@ -259,7 +881,9 @@ export default function SnakeGameView() {
   }, []);
 
   const resetTimer = useCallback(() => {
+    timeLimitTriggeredRef.current = false;
     timerElapsedRef.current = 0;
+    setElapsedDisplay(0);
     setTimerResetSignal((prev) => prev + 1);
   }, []);
 
@@ -338,13 +962,20 @@ export default function SnakeGameView() {
       elapsedTime: timerElapsedRef.current,
       fruitsCollected: collectedFruitsRef.current,
     });
-    setShowResultsModal(true);
+    if (showResultPopupRef.current) {
+      setResultsDockVisible(false);
+      setShowResultsModal(true);
+    } else {
+      setShowResultsModal(false);
+      setResultsDockVisible(false);
+    }
   }, []);
 
-  const triggerSnakeFailure = useCallback((message: string) => {
+  const triggerSnakeFailure = useCallback((message: string, reason: SnakeFailureReason = "trap") => {
     if (snakeFailedRef.current) return;
 
     snakeFailedRef.current = true;
+    setSnakeFailureReason(reason);
     executorRef.current?.stop();
     setIsExecutorRunning(false);
     setShowExecutionIncompleteModal(false);
@@ -356,6 +987,13 @@ export default function SnakeGameView() {
     (result: ExecutionResult): number => {
       const engine = engineRef.current;
       if (!engine) return 420;
+
+      const isMovementType =
+        result.command.type === "move" ||
+        result.command.type === "moveForward" ||
+        result.command.type === "moveToCell" ||
+        result.command.type === "jump" ||
+        result.command.type === "wait";
 
       if (result.command.type === "turn") {
         logicalFacingRef.current = rotateDirection90(logicalFacingRef.current, result.command.rotation);
@@ -372,6 +1010,9 @@ export default function SnakeGameView() {
       const before = engine.getPlayer();
       const beforeCell = { col: before.x, row: before.y };
 
+      // Treat current head cell as temporary support for this step so upward moves can climb.
+      syncSnakeBodyCollision(isMovementType);
+
       if (result.command.type === "moveForward") {
         engine.executeCommand({ type: "move", direction: logicalFacingRef.current });
       } else {
@@ -383,13 +1024,6 @@ export default function SnakeGameView() {
       const after = engine.getPlayer();
       const afterCell = { col: after.x, row: after.y };
       const moved = beforeCell.col !== afterCell.col || beforeCell.row !== afterCell.row;
-
-      const isMovementType =
-        result.command.type === "move" ||
-        result.command.type === "moveForward" ||
-        result.command.type === "moveToCell" ||
-        result.command.type === "jump" ||
-        result.command.type === "wait";
 
       if (moved && isMovementType) {
         const dx = afterCell.col - beforeCell.col;
@@ -403,12 +1037,15 @@ export default function SnakeGameView() {
         const traversed = buildTraversalCells(beforeCell, afterCell);
         const hitBody = traversed.some((cell) => hasSnakeSegmentAt(cell.col, cell.row));
         if (hitBody) {
-          triggerSnakeFailure("Game over: your worm collided with itself.");
+          triggerSnakeFailure(t("snake.errorGameOverSelf"), "self");
           return 420;
         }
 
         appendBodyPath(beforeCell.col, beforeCell.row, afterCell.col, afterCell.row);
       }
+
+      // Keep collision grid in sync with the latest snake body state.
+      syncSnakeBodyCollision(false);
 
       setLiveSteps(engine.getStepCount());
 
@@ -418,7 +1055,14 @@ export default function SnakeGameView() {
       );
       return Math.max(420, dist / 0.5);
     },
-    [appendBodyPath, applyLogicalFacingToEngine, buildTraversalCells, hasSnakeSegmentAt, triggerSnakeFailure],
+    [
+      appendBodyPath,
+      applyLogicalFacingToEngine,
+      buildTraversalCells,
+      hasSnakeSegmentAt,
+      syncSnakeBodyCollision,
+      triggerSnakeFailure,
+    ],
   );
 
   const hideDefaultPlayerSprite = useCallback(async () => {
@@ -465,6 +1109,7 @@ export default function SnakeGameView() {
 
   const handleTimerElapsedChange = useCallback((seconds: number) => {
     timerElapsedRef.current = seconds;
+    setElapsedDisplay(seconds);
   }, []);
 
   const handleStartLevel = useCallback(() => {
@@ -475,8 +1120,8 @@ export default function SnakeGameView() {
     engine.start();
     setIsLevelStarted(true);
     setShowMissionModal(false);
-    setStatusText("Level started. Press Run to execute blocks.");
-  }, [resetTimer]);
+    setStatusText(t("snake.statusLevelStarted"));
+  }, [resetTimer, t]);
 
   useEffect(() => {
     const allPaths = [
@@ -592,20 +1237,56 @@ export default function SnakeGameView() {
 
     let disposed = false;
     let engine: GameEngine | null = null;
+    let onFruitCollected: ((event: Extract<EngineEvent, { type: "fruitCollected" }>) => void) | null = null;
+    let onWin: (() => void) | null = null;
+    let onFailed: (() => void) | null = null;
     setIsLoading(true);
     setError(null);
 
     const initGame = async () => {
       try {
-        const level = await loadSnakeLevel();
+        const loaded = await loadSnakeLevel({ levelId, mapDetailId, levelFile, mapUrl });
         if (disposed) return;
+
+        const level = loaded.level;
+        const resolvedWinCondition = loaded.mapConfig?.winCondition === 2 ? 2 : 1;
+        const activeMapDetailIdNext = loaded.mapDetailId;
+
+        setMapConfig(loaded.mapConfig ?? null);
+        setCampaignLevels(loaded.levels ?? []);
+        setActiveMapDetailId(activeMapDetailIdNext);
+        if (levelId && activeMapDetailIdNext) {
+          markCampaignLevelStarted(levelId, activeMapDetailIdNext);
+        }
 
         // Count fruits from loaded map
         const fruitCount = (level.objects ?? []).filter((o) => o.type === "fruit").length;
-        applesTargetRef.current = fruitCount;
+        const configRequiredFruits =
+          typeof loaded.mapConfig?.requiredFruits === "number" &&
+          Number.isFinite(loaded.mapConfig.requiredFruits)
+            ? Math.max(0, Math.floor(loaded.mapConfig.requiredFruits))
+            : undefined;
+        const requiredFruitsTarget =
+          resolvedWinCondition === 2
+            ? configRequiredFruits !== undefined && configRequiredFruits > 0
+              ? Math.min(configRequiredFruits, fruitCount)
+              : fruitCount
+            : 0;
+        applesTargetRef.current = resolvedWinCondition === 2 ? requiredFruitsTarget : fruitCount;
+        setLevelTitle(level.name || "Snake");
+        const objectiveFromMap = (level.metadata?.levelObjective ?? "").trim();
+        setLevelObjective(
+          objectiveFromMap.length > 0
+            ? objectiveFromMap
+            : resolvedWinCondition === 2
+              ? t("snake.objectiveCollectRequiredThenGoal")
+              : t("snake.objectiveReachGoal"),
+        );
 
         levelRef.current = level;
+        setBlockConstraints(level.blockConstraints ?? null);
         initialObjectsRef.current = cloneObjects(level);
+        baseCollisionRef.current = level.layers.collision.map((row) => [...row]);
 
         canvas.width = level.width * TILE_SIZE;
         canvas.height = level.height * TILE_SIZE;
@@ -618,41 +1299,50 @@ export default function SnakeGameView() {
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Canvas context is not available.");
 
-        const config = createGameConfig(LevelType.Platform, { winCondition: 1, requiredFruits: 0 });
+        const config = createGameConfig(LevelType.Platform, {
+          winCondition: resolvedWinCondition,
+          ...(resolvedWinCondition === 2 ? { requiredFruits: requiredFruitsTarget } : {}),
+        });
         engine = new GameEngine(level, TILE_SIZE, ctx, config, "platformer");
         engineRef.current = engine;
 
-        const onFruitCollected = (event: Extract<EngineEvent, { type: "fruitCollected" }>) => {
+        onFruitCollected = (event: Extract<EngineEvent, { type: "fruitCollected" }>) => {
           setCollectedFruits(event.totalCollected);
           fruitCollectedPulseRef.current = true;
           growthUnitsRef.current += 1;
-          setStatusText("Apple collected. Worm grows.");
-
-          if (event.totalCollected >= applesTargetRef.current) {
-            executorRef.current?.stop();
-            setStatusText("All apples collected. Stage complete.");
-            finishRunAsResult(true);
-          }
+          setStatusText(t("snake.statusAppleCollected"));
         };
 
-        const onFailed = () => {
-          triggerSnakeFailure("Game over.");
+        onWin = () => {
+          executorRef.current?.stop();
+          setIsExecutorRunning(false);
+          setStatusText(t("snake.statusWinCompleted"));
+          if (levelId && activeMapDetailIdNext) {
+            markCampaignLevelCompleted(levelId, activeMapDetailIdNext);
+          }
+          finishRunAsResult(true);
+        };
+
+        onFailed = () => {
+          triggerSnakeFailure(t("snake.errorGameOverTrap"), "trap");
         };
 
         engine.on("fruitCollected", onFruitCollected);
+        engine.on("win", onWin);
         engine.on("engine:failed", onFailed);
 
         await engine.initialize();
         await hideDefaultPlayerSprite();
         if (disposed) return;
         engine.reset();
+        syncSnakeBodyCollision(false);
         applyLogicalFacingToEngine(engine);
         setAudioSystem(engine.getAudioSystem() ?? null);
         setShowMissionModal(true);
         setIsLoading(false);
       } catch (err) {
         if (disposed) return;
-        setError(err instanceof Error ? err.message : "Failed to initialize Apple Worm level.");
+        setError(err instanceof Error ? err.message : t("snake.errorInit"));
         setIsLoading(false);
       }
     };
@@ -662,8 +1352,15 @@ export default function SnakeGameView() {
     return () => {
       disposed = true;
       if (engine) {
-        engine.off("fruitCollected", () => {});
-        engine.off("engine:failed", () => {});
+        if (onFruitCollected) {
+          engine.off("fruitCollected", onFruitCollected);
+        }
+        if (onWin) {
+          engine.off("win", onWin);
+        }
+        if (onFailed) {
+          engine.off("engine:failed", onFailed);
+        }
         engine.stop();
       }
       executorRef.current?.stop();
@@ -673,7 +1370,13 @@ export default function SnakeGameView() {
     applyLogicalFacingToEngine,
     finishRunAsResult,
     hideDefaultPlayerSprite,
+    levelFile,
+    levelId,
+    mapDetailId,
+    mapUrl,
     restoreDefaultPlayerSprite,
+    syncSnakeBodyCollision,
+    t,
     triggerSnakeFailure,
   ]);
 
@@ -733,7 +1436,7 @@ export default function SnakeGameView() {
     const engine = engineRef.current;
     const workspace = workspaceRef.current;
     if (!engine || !workspace) {
-      window.alert("Game is not ready yet.");
+      window.alert(t("gameNotReadyYet"));
       return;
     }
 
@@ -752,11 +1455,11 @@ export default function SnakeGameView() {
           if (
             !snakeFailedRef.current &&
             !resultShownRef.current &&
-            collectedFruitsRef.current < applesTargetRef.current &&
+            !engine.hasWon() &&
             engine.getState() !== EngineState.Failed
           ) {
             setShowExecutionIncompleteModal(true);
-            setStatusText("Program ended before collecting all apples.");
+            setStatusText(t("snake.statusProgramEndedBeforeWin"));
           }
         },
       );
@@ -765,8 +1468,58 @@ export default function SnakeGameView() {
 
     const program: BlockProgram = generateAST(workspace);
     if (program.length === 0) {
-      window.alert("No blocks in workspace. Add blocks first.");
+      window.alert(t("noBlocksInWorkspace"));
       return;
+    }
+
+    const placedBlocks = workspace.getAllBlocks(false).filter((block) => !block.isShadow());
+    const blockUsage = placedBlocks.reduce<Record<string, number>>((acc, block) => {
+      acc[block.type] = (acc[block.type] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const constraints = engine.getBlockConstraints();
+    if (constraints) {
+      const allowedTypes = Array.from(new Set(constraints.allowedBlocks ?? [])).filter((type) =>
+        allBlockTypes.includes(type),
+      );
+
+      if (allowedTypes.length > 0) {
+        for (const usedType of Object.keys(blockUsage)) {
+          if (!allowedTypes.includes(usedType)) {
+            setStatusText(`${t("blockNotAllowed")}: ${toBlockLabel(usedType)}.`);
+            return;
+          }
+        }
+      } else {
+        for (const bannedType of constraints.bannedBlocks || []) {
+          const used = blockUsage[bannedType] ?? 0;
+          if (used > 0) {
+            setStatusText(`${t("blockNotAllowed")}: ${toBlockLabel(bannedType)}.`);
+            return;
+          }
+        }
+      }
+
+      for (const rule of constraints.requiredBlocks || []) {
+        const used = blockUsage[rule.type] ?? 0;
+        if (used < rule.minCount) {
+          setStatusText(
+            `${t("requiredBlockMissing")}: ${toBlockLabel(rule.type)} (${used}/${rule.minCount}).`,
+          );
+          return;
+        }
+      }
+
+      const blockLimit = constraints.blockLimit;
+      if (typeof blockLimit === "number" && Number.isFinite(blockLimit) && blockLimit > 0) {
+        const totalUsed = Object.values(blockUsage).reduce((sum, count) => sum + (count || 0), 0);
+        if (totalUsed > blockLimit) {
+          setStatusText(
+            `${t("blockLimitExceeded")} (${totalUsed}/${blockLimit}). ${t("runningAnyway")}.`,
+          );
+        }
+      }
     }
 
     const conditionChecker = (condition: ConditionType): boolean => {
@@ -786,10 +1539,12 @@ export default function SnakeGameView() {
         case "wallRight":
           return engine.isWallRight();
         case "goalReached":
-          return collectedFruitsRef.current >= applesTargetRef.current;
+          return engine.hasWon();
         case "enemyAhead":
           return engine.isEnemyAhead();
         case "trapAhead":
+          return engine.isTrapAhead();
+        case "bodyAhead":
           return snakeAhead;
         case "fruitCollected":
           if (fruitCollectedPulseRef.current) {
@@ -823,7 +1578,7 @@ export default function SnakeGameView() {
     executorRef.current = executor;
 
     setIsExecutorRunning(true);
-    setStatusText("Running block program...");
+    setStatusText(t("snake.statusRunningProgram"));
 
     executor.run(
       (result) => executeResultOnEngine(result),
@@ -833,21 +1588,24 @@ export default function SnakeGameView() {
         if (
           !snakeFailedRef.current &&
           !resultShownRef.current &&
-          collectedFruitsRef.current < applesTargetRef.current &&
+          !engine.hasWon() &&
           engine.getState() !== EngineState.Failed
         ) {
           setShowExecutionIncompleteModal(true);
-          setStatusText("Program ended before collecting all apples.");
+          setStatusText(t("snake.statusProgramEndedBeforeWin"));
         }
       },
     );
   }, [
+    allBlockTypes,
     applyLogicalFacingToEngine,
     executeResultOnEngine,
     getAheadCell,
     handleStartLevel,
     hasSnakeSegmentAt,
     isLevelStarted,
+    t,
+    toBlockLabel,
   ]);
 
   const handleStepExecution = useCallback(() => {
@@ -855,7 +1613,7 @@ export default function SnakeGameView() {
     const executor = executorRef.current;
 
     if (!engine || !executor) {
-      window.alert("Run Program first, then use Step.");
+      window.alert(t("runProgramFirst"));
       return;
     }
 
@@ -864,7 +1622,7 @@ export default function SnakeGameView() {
     }
 
     if (!executor.hasNext()) {
-      setStatusText("No more steps to execute.");
+      setStatusText(t("snake.statusNoMoreSteps"));
       return;
     }
 
@@ -878,19 +1636,19 @@ export default function SnakeGameView() {
       if (
         !snakeFailedRef.current &&
         !resultShownRef.current &&
-        collectedFruitsRef.current < applesTargetRef.current &&
+        !engine.hasWon() &&
         engine.getState() !== EngineState.Failed
       ) {
         setShowExecutionIncompleteModal(true);
       }
     }
-  }, [executeResultOnEngine, handleStartLevel, isLevelStarted]);
+  }, [executeResultOnEngine, handleStartLevel, isLevelStarted, t]);
 
   const handleStopProgram = useCallback(() => {
     executorRef.current?.stop();
     setIsExecutorRunning(false);
-    setStatusText("Execution stopped.");
-  }, []);
+    setStatusText(t("snake.statusExecutionStopped"));
+  }, [t]);
 
   const handleReset = useCallback(() => {
     const engine = engineRef.current;
@@ -911,24 +1669,39 @@ export default function SnakeGameView() {
     setShowMissionModal(true);
     setShowExecutionIncompleteModal(false);
     setShowTrapFailedModal(false);
+    setSnakeFailureReason("trap");
     setShowResultsModal(false);
+    setResultsDockVisible(false);
     setGameResult(null);
-    setStatusText("Reset complete.");
+    setStatusText(t("snake.statusResetComplete"));
+    setLastSubmissionId(null);
+    setSubmitted(false);
+    historyRecordedRef.current = false;
 
+    syncSnakeBodyCollision(false);
     engine.reset();
     applyLogicalFacingToEngine(engine);
-  }, [applyLogicalFacingToEngine, resetTimer, resetWormRuntime, restoreInitialObjects]);
+  }, [
+    applyLogicalFacingToEngine,
+    resetTimer,
+    resetWormRuntime,
+    restoreInitialObjects,
+    syncSnakeBodyCollision,
+    t,
+  ]);
 
   const handlePlayAgain = useCallback(() => {
+    setResultsDockVisible(false);
+    setSubmitted(false);
     workspaceRef.current?.clear();
     handleReset();
   }, [handleReset]);
 
   const handleClearBlocks = useCallback(() => {
     if (!workspaceRef.current) return;
-    if (!window.confirm("Clear all blocks in workspace?")) return;
+    if (!window.confirm(t("clearAllBlocksConfirm"))) return;
     workspaceRef.current.clear();
-  }, []);
+  }, [t]);
 
   const controlButtonStyle = (
     variant: "neutral" | "primary" | "danger" | "warning",
@@ -967,6 +1740,34 @@ export default function SnakeGameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
+      {xpToast ? <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} /> : null}
+
+      {multiplayerRoomId && submitted && !showResultsModal && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1001,
+            maxWidth: "min(92vw, 520px)",
+            padding: "12px 16px",
+            borderRadius: "12px",
+            background: "color-mix(in srgb, var(--primary) 16%, var(--surface))",
+            border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--text)",
+            textAlign: "center",
+            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.2)",
+          }}
+        >
+          {t("multiplayerWaitOthers")}
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -981,36 +1782,55 @@ export default function SnakeGameView() {
         }}
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-          <button onClick={() => navigate(-1)} style={controlButtonStyle("neutral", false)}>
-            <ArrowLeft size={15} /> Back
+          <button onClick={handleBackToMapFlow} style={controlButtonStyle("neutral", false)}>
+            <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
           </button>
+
+          {multiplayerRoomId && (
+            <>
+              <button
+                onClick={handleMultiplayerSubmit}
+                disabled={isLoading || !!error || submitLoading || submitted}
+                style={controlButtonStyle(
+                  "primary",
+                  isLoading || !!error || submitLoading || submitted,
+                )}
+              >
+                <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
+              </button>
+              <button onClick={handleEndMultiplayerGame} style={controlButtonStyle("warning", false)}>
+                <Flag size={15} /> {t("endGame")}
+              </button>
+            </>
+          )}
+
           <button
             onClick={handleRunProgram}
             disabled={isLoading || !!error || isExecutorRunning}
             style={controlButtonStyle("primary", isLoading || !!error || isExecutorRunning)}
           >
-            <Play size={15} /> Run Program
+            <Play size={15} /> {t("runProgram")}
           </button>
           <button
             onClick={handleStepExecution}
             disabled={isLoading || !!error || isExecutorRunning}
             style={controlButtonStyle("primary", isLoading || !!error || isExecutorRunning)}
           >
-            <SkipForward size={15} /> Step
+            <SkipForward size={15} /> {t("stepExecution")}
           </button>
           <button
             onClick={handleStopProgram}
             disabled={isLoading || !!error}
             style={controlButtonStyle("danger", isLoading || !!error)}
           >
-            <Pause size={15} /> Stop
+            <Pause size={15} /> {t("stop")}
           </button>
           <button
             onClick={handleReset}
             disabled={isLoading || !!error}
             style={controlButtonStyle("warning", isLoading || !!error)}
           >
-            <RotateCcw size={15} /> Reset
+            <RotateCcw size={15} /> {t("reset")}
           </button>
         </div>
 
@@ -1021,13 +1841,13 @@ export default function SnakeGameView() {
 
       {isLoading && (
         <div style={{ padding: "20px", textAlign: "center", color: "var(--text)" }}>
-          Loading level...
+          {t("loadingLevel")}
         </div>
       )}
 
       {error && (
         <div style={{ padding: "20px", color: "var(--danger)" }}>
-          <h3>Error loading game</h3>
+          <h3>{t("errorLoadingGame")}</h3>
           <p>{error}</p>
         </div>
       )}
@@ -1064,7 +1884,11 @@ export default function SnakeGameView() {
               alignItems: "center",
               justifyContent: "space-between",
               fontSize: "14px",
+              cursor: "pointer",
+              transition: "background 0.2s ease, box-shadow 0.2s ease",
             }}
+            onClick={() => setShowStatusDetailsModal(true)}
+            title="Click to view detailed performance"
           >
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
@@ -1085,8 +1909,49 @@ export default function SnakeGameView() {
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
                 🍎 <strong>{collectedFruits}</strong> / {applesTargetRef.current}
               </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "2px", marginLeft: "8px" }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      color: i < currentStars ? "var(--warning)" : "var(--border)",
+                      fontSize: "16px",
+                    }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
             </div>
-            <div style={{ fontSize: "12px", color: "var(--text-2)" }}>{statusText}</div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "auto" }}>
+              <div style={{ fontSize: "12px", color: "var(--text-2)" }}>{statusText}</div>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowHintsModal(true);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 10px",
+                  borderRadius: "12px",
+                  ...hintButtonStyles[hintButtonState],
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  transition: "all 0.2s ease",
+                  boxShadow: "0 8px 16px color-mix(in srgb, var(--warning) 24%, transparent)",
+                  opacity: 1,
+                }}
+                aria-label="Show game hints"
+              >
+                💡 {t("hintsCount")} ({revealedHintCount}/{totalHints})
+              </button>
+            </div>
           </div>
 
           <div
@@ -1096,9 +1961,28 @@ export default function SnakeGameView() {
               background: "color-mix(in srgb, var(--primary) 8%, var(--surface))",
               fontSize: "13px",
               color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              flexWrap: "wrap",
             }}
           >
-            <strong>Objective:</strong> Collect all apples with gravity and avoid your own body.
+            {campaignProgressLabel ? (
+              <span
+                style={{
+                  marginRight: "8px",
+                  padding: "2px 8px",
+                  borderRadius: "8px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  fontWeight: 800,
+                  fontSize: "12px",
+                }}
+              >
+                {campaignProgressLabel}
+              </span>
+            ) : null}
+            <strong>{t("gameObjectiveLabel")}:</strong> {levelObjective}
           </div>
 
           <div
@@ -1134,7 +2018,7 @@ export default function SnakeGameView() {
                     cursor: "pointer",
                   }}
                 >
-                  Fit
+                  {t("zoomFit")}
                 </button>
                 <button
                   type="button"
@@ -1150,7 +2034,7 @@ export default function SnakeGameView() {
                     cursor: "pointer",
                   }}
                 >
-                  Actual
+                  {t("zoomActual")}
                 </button>
               </div>
             </div>
@@ -1232,9 +2116,11 @@ export default function SnakeGameView() {
             }}
           >
             <div>
-              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>Block Editor</h3>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "16px" }}>
+                {t("blockEditorTitle")}
+              </h3>
               <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-2)" }}>
-                Use blocks to control the worm
+                {t("blockEditorSubtitle")}
               </p>
             </div>
             <button
@@ -1252,9 +2138,9 @@ export default function SnakeGameView() {
                 fontWeight: 700,
                 cursor: "pointer",
               }}
-              title="Clear all blocks"
+              title={t("clearBlocks")}
             >
-              <Eraser size={14} /> Clear
+              <Eraser size={14} /> {t("clearBlocks")}
             </button>
           </div>
 
@@ -1270,7 +2156,7 @@ export default function SnakeGameView() {
               justifyContent: "space-between",
             }}
           >
-            <BlockCounter used={blocksUsed} limit={null} />
+            <BlockCounter used={blocksUsed} limit={blockConstraints?.blockLimit ?? null} />
           </div>
 
           <div
@@ -1284,7 +2170,9 @@ export default function SnakeGameView() {
           >
             <BlocklyWorkspace
               onWorkspaceReady={handleWorkspaceReady}
+              bannedBlockTypes={derivedBannedTypesForWorkspace}
               onBlockCountChange={setBlocksUsed}
+              onConstraintViolation={setStatusText}
               blockLimit={null}
             />
           </div>
@@ -1293,14 +2181,38 @@ export default function SnakeGameView() {
 
       <LevelMissionModal
         isOpen={showMissionModal && !isLoading && !error}
-        levelTitle="Apple Worm"
-        goal="Collect all apples"
-        blockLimit={null}
-        requiredBlocks={[]}
-        allowedBlocks={[]}
-        bannedBlocks={[]}
+        levelTitle={levelTitle}
+        goal={missionGoal}
+        blockLimit={blockConstraints?.blockLimit ?? null}
+        requiredBlocks={requiredBlocks}
+        allowedBlocks={allowedBlocks}
+        bannedBlocks={bannedBlocks}
         onStart={handleStartLevel}
         onClose={handleStartLevel}
+      />
+
+      <HintModal
+        isOpen={showHintsModal}
+        hints={hints}
+        revealedHints={revealedHintCount}
+        onRevealNext={() => {
+          setRevealedHints((prev) => Math.min(prev + 1, totalHints));
+        }}
+        onClose={() => setShowHintsModal(false)}
+      />
+
+      <StatusDetailsModal
+        isOpen={showStatusDetailsModal}
+        onClose={() => setShowStatusDetailsModal(false)}
+        elapsedSeconds={currentElapsedForDetails}
+        timeLimitSeconds={Number.isFinite(timeLimit) ? timeLimit : null}
+        timeStarLimitSeconds={Number.isFinite(timeStarLimit) ? timeStarLimit : null}
+        stepsUsed={currentStepsForDetails}
+        stepLimit={Number.isFinite(stepLimit) ? stepLimit : null}
+        blocksUsed={currentBlocksForDetails}
+        blockLimit={Number.isFinite(blockLimit) ? blockLimit : null}
+        fruitsCollected={currentFruitsForDetails}
+        fruitsTotal={applesTargetRef.current || null}
       />
 
       <ExecutionIncompleteModal
@@ -1313,13 +2225,21 @@ export default function SnakeGameView() {
 
       <TrapFailedModal
         isOpen={showTrapFailedModal}
+        title={
+          snakeFailureReason === "self" ? t("snake.failureSelfTitle") : t("snake.failureTrapTitle")
+        }
+        description={
+          snakeFailureReason === "self"
+            ? t("snake.failureSelfDescription")
+            : t("snake.failureTrapDescription")
+        }
         onReplay={() => {
           setShowTrapFailedModal(false);
           handleReset();
         }}
       />
 
-      {gameResult && (
+      {gameResult && showResultPopup && (
         <GameResultsModal
           isOpen={showResultsModal}
           isWin={gameResult.isWin}
@@ -1327,17 +2247,56 @@ export default function SnakeGameView() {
           blocksUsed={gameResult.blocksUsed}
           elapsedTime={gameResult.elapsedTime}
           fruitsCollected={gameResult.fruitsCollected}
-          timeLimitSeconds={null}
-          timeStarThresholdPercent={100}
-          stepEstimated={120}
-          blockLimit={null}
+          timeLimitSeconds={mapConfig?.timeLimitSeconds ?? null}
+          timeStarThresholdPercent={mapConfig?.timeStarThresholdPercent ?? 100}
+          stepEstimated={mapConfig?.estimatedSteps ?? 120}
+          blockLimit={blockConstraints?.blockLimit ?? null}
+          onNextLevel={gameResult.isWin && nextCampaignLevelId ? handleNextCampaignLevel : undefined}
+          nextLevelLabel="Next level"
+          multiplayerFooterNote={multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null}
+          onReportIssue={gameResult.isWin ? handleReportXpIssue : undefined}
+          reportIssueLabel={t("complaints.actions.reportIssue")}
+          onMinimize={handleMinimizeResults}
+          onClose={handleCloseResults}
+          resultPopupEnabled={showResultPopup}
+          onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
+          resultPopupOnLabel={t("gameResultPopupOn")}
+          resultPopupOffLabel={t("gameResultPopupOff")}
           onReset={() => {
             setShowResultsModal(false);
             handlePlayAgain();
           }}
-          onBackToMenu={() => navigate(-1)}
+          onBackToMenu={handleBackToMapFlow}
         />
       )}
+
+      {resultsDockVisible && gameResult ? (
+        <button
+          type="button"
+          onClick={() => {
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+          }}
+          style={{
+            position: "fixed",
+            right: "16px",
+            bottom: "16px",
+            zIndex: 1001,
+            border: "1px solid var(--border)",
+            borderRadius: "999px",
+            padding: "8px 14px",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--text)",
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, white 8%), var(--surface-2))",
+            boxShadow: "0 8px 20px rgba(2, 6, 23, 0.28)",
+            cursor: "pointer",
+          }}
+        >
+          {t("gameResultPopupRestore")}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -30,7 +30,7 @@ type MapEditorRouteState = {
 type MapDetailLike = {
   title: string;
   description: string;
-  type: "Topdown" | "Platform";
+  type: "Topdown" | "Platform" | "Snake";
   difficulty: number;
   timeLimitMs: number;
   estimatedSteps?: number;
@@ -43,6 +43,13 @@ type MapDetailLike = {
   activeSpec?: {
     gridSpec?: string;
   };
+};
+
+const normalizeApiLevelType = (value: unknown): "Topdown" | "Platform" | "Snake" => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (normalized === "platform") return "Platform";
+  if (normalized === "snake") return "Snake";
+  return "Topdown";
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -170,7 +177,8 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
     }
   }
 
-  const fallbackType = detail.type === "Platform" ? "platform" : "topdown";
+  const fallbackType =
+    detail.type === "Platform" ? "platform" : detail.type === "Snake" ? "snake" : "topdown";
 
   if (
     isRecord(sourceJson) &&
@@ -195,7 +203,7 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
             ? "topdown"
             : configRaw.type === "snake"
               ? "snake"
-              : "platform",
+              : fallbackType,
         width,
         height,
         tileSize,
@@ -442,7 +450,7 @@ function extractHintsFromDetailJson(detailJson: unknown): string[] {
 }
 
 function levelItemToMapDetailLike(map: MapDetail, level: MapLevelItem): MapDetailLike {
-  const apiType = (level.type ?? map.type ?? "Topdown") as "Topdown" | "Platform";
+  const apiType = normalizeApiLevelType(level.type ?? map.type ?? "Topdown");
   return {
     title: level.title ?? map.title,
     description: map.description,

@@ -603,7 +603,9 @@ export function MapEditorControls({
   }, [gameType, mapData.config.type, objectCache, onObjectDefinitionsLoaded, showLeftPanel, userPlan]);
 
   useEffect(() => {
-    if (selectedObjectId === null) {
+    // Only the left panel loads selectable object definitions.
+    // The right panel keeps this list empty, so it must not auto-clear selections.
+    if (!showLeftPanel || selectedObjectId === null || !objectSpritesLoaded) {
       return;
     }
 
@@ -624,7 +626,13 @@ export function MapEditorControls({
     if (!hasUnlockedVariant) {
       onObjectSelect(null);
     }
-  }, [selectedObjectId, objectDefinitionGroups, onObjectSelect]);
+  }, [
+    selectedObjectId,
+    objectDefinitionGroups,
+    onObjectSelect,
+    showLeftPanel,
+    objectSpritesLoaded,
+  ]);
 
   useEffect(() => {
     const shouldLoadTags = (showRightPanel || showCatalogDraftPreview) && userType !== "unknown";
@@ -1707,232 +1715,6 @@ export function MapEditorControls({
           </>
           )}
           {rightPanelTab === "rules" && (
-          <>
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>{tt("mapEditorBlockRules", "Block Rules")}</h3>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>{tt("mapEditorBlockLimitLabel", "Block Limit:")}</label>
-              <p style={styles.helpText}>{tt("mapEditorBlockLimitHint", "Set the block limit for the player")}</p>
-              <input
-                type="number"
-                min="1"
-                value={mapData.blockConstraints.blockLimit ?? ""}
-                onChange={(e) => handleBlockLimitInput(e.target.value)}
-                placeholder="30"
-                style={styles.input}
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>{tt("mapEditorAllowedBlocksLabel", "Allowed Blocks:")}</label>
-              <p style={styles.helpText}>{tt("mapEditorAllowedBlocksHint1", "Leave empty to allow all blocks")}</p>
-              <p style={styles.helpText}>{tt("mapEditorAllowedBlocksHint2", "Only selected blocks will be available to the player")}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {normalizedAllowedBlocks.length === 0 && (
-                  <div style={styles.placeholderText}>{tt("mapEditorAllowedBlocksEmpty", "No selection. All blocks are allowed.")}</div>
-                )}
-                {rightPanelTab === "level" && (
-                  <>
-                    <div style={styles.section}>
-                      <h3 style={styles.sectionTitle}>
-                        <Pencil size={16} />{" "}
-                        {tt("mapEditorLevelMapDetailTitle", "Level (MapDetail)")}
-                      </h3>
-                      <p style={styles.helpText}>
-                        {tt(
-                          "mapEditorLevelMapDetailHelp",
-                          'Per-level settings (time limit, win rule, hints…). Save with "Save level content", not "Map info".',
-                        )}
-                      </p>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>{tt("mapEditorMapTypeMap", "Map Type")}</label>
-                        <select
-                          value={mapData.config.type}
-                          onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown")}
-                          style={styles.select}
-                        >
-                          <option value="platform">
-                            {tt("mapEditorGameTypePlatform", "Platform")}
-                          </option>
-                          <option value="topdown">
-                            {tt("mapEditorGameTypeTopDown", "Top-down")}
-                          </option>
-                        </select>
-                      </div>
-                      <div style={styles.mapInfoCard}>
-                        <div style={styles.mapInfoRow}>
-                          <span>{tt("mapEditorSize", "Size")}</span>
-                          <strong>
-                            {mapData.config.width} × {mapData.config.height}{" "}
-                            {tt("mapEditorTiles", "tiles")}
-                          </strong>
-                        </div>
-                        <div style={styles.mapInfoRow}>
-                          <span>{tt("mapEditorTileSize", "Tile Size")}</span>
-                          <strong>{mapData.config.tileSize}px</strong>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          ...styles.actionButtons,
-                          flexDirection: "column",
-                          alignItems: "stretch",
-                          marginBottom: 16,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          style={styles.actionButton}
-                          onClick={() => setShowResizeDialog(true)}
-                        >
-                          <Maximize2 size={14} /> {tt("mapEditorResizeMap", "Resize Map")}
-                        </button>
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorLevelObjective", "Level Objective")}
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={mapData.config.levelObjective ?? ""}
-                          onChange={(e) => onLevelObjectiveChange?.(e.target.value)}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorTimeLimitSeconds", "Time Limit (seconds)")}
-                        </label>
-                        <input
-                          type="number"
-                          min={30}
-                          max={3600}
-                          value={mapData.config.timeLimitSeconds}
-                          onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={timeStarThresholdPercent}
-                          onChange={(e) =>
-                            onTimeStarThresholdChange?.(
-                              Math.max(
-                                1,
-                                Math.min(100, Number.parseInt(e.target.value, 10) || 100),
-                              ),
-                            )
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorEstimatedSteps", "Estimated Steps")}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={1000}
-                          value={mapData.config.estimatedSteps}
-                          onChange={(e) =>
-                            onEstimatedStepsChange?.(
-                              Math.max(1, Number.parseInt(e.target.value) || 1),
-                            )
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorWinCondition", "Win Condition")}
-                        </label>
-                        <select
-                          value={mapData.config.winCondition}
-                          onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
-                          style={styles.select}
-                        >
-                          <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
-                          <option value={2}>
-                            {tt("mapEditorCollectFruits", "Collect Fruits")}
-                          </option>
-                        </select>
-                      </div>
-                      {mapData.config.winCondition === 2 && (
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>
-                            {tt("mapEditorRequiredFruits", "Required Fruits")}
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={mapData.config.requiredFruits ?? 0}
-                            onChange={(e) =>
-                              onRequiredFruitsChange?.(
-                                Math.max(0, Number.parseInt(e.target.value) || 0),
-                              )
-                            }
-                            style={styles.input}
-                          />
-                        </div>
-                      )}
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>{tt("mapEditorHints", "Hints")}</label>
-                        {displayHints.map((hint, index) => (
-                          <input
-                            key={`sidebar-hint-${index}`}
-                            type="text"
-                            value={hint}
-                            onChange={(e) => {
-                              const next = [...displayHints];
-                              next[index] = e.target.value;
-                              setDisplayHints(next);
-                            }}
-                            placeholder={tt("mapEditorHintNumber", "Hint {n}").replace(
-                              "{n}",
-                              String(index + 1),
-                            )}
-                            style={{ ...styles.input, marginBottom: 6 }}
-                          />
-                        ))}
-                        {displayHints.length < 3 && (
-                          <button
-                            type="button"
-                            style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 4 }}
-                            onClick={() => setDisplayHints([...displayHints, ""])}
-                          >
-                            + {tt("mapEditorAddHint", "Add Hint")}
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        style={{
-                          ...styles.actionButton,
-                          width: "100%",
-                          background: "#0f766e",
-                          color: "#fff",
-                          borderColor: "#0d9488",
-                        }}
-                        onClick={() => void handleSaveLevelContent()}
-                        disabled={userType === "unknown" || savingLevelContent}
-                      >
-                        <Save size={14} />{" "}
-                        {savingLevelContent
-                          ? tt("mapEditorSaving", "Saving...")
-                          : tt("mapEditorSaveLevelContent", "Save level content")}
-                      </button>
-                    </div>
-                  </>
-                )}
-                {rightPanelTab === "rules" && (
                   <>
                     <div style={styles.section}>
                       <h3 style={styles.sectionTitle}>

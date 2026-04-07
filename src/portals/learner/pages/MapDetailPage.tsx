@@ -235,15 +235,26 @@ export default function MapDetailPage() {
   const handleStartMap = () => {
     if (!map || !playHint) return;
 
+    const toPlayRoute = (mapType: "platform" | "topdown" | "snake") =>
+      mapType === "platform"
+        ? ROUTES.PLATFORM
+        : mapType === "snake"
+          ? ROUTES.SNAKE
+          : ROUTES.GAME;
+
     if (campaignLevels.length <= 1) {
       const selectedLevel: MapLevelItem | undefined = campaignLevels[0];
       const selectedMapDetailId = selectedLevel?.id ?? playHint.mapDetailId;
-      const isPlatform =
+      const mapType =
         typeof selectedLevel?.type === "string"
-          ? selectedLevel.type.trim().toLowerCase() === "platform"
-          : playHint.isPlatform;
+          ? ((selectedLevel.type.trim().toLowerCase() === "platform"
+              ? "platform"
+              : selectedLevel.type.trim().toLowerCase() === "snake"
+                ? "snake"
+                : "topdown") as "platform" | "topdown" | "snake")
+          : playHint.mapType;
 
-      navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+      navigate(toPlayRoute(mapType), {
         state: {
           levelId: map.id,
           ...(selectedMapDetailId ? { mapDetailId: selectedMapDetailId } : {}),
@@ -267,8 +278,13 @@ export default function MapDetailPage() {
       return;
     }
 
-    const isPlatform = (currentLevel.type ?? "").trim().toLowerCase() === "platform";
-    navigate(isPlatform ? ROUTES.PLATFORM : ROUTES.GAME, {
+    const mapType =
+      (currentLevel.type ?? "").trim().toLowerCase() === "platform"
+        ? "platform"
+        : (currentLevel.type ?? "").trim().toLowerCase() === "snake"
+          ? "snake"
+          : "topdown";
+    navigate(toPlayRoute(mapType), {
       state: {
         levelId: map.id,
         mapDetailId: currentLevel.id,
