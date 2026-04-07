@@ -662,6 +662,8 @@ export default function GameView() {
             return engine.isEnemyAhead();
           case "trapAhead":
             return engine.isTrapAhead();
+          case "bodyAhead":
+            return false;
           case "fruitCollected":
             if (fruitCollectedPulseRef.current) {
               fruitCollectedPulseRef.current = false;

@@ -261,7 +261,10 @@ export const MapsPage: React.FC = () => {
     });
   };
 
-  const formatTime = (milliseconds: number) => {
+  const formatTime = (milliseconds?: number) => {
+    if (typeof milliseconds !== "number" || !Number.isFinite(milliseconds) || milliseconds <= 0) {
+      return "—";
+    }
     const seconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -724,11 +727,7 @@ export const MapsPage: React.FC = () => {
                   }}
                 >
                   {(() => {
-                    const previewUrl =
-                      map.avatarUrl?.trim() ||
-                      map.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
-                      map.gallery?.[0]?.url?.trim() ||
-                      null;
+                    const previewUrl = map.avatarUrl?.trim() || null;
 
                     return (
                       <td style={{ padding: "12px 16px", textAlign: "center" }}>

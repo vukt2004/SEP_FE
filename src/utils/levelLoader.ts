@@ -197,7 +197,7 @@ export async function loadLevelFromAPI(
     }
 
     const mapDetail = response.data.data;
-    const md = mapDetail as Record<string, unknown>;
+    const md = mapDetail as unknown as Record<string, unknown>;
     const levels = parseLevelsFromPayload(mapDetail);
     const mapDetailJson =
       "mapDetailJson" in mapDetail && mapDetail.mapDetailJson != null

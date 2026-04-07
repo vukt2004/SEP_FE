@@ -3,10 +3,22 @@ import React from "react";
 interface TrapFailedModalProps {
   isOpen: boolean;
   onReplay: () => void;
+  title?: string;
+  description?: string;
 }
 
-export const TrapFailedModal: React.FC<TrapFailedModalProps> = ({ isOpen, onReplay }) => {
+export const TrapFailedModal: React.FC<TrapFailedModalProps> = ({
+  isOpen,
+  onReplay,
+  title,
+  description,
+}) => {
   if (!isOpen) return null;
+
+  const resolvedTitle = title ?? "You Hit a Trap";
+  const resolvedDescription =
+    description ??
+    "The character stepped on a trap and failed the level. Press Replay to reset the game and try again.";
 
   return (
     <div
@@ -34,10 +46,9 @@ export const TrapFailedModal: React.FC<TrapFailedModalProps> = ({ isOpen, onRepl
           color: "var(--text)",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: "20px" }}>You Hit a Trap</h3>
+        <h3 style={{ margin: 0, fontSize: "20px" }}>{resolvedTitle}</h3>
         <p style={{ margin: "10px 0 18px", fontSize: "14px", color: "var(--text-2)" }}>
-          The character stepped on a trap and failed the level. Press Replay to reset the game and
-          try again.
+          {resolvedDescription}
         </p>
         <button
           type="button"

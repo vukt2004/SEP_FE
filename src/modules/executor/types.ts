@@ -114,6 +114,7 @@ export type ConditionType =
   | "goalReached"
   | "enemyAhead"
   | "trapAhead"
+  | "bodyAhead"
   | "fruitCollected";
 
 /**

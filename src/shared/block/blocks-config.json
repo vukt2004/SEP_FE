@@ -593,6 +593,15 @@
       "output": "Boolean"
     },
     {
+      "type": "body_ahead",
+      "category": "logic",
+      "label": "body ahead?",
+      "tooltip": "Returns true if the snake body is ahead",
+      "color": "#5C81F6",
+      "command": "BODY_AHEAD",
+      "output": "Boolean"
+    },
+    {
       "type": "box_hardness_ahead",
       "category": "logic",
       "label": "box hardness ahead",

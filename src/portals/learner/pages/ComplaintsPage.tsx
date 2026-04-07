@@ -88,17 +88,6 @@ function getCategoryDisplayName(
     : translated;
 }
 
-function getCategoryDescription(
-  t: (key: string) => string,
-  item: ComplaintCategoryConfigItem | null,
-) {
-  if (!item) return "";
-  const translated = t(`complaints.runtimeCategory.${item.categoryKey}.description`);
-  return translated === `complaints.runtimeCategory.${item.categoryKey}.description`
-    ? item.description
-    : translated;
-}
-
 function normalizeText(value: string) {
   return value
     .normalize("NFD")
