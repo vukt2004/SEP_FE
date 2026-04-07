@@ -9,7 +9,9 @@ export const learnerAxios = axiosBase.create();
 
 /** Endpoints that must not receive Bearer (e.g. login, register). Refresh-token should receive current token (even expired). */
 function isLoginOnlyEndpoint(url?: string): boolean {
-  return /auth\/login|auth\/register|auth\/verify-otp|auth\/google|auth\/login\/google/.test(url ?? "");
+  return /auth\/login|auth\/register|auth\/verify-otp|auth\/google|auth\/login\/google/.test(
+    url ?? "",
+  );
 }
 
 function isRefreshTokenEndpoint(url?: string): boolean {
@@ -41,8 +43,8 @@ function doRefresh(): Promise<string> {
     .then((res) => {
       refreshPromise = null;
       const token =
-        (res.data as { data?: { accessToken?: string }; accessToken?: string })?.data?.accessToken ??
-        (res.data as { accessToken?: string })?.accessToken;
+        (res.data as { data?: { accessToken?: string }; accessToken?: string })?.data
+          ?.accessToken ?? (res.data as { accessToken?: string })?.accessToken;
       if (!token) throw new Error("No token in refresh response");
       tokenStorage.setLearnerToken(token);
       return token;

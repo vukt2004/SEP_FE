@@ -3,11 +3,14 @@ import { learnerXpApi } from "@/services/api/learner/xp.api";
 import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import type { PaginationResult, XpLeaderboardItem } from "@/types/api/learner/xp";
 import { useTranslation } from "@/lib/i18n/translations";
+import { useThemeStore } from "@/stores/theme.store";
 
 const PAGE_SIZE = 20;
 
 export default function LeaderboardPage() {
   const { t } = useTranslation();
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = theme === "dark";
   const [data, setData] = useState<PaginationResult<XpLeaderboardItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,112 +79,119 @@ export default function LeaderboardPage() {
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           backgroundColor: "var(--bg)",
-          backgroundImage: `
-            radial-gradient(
-              ellipse 120% 80% at 50% 0%,
-              color-mix(in srgb, var(--primary) 22%, transparent) 0%,
-              transparent 50%
-            ),
-            radial-gradient(
-              ellipse 85% 65% at 100% 35%,
-              color-mix(in srgb, var(--accent) 12%, transparent) 0%,
-              transparent 50%
-            ),
-            radial-gradient(
-              ellipse 75% 55% at 0% 60%,
-              color-mix(in srgb, var(--primary) 10%, transparent) 0%,
-              transparent 50%
-            ),
-            radial-gradient(
-              ellipse 100% 50% at 50% 100%,
-              color-mix(in srgb, var(--primary) 6%, transparent) 0%,
-              transparent 55%
-            )
-          `,
+          backgroundImage: isDark
+            ? "none"
+            : `
+              radial-gradient(
+                ellipse 120% 80% at 50% 0%,
+                color-mix(in srgb, var(--primary) 22%, transparent) 0%,
+                transparent 50%
+              ),
+              radial-gradient(
+                ellipse 85% 65% at 100% 35%,
+                color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+                transparent 50%
+              ),
+              radial-gradient(
+                ellipse 75% 55% at 0% 60%,
+                color-mix(in srgb, var(--primary) 10%, transparent) 0%,
+                transparent 50%
+              ),
+              radial-gradient(
+                ellipse 100% 50% at 50% 100%,
+                color-mix(in srgb, var(--primary) 6%, transparent) 0%,
+                transparent 55%
+              )
+            `,
         }}
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-2 md:px-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Leaderboard</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("leaderboard.subtitle")}</p>
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              {t("leaderboard.title")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {t("leaderboard.subtitle")}
+            </p>
+          </div>
+          <button
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            type="button"
+            onClick={() => void load(page)}
+            disabled={loading}
+          >
+            <span className={loading ? "inline-block animate-spin" : "inline-block"}>↻</span>
+            {t("leaderboard.refresh")}
+          </button>
         </div>
-        <button
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          type="button"
-          onClick={() => void load(page)}
-          disabled={loading}
-        >
-          <span className={loading ? "inline-block animate-spin" : "inline-block"}>↻</span>
-          {t("leaderboard.refresh")}
-        </button>
-      </div>
 
         {loading ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          {t("leaderboard.loading")}
-        </section>
-      ) : leaderboardItems.length ? (
-        <>
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {podiumItems.map((item) => {
-              return (
-                <TopUserCard
-                  key={item.userId}
-                  user={item}
-                  isCurrentUser={item.userId === myUserId}
-                  avatarSrc={getAvatarSrc(item)}
-                  initials={getInitials(item.displayName || t("unknown"))}
-                  t={t}
-                />
-              );
-            })}
+          <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+            {t("leaderboard.loading")}
           </section>
+        ) : leaderboardItems.length ? (
+          <>
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {podiumItems.map((item) => {
+                return (
+                  <TopUserCard
+                    key={item.userId}
+                    user={item}
+                    isCurrentUser={item.userId === myUserId}
+                    avatarSrc={getAvatarSrc(item)}
+                    initials={getInitials(item.displayName || t("unknown"))}
+                    t={t}
+                  />
+                );
+              })}
+            </section>
 
-          <LeaderboardTable
-            items={leaderboardItems}
-            myUserId={myUserId}
-            getAvatarSrc={getAvatarSrc}
-            getInitials={getInitials}
-            t={t}
-          />
+            <LeaderboardTable
+              items={leaderboardItems}
+              myUserId={myUserId}
+              getAvatarSrc={getAvatarSrc}
+              getInitials={getInitials}
+              t={t}
+            />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              {t("page")} {data?.currentPage ?? 1} / {Math.max(1, data?.totalPages ?? 1)} - {data?.totalItems ?? 0} {t("leaderboard.learners")}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+              <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                {t("page")} {data?.currentPage ?? 1} / {Math.max(1, data?.totalPages ?? 1)} -{" "}
+                {data?.totalItems ?? 0} {t("leaderboard.learners")}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={!data?.hasPrevious || loading}
+                >
+                  {t("previous")}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!data?.hasNext || loading}
+                >
+                  {t("next")}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={!data?.hasPrevious || loading}
-              >
-                {t("previous")}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={!data?.hasNext || loading}
-              >
-                {t("next")}
-              </button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          {t("leaderboard.empty")}
-        </section>
-      )}
+          </>
+        ) : (
+          <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+            {t("leaderboard.empty")}
+          </section>
+        )}
 
         {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300">
-          {error}
-        </div>
-      )}
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -209,7 +219,9 @@ function TopUserCard({
       className={[
         "group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300",
         "hover:-translate-y-1 hover:shadow-lg",
-        user.rank === 1 ? "md:scale-105 md:-translate-y-2 shadow-[0_18px_45px_rgba(250,204,21,0.22)]" : "",
+        user.rank === 1
+          ? "md:scale-105 md:-translate-y-2 shadow-[0_18px_45px_rgba(250,204,21,0.22)]"
+          : "",
         theme.cardClass,
       ].join(" ")}
     >
@@ -322,10 +334,18 @@ function LeaderboardTable({
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-800/60">
-            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">{t("leaderboard.rank")}</th>
-            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">{t("leaderboard.learner")}</th>
-            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">{t("leaderboard.level")}</th>
-            <th className="px-5 py-4 text-right text-xs font-bold tracking-wide text-slate-500">XP</th>
+            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">
+              {t("leaderboard.rank")}
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">
+              {t("leaderboard.learner")}
+            </th>
+            <th className="px-5 py-4 text-left text-xs font-bold tracking-wide text-slate-500">
+              {t("leaderboard.level")}
+            </th>
+            <th className="px-5 py-4 text-right text-xs font-bold tracking-wide text-slate-500">
+              XP
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -337,7 +357,9 @@ function LeaderboardTable({
                 key={`${item.userId}-${item.rank}`}
                 className={[
                   "border-t border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
-                  item.rank === 1 ? "bg-yellow-50/60 dark:bg-yellow-900/10 border-l-4 border-l-yellow-400" : "",
+                  item.rank === 1
+                    ? "bg-yellow-50/60 dark:bg-yellow-900/10 border-l-4 border-l-yellow-400"
+                    : "",
                   isCurrent ? "bg-indigo-50/50 dark:bg-indigo-900/10" : "",
                 ].join(" ")}
               >
@@ -373,7 +395,9 @@ function LeaderboardTable({
                     ) : null}
                   </div>
                 </td>
-                <td className="px-5 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">Lv. {item.currentLevel}</td>
+                <td className="px-5 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Lv. {item.currentLevel}
+                </td>
                 <td className="px-5 py-4 text-right text-base font-extrabold text-slate-900 dark:text-slate-100">
                   {item.currentXp.toLocaleString()}
                 </td>
@@ -397,7 +421,7 @@ function getRankTheme(rank: number) {
   if (rank === 1) {
     return {
       cardClass:
-        "border-yellow-300 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 shadow-[0_10px_30px_rgba(250,204,21,0.28)] dark:from-yellow-900/25 dark:via-amber-900/20 dark:to-orange-900/20",
+        "border-yellow-300 bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 shadow-[0_10px_30px_rgba(250,204,21,0.28)] dark:border-slate-700 dark:bg-slate-800/80 dark:shadow-none",
       ringClass: "ring-yellow-300 dark:ring-yellow-500/60",
       progressClass: "bg-gradient-to-r from-yellow-400 to-orange-400",
       xpTextClass: "text-yellow-500 dark:text-yellow-400",
@@ -405,17 +429,15 @@ function getRankTheme(rank: number) {
   }
   if (rank === 2) {
     return {
-      cardClass:
-        [
-          "border-slate-300",
-          "bg-gradient-to-br from-slate-50 via-white to-slate-200",
-          "shadow-[0_14px_34px_rgba(148,163,184,0.30)]",
-          "dark:border-slate-600 dark:from-slate-800/55 dark:via-slate-700/45 dark:to-slate-700/35",
-          // Chrome-like sheen on hover (one-time on interaction, not looping)
-          "before:pointer-events-none before:absolute before:inset-0 before:content-['']",
-          "before:bg-gradient-to-tr before:from-white/65 before:via-white/10 before:to-transparent",
-          "before:opacity-0 before:transition-opacity before:duration-300 group-hover:before:opacity-100",
-        ].join(" "),
+      cardClass: [
+        "border-slate-300",
+        "bg-gradient-to-br from-slate-50 via-white to-slate-200",
+        "shadow-[0_14px_34px_rgba(148,163,184,0.30)]",
+        "dark:border-slate-700 dark:bg-slate-800/80 dark:shadow-none",
+        "before:pointer-events-none before:absolute before:inset-0 before:content-['']",
+        "before:bg-gradient-to-tr before:from-white/65 before:via-white/10 before:to-transparent",
+        "before:opacity-0 before:transition-opacity before:duration-300 group-hover:before:opacity-0 dark:group-hover:before:opacity-0",
+      ].join(" "),
       ringClass: "ring-slate-200 dark:ring-slate-300/70",
       progressClass: "bg-gradient-to-r from-slate-300 via-slate-400 to-slate-500",
       xpTextClass: "text-slate-600 dark:text-slate-200",
@@ -423,7 +445,7 @@ function getRankTheme(rank: number) {
   }
   return {
     cardClass:
-      "border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 shadow-[0_8px_24px_rgba(249,115,22,0.2)] dark:from-orange-900/25 dark:via-amber-900/20 dark:to-yellow-900/20",
+      "border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 shadow-[0_8px_24px_rgba(249,115,22,0.2)] dark:border-slate-700 dark:bg-slate-800/80 dark:shadow-none",
     ringClass: "ring-orange-300 dark:ring-orange-500/60",
     progressClass: "bg-gradient-to-r from-yellow-400 to-orange-400",
     xpTextClass: "text-orange-400 dark:text-orange-300",
