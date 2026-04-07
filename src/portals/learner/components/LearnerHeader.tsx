@@ -142,7 +142,7 @@ export default function LearnerHeader() {
             </motion.div>
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
               <HeaderNavLink to={ROUTES.LEARNER_LEADERBOARD ?? "/app/leaderboard"} icon={Trophy}>
-                Leaderboard
+                {t("nav.leaderboard")}
               </HeaderNavLink>
             </motion.div>
           </nav>
@@ -262,7 +262,7 @@ export default function LearnerHeader() {
                     style={menuLinkStyle}
                   >
                     <Trophy size={18} />
-                    <span>Leaderboard</span>
+                    <span>{t("nav.leaderboard")}</span>
                   </NavLink>
                   <NavLink
                     to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"}
@@ -270,7 +270,7 @@ export default function LearnerHeader() {
                     style={menuLinkStyle}
                   >
                     <MessageSquareWarning size={18} />
-                    <span>Complaints</span>
+                    <span>{t("nav.complaints")}</span>
                   </NavLink>
                   <button
                     type="button"

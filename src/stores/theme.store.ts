@@ -4,8 +4,13 @@ const THEME_KEY = "quackorbit_theme";
 
 export type ThemeId = "dark" | "light";
 
-function applyTheme(theme: ThemeId) {
+export function applyTheme(theme: ThemeId) {
   document.documentElement.setAttribute("data-theme", theme);
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
 }
 
 function loadTheme(): ThemeId {

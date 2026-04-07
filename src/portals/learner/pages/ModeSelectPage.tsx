@@ -242,7 +242,6 @@ export default function ModeSelectPage() {
       <div className={styles.bg} aria-hidden />
       <section className={styles.container}>
         <header className={styles.header}>
-          <span className={styles.badge}>{t("chooseExperience")}</span>
           <h1 className={styles.title}>{t("howToPlay")}</h1>
           <p className={styles.subtitle}>{t("playSubtitle")}</p>
         </header>
@@ -338,7 +337,10 @@ export default function ModeSelectPage() {
       {/* Create room modal */}
       {createModalOpen && (
         <div className={styles.modalOverlay} onClick={() => !creating && setCreateModalOpen(false)}>
-          <div className={`${styles.modal} ${styles.modalMapPick}`} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`${styles.modal} ${styles.modalMapPick}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{t("createRoom")}</h2>
               <button
