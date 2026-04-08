@@ -84,6 +84,8 @@ type SnakeGameLocationState = {
   levelFile?: string;
   mapUrl?: string;
   multiplayerRoomId?: string;
+  roleContext?: "cms" | "learner";
+  returnTo?: string;
 };
 
 type SnakeFailureReason = "trap" | "self";
@@ -246,6 +248,9 @@ export default function SnakeGameView() {
   const levelFile = routeState?.levelFile;
   const mapUrl = routeState?.mapUrl;
   const multiplayerRoomId = routeState?.multiplayerRoomId;
+  const roleContext = routeState?.roleContext;
+  const returnTo = routeState?.returnTo;
+  const isCmsPreview = roleContext === "cms";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -481,17 +486,31 @@ export default function SnakeGameView() {
         levelId,
         mapDetailId: nextCampaignLevelId,
         multiplayerRoomId,
+        roleContext,
+        returnTo,
       },
     });
-  }, [campaignLevels, levelId, multiplayerRoomId, navigate, nextCampaignLevelId]);
+  }, [
+    campaignLevels,
+    levelId,
+    multiplayerRoomId,
+    navigate,
+    nextCampaignLevelId,
+    roleContext,
+    returnTo,
+  ]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
       return;
     }
+    if (isCmsPreview) {
+      navigate(returnTo || ROUTES.CMS_MAPS);
+      return;
+    }
     navigate(-1);
-  }, [multiplayerRoomId, navigate]);
+  }, [isCmsPreview, multiplayerRoomId, navigate, returnTo]);
 
   const handleMinimizeResults = useCallback(() => {
     setShowResultsModal(false);
@@ -609,7 +628,7 @@ export default function SnakeGameView() {
     let isMounted = true;
 
     const loadMapHints = async () => {
-      if (!levelId) {
+      if (isCmsPreview || !levelId) {
         if (isMounted) {
           setHints([]);
           setRevealedHints(0);
@@ -653,7 +672,7 @@ export default function SnakeGameView() {
     return () => {
       isMounted = false;
     };
-  }, [levelId]);
+  }, [isCmsPreview, levelId]);
 
   useEffect(() => {
     const limit = mapConfig?.timeLimitSeconds;
@@ -702,6 +721,7 @@ export default function SnakeGameView() {
 
   useEffect(() => {
     if (!gameResult) return;
+    if (isCmsPreview) return;
     if (historyRecordedRef.current) return;
     historyRecordedRef.current = true;
 
@@ -789,6 +809,7 @@ export default function SnakeGameView() {
   }, [
     activeMapDetailId,
     gameResult,
+    isCmsPreview,
     levelId,
     multiplayerRoomId,
     navigate,

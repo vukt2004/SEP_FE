@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
-import { Eye, Check, CheckCircle, X, Plus, Search } from "lucide-react";
+import { Eye, Check, CheckCircle, X, Plus, Search, Play } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import {
   canCreateMaps,
@@ -156,6 +156,22 @@ export const MapsPage: React.FC = () => {
     setSelectedMapForAction({ id: mapId, title: mapTitle });
     setRejectReason("");
     setRejectModalOpen(true);
+  };
+
+  const getPlayRoute = (mapType: MapListItem["type"]) => {
+    if (mapType === "Platform") return ROUTES.PLATFORM;
+    if (mapType === "Snake") return ROUTES.SNAKE;
+    return ROUTES.GAME;
+  };
+
+  const handlePlayMap = (mapId: string, mapType: MapListItem["type"]) => {
+    navigate(getPlayRoute(mapType), {
+      state: {
+        levelId: mapId,
+        roleContext: "cms",
+        returnTo: ROUTES.CMS_MAPS,
+      },
+    });
   };
 
   const handleApprove = async (e: React.FormEvent) => {
@@ -916,6 +932,25 @@ export const MapsPage: React.FC = () => {
                   </td>
                   <td style={{ padding: "16px" }}>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                      {/* Play Map */}
+                      <button
+                        onClick={() => handlePlayMap(map.id, map.type)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: "var(--primary)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          transition: "all 0.2s ease",
+                        }}
+                        title="Play Map"
+                      >
+                        <Play size={16} />
+                      </button>
+
                       {/* View Details */}
                       <button
                         onClick={() => handleViewDetails(map.id)}
