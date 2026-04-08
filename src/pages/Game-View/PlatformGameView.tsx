@@ -110,10 +110,21 @@ export default function PlatformGameView() {
   void lastRemoved;
 
   // Get level ID and multiplayer room from location state
-  const levelId = (location.state as { levelId?: string })?.levelId;
-  const levelFile = (location.state as { levelFile?: string })?.levelFile;
-  const multiplayerRoomId = (location.state as { multiplayerRoomId?: string })?.multiplayerRoomId;
-  const mapDetailIdFromState = (location.state as { mapDetailId?: string })?.mapDetailId;
+  const locationState = (location.state ?? null) as {
+    levelId?: string;
+    levelFile?: string;
+    multiplayerRoomId?: string;
+    mapDetailId?: string;
+    roleContext?: "cms" | "learner";
+    returnTo?: string;
+  } | null;
+  const levelId = locationState?.levelId;
+  const levelFile = locationState?.levelFile;
+  const multiplayerRoomId = locationState?.multiplayerRoomId;
+  const mapDetailIdFromState = locationState?.mapDetailId;
+  const roleContext = locationState?.roleContext;
+  const returnTo = locationState?.returnTo;
+  const isCmsPreview = roleContext === "cms";
   const levelSelectPath =
     levelId != null ? ROUTES.LEARNER_MAP_LEVEL_SELECT(levelId) : ROUTES.LEARNER_MAPS_BROWSE;
   const mapDetailPath =
@@ -165,17 +176,41 @@ export default function PlatformGameView() {
         levelId,
         mapDetailId: nextCampaignLevelId,
         multiplayerRoomId,
+        roleContext,
+        returnTo,
       },
     });
-  }, [levelId, nextCampaignLevelId, campaignLevels, multiplayerRoomId, navigate]);
+  }, [
+    levelId,
+    nextCampaignLevelId,
+    campaignLevels,
+    multiplayerRoomId,
+    navigate,
+    roleContext,
+    returnTo,
+  ]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
       return;
     }
-    navigate(campaignLevels.length <= 1 ? mapDetailPath : levelSelectPath);
-  }, [campaignLevels.length, levelSelectPath, mapDetailPath, multiplayerRoomId, navigate]);
+    navigate(
+      isCmsPreview
+        ? returnTo || ROUTES.CMS_MAPS
+        : campaignLevels.length <= 1
+          ? mapDetailPath
+          : levelSelectPath,
+    );
+  }, [
+    campaignLevels.length,
+    isCmsPreview,
+    levelSelectPath,
+    mapDetailPath,
+    multiplayerRoomId,
+    navigate,
+    returnTo,
+  ]);
 
   const handleReportXpIssue = useCallback(() => {
     if (!levelId) return;
@@ -240,7 +275,7 @@ export default function PlatformGameView() {
     let isMounted = true;
 
     const loadMapHints = async () => {
-      if (!levelId) {
+      if (isCmsPreview || !levelId) {
         if (isMounted) {
           setHints([]);
           setRevealedHints(0);
@@ -284,7 +319,7 @@ export default function PlatformGameView() {
     return () => {
       isMounted = false;
     };
-  }, [levelId]);
+  }, [isCmsPreview, levelId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -309,6 +344,8 @@ export default function PlatformGameView() {
               levelId,
               mapDetailId: mapDetailIdFromState,
               multiplayerRoomId,
+              roleContext,
+              returnTo,
             },
           });
           return;
@@ -321,6 +358,8 @@ export default function PlatformGameView() {
               levelId,
               mapDetailId: mapDetailIdFromState,
               multiplayerRoomId,
+              roleContext,
+              returnTo,
             },
           });
           return;
@@ -457,7 +496,16 @@ export default function PlatformGameView() {
     return () => {
       if (cleanup) cleanup();
     };
-  }, [levelId, levelFile, mapDetailIdFromState, showWarningToast, showResultPopup]);
+  }, [
+    levelId,
+    levelFile,
+    mapDetailIdFromState,
+    multiplayerRoomId,
+    returnTo,
+    roleContext,
+    showWarningToast,
+    showResultPopup,
+  ]);
 
   // Handle Blockly workspace ready
   const handleWorkspaceReady = useCallback((workspace: Blockly.WorkspaceSvg) => {
@@ -1052,6 +1100,7 @@ export default function PlatformGameView() {
   // - Multiplayer: call POST `/api/learner/lobby/rooms/:roomId/submit`
   useEffect(() => {
     if (!gameResult) return;
+    if (isCmsPreview) return;
     if (historyRecordedRef.current) return;
     historyRecordedRef.current = true;
 
@@ -1137,7 +1186,7 @@ export default function PlatformGameView() {
         historyRecordedRef.current = false;
       }
     })();
-  }, [gameResult, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
+  }, [gameResult, isCmsPreview, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
 
   const handleEndMultiplayerGame = async () => {
     if (!multiplayerRoomId) return;
