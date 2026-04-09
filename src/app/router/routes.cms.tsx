@@ -4,6 +4,7 @@ import type { RouteObject } from "react-router-dom";
 
 // Guard (cms token + (optionally) role check inside)
 import { RequireCmsAuth } from "@/portals/cms/guards/RequireCmsAuth";
+import { RequireCmsRole } from "@/portals/cms/guards/RequireCmsRole";
 
 // Layout (cms shell)
 const CmsLayout = React.lazy(() => import("@/portals/cms/layout/CmsLayout"));
@@ -27,9 +28,6 @@ const CmsOrbitCoinExchangeRatePage = React.lazy(
   () => import("@/portals/cms/pages/OrbitCoinExchangeRatePage"),
 );
 
-// Optional: if you want a separate role guard, you can wrap dashboard/routes with it.
-// import { RequireCmsRole } from "@/portals/cms/guards/RequireCmsRole";
-
 export const cmsRoutes: RouteObject = {
   path: "cms",
   element: (
@@ -40,51 +38,99 @@ export const cmsRoutes: RouteObject = {
   children: [
     {
       index: true,
-      element: <CmsDashboardPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsDashboardPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "dashboard",
-      element: <CmsDashboardPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsDashboardPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "users",
-      element: <CmsUsersPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsUsersPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "maps",
-      element: <CmsMapsPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin", "moderator"]}>
+          <CmsMapsPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "gameplay",
-      element: <CmsGameplaySettingsPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsGameplaySettingsPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "orbitcoin",
-      element: <CmsOrbitCoinExchangeRatePage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsOrbitCoinExchangeRatePage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "reports",
-      element: <CmsReportsPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin", "moderator"]}>
+          <CmsReportsPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "packages",
-      element: <CmsPackagesPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsPackagesPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "complaints",
-      element: <CmsComplaintsPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin", "moderator"]}>
+          <CmsComplaintsPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "complaints/:id",
-      element: <CmsComplaintDetailPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin", "moderator"]}>
+          <CmsComplaintDetailPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "complaints/categories",
-      element: <CmsComplaintCategoryConfigsPage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsComplaintCategoryConfigsPage />
+        </RequireCmsRole>
+      ),
     },
     {
       path: "profile",
-      element: <CmsProfilePage />,
+      element: (
+        <RequireCmsRole allowedRoles={["admin", "moderator"]}>
+          <CmsProfilePage />
+        </RequireCmsRole>
+      ),
     },
   ],
 };

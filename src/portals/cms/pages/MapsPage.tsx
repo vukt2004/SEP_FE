@@ -933,23 +933,25 @@ export const MapsPage: React.FC = () => {
                   <td style={{ padding: "16px" }}>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                       {/* Play Map */}
-                      <button
-                        onClick={() => handlePlayMap(map.id, map.type)}
-                        disabled={actionLoading}
-                        style={{
-                          padding: "6px 12px",
-                          background: "transparent",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          color: "var(--primary)",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          transition: "all 0.2s ease",
-                        }}
-                        title="Play Map"
-                      >
-                        <Play size={16} />
-                      </button>
+                      {map.mapStatus !== "Draft" && (
+                        <button
+                          onClick={() => handlePlayMap(map.id, map.type)}
+                          disabled={actionLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            color: "var(--primary)",
+                            cursor: actionLoading ? "not-allowed" : "pointer",
+                            fontSize: "12px",
+                            transition: "all 0.2s ease",
+                          }}
+                          title="Play Map"
+                        >
+                          <Play size={16} />
+                        </button>
+                      )}
 
                       {/* View Details */}
                       <button

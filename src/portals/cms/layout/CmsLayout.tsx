@@ -11,6 +11,7 @@ import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
 import { useState } from "react";
+import { getCmsRoleLabel, type CmsRole } from "@/lib/auth/role";
 import {
   LayoutDashboard,
   Map,
@@ -25,6 +26,7 @@ import {
   SlidersHorizontal,
   Coins,
   Tags,
+  type LucideIcon,
 } from "lucide-react";
 
 const CmsLayout: React.FC = () => {
@@ -38,17 +40,54 @@ const CmsLayout: React.FC = () => {
     navigate(ROUTES.CMS_LOGIN);
   };
 
-  const navItems = [
-    { path: "/cms/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/cms/maps", label: "Maps", icon: Map },
-    { path: ROUTES.CMS_GAMEPLAY, label: "Gameplay scoring", icon: SlidersHorizontal },
-    { path: ROUTES.CMS_ORBITCOIN, label: "OrbitCoin rate", icon: Coins },
-    { path: "/cms/users", label: "Users", icon: Users },
-    { path: "/cms/reports", label: "Reports", icon: Flag },
-    { path: "/cms/packages", label: "Packages", icon: Package },
-    { path: "/cms/complaints", label: "Complaints", icon: MessageSquareWarning },
-    { path: ROUTES.CMS_COMPLAINT_CATEGORIES, label: "Complaint categories", icon: Tags },
+  const navItems: Array<{
+    path: string;
+    label: string;
+    icon: LucideIcon;
+    roles: CmsRole[];
+  }> = [
+    { path: ROUTES.CMS_DASHBOARD, label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_MAPS,
+      label: "Maps",
+      icon: Map,
+      roles: ["admin", "moderator"],
+    },
+    {
+      path: ROUTES.CMS_GAMEPLAY,
+      label: "Gameplay scoring",
+      icon: SlidersHorizontal,
+      roles: ["admin"],
+    },
+    {
+      path: ROUTES.CMS_ORBITCOIN,
+      label: "OrbitCoin rate",
+      icon: Coins,
+      roles: ["admin"],
+    },
+    { path: ROUTES.CMS_USERS, label: "Users", icon: Users, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_REPORTS,
+      label: "Reports",
+      icon: Flag,
+      roles: ["admin", "moderator"],
+    },
+    { path: ROUTES.CMS_PACKAGES, label: "Packages", icon: Package, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_COMPLAINTS,
+      label: "Complaints",
+      icon: MessageSquareWarning,
+      roles: ["admin", "moderator"],
+    },
+    {
+      path: ROUTES.CMS_COMPLAINT_CATEGORIES,
+      label: "Complaint categories",
+      icon: Tags,
+      roles: ["admin"],
+    },
   ];
+
+  const visibleNavItems = role ? navItems.filter((item) => item.roles.includes(role)) : [];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -84,14 +123,14 @@ const CmsLayout: React.FC = () => {
               <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "bold" }}>
                 QuackOrbit
               </div>
-              <div style={{ color: "var(--text-2)", fontSize: "12px" }}>CMS Admin</div>
+              <div style={{ color: "var(--text-2)", fontSize: "12px" }}>CMS {getCmsRoleLabel(role)}</div>
             </div>
           )}
         </div>
 
         {/* Navigation */}
         <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const IconComponent = item.icon;
             return (
               <Link
@@ -169,7 +208,7 @@ const CmsLayout: React.FC = () => {
         >
           <div>
             <h1 style={{ color: "var(--text)", fontSize: "20px", fontWeight: "600", margin: 0 }}>
-              {navItems.find((item) => isActive(item.path))?.label || "CMS Admin"}
+              {visibleNavItems.find((item) => isActive(item.path))?.label || "CMS"}
             </h1>
           </div>
 
@@ -186,12 +225,12 @@ const CmsLayout: React.FC = () => {
                 textTransform: "capitalize",
               }}
             >
-              {role || "Admin"}
+              {getCmsRoleLabel(role)}
             </div>
 
             {/* Profile Button */}
             <button
-              onClick={() => navigate("/cms/profile")}
+              onClick={() => navigate(ROUTES.CMS_PROFILE)}
               style={{
                 padding: "8px 16px",
                 background: "transparent",

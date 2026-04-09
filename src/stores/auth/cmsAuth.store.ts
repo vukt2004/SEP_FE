@@ -1,14 +1,13 @@
 import { create } from "zustand";
 import { cmsAuthApi } from "@/services/api/cms/auth.api";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
-
-type CmsRole = "admin" | "mod";
+import { resolveCmsRole, type CmsRole } from "@/lib/auth/role";
 
 interface CmsAuthState {
   token: string | null;
   role: CmsRole | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<CmsRole>;
   logout: () => Promise<void>;
   hydrate: () => void;
 }
@@ -21,8 +20,16 @@ export const useCmsAuthStore = create<CmsAuthState>((set) => ({
   hydrate: () => {
     const token = tokenStorage.getCmsToken();
     if (token) {
-      set({ token, isAuthenticated: true });
+      const role = resolveCmsRole(null, token);
+      if (role) {
+        set({ token, role, isAuthenticated: true });
+        return;
+      }
+
+      tokenStorage.removeCmsToken();
     }
+
+    set({ token: null, role: null, isAuthenticated: false });
   },
 
   login: async (email, password) => {
@@ -37,14 +44,19 @@ export const useCmsAuthStore = create<CmsAuthState>((set) => ({
 
     tokenStorage.setCmsToken(token);
 
-    // Determine role from roles array (admin takes precedence)
-    const role: CmsRole = roles?.includes("admin") ? "admin" : "mod";
+    const role = resolveCmsRole(roles, token);
+    if (!role) {
+      tokenStorage.removeCmsToken();
+      throw new Error("Login failed: Account does not have CMS role");
+    }
 
     set({
       token,
       role,
       isAuthenticated: true,
     });
+
+    return role;
   },
 
   logout: async () => {
