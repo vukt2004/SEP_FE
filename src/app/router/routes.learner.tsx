@@ -21,6 +21,10 @@ const LearnerPaymentFailurePage = React.lazy(
 );
 const LearnerMyMapsPage = React.lazy(() => import("@/portals/learner/pages/MyMapsPage"));
 const LearnerMapDetailPage = React.lazy(() => import("@/portals/learner/pages/MapDetailPage"));
+const LearnerUserMapsPage = React.lazy(() => import("@/portals/learner/pages/UserMapsPage"));
+const LearnerChatConversationPage = React.lazy(
+  () => import("@/portals/learner/pages/ChatConversationPage"),
+);
 const LearnerMapLevelSelectPage = React.lazy(
   () => import("@/portals/learner/pages/MapLevelSelectPage"),
 );
@@ -93,6 +97,9 @@ export const learnerRoutes: RouteObject = {
     { path: "my-maps", element: <LearnerMyMapsPage /> },
     { path: "marketplace", element: <LearnerMarketplacePage /> },
     { path: "map/:id", element: <LearnerMapDetailPage /> },
+    { path: "user/:userId/maps", element: <LearnerUserMapsPage /> },
+    { path: "chat", element: <LearnerChatConversationPage /> },
+    { path: "chat/:conversationId", element: <LearnerChatConversationPage /> },
     { path: "map/:id/levels", element: <LearnerMapLevelSelectPage /> },
     { path: "room/create", element: <LearnerRoomCreatePage /> },
     { path: "room/join", element: <LearnerRoomJoinPage /> },
