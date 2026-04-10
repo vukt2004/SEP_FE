@@ -48,9 +48,12 @@ export const ROUTES = {
   CMS_APP: "/cms",
   CMS_DASHBOARD: "/cms/dashboard",
   CMS_MAPS: "/cms/maps",
+  CMS_REPORTS: "/cms/reports",
   CMS_USERS: "/cms/users",
+  CMS_PACKAGES: "/cms/packages",
   CMS_COMPLAINTS: "/cms/complaints",
   CMS_COMPLAINT_CATEGORIES: "/cms/complaints/categories",
   CMS_GAMEPLAY: "/cms/gameplay",
   CMS_ORBITCOIN: "/cms/orbitcoin",
+  CMS_PROFILE: "/cms/profile",
 } as const;

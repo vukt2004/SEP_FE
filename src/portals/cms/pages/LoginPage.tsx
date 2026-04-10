@@ -3,7 +3,7 @@ import "@/shared/styles/tokens.css";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
-import { ROUTES } from "@/lib/constants/routes";
+import { getCmsHomeRoute } from "@/lib/auth/role";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,8 +20,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate(ROUTES.CMS_DASHBOARD);
+      const role = await login(email, password);
+      navigate(getCmsHomeRoute(role));
     } catch (err) {
       setError("Login failed. Please check your credentials.");
       console.error("Login error:", err);
