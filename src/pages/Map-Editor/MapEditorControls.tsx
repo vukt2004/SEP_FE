@@ -363,6 +363,9 @@ export function MapEditorControls({
   const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
+  const [resolvedAvatarPreviewUrl, setResolvedAvatarPreviewUrl] = useState<string | null>(
+    initialAvatarUrl,
+  );
   const { locale } = useLanguageStore();
   const t = useMemo(() => getT(locale), [locale]);
   const tt = (key: string, fallback: string) => {
@@ -725,6 +728,58 @@ export function MapEditorControls({
       URL.revokeObjectURL(nextUrl);
     };
   }, [avatarFile]);
+
+  useEffect(() => {
+    const raw = avatarPreviewUrl?.trim() ?? "";
+    if (!raw) {
+      setResolvedAvatarPreviewUrl(null);
+      return;
+    }
+
+    if (raw.startsWith("blob:") || raw.startsWith("data:") || !/^https?:\/\//i.test(raw)) {
+      setResolvedAvatarPreviewUrl(raw);
+      return;
+    }
+
+    let cancelled = false;
+    let blobUrl: string | null = null;
+
+    setResolvedAvatarPreviewUrl(raw);
+
+    const loadRemotePreview = async () => {
+      try {
+        const response = await fetch(raw, {
+          mode: "cors",
+          credentials: "omit",
+          cache: "force-cache",
+        });
+        const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+        if (!response.ok || !contentType.startsWith("image/")) {
+          throw new Error("Remote preview is not an image");
+        }
+
+        const imageBlob = await response.blob();
+        blobUrl = URL.createObjectURL(imageBlob);
+        if (!cancelled) {
+          setResolvedAvatarPreviewUrl(blobUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          // Fall back to original URL when fetch/blob conversion fails (e.g. CORS).
+          setResolvedAvatarPreviewUrl(raw);
+        }
+      }
+    };
+
+    void loadRemotePreview();
+
+    return () => {
+      cancelled = true;
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
 
   // Update portal color counts when mapData changes
   useEffect(() => {
@@ -2510,11 +2565,12 @@ export function MapEditorControls({
 
             <div style={styles.detailLayout}>
               <div style={styles.previewFrame}>
-                {avatarPreviewUrl ? (
+                {resolvedAvatarPreviewUrl ? (
                   <img
-                    src={avatarPreviewUrl}
+                    src={resolvedAvatarPreviewUrl}
                     alt={tt("mapEditorThumbnailWholeMapAlt", "Map thumbnail (whole map)")}
                     style={styles.previewImage}
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div style={styles.previewPlaceholder} />
@@ -3008,7 +3064,7 @@ export function MapEditorControls({
           selectedLearnedTagIds={selectedLearnedTagIds}
           onToggleTag={toggleTagSelection}
           onToggleLearnedTag={toggleLearnedTagSelection}
-          avatarPreviewUrl={avatarPreviewUrl}
+          avatarPreviewUrl={resolvedAvatarPreviewUrl}
           avatarFile={avatarFile}
           onAvatarFileChange={setAvatarFile}
           galleryFiles={pendingGalleryFiles}

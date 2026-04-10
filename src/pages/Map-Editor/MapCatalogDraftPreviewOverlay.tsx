@@ -117,6 +117,7 @@ export function MapCatalogDraftPreviewOverlay({
   const navigate = useNavigate();
   const [gallerySlideIndex, setGallerySlideIndex] = useState(0);
   const [heroLoadError, setHeroLoadError] = useState(false);
+  const [keyArtLoadError, setKeyArtLoadError] = useState(false);
   const [tagSearchGeneral, setTagSearchGeneral] = useState("");
   const [tagSearchLearned, setTagSearchLearned] = useState("");
   const [dragHeroActive, setDragHeroActive] = useState(false);
@@ -173,6 +174,14 @@ export function MapCatalogDraftPreviewOverlay({
     setHeroLoadError(false);
   }, [gallerySlideIndex, gallerySlides]);
 
+  useEffect(() => {
+    setHeroLoadError(false);
+  }, [avatarPreviewUrl]);
+
+  useEffect(() => {
+    setKeyArtLoadError(false);
+  }, [avatarPreviewUrl]);
+
   const filteredGeneralTags = useMemo(() => {
     const q = tagSearchGeneral.trim().toLowerCase();
     if (!q) return availableMapTags;
@@ -193,7 +202,18 @@ export function MapCatalogDraftPreviewOverlay({
     });
   }, [learnedKnowledgeTags, locale, tagSearchLearned]);
 
-  const currentHero = gallerySlides[gallerySlideIndex] ?? null;
+  const avatarHeroUrl = avatarPreviewUrl?.trim() ?? "";
+  const currentHero =
+    gallerySlides[gallerySlideIndex] ??
+    (avatarHeroUrl
+      ? {
+          url: avatarHeroUrl,
+          kind: "Image",
+          key: "avatar-fallback-hero",
+          fileIndex: -1,
+        }
+      : null);
+  const hasKeyArtPreview = Boolean(avatarPreviewUrl?.trim()) && !keyArtLoadError;
 
   const applyDroppedToGallery = (fileList: File[]) => {
     const { images, videos } = mediaFilesFromList(fileList);
@@ -564,6 +584,11 @@ export function MapCatalogDraftPreviewOverlay({
           <div className={styles.steamSidebar}>
             <div
               className={styles.catalogKeyArt}
+              style={{
+                width: "min(100%, 420px)",
+                maxHeight: "none",
+                aspectRatio: "16 / 9",
+              }}
               onDragOver={(e) => {
                 if (hasFileDrag(e)) e.preventDefault();
               }}
@@ -589,8 +614,13 @@ export function MapCatalogDraftPreviewOverlay({
                 if (list.length) applyDroppedToKeyArt(list);
               }}
             >
-              {avatarPreviewUrl?.trim() ? (
-                <img src={avatarPreviewUrl} alt="" />
+              {hasKeyArtPreview ? (
+                <img
+                  src={avatarPreviewUrl ?? ""}
+                  alt=""
+                  onError={() => setKeyArtLoadError(true)}
+                  referrerPolicy="no-referrer"
+                />
               ) : (
                 <button
                   type="button"
@@ -603,7 +633,7 @@ export function MapCatalogDraftPreviewOverlay({
                   <span>{t("mapEditorCatalogKeyArtHint")}</span>
                 </button>
               )}
-              {avatarPreviewUrl?.trim() && dragKeyArtActive && (
+              {hasKeyArtPreview && dragKeyArtActive && (
                 <div
                   style={{
                     position: "absolute",
@@ -624,7 +654,7 @@ export function MapCatalogDraftPreviewOverlay({
               )}
             </div>
 
-            {avatarPreviewUrl?.trim() ? (
+            {hasKeyArtPreview ? (
               <button
                 type="button"
                 className={styles.authorMediaBtn}

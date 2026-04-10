@@ -23,6 +23,85 @@ import {
   type SubscriptionPlan,
 } from "@/lib/auth/subscriptionPlan";
 
+const toNonEmptyString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeMediaUrl = (rawUrl: string): string => {
+  const url = rawUrl.trim();
+  if (/^(https?:)?\/\//i.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+
+  const apiBase = toNonEmptyString(import.meta.env.VITE_API_BASE_URL);
+  if (apiBase) {
+    try {
+      return new URL(url, apiBase).toString();
+    } catch {
+      // Ignore and try origin fallback.
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      return new URL(url, window.location.origin).toString();
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const resolveMapPreviewUrl = (mapLike: unknown): string | null => {
+  if (!isRecord(mapLike)) {
+    return null;
+  }
+
+  const directPreview =
+    toNonEmptyString(mapLike.avatarUrl) ??
+    toNonEmptyString(mapLike.AvatarUrl) ??
+    toNonEmptyString(mapLike.avatarURL) ??
+    toNonEmptyString(mapLike.thumbnailUrl) ??
+    toNonEmptyString(mapLike.ThumbnailUrl) ??
+    toNonEmptyString(mapLike.imageUrl) ??
+    toNonEmptyString(mapLike.ImageUrl) ??
+    toNonEmptyString(mapLike.avatarPath) ??
+    toNonEmptyString(mapLike.AvatarPath);
+
+  if (directPreview) {
+    return normalizeMediaUrl(directPreview);
+  }
+
+  const gallery = Array.isArray(mapLike.gallery)
+    ? mapLike.gallery
+    : Array.isArray(mapLike.Gallery)
+      ? mapLike.Gallery
+      : [];
+
+  for (const item of gallery) {
+    if (!isRecord(item)) continue;
+    const kind = (toNonEmptyString(item.kind) ?? toNonEmptyString(item.Kind) ?? "").toLowerCase();
+    if (kind === "video") continue;
+    const mediaUrl = toNonEmptyString(item.url) ?? toNonEmptyString(item.Url);
+    if (mediaUrl) return normalizeMediaUrl(mediaUrl);
+  }
+
+  for (const item of gallery) {
+    if (!isRecord(item)) continue;
+    const mediaUrl = toNonEmptyString(item.url) ?? toNonEmptyString(item.Url);
+    if (mediaUrl) return normalizeMediaUrl(mediaUrl);
+  }
+
+  return null;
+};
+
 export const MapsPage: React.FC = () => {
   const navigate = useNavigate();
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
@@ -743,7 +822,7 @@ export const MapsPage: React.FC = () => {
                   }}
                 >
                   {(() => {
-                    const previewUrl = map.avatarUrl?.trim() || null;
+                    const previewUrl = resolveMapPreviewUrl(map);
 
                     return (
                       <td style={{ padding: "12px 16px", textAlign: "center" }}>
@@ -764,6 +843,7 @@ export const MapsPage: React.FC = () => {
                             <img
                               src={previewUrl}
                               alt={map.title}
+                              referrerPolicy="no-referrer"
                               style={{
                                 width: "100%",
                                 height: "100%",
@@ -1085,6 +1165,9 @@ export const MapsPage: React.FC = () => {
         maxWidth="800px"
       >
         {selectedMap && (
+          (() => {
+            const selectedMapPreviewUrl = resolveMapPreviewUrl(selectedMap);
+            return (
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             {/* Basic Info */}
             <div style={{ paddingBottom: "16px", borderBottom: "1px solid var(--border)" }}>
@@ -1104,7 +1187,7 @@ export const MapsPage: React.FC = () => {
             </div>
 
             {/* Map Image */}
-            {selectedMap.avatarUrl && (
+            {selectedMapPreviewUrl && (
               <div>
                 <div
                   style={{
@@ -1131,8 +1214,9 @@ export const MapsPage: React.FC = () => {
                   }}
                 >
                   <img
-                    src={selectedMap.avatarUrl}
+                    src={selectedMapPreviewUrl}
                     alt={selectedMap.title}
+                    referrerPolicy="no-referrer"
                     style={{
                       width: "100%",
                       height: "100%",
@@ -1548,6 +1632,8 @@ export const MapsPage: React.FC = () => {
               )}
             </div>
           </div>
+            );
+          })()
         )}
       </Modal>
 
