@@ -129,12 +129,18 @@ export interface Map {
 export interface GetMapsParams {
   pageNumber?: number;
   pageSize?: number;
+  /** Backend query param alias (PascalCase). */
+  PageNumber?: number;
+  /** Backend query param alias (PascalCase). */
+  PageSize?: number;
   publishedOnly?: boolean;
   difficulty?: number;
   mapStatus?: MapStatusEnum;
   type?: number;
   tagId?: string;
   createdByUserId?: string;
+  /** Backend query param alias (PascalCase). */
+  CreatedByUserId?: string;
   minPrice?: number;
   maxPrice?: number;
   search?: string;

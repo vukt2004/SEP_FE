@@ -8,6 +8,7 @@ import {
   Heart,
   Bell,
   Share2,
+  MessageCircle,
   ImagePlus,
   Video,
   PlayCircle,
@@ -16,7 +17,8 @@ import {
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
-import type { Map, MapLevelItem, MapTag } from "@/types/api/learner/maps";
+import { learnerChatApi } from "@/services/api/learner/chat.api.ts";
+import type { GetMapsParams, Map, MapLevelItem, MapTag } from "@/types/api/learner/maps";
 import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
@@ -113,6 +115,9 @@ export default function MapDetailPage() {
   const [currentMediaLoadError, setCurrentMediaLoadError] = useState(false);
   const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
   const [loadingMapTags, setLoadingMapTags] = useState(false);
+  const [creatorMaps, setCreatorMaps] = useState<Map[]>([]);
+  const [loadingCreatorMaps, setLoadingCreatorMaps] = useState(false);
+  const [isOpeningCreatorChat, setIsOpeningCreatorChat] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editDifficulty, setEditDifficulty] = useState(1);
@@ -208,6 +213,52 @@ export default function MapDetailPage() {
     setEditPrice(map.price ?? 0);
     setEditFreeTrialAttemptLimit(Math.max(0, Number(map.freeTrialAttemptLimit ?? 0)));
   }, [map]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const creatorId = map?.createdByUserId?.trim();
+    const currentMapId = map?.id;
+
+    if (!creatorId || !currentMapId) {
+      setCreatorMaps([]);
+      return;
+    }
+
+    const loadCreatorMaps = async () => {
+      try {
+        setLoadingCreatorMaps(true);
+        const params: GetMapsParams = {
+          pageNumber: 1,
+          pageSize: 5,
+          PageSize: 5,
+          publishedOnly: true,
+          createdByUserId: creatorId,
+          CreatedByUserId: creatorId,
+          sortBy: "CreatedAt",
+          sortAscending: false,
+        };
+        const response = await learnerMapsApi.getMaps(params);
+        if (cancelled) return;
+        if (response.data.isSuccess && Array.isArray(response.data.data?.items)) {
+          setCreatorMaps(response.data.data.items.filter((item) => item.id !== currentMapId));
+          return;
+        }
+        setCreatorMaps([]);
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+          setCreatorMaps([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingCreatorMaps(false);
+      }
+    };
+
+    void loadCreatorMaps();
+    return () => {
+      cancelled = true;
+    };
+  }, [map?.createdByUserId, map?.id]);
 
   useEffect(() => {
     if (!map || availableMapTags.length === 0) return;
@@ -354,6 +405,40 @@ export default function MapDetailPage() {
     navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
+  const handleChatWithCreator = async () => {
+    if (!map?.id || !map.createdByUserId) return;
+
+    try {
+      setIsOpeningCreatorChat(true);
+      const response = await learnerChatApi.getOrCreatePrivateConversation(map.createdByUserId);
+      const conversationId = response.data.data?.id;
+      if (!response.data.isSuccess || !conversationId) {
+        alert(
+          response.data.message ||
+            (locale.startsWith("vi")
+              ? "Không thể mở cuộc trò chuyện với tác giả."
+              : "Unable to open chat with creator."),
+        );
+        return;
+      }
+
+      const params = new URLSearchParams({
+        otherUserId: map.createdByUserId,
+        otherUserName: getCreatorLabel(),
+      });
+      navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conversationId)}?${params.toString()}`);
+    } catch (err) {
+      console.error(err);
+      alert(
+        locale.startsWith("vi")
+          ? "Có lỗi khi mở cuộc trò chuyện với tác giả."
+          : "An error occurred while opening chat with creator.",
+      );
+    } finally {
+      setIsOpeningCreatorChat(false);
+    }
+  };
+
   const toggleTagSelection = (tagId: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((x) => x !== tagId) : [...prev, tagId],
@@ -464,6 +549,8 @@ export default function MapDetailPage() {
     (map?.price ?? 0) > 0 &&
     trialRemainingAttempts > 0;
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
+  const canPurchase =
+    ownership?.isOwned !== true && map?.isPublished === true && (map?.price ?? 0) > 0;
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
   const campaignLevels = useMemo(() => {
     const levels = map?.levels ?? [];
@@ -906,6 +993,12 @@ export default function MapDetailPage() {
                         : t("hard")}
                   </span>
                 </div>
+                <div className={styles.steamMetaRow}>
+                  <span className={styles.steamMetaLabel}>{t("mapDetailFieldPrice")}</span>
+                  <span className={styles.steamMetaValue}>
+                    {map.price > 0 ? `${map.price.toLocaleString()} OC` : t("free")}
+                  </span>
+                </div>
                 {trialLimit > 0 && (
                   <div className={styles.steamMetaRow}>
                     <span className={styles.steamMetaLabel}>
@@ -988,7 +1081,7 @@ export default function MapDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          {!canPlay ? (
+          {canPurchase ? (
             <motion.button
               type="button"
               onClick={handleBuyMap}
@@ -1025,7 +1118,117 @@ export default function MapDetailPage() {
           >
             <Share2 size={16} /> {t("share")}
           </motion.button>
+          {!isAuthor && (
+            <motion.button
+              type="button"
+              className={styles.steamFooterSecondary}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleChatWithCreator}
+              disabled={isOpeningCreatorChat}
+            >
+              <MessageCircle size={16} />
+              {isOpeningCreatorChat
+                ? locale.startsWith("vi")
+                  ? "Đang mở chat..."
+                  : "Opening chat..."
+                : locale.startsWith("vi")
+                  ? "Chat với tác giả"
+                  : "Chat with creator"}
+            </motion.button>
+          )}
         </motion.div>
+
+        {!showCatalogSetupForm && map.createdByUserId && (
+          <section className={styles.moreByCreatorSection}>
+            <div className={styles.moreByCreatorHeader}>
+              <h2 className={styles.moreByCreatorTitle}>
+                {locale.startsWith("vi")
+                  ? "Bản đồ khác của tác giả"
+                  : "More maps from this creator"}
+              </h2>
+              <div className={styles.moreByCreatorHeaderActions}>
+                <span className={styles.moreByCreatorName}>{getCreatorLabel()}</span>
+                <button
+                  type="button"
+                  className={styles.moreByCreatorViewMore}
+                  onClick={() => {
+                    const query = new URLSearchParams({ name: getCreatorLabel() });
+                    navigate(
+                      `${ROUTES.LEARNER_USER_MAPS(map.createdByUserId)}?${query.toString()}`,
+                    );
+                  }}
+                >
+                  {locale.startsWith("vi") ? "Xem thêm" : "View more"}
+                </button>
+              </div>
+            </div>
+
+            {loadingCreatorMaps ? (
+              <p className={styles.moreByCreatorState}>{t("loadingMapDetails")}</p>
+            ) : creatorMaps.length > 0 ? (
+              <div className={styles.moreByCreatorGrid}>
+                {creatorMaps.map((otherMap) => {
+                  const thumbnail =
+                    otherMap.avatarUrl?.trim() || otherMap.gallery?.[0]?.url?.trim() || "";
+                  const difficultyLabel =
+                    otherMap.difficulty <= 2
+                      ? t("easy")
+                      : otherMap.difficulty === 3
+                        ? t("medium")
+                        : t("hard");
+
+                  return (
+                    <button
+                      key={otherMap.id}
+                      type="button"
+                      className={styles.creatorMapCard}
+                      onClick={() =>
+                        navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", otherMap.id))
+                      }
+                    >
+                      <div className={styles.creatorMapThumbWrap}>
+                        {thumbnail ? (
+                          <img
+                            src={thumbnail}
+                            alt={otherMap.title}
+                            className={styles.creatorMapThumb}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className={styles.creatorMapThumbPlaceholder}>No Preview</div>
+                        )}
+                      </div>
+                      <div className={styles.creatorMapBody}>
+                        <h3 className={styles.creatorMapTitle}>{otherMap.title}</h3>
+                        <p className={styles.creatorMapDesc}>
+                          {otherMap.description?.trim() ||
+                            (locale.startsWith("vi")
+                              ? "Chưa có mô tả cho bản đồ này."
+                              : "No description for this map.")}
+                        </p>
+                        <div className={styles.creatorMapMetaRow}>
+                          <span>{difficultyLabel}</span>
+                          <span className={styles.creatorMapPrice}>
+                            {otherMap.price > 0
+                              ? `${otherMap.price.toLocaleString()} OC`
+                              : t("free")}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className={styles.moreByCreatorState}>
+                {locale.startsWith("vi")
+                  ? "Tác giả chưa có bản đồ công khai khác."
+                  : "No other published maps from this creator yet."}
+              </p>
+            )}
+          </section>
+        )}
 
         {purchaseModal && (
           <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>

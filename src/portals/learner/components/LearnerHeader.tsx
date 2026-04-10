@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Route,
+  MessageCircle,
   MessageSquareWarning,
   Trophy,
 } from "lucide-react";
@@ -263,6 +264,14 @@ export default function LearnerHeader() {
                   >
                     <Trophy size={18} />
                     <span>{t("nav.leaderboard")}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_CHAT ?? "/app/chat"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <MessageCircle size={18} />
+                    <span>{locale === "vi" ? "Cuộc trò chuyện" : "Conversations"}</span>
                   </NavLink>
                   <NavLink
                     to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"}
