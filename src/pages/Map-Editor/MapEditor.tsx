@@ -130,6 +130,91 @@ const normalizeRequiredBlocks = (value: unknown): RequiredBlockRule[] => {
     }));
 };
 
+const toNonEmptyString = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeRemoteMediaUrl = (rawUrl: string): string => {
+  const url = rawUrl.trim();
+  if (/^(https?:)?\/\//i.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+
+  const apiBase = toNonEmptyString(import.meta.env.VITE_API_BASE_URL);
+  if (apiBase) {
+    try {
+      return new URL(url, apiBase).toString();
+    } catch {
+      // Fall through to next strategy.
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      return new URL(url, window.location.origin).toString();
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
+};
+
+const extractMapAvatarUrl = (detail: unknown): string | null => {
+  if (!isRecord(detail)) {
+    return null;
+  }
+
+  const directAvatar =
+    toNonEmptyString(detail.avatarUrl) ??
+    toNonEmptyString(detail.AvatarUrl) ??
+    toNonEmptyString(detail.avatarURL) ??
+    toNonEmptyString(detail.thumbnailUrl) ??
+    toNonEmptyString(detail.ThumbnailUrl) ??
+    toNonEmptyString(detail.imageUrl) ??
+    toNonEmptyString(detail.ImageUrl);
+
+  if (directAvatar) {
+    return normalizeRemoteMediaUrl(directAvatar);
+  }
+
+  const gallery = Array.isArray(detail.gallery)
+    ? detail.gallery
+    : Array.isArray(detail.Gallery)
+      ? detail.Gallery
+      : [];
+
+  for (const item of gallery) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const kind = (toNonEmptyString(item.kind) ?? toNonEmptyString(item.Kind) ?? "").toLowerCase();
+    if (kind === "video") {
+      continue;
+    }
+    const itemUrl = toNonEmptyString(item.url) ?? toNonEmptyString(item.Url);
+    if (itemUrl) {
+      return normalizeRemoteMediaUrl(itemUrl);
+    }
+  }
+
+  for (const item of gallery) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const itemUrl = toNonEmptyString(item.url) ?? toNonEmptyString(item.Url);
+    if (itemUrl) {
+      return normalizeRemoteMediaUrl(itemUrl);
+    }
+  }
+
+  return null;
+};
+
 const normalizeBlockConstraints = (
   source: Record<string, unknown> | null,
 ): {
@@ -728,7 +813,7 @@ export default function MapEditor() {
 
         const raw = response.data.data as MapDetail;
         setEditingMapTagNames(Array.isArray(raw.tagNames) ? raw.tagNames : []);
-        setEditingMapAvatarUrl((raw as MapDetailLike).avatarUrl ?? null);
+        setEditingMapAvatarUrl(extractMapAvatarUrl(raw));
         setMapCatalogTitle(raw.title ?? "");
         setEditingMapContentVersion(
           typeof raw.contentVersion === "number" && Number.isFinite(raw.contentVersion)
