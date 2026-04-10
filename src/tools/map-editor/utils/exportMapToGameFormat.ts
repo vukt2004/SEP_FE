@@ -269,7 +269,7 @@ export function exportMapToGameFormat(mapData: MapData, levelName?: string): Gam
     name,
     width: mapData.config.width,
     height: mapData.config.height,
-    tileset: "basic/default",
+    tileset: "default",
     layers: {
       background: backgroundLayer,
       ground: groundLayer,

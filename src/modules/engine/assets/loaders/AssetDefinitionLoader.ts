@@ -11,6 +11,10 @@ import {
 } from "@/lib/auth/subscriptionPlan";
 
 const ASSET_TIERS: AssetTier[] = ["basic", "advanced"];
+const TIER_TILE_ID_OFFSET: Record<AssetTier, number> = {
+  basic: 0,
+  advanced: 100000,
+};
 
 /**
  * Tileset configuration format
@@ -70,8 +74,7 @@ export class AssetDefinitionLoader {
    */
   async loadTileset(tilesetName: string): Promise<Record<number, TileDefinition>> {
     const { tier, name } = this.parseTieredTilesetName(tilesetName);
-    const resolvedTier: AssetTier = tier ?? "basic";
-    const cacheKey = `single:${resolvedTier}:${name}`;
+    const cacheKey = tier ? `single:${tier}:${name}` : `single:merged:${name}`;
 
     if (this.tilesetCache.has(cacheKey)) {
       return this.tilesetCache.get(cacheKey)!;
@@ -79,16 +82,26 @@ export class AssetDefinitionLoader {
 
     try {
       const tieredGroups = await this.loadTieredTilesets(name, "creator");
-      const selectedGroup =
-        tieredGroups.find((group) => group.tier === resolvedTier) ??
-        (tier ? undefined : tieredGroups[0]);
 
-      if (!selectedGroup) {
-        throw new Error(`Tileset not found: ${name} (tier: ${resolvedTier}) for game type: ${this.gameType}`);
+      if (tier) {
+        const selectedGroup = tieredGroups.find((group) => group.tier === tier);
+        if (!selectedGroup) {
+          throw new Error(`Tileset not found: ${name} (tier: ${tier}) for game type: ${this.gameType}`);
+        }
+
+        this.tilesetCache.set(cacheKey, selectedGroup.tileset);
+        return selectedGroup.tileset;
       }
 
-      this.tilesetCache.set(cacheKey, selectedGroup.tileset);
-      return selectedGroup.tileset;
+      // When no tier is specified, merge basic + advanced into one registry.
+      // IDs are namespaced by tier offset to prevent collisions.
+      const mergedTileset: Record<number, TileDefinition> = {};
+      for (const group of tieredGroups) {
+        Object.assign(mergedTileset, group.tileset);
+      }
+
+      this.tilesetCache.set(cacheKey, mergedTileset);
+      return mergedTileset;
     } catch (error) {
       throw new Error(
         `Failed to load tileset "${tilesetName}" for game type "${this.gameType}": ${error}`,
@@ -158,7 +171,9 @@ export class AssetDefinitionLoader {
               console.warn(`Invalid tile ID "${key}" in tileset ${tilesetName}, skipping`);
               continue;
             }
-            tileRegistry[tileId] = tileDef;
+
+            const namespacedTileId = tileId + TIER_TILE_ID_OFFSET[tier];
+            tileRegistry[namespacedTileId] = tileDef;
           }
 
           this.tilesetCache.set(tierCacheKey, tileRegistry);
