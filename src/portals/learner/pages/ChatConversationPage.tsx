@@ -50,23 +50,47 @@ function getCurrentLearnerUserId(token: string | null | undefined): string | nul
 
 function getOtherMemberById(conversation: ChatConversation, userId: string | null) {
   if (!userId) return null;
-  return conversation.members.find((m) => m.userId === userId) ?? null;
+  const normalizedTarget = userId.trim().toLowerCase();
+  return (
+    conversation.members.find((m) => m.userId.trim().toLowerCase() === normalizedTarget) ?? null
+  );
+}
+
+function getCounterpartMember(
+  conversation: ChatConversation,
+  currentUserId: string | null,
+  preferredOtherUserId: string | null,
+) {
+  const normalizedCurrentUserId = currentUserId?.trim().toLowerCase() ?? "";
+
+  if (normalizedCurrentUserId) {
+    const counterpart = conversation.members.find(
+      (m) => m.userId.trim().toLowerCase() !== normalizedCurrentUserId,
+    );
+    if (counterpart) return counterpart;
+  }
+
+  return getOtherMemberById(conversation, preferredOtherUserId) ?? conversation.members[0] ?? null;
 }
 
 function getConversationDisplayName(
   conversation: ChatConversation,
+  currentUserId: string | null,
   preferredOtherUserId: string | null,
-  preferredOtherUserName: string | null,
+  fallbackDisplayName: string | null,
   locale: string,
 ) {
   if (conversation.name?.trim()) return conversation.name.trim();
 
-  const exact = getOtherMemberById(conversation, preferredOtherUserId);
-  if (exact?.userName?.trim()) return exact.userName.trim();
+  const counterpart = getCounterpartMember(conversation, currentUserId, preferredOtherUserId);
+  if (counterpart?.userName?.trim()) return counterpart.userName.trim();
 
-  if (preferredOtherUserName?.trim()) return preferredOtherUserName.trim();
+  if (fallbackDisplayName?.trim()) return fallbackDisplayName.trim();
+
+  const normalizedCurrentUserId = currentUserId?.trim().toLowerCase() ?? "";
 
   const names = conversation.members
+    .filter((m) => !normalizedCurrentUserId || m.userId.trim().toLowerCase() !== normalizedCurrentUserId)
     .map((m) => m.userName?.trim())
     .filter((name): name is string => Boolean(name));
 
@@ -133,7 +157,7 @@ export default function ChatConversationPage() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, []);
 
   const fetchMessages = useCallback(
     async (silent: boolean) => {
@@ -210,6 +234,7 @@ export default function ChatConversationPage() {
     if (activeConversation) {
       return getConversationDisplayName(
         activeConversation,
+        currentUserId,
         preferredOtherUserId,
         preferredOtherUserName,
         locale,
@@ -219,11 +244,11 @@ export default function ChatConversationPage() {
       preferredOtherUserName?.trim() ||
       (locale.startsWith("vi") ? "Cuộc trò chuyện" : "Conversations")
     );
-  }, [activeConversation, locale, preferredOtherUserId, preferredOtherUserName]);
+  }, [activeConversation, currentUserId, locale, preferredOtherUserId, preferredOtherUserName]);
 
   const openConversation = (conversation: ChatConversation) => {
     const otherMember: ChatConversationMember | null =
-      getOtherMemberById(conversation, preferredOtherUserId) ?? conversation.members[0] ?? null;
+      getCounterpartMember(conversation, currentUserId, preferredOtherUserId);
 
     const query = new URLSearchParams();
     if (otherMember?.userId) query.set("otherUserId", otherMember.userId);
@@ -291,7 +316,9 @@ export default function ChatConversationPage() {
               {locale.startsWith("vi") ? "Cuộc trò chuyện" : "Conversations"}
             </h2>
             {loadingConversations ? (
-              <p className={styles.stateText}>{t("loadingMapDetails")}</p>
+              <p className={styles.stateText}>
+                {locale.startsWith("vi") ? "Đang tải cuộc trò chuyện..." : "Loading conversations..."}
+              </p>
             ) : conversations.length === 0 ? (
               <p className={styles.stateText}>
                 {locale.startsWith("vi") ? "Chưa có cuộc trò chuyện." : "No conversations yet."}
@@ -301,8 +328,9 @@ export default function ChatConversationPage() {
                 {conversations.map((item) => {
                   const name = getConversationDisplayName(
                     item,
+                    currentUserId,
                     preferredOtherUserId,
-                    preferredOtherUserName,
+                    null,
                     locale,
                   );
                   const snippet = item.lastMessage?.content?.trim();
@@ -342,7 +370,9 @@ export default function ChatConversationPage() {
                     : "Select a conversation from the left list to start."}
                 </p>
               ) : loadingMessages ? (
-                <p className={styles.stateText}>{t("loadingMapDetails")}</p>
+                <p className={styles.stateText}>
+                  {locale.startsWith("vi") ? "Đang tải tin nhắn..." : "Loading messages..."}
+                </p>
               ) : error ? (
                 <p className={styles.errorText}>{error}</p>
               ) : messages.length === 0 ? (

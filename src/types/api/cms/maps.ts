@@ -129,6 +129,8 @@ export interface MapDetail {
   mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
+  createdByUserName?: string | null;
+  CreatedByUserName?: string | null;
   editorialContent: string;
   unlockEditorialAfterStars: number;
   createdAt: string;

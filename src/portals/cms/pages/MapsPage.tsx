@@ -178,8 +178,8 @@ export const MapsPage: React.FC = () => {
         setTotalItems(paginationData.totalItems);
       }
     } catch (err) {
-      setError("Failed to load maps");
-      console.error("Maps fetch error:", err);
+      setError("Failed to load games");
+      console.error("Games fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -212,14 +212,23 @@ export const MapsPage: React.FC = () => {
       const response = await cmsMapsApi.getMapById(mapId);
       const mapDetail = response.data.data;
       if (mapDetail) {
-        setSelectedMap(mapDetail);
+        const mapItem = maps.find((item) => item.id === mapId);
+        const creatorNameFromDetail =
+          toNonEmptyString(mapDetail.createdByUserName) ??
+          toNonEmptyString(mapDetail.CreatedByUserName);
+        const creatorNameFromList = toNonEmptyString(mapItem?.createdByUserName ?? null);
+
+        setSelectedMap({
+          ...mapDetail,
+          createdByUserName: creatorNameFromDetail ?? creatorNameFromList,
+        });
         setDetailModalOpen(true);
       } else {
         alert("Game not found");
       }
     } catch (err) {
       alert("Failed to load game details");
-      console.error("Map detail error:", err);
+      console.error("Game detail error:", err);
     } finally {
       setActionLoading(false);
     }
@@ -268,7 +277,7 @@ export const MapsPage: React.FC = () => {
       setReviewNote("");
       fetchMaps();
     } catch (err) {
-      alert("Failed to approve map");
+      alert("Failed to approve game");
       console.error("Approve error:", err);
     } finally {
       setActionLoading(false);
@@ -290,7 +299,7 @@ export const MapsPage: React.FC = () => {
       setRejectReason("");
       fetchMaps();
     } catch (err) {
-      alert("Failed to reject map");
+      alert("Failed to reject game");
       console.error("Reject error:", err);
     } finally {
       setActionLoading(false);
@@ -392,7 +401,7 @@ export const MapsPage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading maps...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading games...</p>
         </div>
       </div>
     );
@@ -420,9 +429,9 @@ export const MapsPage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            Maps
+            Games
           </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage all maps</p>
+          <p style={{ color: "var(--text-2)" }}>View and manage all games</p>
         </div>
         <button
           onClick={() => {
@@ -430,7 +439,7 @@ export const MapsPage: React.FC = () => {
             navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "cms" } });
           }}
           disabled={!canCreateMap}
-          title={!canCreateMap ? "Upgrade to Pro to create maps" : undefined}
+          title={!canCreateMap ? "Upgrade to Pro to create games" : undefined}
           style={{
             display: "flex",
             alignItems: "center",
@@ -446,11 +455,11 @@ export const MapsPage: React.FC = () => {
             whiteSpace: "nowrap",
           }}
         >
-          <Plus size={16} /> Create Map
+          <Plus size={16} /> Create Game
         </button>
         {!canCreateMap && (
           <p style={{ color: "var(--warning)", fontSize: "13px", margin: 0 }}>
-            Upgrade to Pro to create maps
+            Upgrade to Pro to create games
           </p>
         )}
       </div>
@@ -474,7 +483,7 @@ export const MapsPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Maps
+            Total Games
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {totalItems}
@@ -490,7 +499,7 @@ export const MapsPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Published Maps
+            Published Games
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {maps.filter((m) => m.isPublished).length}
@@ -525,7 +534,7 @@ export const MapsPage: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
-            placeholder="Search maps..."
+            placeholder="Search games..."
             style={{
               width: "100%",
               padding: "8px 12px 8px 32px",
@@ -1027,7 +1036,7 @@ export const MapsPage: React.FC = () => {
                             fontSize: "12px",
                             transition: "all 0.2s ease",
                           }}
-                          title="Play Map"
+                          title="Play Game"
                         >
                           <Play size={16} />
                         </button>
@@ -1067,7 +1076,7 @@ export const MapsPage: React.FC = () => {
                             fontSize: "12px",
                             transition: "all 0.2s ease",
                           }}
-                          title="Approve Map"
+                          title="Approve Game"
                         >
                           <CheckCircle size={16} />
                         </button>
@@ -1088,7 +1097,7 @@ export const MapsPage: React.FC = () => {
                             fontSize: "12px",
                             transition: "all 0.2s ease",
                           }}
-                          title="Reject Map"
+                          title="Reject Game"
                         >
                           <X size={16} />
                         </button>
@@ -1197,7 +1206,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Map Preview
+                  Game Preview
                 </div>
                 <div
                   style={{
@@ -1598,7 +1607,7 @@ export const MapsPage: React.FC = () => {
             >
               <div>
                 <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Map ID
+                  Game ID
                 </div>
                 <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
                   {selectedMap.id}
@@ -1620,6 +1629,14 @@ export const MapsPage: React.FC = () => {
                   {selectedMap.createdByUserId}
                 </div>
               </div>
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
+                  Created By User
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text)" }}>
+                  {selectedMap.createdByUserName ?? "—"}
+                </div>
+              </div>
               {selectedMap.activeSpec && (
                 <div>
                   <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
@@ -1637,11 +1654,11 @@ export const MapsPage: React.FC = () => {
         )}
       </Modal>
 
-      {/* Approve Map Modal */}
+      {/* Approve Game Modal */}
       <Modal
         isOpen={approveModalOpen}
         onClose={() => setApproveModalOpen(false)}
-        title="Approve Map"
+        title="Approve Game"
         maxWidth="500px"
       >
         {selectedMapForAction && (
@@ -1722,18 +1739,18 @@ export const MapsPage: React.FC = () => {
                   cursor: actionLoading ? "not-allowed" : "pointer",
                 }}
               >
-                {actionLoading ? "Approving..." : "Approve Map"}
+                {actionLoading ? "Approving..." : "Approve Game"}
               </button>
             </div>
           </form>
         )}
       </Modal>
 
-      {/* Reject Map Modal */}
+      {/* Reject Game Modal */}
       <Modal
         isOpen={rejectModalOpen}
         onClose={() => setRejectModalOpen(false)}
-        title="Reject Map"
+        title="Reject Game"
         maxWidth="500px"
       >
         {selectedMapForAction && (
@@ -1814,7 +1831,7 @@ export const MapsPage: React.FC = () => {
                   cursor: actionLoading ? "not-allowed" : "pointer",
                 }}
               >
-                {actionLoading ? "Rejecting..." : "Reject Map"}
+                {actionLoading ? "Rejecting..." : "Reject Game"}
               </button>
             </div>
           </form>
