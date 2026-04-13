@@ -53,7 +53,9 @@ export function ComplaintMessageList({
                 border: mine ? "1px solid transparent" : "1px solid var(--border)",
                 borderRadius: 14,
                 padding: "10px 12px",
-                boxShadow: mine ? "0 10px 22px color-mix(in srgb, var(--primary) 24%, transparent)" : "none",
+                boxShadow: mine
+                  ? "0 10px 22px color-mix(in srgb, var(--primary) 24%, transparent)"
+                  : "none",
               }}
             >
               <div
@@ -68,7 +70,9 @@ export function ComplaintMessageList({
                 }}
               >
                 <strong style={{ fontSize: 12, lineHeight: 1.2 }}>{badgeLabel}</strong>
-                <span style={{ whiteSpace: "nowrap" }}>{new Date(msg.createdAt).toLocaleString()}</span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  {new Date(msg.createdAt).toLocaleString()}
+                </span>
               </div>
               <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14 }}>
                 {msg.content}

@@ -1,8 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  orbitCoinApi,
-  type OrbitCoinTransaction,
-} from "@/services/api/learner/orbitcoin.api";
+import { orbitCoinApi, type OrbitCoinTransaction } from "@/services/api/learner/orbitcoin.api";
 import { useTranslation } from "@/lib/i18n/translations";
 
 export default function WalletPage() {
@@ -302,11 +299,7 @@ export default function WalletPage() {
   );
 }
 
-function TransactionRow({
-  transaction,
-}: {
-  transaction: OrbitCoinTransaction;
-}) {
+function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) {
   const { t } = useTranslation();
   const isCredit = transaction.amount >= 0;
   const sign = isCredit ? "+" : "-";
@@ -329,7 +322,9 @@ function TransactionRow({
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-        <span style={pill(tagBg, color)}>{isCredit ? t("walletTxCredit") : t("walletTxDebit")}</span>
+        <span style={pill(tagBg, color)}>
+          {isCredit ? t("walletTxCredit") : t("walletTxDebit")}
+        </span>
         <div style={{ fontWeight: 700, fontSize: 15, color }}>
           {sign}
           {Math.abs(transaction.amount).toLocaleString("en-US")}
@@ -350,7 +345,10 @@ function TransactionRow({
   );
 }
 
-function formatTransactionNote(note: string | null | undefined, t: (key: string) => string): string {
+function formatTransactionNote(
+  note: string | null | undefined,
+  t: (key: string) => string,
+): string {
   if (!note || note.trim().length === 0) return t("walletTxFallback");
 
   if (note.startsWith("Purchase map: ")) {
@@ -390,7 +388,9 @@ function CashflowMiniChart({
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .slice(-20);
 
-  const flowValues = sorted.map((tx) => (tx.amount >= 0 ? Math.abs(tx.amount) : -Math.abs(tx.amount)));
+  const flowValues = sorted.map((tx) =>
+    tx.amount >= 0 ? Math.abs(tx.amount) : -Math.abs(tx.amount),
+  );
 
   const cumulative: number[] = [];
   let running = 0;

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
+import { tokenStorage } from "@/lib/storage/tokenStorage";
 
 const pageSize = 10;
 
@@ -95,6 +96,35 @@ function normalizeText(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function getCurrentLearnerUserId(token: string | null | undefined): string | null {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(base64), (c: string) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    const payload = JSON.parse(json) as Record<string, unknown>;
+    const claimKeys = [
+      "sub",
+      "nameid",
+      "uid",
+      "userId",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+    ];
+    for (const key of claimKeys) {
+      const value = payload[key];
+      if (typeof value === "string" && value.trim().length > 0) return value.trim();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function formatContextDisplayValue(value: string) {
@@ -212,14 +242,17 @@ export default function ComplaintsPage() {
   const dateTo = searchParams.get("dateTo") ?? "";
   const isCreateRoute = location.pathname.endsWith("/complaints/new");
 
-  const updateQuery = useCallback((key: string, value: string) => {
-    setSearchParams((p) => {
-      p.set("pageNumber", "1");
-      if (value) p.set(key, value);
-      else p.delete(key);
-      return p;
-    });
-  }, [setSearchParams]);
+  const updateQuery = useCallback(
+    (key: string, value: string) => {
+      setSearchParams((p) => {
+        p.set("pageNumber", "1");
+        if (value) p.set(key, value);
+        else p.delete(key);
+        return p;
+      });
+    },
+    [setSearchParams],
+  );
 
   const fallbackCategoryOptions = useMemo<ComplaintCategoryConfigItem[]>(
     () =>
@@ -446,6 +479,10 @@ export default function ComplaintsPage() {
     () => !loading && !error && pagedItems.length === 0,
     [error, loading, pagedItems.length],
   );
+  const currentUserId = useMemo(
+    () => getCurrentLearnerUserId(tokenStorage.getLearnerToken()),
+    [],
+  );
   const activeCategory = useMemo(
     () => categoryOptions.find((item) => item.categoryKey === createForm.categoryKey) ?? null,
     [categoryOptions, createForm.categoryKey],
@@ -474,7 +511,8 @@ export default function ComplaintsPage() {
       requiredAnyContextFields
         .map((field) => ({
           field,
-          value: (createForm.context[field as keyof CreateComplaintRequest["context"]] as string) ?? "",
+          value:
+            (createForm.context[field as keyof CreateComplaintRequest["context"]] as string) ?? "",
         }))
         .filter((item) => item.value.trim().length > 0),
     [createForm.context, requiredAnyContextFields],
@@ -504,7 +542,11 @@ export default function ComplaintsPage() {
   const submitReady = detailsStepDone && descriptionStepDone && contextStepDone;
   const hasSelectedCategory = createForm.categoryKey.trim().length > 0;
   const createButtonDisabled =
-    creating || !submitReady || !createForm.description.trim() || !!attachmentError || categoryOptionsLoading;
+    creating ||
+    !submitReady ||
+    !createForm.description.trim() ||
+    !!attachmentError ||
+    categoryOptionsLoading;
 
   const copyContextValue = async (field: string, value: string) => {
     try {
@@ -596,6 +638,13 @@ export default function ComplaintsPage() {
     if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
     if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
     return [1, "...", current - 1, current, current + 1, "...", total];
+  }
+
+  function getComplaintRoute(item: ComplaintItem) {
+    const isOwnerComplaint =
+      !!currentUserId && String(item.userId).toLowerCase() === String(currentUserId).toLowerCase();
+    if (isOwnerComplaint || !currentUserId) return ROUTES.LEARNER_COMPLAINT_DETAIL(item.id);
+    return ROUTES.LEARNER_COMPLAINT_OVERVIEW(item.id);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -879,102 +928,102 @@ export default function ComplaintsPage() {
             gap: 12,
           }}
         >
-        <div
-          style={{
-            border: "1px solid color-mix(in srgb, #3b82f6 28%, var(--border))",
-            borderRadius: 12,
-            background:
-              "linear-gradient(140deg, color-mix(in srgb, #3b82f6 10%, var(--surface)) 0%, var(--surface) 70%)",
-            padding: 14,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "rgba(99, 102, 241, 0.12)",
-              color: "#6366f1",
-              display: "grid",
-              placeItems: "center",
+              border: "1px solid color-mix(in srgb, #3b82f6 28%, var(--border))",
+              borderRadius: 12,
+              background:
+                "linear-gradient(140deg, color-mix(in srgb, #3b82f6 10%, var(--surface)) 0%, var(--surface) 70%)",
+              padding: 14,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
             }}
           >
-            <Ticket size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{totalItems}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-              {t("complaints.totalTickets")}
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(99, 102, 241, 0.12)",
+                color: "#6366f1",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Ticket size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{totalItems}</div>
+              <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+                {t("complaints.totalTickets")}
+              </div>
             </div>
           </div>
-        </div>
-        <div
-          style={{
-            border: "1px solid color-mix(in srgb, #f59e0b 32%, var(--border))",
-            borderRadius: 12,
-            background:
-              "linear-gradient(140deg, color-mix(in srgb, #f59e0b 12%, var(--surface)) 0%, var(--surface) 70%)",
-            padding: 14,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "rgba(245, 158, 11, 0.13)",
-              color: "#d97706",
-              display: "grid",
-              placeItems: "center",
+              border: "1px solid color-mix(in srgb, #f59e0b 32%, var(--border))",
+              borderRadius: 12,
+              background:
+                "linear-gradient(140deg, color-mix(in srgb, #f59e0b 12%, var(--surface)) 0%, var(--surface) 70%)",
+              padding: 14,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
             }}
           >
-            <Hourglass size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{pendingCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-              {t("complaints.pendingTickets")}
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(245, 158, 11, 0.13)",
+                color: "#d97706",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Hourglass size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{pendingCount}</div>
+              <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+                {t("complaints.pendingTickets")}
+              </div>
             </div>
           </div>
-        </div>
-        <div
-          style={{
-            border: "1px solid color-mix(in srgb, #22c55e 28%, var(--border))",
-            borderRadius: 12,
-            background:
-              "linear-gradient(140deg, color-mix(in srgb, #22c55e 10%, var(--surface)) 0%, var(--surface) 70%)",
-            padding: 14,
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "rgba(34, 197, 94, 0.13)",
-              color: "#16a34a",
-              display: "grid",
-              placeItems: "center",
+              border: "1px solid color-mix(in srgb, #22c55e 28%, var(--border))",
+              borderRadius: 12,
+              background:
+                "linear-gradient(140deg, color-mix(in srgb, #22c55e 10%, var(--surface)) 0%, var(--surface) 70%)",
+              padding: 14,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
             }}
           >
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{solvedCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-              {t("complaints.solvedTickets")}
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(34, 197, 94, 0.13)",
+                color: "#16a34a",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{solvedCount}</div>
+              <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+                {t("complaints.solvedTickets")}
+              </div>
             </div>
           </div>
-        </div>
         </div>
       ) : null}
 
@@ -1081,165 +1130,181 @@ export default function ComplaintsPage() {
 
               <div style={createUi.formColumn}>
                 {hasSelectedCategory ? (
-                <div style={createUi.card}>
-                  <div style={{ ...createUi.cardTitle, fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>
-                    {t("complaints.context.title")} ({t("optional")})
-                  </div>
-                  {requiredAnyContextFields.length > 0 ? (
-                    allowManualContextInput ? (
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                          gap: 10,
-                        }}
-                      >
-                        {requiredAnyContextFields.map((field) => (
-                          <div key={field} style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: 12, color: "var(--text)" }}>
-                              {getContextLabel(t, field)}
-                            </label>
-                            <input
-                              value={
-                                (createForm.context[
-                                  field as keyof typeof createForm.context
-                                ] as string) ?? ""
-                              }
-                              onChange={(e) =>
-                                setCreateForm((p) => ({
-                                  ...p,
-                                  context: {
-                                    ...p.context,
-                                    [field]: e.target.value,
-                                  },
-                                }))
-                              }
-                              placeholder={t("complaints.context.enterField").replace(
-                                "{field}",
-                                getContextLabel(t, field),
-                              )}
+                  <div style={createUi.card}>
+                    <div
+                      style={{
+                        ...createUi.cardTitle,
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      {t("complaints.context.title")} ({t("optional")})
+                    </div>
+                    {requiredAnyContextFields.length > 0 ? (
+                      allowManualContextInput ? (
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                            gap: 10,
+                          }}
+                        >
+                          {requiredAnyContextFields.map((field) => (
+                            <div key={field} style={{ display: "grid", gap: 6 }}>
+                              <label style={{ fontSize: 12, color: "var(--text)" }}>
+                                {getContextLabel(t, field)}
+                              </label>
+                              <input
+                                value={
+                                  (createForm.context[
+                                    field as keyof typeof createForm.context
+                                  ] as string) ?? ""
+                                }
+                                onChange={(e) =>
+                                  setCreateForm((p) => ({
+                                    ...p,
+                                    context: {
+                                      ...p.context,
+                                      [field]: e.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder={t("complaints.context.enterField").replace(
+                                  "{field}",
+                                  getContextLabel(t, field),
+                                )}
+                                style={{
+                                  border: "1px solid var(--border)",
+                                  borderRadius: 10,
+                                  padding: "10px 12px",
+                                  background: "var(--surface)",
+                                  color: "var(--text)",
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gap: 8 }}>
+                          {prefilledContextEntries.length > 0 ? (
+                            <div
                               style={{
-                                border: "1px solid var(--border)",
-                                borderRadius: 10,
-                                padding: "10px 12px",
-                                background: "var(--surface)",
-                                color: "var(--text)",
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                                gap: 10,
                               }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gap: 8 }}>
-                        {prefilledContextEntries.length > 0 ? (
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                              gap: 10,
-                            }}
-                          >
-                            {prefilledContextEntries.map((item) => (
-                              <div key={item.field} style={{ display: "grid", gap: 4 }}>
-                                <div
-                                  style={{
-                                    ...createUi.label,
-                                    color: "var(--text-2)",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {getContextLabel(t, item.field)}
-                                </div>
-                                {item.field === "mapId" ? (
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <input
-                                      readOnly
-                                      value={formatContextDisplayValue(item.value)}
+                            >
+                              {prefilledContextEntries.map((item) => (
+                                <div key={item.field} style={{ display: "grid", gap: 4 }}>
+                                  <div
+                                    style={{
+                                      ...createUi.label,
+                                      color: "var(--text-2)",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {getContextLabel(t, item.field)}
+                                  </div>
+                                  {item.field === "mapId" ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <input
+                                        readOnly
+                                        value={formatContextDisplayValue(item.value)}
+                                        style={{
+                                          ...createUi.control,
+                                          flex: 1,
+                                          fontFamily:
+                                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                          fontSize: 13,
+                                        }}
+                                        title={item.value}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => copyContextValue(item.field, item.value)}
+                                        style={{
+                                          border: "1px solid var(--border)",
+                                          borderRadius: 9,
+                                          padding: "8px 10px",
+                                          background: "var(--surface)",
+                                          cursor: "pointer",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          gap: 6,
+                                          color: "var(--text)",
+                                          fontSize: 12,
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        <Copy size={14} />
+                                        {copiedContextField === item.field
+                                          ? t("paymentCopied")
+                                          : t("paymentCopy")}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div
                                       style={{
                                         ...createUi.control,
-                                        flex: 1,
+                                        borderRadius: 10,
                                         fontFamily:
                                           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                                         fontSize: 13,
                                       }}
                                       title={item.value}
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => copyContextValue(item.field, item.value)}
-                                      style={{
-                                        border: "1px solid var(--border)",
-                                        borderRadius: 9,
-                                        padding: "8px 10px",
-                                        background: "var(--surface)",
-                                        cursor: "pointer",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: 6,
-                                        color: "var(--text)",
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                      }}
                                     >
-                                      <Copy size={14} />
-                                      {copiedContextField === item.field ? t("paymentCopied") : t("paymentCopy")}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div
-                                    style={{
-                                      ...createUi.control,
-                                      borderRadius: 10,
-                                      fontFamily:
-                                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                      fontSize: 13,
-                                    }}
-                                    title={item.value}
-                                  >
-                                    {formatContextDisplayValue(item.value)}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                        {!hasAnyRequiredContextValue ? (
-                          <div style={createUi.warningText}>
-                            {t("complaints.context.reportFromFlowHint")}
-                          </div>
-                        ) : null}
-                      </div>
-                    )
-                  ) : null}
+                                      {formatContextDisplayValue(item.value)}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                          {!hasAnyRequiredContextValue ? (
+                            <div style={createUi.warningText}>
+                              {t("complaints.context.reportFromFlowHint")}
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    ) : null}
 
-                  {showOccurredAtInput ? (
-                    <div style={{ ...createUi.field, maxWidth: 340 }}>
-                      <label style={createUi.label}>{t("complaints.context.occurredAt")}</label>
-                      <input
-                        type="datetime-local"
-                        value={createForm.context.occurredAt || ""}
-                        onChange={(e) =>
-                          setCreateForm((p) => ({
-                            ...p,
-                            context: {
-                              ...p.context,
-                              occurredAt: e.target.value,
-                            },
-                          }))
-                        }
-                        max={new Date().toISOString().slice(0, 16)}
-                        style={createUi.control}
-                      />
-                    </div>
-                  ) : null}
-                  {fieldErrors.context ? (
-                    <div style={createUi.errorText}>{fieldErrors.context}</div>
-                  ) : null}
-                </div>
+                    {showOccurredAtInput ? (
+                      <div style={{ ...createUi.field, maxWidth: 340 }}>
+                        <label style={createUi.label}>{t("complaints.context.occurredAt")}</label>
+                        <input
+                          type="datetime-local"
+                          value={createForm.context.occurredAt || ""}
+                          onChange={(e) =>
+                            setCreateForm((p) => ({
+                              ...p,
+                              context: {
+                                ...p.context,
+                                occurredAt: e.target.value,
+                              },
+                            }))
+                          }
+                          max={new Date().toISOString().slice(0, 16)}
+                          style={createUi.control}
+                        />
+                      </div>
+                    ) : null}
+                    {fieldErrors.context ? (
+                      <div style={createUi.errorText}>{fieldErrors.context}</div>
+                    ) : null}
+                  </div>
                 ) : null}
 
                 <div style={createUi.card}>
-                  <div style={{ ...createUi.cardTitle, fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>
+                  <div
+                    style={{
+                      ...createUi.cardTitle,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: "var(--text-2)",
+                    }}
+                  >
                     {t("complaints.attachments.title")}
                   </div>
                   <label
@@ -1397,12 +1462,15 @@ export default function ComplaintsPage() {
                       cursor: createButtonDisabled ? "not-allowed" : "pointer",
                       opacity: createButtonDisabled ? 0.7 : 1,
                       transform:
-                        !createButtonDisabled && isSubmitHovered ? "translateY(-1px)" : "translateY(0)",
+                        !createButtonDisabled && isSubmitHovered
+                          ? "translateY(-1px)"
+                          : "translateY(0)",
                       boxShadow:
                         !createButtonDisabled && isSubmitHovered
                           ? "0 10px 20px color-mix(in srgb, var(--primary) 28%, transparent)"
                           : createUi.submitBtn.boxShadow,
-                      filter: !createButtonDisabled && isSubmitHovered ? "brightness(1.02)" : "none",
+                      filter:
+                        !createButtonDisabled && isSubmitHovered ? "brightness(1.02)" : "none",
                     }}
                   >
                     {creating ? t("submitting") : t("complaints.createTicket")}
@@ -1437,360 +1505,362 @@ export default function ComplaintsPage() {
 
       {!isCreateRoute ? (
         <section
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: 14,
-          background: "var(--surface)",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ padding: 14, borderBottom: "1px solid var(--border)" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "start",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>{t("complaints.supportTickets")}</div>
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 14,
+            background: "var(--surface)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: 14, borderBottom: "1px solid var(--border)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "start",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 18 }}>
+                  {t("complaints.supportTickets")}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 4,
+                    borderRadius: 12,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {[
+                    { label: t("complaints.filter.all"), value: "" },
+                    { label: t("complaints.filter.solved"), value: "Resolved" },
+                    { label: t("complaints.filter.pending"), value: "Open" },
+                  ].map((s) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => updateQuery("status", s.value)}
+                      style={{
+                        minWidth: 74,
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "7px 12px",
+                        background: status === s.value ? "var(--surface)" : "transparent",
+                        color: status === s.value ? "var(--text)" : "var(--text-2)",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={15}
+                    style={{
+                      position: "absolute",
+                      left: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--text-2)",
+                    }}
+                  />
+                  <input
+                    placeholder={t("complaints.searchPlaceholder")}
+                    value={keywordInput}
+                    onCompositionStart={() => setIsKeywordComposing(true)}
+                    onCompositionEnd={(e) => {
+                      setIsKeywordComposing(false);
+                      setKeywordInput(e.currentTarget.value);
+                    }}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    style={{
+                      padding: "8px 12px 8px 32px",
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      background: "var(--bg)",
+                      minWidth: 320,
+                      width: 420,
+                      maxWidth: "52vw",
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFilters((v) => !v)}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    background: showAdvancedFilters ? "rgba(59,130,246,0.12)" : "var(--bg)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  <SlidersHorizontal size={14} />
+                  {t("complaints.filter.button")}
+                </button>
+              </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {showAdvancedFilters ? (
               <div
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: 4,
-                  borderRadius: 12,
-                  background: "var(--bg)",
-                  border: "1px solid var(--border)",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
+                  gap: 8,
+                  marginTop: 10,
                 }}
               >
-                {[
-                  { label: t("complaints.filter.all"), value: "" },
-                  { label: t("complaints.filter.solved"), value: "Resolved" },
-                  { label: t("complaints.filter.pending"), value: "Open" },
-                ].map((s) => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    onClick={() => updateQuery("status", s.value)}
-                    style={{
-                      minWidth: 74,
-                      border: "none",
-                      borderRadius: 10,
-                      padding: "7px 12px",
-                      background: status === s.value ? "var(--surface)" : "transparent",
-                      color: status === s.value ? "var(--text)" : "var(--text-2)",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ position: "relative" }}>
-                <Search
-                  size={15}
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => updateQuery("dateFrom", e.target.value)}
                   style={{
-                    position: "absolute",
-                    left: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    background: "var(--bg)",
                   }}
                 />
                 <input
-                  placeholder={t("complaints.searchPlaceholder")}
-                  value={keywordInput}
-                  onCompositionStart={() => setIsKeywordComposing(true)}
-                  onCompositionEnd={(e) => {
-                    setIsKeywordComposing(false);
-                    setKeywordInput(e.currentTarget.value);
-                  }}
-                  onChange={(e) => setKeywordInput(e.target.value)}
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => updateQuery("dateTo", e.target.value)}
                   style={{
-                    padding: "8px 12px 8px 32px",
-                    borderRadius: 8,
                     border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "8px 10px",
                     background: "var(--bg)",
-                    minWidth: 320,
-                    width: 420,
-                    maxWidth: "52vw",
                   }}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters((v) => !v)}
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  background: showAdvancedFilters ? "rgba(59,130,246,0.12)" : "var(--bg)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  cursor: "pointer",
-                }}
-              >
-                <SlidersHorizontal size={14} />
-                {t("complaints.filter.button")}
-              </button>
-            </div>
+            ) : null}
           </div>
-          {showAdvancedFilters ? (
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort("id")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("complaints.table.ticketId")} <ChevronsUpDown size={13} />
+                    </button>
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort("subject")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("complaints.table.subject")} <ChevronsUpDown size={13} />
+                    </button>
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort("category")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("complaints.table.category")} <ChevronsUpDown size={13} />
+                    </button>
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort("createdAt")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("complaints.table.createDate")} <ChevronsUpDown size={13} />
+                    </button>
+                  </th>
+                  <th
+                    style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort("status")}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "inherit",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("complaints.table.status")} <ChevronsUpDown size={13} />
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedItems.map((c) => (
+                  <tr
+                    key={c.id}
+                    style={{
+                      borderBottom: "1px solid var(--border)",
+                      cursor: "pointer",
+                      background: "transparent",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate(getComplaintRoute(c));
+                      }
+                    }}
+                    onClick={() => navigate(getComplaintRoute(c))}
+                    tabIndex={0}
+                    aria-label={t("complaints.openComplaintAria").replace("{subject}", c.subject)}
+                  >
+                    <td style={{ padding: 12, fontWeight: 700 }}>#{c.id.slice(0, 8)}</td>
+                    <td style={{ padding: 12 }}>{c.subject}</td>
+                    <td style={{ padding: 12, color: "var(--text-2)" }}>
+                      <div style={{ display: "grid", gap: 2 }}>
+                        <span>{c.category}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-2)", opacity: 0.9 }}>
+                          {getComplaintContextSummary(t, c)}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: 12, color: "var(--text-2)" }}>
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: 12 }}>
+                      <ComplaintStatusBadge status={c.complaintStatus} />
+                    </td>
+                  </tr>
+                ))}
+                {empty ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      style={{ padding: 24, textAlign: "center", color: "var(--text-2)" }}
+                    >
+                      {t("complaints.noComplaints")}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {!empty ? (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))",
-                gap: 8,
-                marginTop: 10,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 10,
+                padding: 12,
+                color: "var(--text-2)",
+                fontSize: 13,
               }}
             >
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => updateQuery("dateFrom", e.target.value)}
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  background: "var(--bg)",
-                }}
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => updateQuery("dateTo", e.target.value)}
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                  background: "var(--bg)",
-                }}
-              />
+              <span>
+                {t("complaints.page")} {pageNumber} {t("of")} {totalPages}
+              </span>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={pageNumber <= 1}
+                  onClick={() => goToPage(pageNumber - 1)}
+                >
+                  {t("previous")}
+                </button>
+                {getPaginationItems(pageNumber, totalPages).map((item, idx) =>
+                  item === "..." ? (
+                    <span key={`ellipsis-${idx}`}>...</span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => goToPage(item)}
+                      style={{
+                        minWidth: 34,
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        padding: "6px 8px",
+                        background: item === pageNumber ? "var(--primary)" : "var(--bg)",
+                        color: item === pageNumber ? "white" : "var(--text)",
+                        fontWeight: item === pageNumber ? 700 : 500,
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  disabled={pageNumber >= totalPages}
+                  onClick={() => goToPage(pageNumber + 1)}
+                >
+                  {t("next")}
+                </button>
+              </div>
             </div>
           ) : null}
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-                <th
-                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort("id")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: "inherit",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("complaints.table.ticketId")} <ChevronsUpDown size={13} />
-                  </button>
-                </th>
-                <th
-                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort("subject")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: "inherit",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("complaints.table.subject")} <ChevronsUpDown size={13} />
-                  </button>
-                </th>
-                <th
-                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort("category")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: "inherit",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("complaints.table.category")} <ChevronsUpDown size={13} />
-                  </button>
-                </th>
-                <th
-                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort("createdAt")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: "inherit",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("complaints.table.createDate")} <ChevronsUpDown size={13} />
-                  </button>
-                </th>
-                <th
-                  style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort("status")}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      color: "inherit",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("complaints.table.status")} <ChevronsUpDown size={13} />
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedItems.map((c) => (
-                <tr
-                  key={c.id}
-                  style={{
-                    borderBottom: "1px solid var(--border)",
-                    cursor: "pointer",
-                    background: "transparent",
-                  }}
-                  onClick={() => navigate(`/app/complaints/${c.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(`/app/complaints/${c.id}`);
-                    }
-                  }}
-                  tabIndex={0}
-                  aria-label={t("complaints.openComplaintAria").replace("{subject}", c.subject)}
-                >
-                  <td style={{ padding: 12, fontWeight: 700 }}>#{c.id.slice(0, 8)}</td>
-                  <td style={{ padding: 12 }}>{c.subject}</td>
-                  <td style={{ padding: 12, color: "var(--text-2)" }}>
-                    <div style={{ display: "grid", gap: 2 }}>
-                      <span>{c.category}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-2)", opacity: 0.9 }}>
-                        {getComplaintContextSummary(t, c)}
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ padding: 12, color: "var(--text-2)" }}>
-                    {new Date(c.createdAt).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    <ComplaintStatusBadge status={c.complaintStatus} />
-                  </td>
-                </tr>
-              ))}
-              {empty ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    style={{ padding: 24, textAlign: "center", color: "var(--text-2)" }}
-                  >
-                    {t("complaints.noComplaints")}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-        {!empty ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 10,
-              padding: 12,
-              color: "var(--text-2)",
-              fontSize: 13,
-            }}
-          >
-            <span>
-              {t("complaints.page")} {pageNumber} {t("of")} {totalPages}
-            </span>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <button
-                type="button"
-                disabled={pageNumber <= 1}
-                onClick={() => goToPage(pageNumber - 1)}
-              >
-                {t("previous")}
-              </button>
-              {getPaginationItems(pageNumber, totalPages).map((item, idx) =>
-                item === "..." ? (
-                  <span key={`ellipsis-${idx}`}>...</span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => goToPage(item)}
-                    style={{
-                      minWidth: 34,
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      padding: "6px 8px",
-                      background: item === pageNumber ? "var(--primary)" : "var(--bg)",
-                      color: item === pageNumber ? "white" : "var(--text)",
-                      fontWeight: item === pageNumber ? 700 : 500,
-                    }}
-                  >
-                    {item}
-                  </button>
-                ),
-              )}
-              <button
-                type="button"
-                disabled={pageNumber >= totalPages}
-                onClick={() => goToPage(pageNumber + 1)}
-              >
-                {t("next")}
-              </button>
-            </div>
-          </div>
-        ) : null}
         </section>
       ) : null}
     </div>

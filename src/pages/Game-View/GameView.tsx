@@ -144,12 +144,12 @@ export default function GameView() {
 
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
-    
+
     // Close the game result modal and clear results
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
-    
+
     const nextRoute =
       mapConfig?.type === "platform"
         ? ROUTES.PLATFORM
@@ -166,7 +166,15 @@ export default function GameView() {
         returnTo,
       },
     });
-  }, [levelId, nextCampaignLevelId, mapConfig?.type, multiplayerRoomId, navigate, roleContext, returnTo]);
+  }, [
+    levelId,
+    nextCampaignLevelId,
+    mapConfig?.type,
+    multiplayerRoomId,
+    navigate,
+    roleContext,
+    returnTo,
+  ]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {

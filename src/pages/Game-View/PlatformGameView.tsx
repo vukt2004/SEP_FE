@@ -151,12 +151,12 @@ export default function PlatformGameView() {
 
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
-    
+
     // Close the game result modal and clear results
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
-    
+
     const nextLevelTypeRaw = (
       campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
     )

@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { dashboardApi } from "../../../services/api/cms/dashboard.api";
 import type { DashboardOverview } from "../../../services/api/cms/dashboard.api";
 import { StatCard } from "../components/StatCard";
@@ -43,6 +44,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { Megaphone } from "lucide-react";
+import { ROUTES } from "@/lib/constants/routes";
 
 // Mock data for charts
 const userGrowthData = [
@@ -96,6 +99,7 @@ const mockDashboardData: DashboardOverview = {
 };
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,9 +156,19 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[var(--text)] mb-2">Dashboard Overview</h1>
-        <p className="text-[var(--text-2)]">Platform statistics and metrics at a glance</p>
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--text)] mb-2">Dashboard Overview</h1>
+          <p className="text-[var(--text-2)]">Platform statistics and metrics at a glance</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(ROUTES.CMS_SYSTEM_ANNOUNCEMENT)}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400"
+        >
+          <Megaphone size={16} />
+          Send announcement
+        </button>
       </div>
 
       {/* Primary Stats Grid */}

@@ -305,11 +305,7 @@ export default function MapDetailPage() {
     if (!map || !playHint) return;
 
     const toPlayRoute = (mapType: "platform" | "topdown" | "snake") =>
-      mapType === "platform"
-        ? ROUTES.PLATFORM
-        : mapType === "snake"
-          ? ROUTES.SNAKE
-          : ROUTES.GAME;
+      mapType === "platform" ? ROUTES.PLATFORM : mapType === "snake" ? ROUTES.SNAKE : ROUTES.GAME;
 
     if (campaignLevels.length <= 1) {
       const selectedLevel: MapLevelItem | undefined = campaignLevels[0];
@@ -599,7 +595,13 @@ export default function MapDetailPage() {
     const elapsedMs = Date.now() - purchasedAtMs;
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     return elapsedMs >= 0 && elapsedMs <= sevenDaysMs;
-  }, [map?.id, ownership?.isOwned, ownership?.isAuthor, ownership?.isPurchased, ownership?.purchasedAt]);
+  }, [
+    map?.id,
+    ownership?.isOwned,
+    ownership?.isAuthor,
+    ownership?.isPurchased,
+    ownership?.purchasedAt,
+  ]);
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
   const campaignLevels = useMemo(() => {
     const levels = map?.levels ?? [];
@@ -1018,7 +1020,7 @@ export default function MapDetailPage() {
                   <span className={styles.steamMetaLabel}>{t("developer")}</span>
                   <span className={styles.steamMetaValue}>{getCreatorLabel()}</span>
                 </div>
-                {isAuthor && map.contentVersion != null && Number.isFinite(map.contentVersion) ? (
+                {map.contentVersion != null && Number.isFinite(map.contentVersion) ? (
                   <div className={styles.steamMetaRow}>
                     <span className={styles.steamMetaLabel}>
                       {t("mapDetailContentVersionLabel")}
@@ -1026,12 +1028,6 @@ export default function MapDetailPage() {
                     <span className={styles.steamMetaValue}>{map.contentVersion}</span>
                   </div>
                 ) : null}
-                <div className={styles.steamMetaRow}>
-                  <span className={styles.steamMetaLabel}>{t("type")}</span>
-                  <span className={styles.steamMetaValue}>
-                    {playHint?.isPlatform ? t("platformer") : t("puzzleLogic")}
-                  </span>
-                </div>
                 <div className={styles.steamMetaRow}>
                   <span className={styles.steamMetaLabel}>{t("difficulty")}</span>
                   <span className={styles.steamMetaValue}>

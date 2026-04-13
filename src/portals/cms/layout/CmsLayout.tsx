@@ -23,6 +23,7 @@ import {
   User,
   LogOut,
   MessageSquareWarning,
+  Megaphone,
   SlidersHorizontal,
   Coins,
   Tags,
@@ -66,6 +67,12 @@ const CmsLayout: React.FC = () => {
       roles: ["admin"],
     },
     { path: ROUTES.CMS_USERS, label: "Users", icon: Users, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_SYSTEM_ANNOUNCEMENT,
+      label: "System announcement",
+      icon: Megaphone,
+      roles: ["admin"],
+    },
     {
       path: ROUTES.CMS_REPORTS,
       label: "Reports",

@@ -9,6 +9,8 @@ import { validateMessageContent } from "@/shared/components/complaints/complaint
 import { SendHorizontal } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { useThemeStore } from "@/stores/theme.store";
+import { tokenStorage } from "@/lib/storage/tokenStorage";
+import { ROUTES } from "@/lib/constants/routes";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
@@ -41,6 +43,35 @@ function formatDurationBetween(
   return `${days} ${t("complaints.detail.duration.day")}`;
 }
 
+function getCurrentLearnerUserId(token: string | null | undefined): string | null {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(base64), (c: string) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    const payload = JSON.parse(json) as Record<string, unknown>;
+    const claimKeys = [
+      "sub",
+      "nameid",
+      "uid",
+      "userId",
+      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+    ];
+    for (const key of claimKeys) {
+      const value = payload[key];
+      if (typeof value === "string" && value.trim().length > 0) return value.trim();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ComplaintDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -55,6 +86,10 @@ export default function ComplaintDetailPage() {
   const [contentTab, setContentTab] = useState<"conversation" | "evidence">("conversation");
   const threadRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const currentUserId = useMemo(
+    () => getCurrentLearnerUserId(tokenStorage.getLearnerToken()),
+    [],
+  );
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -74,6 +109,12 @@ export default function ComplaintDetailPage() {
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
+
+  useEffect(() => {
+    if (!id || !data || !currentUserId) return;
+    if (String(data.userId).toLowerCase() === String(currentUserId).toLowerCase()) return;
+    navigate(ROUTES.LEARNER_COMPLAINT_OVERVIEW(id), { replace: true });
+  }, [currentUserId, data, id, navigate]);
 
   async function onSend() {
     if (!id || !data) return;
@@ -211,7 +252,7 @@ export default function ComplaintDetailPage() {
         >
           <button
             type="button"
-            onClick={() => navigate("/app/complaints")}
+            onClick={() => navigate(ROUTES.LEARNER_COMPLAINTS)}
             style={{
               border: "1px solid var(--border)",
               background: "var(--bg)",

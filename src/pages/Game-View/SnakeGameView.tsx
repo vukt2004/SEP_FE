@@ -161,12 +161,11 @@ function resolveBodySpriteKey(a: Dir, b: Dir): keyof SnakePartSet["body"] {
 
 async function loadSnakeLevelFromMock(pathOrFile?: string): Promise<SnakeLevelLoadResult> {
   const raw = (pathOrFile ?? DEFAULT_SNAKE_MAP_FILE).trim();
-  const resolvedUrl =
-    raw.startsWith("/")
-      ? raw
-      : raw.endsWith(".json")
-        ? `/mockdata/${raw}`
-        : `/mockdata/${raw}.json`;
+  const resolvedUrl = raw.startsWith("/")
+    ? raw
+    : raw.endsWith(".json")
+      ? `/mockdata/${raw}`
+      : `/mockdata/${raw}.json`;
 
   const res = await fetch(resolvedUrl);
   if (!res.ok) throw new Error(`Failed to load snake map: ${res.status}`);
@@ -455,9 +454,11 @@ export default function SnakeGameView() {
     },
   };
 
-  const currentElapsedForDetails = showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
+  const currentElapsedForDetails =
+    showResultsModal && gameResult ? gameResult.elapsedTime : elapsedDisplay;
   const currentStepsForDetails = showResultsModal && gameResult ? gameResult.stepCount : liveSteps;
-  const currentBlocksForDetails = showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
+  const currentBlocksForDetails =
+    showResultsModal && gameResult ? gameResult.blocksUsed : blocksUsed;
   const currentFruitsForDetails =
     showResultsModal && gameResult ? gameResult.fruitsCollected : collectedFruits;
 
@@ -973,17 +974,20 @@ export default function SnakeGameView() {
     }
   }, []);
 
-  const triggerSnakeFailure = useCallback((message: string, reason: SnakeFailureReason = "trap") => {
-    if (snakeFailedRef.current) return;
+  const triggerSnakeFailure = useCallback(
+    (message: string, reason: SnakeFailureReason = "trap") => {
+      if (snakeFailedRef.current) return;
 
-    snakeFailedRef.current = true;
-    setSnakeFailureReason(reason);
-    executorRef.current?.stop();
-    setIsExecutorRunning(false);
-    setShowExecutionIncompleteModal(false);
-    setShowTrapFailedModal(true);
-    setStatusText(message);
-  }, []);
+      snakeFailedRef.current = true;
+      setSnakeFailureReason(reason);
+      executorRef.current?.stop();
+      setIsExecutorRunning(false);
+      setShowExecutionIncompleteModal(false);
+      setShowTrapFailedModal(true);
+      setStatusText(message);
+    },
+    [],
+  );
 
   const executeResultOnEngine = useCallback(
     (result: ExecutionResult): number => {
@@ -998,7 +1002,10 @@ export default function SnakeGameView() {
         result.command.type === "wait";
 
       if (result.command.type === "turn") {
-        logicalFacingRef.current = rotateDirection90(logicalFacingRef.current, result.command.rotation);
+        logicalFacingRef.current = rotateDirection90(
+          logicalFacingRef.current,
+          result.command.rotation,
+        );
         headDirectionRef.current = logicalFacingRef.current;
       } else if (result.command.type === "move") {
         logicalFacingRef.current = result.command.direction as Dir;
@@ -1239,7 +1246,9 @@ export default function SnakeGameView() {
 
     let disposed = false;
     let engine: GameEngine | null = null;
-    let onFruitCollected: ((event: Extract<EngineEvent, { type: "fruitCollected" }>) => void) | null = null;
+    let onFruitCollected:
+      | ((event: Extract<EngineEvent, { type: "fruitCollected" }>) => void)
+      | null = null;
     let onWin: (() => void) | null = null;
     let onFailed: (() => void) | null = null;
     setIsLoading(true);
@@ -1742,7 +1751,9 @@ export default function SnakeGameView() {
         background: "radial-gradient(1200px 600px at 10% -10%, var(--surface-2) 0%, var(--bg) 45%)",
       }}
     >
-      {xpToast ? <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} /> : null}
+      {xpToast ? (
+        <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} />
+      ) : null}
 
       {multiplayerRoomId && submitted && !showResultsModal && (
         <div
@@ -1800,7 +1811,10 @@ export default function SnakeGameView() {
               >
                 <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
               </button>
-              <button onClick={handleEndMultiplayerGame} style={controlButtonStyle("warning", false)}>
+              <button
+                onClick={handleEndMultiplayerGame}
+                style={controlButtonStyle("warning", false)}
+              >
                 <Flag size={15} /> {t("endGame")}
               </button>
             </>
@@ -1893,7 +1907,9 @@ export default function SnakeGameView() {
             title="Click to view detailed performance"
           >
             <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}
+              >
                 ⏱️
                 <GameTimer
                   engineRef={engineRef}
@@ -1905,10 +1921,14 @@ export default function SnakeGameView() {
                   isActive={isLevelStarted && !showResultsModal}
                 />
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}
+              >
                 👣 <strong>{liveSteps}</strong>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text)" }}
+              >
                 🍎 <strong>{collectedFruits}</strong> / {applesTargetRef.current}
               </div>
 
@@ -2253,7 +2273,9 @@ export default function SnakeGameView() {
           timeStarThresholdPercent={mapConfig?.timeStarThresholdPercent ?? 100}
           stepEstimated={mapConfig?.estimatedSteps ?? 120}
           blockLimit={blockConstraints?.blockLimit ?? null}
-          onNextLevel={gameResult.isWin && nextCampaignLevelId ? handleNextCampaignLevel : undefined}
+          onNextLevel={
+            gameResult.isWin && nextCampaignLevelId ? handleNextCampaignLevel : undefined
+          }
           nextLevelLabel="Next level"
           multiplayerFooterNote={multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null}
           onMinimize={handleMinimizeResults}

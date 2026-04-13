@@ -1,6 +1,12 @@
 // src/app/router/index.tsx
 import React from "react";
-import { createBrowserRouter, Navigate, Outlet, useLocation, type RouteObject } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  useLocation,
+  type RouteObject,
+} from "react-router-dom";
 
 import { ROUTES } from "@/lib/constants/routes";
 import { learnerRoutes } from "./routes.learner";

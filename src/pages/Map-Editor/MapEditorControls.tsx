@@ -1096,7 +1096,50 @@ export function MapEditorControls({
       };
 
       if (isLearner) {
-        const res = await learnerMapsApi.updateMapMetadata(editingMapId, {
+        let targetMapId = editingMapId;
+        let createdVersionMapId: string | null = null;
+
+        const infoRes = await learnerMapsApi.getMapInfo(editingMapId);
+        if (!infoRes.data.isSuccess || !infoRes.data.data) {
+          alert(
+            tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+              "{message}",
+              infoRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+            ),
+          );
+          return;
+        }
+
+        const currentStatus = infoRes.data.data.mapStatus;
+        const requiresVersioning = currentStatus === "Approved" || currentStatus === "Published";
+        if (requiresVersioning) {
+          const versionRes = await learnerMapsApi.createMapVersion(editingMapId);
+          if (!versionRes.data.isSuccess) {
+            alert(
+              tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+                "{message}",
+                versionRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+              ),
+            );
+            return;
+          }
+
+          const newVersionId = parseDuplicateNewMapId(versionRes.data.data);
+          if (!newVersionId) {
+            alert(
+              tt(
+                "mapEditorDuplicateMapNoId",
+                "The server did not return a new map id. Try again or contact support.",
+              ),
+            );
+            return;
+          }
+
+          targetMapId = newVersionId;
+          createdVersionMapId = newVersionId;
+        }
+
+        const res = await learnerMapsApi.updateMapMetadata(targetMapId, {
           title: formMeta.title,
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
@@ -1117,7 +1160,7 @@ export function MapEditorControls({
           return;
         }
         if (avatarFile) {
-          const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
+          const avatarResponse = await learnerMapsApi.uploadMapAvatar(targetMapId, avatarFile);
           if (!avatarResponse.data.isSuccess) {
             alert(
               tt(
@@ -1133,7 +1176,7 @@ export function MapEditorControls({
         }
         if (pendingGalleryFiles.length > 0) {
           const galleryRes = await learnerMapsApi.uploadMapGallery(
-            editingMapId,
+            targetMapId,
             pendingGalleryFiles,
           );
           if (!galleryRes.data.isSuccess) {
@@ -1146,7 +1189,20 @@ export function MapEditorControls({
             return;
           }
         }
-        alert(tt("mapEditorMapInfoSavedShort", "Map info saved."));
+        if (createdVersionMapId) {
+          alert(
+            tt(
+              "mapEditorVersionDraftCreated",
+              "A new draft version was created from the approved/published map and your changes were saved there.",
+            ),
+          );
+          navigate(ROUTES.MAP_EDITOR, {
+            replace: true,
+            state: { mapId: createdVersionMapId, mode: "edit", roleContext: "learner" },
+          });
+        } else {
+          alert(tt("mapEditorMapInfoSavedShort", "Map info saved."));
+        }
         setShowMapInfoModal(false);
         setAvatarFile(null);
         setPendingGalleryFiles([]);
@@ -1349,6 +1405,49 @@ export function MapEditorControls({
 
       let targetMapIdForUpdate: string | null =
         isEditingExistingMap && editingMapId ? editingMapId : null;
+      let createdVersionMapId: string | null = null;
+
+      if (isEditingExistingMap && isLearner && editingMapId) {
+        const infoRes = await learnerMapsApi.getMapInfo(editingMapId);
+        if (!infoRes.data.isSuccess || !infoRes.data.data) {
+          alert(
+            tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+              "{message}",
+              infoRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+            ),
+          );
+          return;
+        }
+
+        const currentStatus = infoRes.data.data.mapStatus;
+        const requiresVersioning = currentStatus === "Approved" || currentStatus === "Published";
+        if (requiresVersioning) {
+          const versionRes = await learnerMapsApi.createMapVersion(editingMapId);
+          if (!versionRes.data.isSuccess) {
+            alert(
+              tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+                "{message}",
+                versionRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+              ),
+            );
+            return;
+          }
+
+          const newVersionId = parseDuplicateNewMapId(versionRes.data.data);
+          if (!newVersionId) {
+            alert(
+              tt(
+                "mapEditorDuplicateMapNoId",
+                "The server did not return a new map id. Try again or contact support.",
+              ),
+            );
+            return;
+          }
+
+          targetMapIdForUpdate = newVersionId;
+          createdVersionMapId = newVersionId;
+        }
+      }
 
       if (
         isEditingExistingMap &&
@@ -1439,7 +1538,12 @@ export function MapEditorControls({
         const savedAsNewListing =
           isLearner && opts?.catalogSaveMode === "newListing" && isEditingExistingMap;
         alert(
-          savedAsNewListing
+          createdVersionMapId
+            ? tt(
+                "mapEditorVersionDraftCreated",
+                "A new draft version was created from the approved/published map and your changes were saved there.",
+              )
+            : savedAsNewListing
             ? tt(
                 "mapEditorLevelContentSavedAsNewListing",
                 "Saved as a new map listing. The editor now uses the new map id; the original listing is unchanged.",
@@ -1464,6 +1568,11 @@ export function MapEditorControls({
           } else {
             navigate(ROUTES.CMS_MAPS);
           }
+        } else if (createdVersionMapId && isLearner) {
+          navigate(ROUTES.MAP_EDITOR, {
+            replace: true,
+            state: { mapId: createdVersionMapId, mode: "edit", roleContext: "learner" },
+          });
         }
       } else {
         alert(
