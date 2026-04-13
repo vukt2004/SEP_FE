@@ -292,9 +292,7 @@ export default function LearnerHeader() {
 
   const visibleNotifications = useMemo(
     () =>
-      notificationTab === "unread"
-        ? notifications.filter((item) => !item.isRead)
-        : notifications,
+      notificationTab === "unread" ? notifications.filter((item) => !item.isRead) : notifications,
     [notificationTab, notifications],
   );
 
@@ -538,8 +536,7 @@ export default function LearnerHeader() {
                           notificationTab === "unread"
                             ? "color-mix(in srgb, var(--primary) 16%, transparent)"
                             : "transparent",
-                        color:
-                          notificationTab === "unread" ? "var(--primary)" : "var(--text)",
+                        color: notificationTab === "unread" ? "var(--primary)" : "var(--text)",
                       }}
                     >
                       {t("notification.unread")}

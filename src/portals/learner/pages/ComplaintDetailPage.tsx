@@ -86,10 +86,7 @@ export default function ComplaintDetailPage() {
   const [contentTab, setContentTab] = useState<"conversation" | "evidence">("conversation");
   const threadRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
-  const currentUserId = useMemo(
-    () => getCurrentLearnerUserId(tokenStorage.getLearnerToken()),
-    [],
-  );
+  const currentUserId = useMemo(() => getCurrentLearnerUserId(tokenStorage.getLearnerToken()), []);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;

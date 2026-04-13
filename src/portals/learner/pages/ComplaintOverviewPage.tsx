@@ -197,7 +197,14 @@ export default function ComplaintOverviewPage() {
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <div style={{ fontSize: 12, color: "var(--text-2)", padding: 8, textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-2)",
+                        padding: 8,
+                        textAlign: "center",
+                      }}
+                    >
                       {t("complaints.attachments.preview")}
                     </div>
                   )}
@@ -214,7 +221,9 @@ export default function ComplaintOverviewPage() {
             ))}
           </div>
         ) : (
-          <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.detail.noEvidence")}</div>
+          <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+            {t("complaints.detail.noEvidence")}
+          </div>
         )}
       </section>
     </div>

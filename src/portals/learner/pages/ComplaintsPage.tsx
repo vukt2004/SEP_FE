@@ -479,10 +479,7 @@ export default function ComplaintsPage() {
     () => !loading && !error && pagedItems.length === 0,
     [error, loading, pagedItems.length],
   );
-  const currentUserId = useMemo(
-    () => getCurrentLearnerUserId(tokenStorage.getLearnerToken()),
-    [],
-  );
+  const currentUserId = useMemo(() => getCurrentLearnerUserId(tokenStorage.getLearnerToken()), []);
   const activeCategory = useMemo(
     () => categoryOptions.find((item) => item.categoryKey === createForm.categoryKey) ?? null,
     [categoryOptions, createForm.categoryKey],

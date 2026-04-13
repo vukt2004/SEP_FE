@@ -130,7 +130,9 @@ const CmsLayout: React.FC = () => {
               <div style={{ color: "var(--text)", fontSize: "18px", fontWeight: "bold" }}>
                 QuackOrbit
               </div>
-              <div style={{ color: "var(--text-2)", fontSize: "12px" }}>CMS {getCmsRoleLabel(role)}</div>
+              <div style={{ color: "var(--text-2)", fontSize: "12px" }}>
+                CMS {getCmsRoleLabel(role)}
+              </div>
             </div>
           )}
         </div>
