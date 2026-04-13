@@ -13,6 +13,12 @@ import type { AssetTier, SubscriptionPlan } from "@/lib/auth/subscriptionPlan";
 
 const LOCKED_TOOLTIP = "Upgrade to Creator to use this asset";
 
+const readCssVar = (name: string, fallback: string): string => {
+  if (typeof window === "undefined") return fallback;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+};
+
 interface TilePaletteProps {
   selectedTile: number | null;
   onTileSelect: (tileId: number | null) => void;
@@ -247,9 +253,9 @@ function TilePreview({ tileId, tileDef, tier, locked, image, isSelected, onSelec
     ctx.clearRect(0, 0, 56, 56);
 
     if (tileId === 0) {
-      ctx.fillStyle = "#f0f0f0";
+      ctx.fillStyle = readCssVar("--surface-2", "#1f2937");
       ctx.fillRect(0, 0, 56, 56);
-      ctx.fillStyle = "#e0e0e0";
+      ctx.fillStyle = readCssVar("--border", "#334155");
       ctx.fillRect(0, 0, 28, 28);
       ctx.fillRect(28, 28, 28, 28);
       return;
@@ -267,29 +273,30 @@ function TilePreview({ tileId, tileDef, tier, locked, image, isSelected, onSelec
       disabled={locked}
       style={{
         ...styles.tileButton,
-        border: isSelected ? "3px solid #0066ff" : "2px solid #ccc",
+        border: isSelected ? "3px solid var(--primary)" : "2px solid var(--border)",
         background: isSelected
-          ? "linear-gradient(180deg, #eff6ff, #dbeafe)"
+          ? "linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), var(--surface-2))"
           : styles.tileButton.background,
         opacity: locked ? 0.58 : 1,
         filter: locked ? "grayscale(0.85)" : "none",
         cursor: locked ? "not-allowed" : "pointer",
         boxShadow: isSelected
-          ? "0 8px 16px rgba(37, 99, 235, 0.25)"
-          : "0 2px 8px rgba(15, 23, 42, 0.08)",
+          ? "0 8px 16px color-mix(in srgb, var(--primary) 30%, transparent)"
+          : "0 2px 8px color-mix(in srgb, var(--bg) 28%, transparent)",
       }}
       onClick={onSelect}
       onMouseEnter={(e) => {
         if (locked) return;
         e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 8px 16px rgba(15, 23, 42, 0.16)";
+        e.currentTarget.style.boxShadow =
+          "0 8px 16px color-mix(in srgb, var(--bg) 45%, transparent)";
       }}
       onMouseLeave={(e) => {
         if (locked) return;
         e.currentTarget.style.transform = "translateY(0)";
         e.currentTarget.style.boxShadow = isSelected
-          ? "0 8px 16px rgba(37, 99, 235, 0.25)"
-          : "0 2px 8px rgba(15, 23, 42, 0.08)";
+          ? "0 8px 16px color-mix(in srgb, var(--primary) 30%, transparent)"
+          : "0 2px 8px color-mix(in srgb, var(--bg) 28%, transparent)";
       }}
       title={locked ? LOCKED_TOOLTIP : `Tile ${tileId}`}
     >
@@ -317,7 +324,7 @@ const styles: Record<string, React.CSSProperties> = {
   loading: {
     padding: "16px",
     textAlign: "center",
-    color: "#666",
+    color: "var(--text-2)",
   },
   tileButton: {
     position: "relative",
@@ -326,11 +333,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: "4px",
     padding: "8px",
-    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
     borderRadius: "10px",
     cursor: "pointer",
     transition: "all 0.2s",
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 2px 8px color-mix(in srgb, var(--bg) 28%, transparent)",
   },
   tileCanvas: {
     width: "56px",
@@ -338,12 +345,12 @@ const styles: Record<string, React.CSSProperties> = {
     imageRendering: "pixelated",
     display: "block",
     borderRadius: "6px",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--border)",
   },
   tileId: {
     fontSize: "11px",
     fontWeight: "500",
-    color: "#334155",
+    color: "var(--text-2)",
   },
   tierBadge: {
     position: "absolute",
@@ -353,8 +360,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "10px",
     fontWeight: 700,
     borderRadius: "999px",
-    background: "rgba(15, 23, 42, 0.08)",
-    color: "#334155",
+    background: "color-mix(in srgb, var(--surface-2) 70%, transparent)",
+    color: "var(--text-2)",
     textTransform: "uppercase",
     letterSpacing: "0.03em",
   },
@@ -368,7 +375,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "rgba(15, 23, 42, 0.72)",
+    background: "color-mix(in srgb, var(--bg) 70%, transparent)",
     color: "#ffffff",
   },
 };

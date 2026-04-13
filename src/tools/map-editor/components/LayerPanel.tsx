@@ -118,10 +118,10 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     width: "100%",
     padding: "14px",
-    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
-    border: "1px solid #e2e8f0",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    border: "1px solid var(--border)",
     borderRadius: "14px",
-    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 6px 18px color-mix(in srgb, var(--bg) 28%, transparent)",
   },
   containerEmbedded: {
     width: "100%",
@@ -135,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 12px 0",
     fontSize: "14px",
     fontWeight: "600",
-    color: "#0f172a",
+    color: "var(--text)",
     display: "flex",
     alignItems: "center",
     gap: "8px",
@@ -151,16 +151,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "10px 12px",
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--surface)",
     borderRadius: "10px",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--border)",
     transition: "all 0.2s ease",
     cursor: "pointer",
   },
   layerRowActive: {
-    border: "1px solid #93c5fd",
-    boxShadow: "inset 0 0 0 1px rgba(59, 130, 246, 0.25)",
-    background: "linear-gradient(180deg, rgba(219, 234, 254, 0.4), #ffffff)",
+    border: "1px solid var(--primary)",
+    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent)",
+    background: "linear-gradient(180deg, color-mix(in srgb, var(--primary) 14%, var(--surface)), var(--surface))",
   },
   layerNameWrap: {
     display: "inline-flex",
@@ -175,7 +175,7 @@ const styles: Record<string, React.CSSProperties> = {
   layerName: {
     fontSize: "13px",
     fontWeight: "500",
-    color: "#334155",
+    color: "var(--text-2)",
   },
   toggleButton: {
     width: "34px",
@@ -189,13 +189,13 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "all 0.2s",
   },
   toggleButtonVisible: {
-    borderColor: "#86efac",
-    backgroundColor: "#dcfce7",
-    color: "#15803d",
+    borderColor: "color-mix(in srgb, var(--success) 45%, var(--border))",
+    backgroundColor: "color-mix(in srgb, var(--success) 18%, var(--surface))",
+    color: "var(--success)",
   },
   toggleButtonHidden: {
-    borderColor: "#fecaca",
-    backgroundColor: "#fee2e2",
-    color: "#b91c1c",
+    borderColor: "color-mix(in srgb, var(--danger) 45%, var(--border))",
+    backgroundColor: "color-mix(in srgb, var(--danger) 18%, var(--surface))",
+    color: "var(--danger)",
   },
 };

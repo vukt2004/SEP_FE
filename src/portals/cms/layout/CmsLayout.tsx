@@ -50,7 +50,7 @@ const CmsLayout: React.FC = () => {
     { path: ROUTES.CMS_DASHBOARD, label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
     {
       path: ROUTES.CMS_MAPS,
-      label: "Maps",
+      label: "Games",
       icon: Map,
       roles: ["admin", "moderator"],
     },

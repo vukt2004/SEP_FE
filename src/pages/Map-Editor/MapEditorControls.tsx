@@ -222,9 +222,12 @@ function ObjectSelectionButton({
         padding: "12px",
         fontSize: "13px",
         fontWeight: "500",
-        border: selectedObjectId === objectId ? "2px solid #4CAF50" : "2px solid #ddd",
+        border: selectedObjectId === objectId ? "2px solid #4CAF50" : "2px solid var(--border)",
         borderRadius: "6px",
-        backgroundColor: selectedObjectId === objectId ? "#e8f5e9" : "white",
+        backgroundColor:
+          selectedObjectId === objectId
+            ? "color-mix(in srgb, var(--success) 18%, var(--surface))"
+            : "var(--surface)",
         cursor: locked ? "not-allowed" : "pointer",
         opacity: locked ? 0.56 : 1,
         filter: locked ? "grayscale(0.85)" : "none",
@@ -247,8 +250,8 @@ function ObjectSelectionButton({
           fontSize: "10px",
           fontWeight: 700,
           borderRadius: "999px",
-          background: "rgba(15, 23, 42, 0.08)",
-          color: "#334155",
+          background: "color-mix(in srgb, var(--surface-2) 70%, transparent)",
+          color: "var(--text-2)",
           textTransform: "uppercase",
           letterSpacing: "0.03em",
         }}
@@ -268,7 +271,7 @@ function ObjectSelectionButton({
             alignItems: "center",
             justifyContent: "center",
             background: "rgba(15, 23, 42, 0.72)",
-            color: "#ffffff",
+            color: "var(--surface)",
           }}
           aria-hidden
         >
@@ -279,10 +282,10 @@ function ObjectSelectionButton({
         style={{
           width: "48px",
           height: "48px",
-          border: "1px solid #e0e0e0",
+          border: "1px solid var(--border)",
           borderRadius: "4px",
           overflow: "hidden",
-          backgroundColor: "#f9f9f9",
+          backgroundColor: "var(--surface-2)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -295,7 +298,7 @@ function ObjectSelectionButton({
           style={{ display: "block", imageRendering: "pixelated" }}
         />
       </div>
-      <span style={{ fontSize: "11px", fontWeight: "500", color: "#555" }}>{label}</span>
+      <span style={{ fontSize: "11px", fontWeight: "500", color: "var(--text-2)" }}>{label}</span>
     </button>
   );
 }
@@ -1944,6 +1947,180 @@ export function MapEditorControls({
                   </>
                 )}
                 {rightPanelTab === "rules" && (
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Layers size={16} /> {tt("mapEditorLayerVisibilityTitle", "Layer Visibility")}
+            </h3>
+            {editorStore ? (
+              <LayerPanel store={editorStore} hideTitle embedded />
+            ) : (
+              <p style={styles.helpText}>
+                {tt("mapEditorLayerVisibilityFallback", "Open the editor with a map to use layer visibility.")}
+              </p>
+            )}
+          </div>
+          </>
+          )}
+          {rightPanelTab === "level" && (
+          <>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <Pencil size={16} /> {tt("mapEditorLevelMapDetailTitle", "Level (MapDetail)")}
+            </h3>
+            <p style={styles.helpText}>
+              {tt(
+                "mapEditorLevelMapDetailHelp",
+                'Per-level settings (time limit, win rule, hints…). Save with "Save level content", not "Map info".',
+              )}
+            </p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorMapTypeMap", "Map Type")}</label>
+              <select
+                value={mapData.config.type}
+                onChange={(e) => onTypeChange?.(e.target.value as "platform" | "topdown" | "snake")}
+                style={styles.select}
+              >
+                <option value="platform">{tt("mapEditorGameTypePlatform", "Platform")}</option>
+                <option value="topdown">{tt("mapEditorGameTypeTopDown", "Top-down")}</option>
+                <option value="snake">{tt("mapEditorGameTypeSnake", "Snake")}</option>
+              </select>
+            </div>
+            <div style={styles.mapInfoCard}>
+              <div style={styles.mapInfoRow}>
+                <span>{tt("mapEditorSize", "Size")}</span>
+                <strong>
+                  {mapData.config.width} × {mapData.config.height} {tt("mapEditorTiles", "tiles")}
+                </strong>
+              </div>
+              <div style={styles.mapInfoRow}>
+                <span>{tt("mapEditorTileSize", "Tile Size")}</span>
+                <strong>{mapData.config.tileSize}px</strong>
+              </div>
+            </div>
+            <div style={{ ...styles.actionButtons, flexDirection: "column", alignItems: "stretch", marginBottom: 16 }}>
+              <button type="button" style={styles.actionButton} onClick={() => setShowResizeDialog(true)}>
+                <Maximize2 size={14} /> {tt("mapEditorResizeMap", "Resize Map")}
+              </button>
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorLevelObjective", "Level Objective")}</label>
+              <textarea
+                rows={2}
+                value={mapData.config.levelObjective ?? ""}
+                onChange={(e) => onLevelObjectiveChange?.(e.target.value)}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorTimeLimitSeconds", "Time Limit (seconds)")}</label>
+              <input
+                type="number"
+                min={30}
+                max={3600}
+                value={mapData.config.timeLimitSeconds}
+                onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={timeStarThresholdPercent}
+                onChange={(e) =>
+                  onTimeStarThresholdChange?.(
+                    Math.max(1, Math.min(100, Number.parseInt(e.target.value, 10) || 100)),
+                  )
+                }
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorEstimatedSteps", "Estimated Steps")}</label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={mapData.config.estimatedSteps}
+                onChange={(e) => onEstimatedStepsChange?.(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorWinCondition", "Win Condition")}</label>
+              <select
+                value={mapData.config.winCondition}
+                onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+                style={styles.select}
+              >
+                <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
+                <option value={2}>{tt("mapEditorCollectFruits", "Collect Fruits")}</option>
+              </select>
+            </div>
+            {mapData.config.winCondition === 2 && (
+              <div style={styles.formGroup}>
+                <label style={styles.label}>{tt("mapEditorRequiredFruits", "Required Fruits")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={mapData.config.requiredFruits ?? 0}
+                  onChange={(e) =>
+                    onRequiredFruitsChange?.(Math.max(0, Number.parseInt(e.target.value) || 0))
+                  }
+                  style={styles.input}
+                />
+              </div>
+            )}
+            <div style={styles.formGroup}>
+              <label style={styles.label}>{tt("mapEditorHints", "Hints")}</label>
+              {displayHints.map((hint, index) => (
+                <input
+                  key={`sidebar-hint-${index}`}
+                  type="text"
+                  value={hint}
+                  onChange={(e) => {
+                    const next = [...displayHints];
+                    next[index] = e.target.value;
+                    setDisplayHints(next);
+                  }}
+                  placeholder={tt("mapEditorHintNumber", "Hint {n}").replace("{n}", String(index + 1))}
+                  style={{ ...styles.input, marginBottom: 6 }}
+                />
+              ))}
+              {displayHints.length < 3 && (
+                <button
+                  type="button"
+                  style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 4 }}
+                  onClick={() => setDisplayHints([...displayHints, ""])}
+                >
+                  + {tt("mapEditorAddHint", "Add Hint")}
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              style={{
+                ...styles.actionButton,
+                width: "100%",
+                background:
+                  "linear-gradient(180deg, color-mix(in srgb, var(--success) 85%, white 10%), color-mix(in srgb, var(--success) 72%, black 10%))",
+                color: "#fff",
+                borderColor: "color-mix(in srgb, var(--success) 65%, var(--border))",
+              }}
+              onClick={() => void handleSaveLevelContent()}
+              disabled={userType === "unknown" || savingLevelContent}
+            >
+              <Save size={14} />{" "}
+              {savingLevelContent
+                ? tt("mapEditorSaving", "Saving...")
+                : tt("mapEditorSaveLevelContent", "Save level content")}
+            </button>
+          </div>
+          </>
+          )}
+          {rightPanelTab === "rules" && (
                   <>
                     <div style={styles.section}>
                       <h3 style={styles.sectionTitle}>
@@ -2023,7 +2200,7 @@ export function MapEditorControls({
                                 onClick={() => removeAllowedBlock(index)}
                                 style={{
                                   padding: "6px 8px",
-                                  background: "#ff6b6b",
+                                  background: "var(--danger)",
                                   color: "white",
                                   border: "none",
                                   borderRadius: "4px",
@@ -2045,8 +2222,8 @@ export function MapEditorControls({
                             padding: "8px 10px",
                             background:
                               normalizedAllowedBlocks.length >= availableBlocks.length
-                                ? "#cfd8dc"
-                                : "#4CAF50",
+                                ? "var(--surface-2)"
+                                : "var(--success)",
                             color: "white",
                             border: "none",
                             borderRadius: "4px",
@@ -2128,7 +2305,7 @@ export function MapEditorControls({
                                 onClick={() => removeRequiredBlock(index)}
                                 style={{
                                   padding: "6px 8px",
-                                  background: "#ff6b6b",
+                                  background: "var(--danger)",
                                   color: "white",
                                   border: "none",
                                   borderRadius: "4px",
@@ -2154,8 +2331,8 @@ export function MapEditorControls({
                             background:
                               blocksAvailableForGameplay.length === 0 ||
                               normalizedRequiredBlocks.length >= blocksAvailableForGameplay.length
-                                ? "#cfd8dc"
-                                : "#4CAF50",
+                                ? "var(--surface-2)"
+                                : "var(--success)",
                             color: "white",
                             border: "none",
                             borderRadius: "4px",
@@ -2485,7 +2662,9 @@ export function MapEditorControls({
                     padding: "4px 8px",
                     borderRadius: "4px",
                     fontSize: "12px",
-                    border: "1px solid #ddd",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
                   }}
                 >
                   <option value="all">{tt("mapEditorAllGroups", "All Groups")}</option>
@@ -2597,11 +2776,13 @@ export function MapEditorControls({
                         padding: "12px",
                         borderRadius: "6px",
                         backgroundColor:
-                          selectedPortalColor === color ? colorMap[color] + "30" : "#f5f5f5",
+                          selectedPortalColor === color
+                            ? colorMap[color] + "30"
+                            : "var(--surface-2)",
                         border:
                           selectedPortalColor === color
                             ? `2px solid ${colorMap[color]}`
-                            : "2px solid #ddd",
+                            : "2px solid var(--border)",
                         cursor: canPlace ? "pointer" : "not-allowed",
                         opacity: canPlace ? 1 : 0.5,
                         transition: "all 0.2s",
@@ -2638,7 +2819,7 @@ export function MapEditorControls({
                       >
                         {color}
                       </span>
-                      <span style={{ fontSize: "11px", color: "#666" }}>{count}/2</span>
+                      <span style={{ fontSize: "11px", color: "var(--text-2)" }}>{count}/2</span>
                     </button>
                   );
                 })}
@@ -2843,8 +3024,8 @@ export function MapEditorControls({
                           fontSize: 12,
                           padding: "6px 8px",
                           borderRadius: 8,
-                          border: "1px solid #e2e8f0",
-                          background: "#f8fafc",
+                          border: "1px solid var(--border)",
+                          background: "var(--surface-2)",
                         }}
                       >
                         <span
@@ -2864,7 +3045,7 @@ export function MapEditorControls({
                             background: "transparent",
                             cursor: "pointer",
                             padding: 4,
-                            color: "#64748b",
+                            color: "var(--text-2)",
                           }}
                           onClick={() =>
                             setPendingGalleryFiles((prev) => prev.filter((_, i) => i !== idx))
@@ -3283,10 +3464,10 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     width: "100%",
     marginBottom: 10,
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     borderRadius: 10,
     overflow: "hidden",
-    background: "#f1f5f9",
+    background: "var(--surface-2)",
     boxSizing: "border-box",
   },
   rightPanelTabButton: {
@@ -3301,14 +3482,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     border: "none",
     borderRadius: 0,
-    background: "#f8fafc",
+    background: "var(--surface-2)",
     cursor: "pointer",
-    color: "#475569",
+    color: "var(--text-2)",
     lineHeight: 1.2,
     WebkitTapHighlightColor: "transparent",
   },
   rightPanelTabButtonDivider: {
-    borderRight: "1px solid #cbd5e1",
+    borderRight: "1px solid var(--border)",
   },
   rightPanelTabButtonInner: {
     display: "flex",
@@ -3342,14 +3523,14 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.01em",
   },
   rightPanelTabButtonActive: {
-    background: "#2563eb",
+    background: "var(--primary)",
     color: "#fff",
   },
   /** Active tab but panel content is collapsed (click tab again to expand). */
   rightPanelTabButtonCollapsed: {
     opacity: 0.88,
-    background: "#1d4ed8",
-    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.35)",
+    background: "var(--primary-hover)",
+    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--surface) 55%, transparent)",
   },
   rightPanelTabContent: {
     overflowY: "auto",
@@ -3370,15 +3551,15 @@ const styles: Record<string, React.CSSProperties> = {
   section: {
     padding: "14px",
     borderRadius: "14px",
-    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    border: "1px solid var(--border)",
+    boxShadow: "0 8px 20px color-mix(in srgb, var(--bg) 32%, transparent)",
   },
   sectionTitle: {
     fontSize: "14px",
     fontWeight: "600",
     margin: "0 0 12px 0",
-    color: "#0f172a",
+    color: "var(--text)",
     display: "flex",
     alignItems: "center",
     gap: "8px",
@@ -3386,58 +3567,58 @@ const styles: Record<string, React.CSSProperties> = {
   },
   helpText: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--text-2)",
     marginBottom: "10px",
   },
   placeholderText: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--text-2)",
     padding: "8px 10px",
-    border: "1px dashed #cbd5e1",
+    border: "1px dashed var(--border)",
     borderRadius: "8px",
-    background: "#f8fafc",
+    background: "var(--surface-2)",
   },
   ruleWarningText: {
     fontSize: "12px",
-    color: "#b45309",
+    color: "var(--warning)",
     marginBottom: "8px",
   },
   ruleSummaryPanel: {
     marginTop: "12px",
     padding: "10px",
     borderRadius: "10px",
-    border: "1px solid #dbe3ef",
-    background: "#f8fafc",
+    border: "1px solid var(--border)",
+    background: "var(--surface-2)",
   },
   ruleSummaryTitle: {
     margin: "0 0 6px 0",
     fontSize: "12px",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "var(--text)",
   },
   ruleSummaryItem: {
     margin: "0 0 4px 0",
     fontSize: "12px",
-    color: "#334155",
+    color: "var(--text-2)",
   },
   tierLabel: {
     display: "inline-flex",
     alignItems: "center",
     borderRadius: "999px",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     padding: "3px 8px",
     fontSize: "10px",
     fontWeight: 700,
     letterSpacing: "0.04em",
-    color: "#334155",
-    background: "#f8fafc",
+    color: "var(--text-2)",
+    background: "var(--surface-2)",
   },
   lockedTierHint: {
     display: "inline-flex",
     alignItems: "center",
     gap: "4px",
     fontSize: "11px",
-    color: "#64748b",
+    color: "var(--text-2)",
   },
   buttonGroup: {
     display: "flex",
@@ -3448,9 +3629,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "9px 12px",
     fontSize: "13px",
     fontWeight: "500",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--surface)",
     cursor: "pointer",
     transition: "all 0.2s",
     display: "inline-flex",
@@ -3461,10 +3642,10 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
   buttonActive: {
-    backgroundColor: "#1d4ed8",
+    backgroundColor: "var(--primary-hover)",
     color: "white",
-    borderColor: "#1d4ed8",
-    boxShadow: "0 6px 14px rgba(29, 78, 216, 0.25)",
+    borderColor: "var(--primary-hover)",
+    boxShadow: "0 6px 14px color-mix(in srgb, var(--primary) 35%, transparent)",
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -3476,9 +3657,9 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   categoryChip: {
-    border: "1px solid #d1d5db",
-    background: "#ffffff",
-    color: "#334155",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text-2)",
     borderRadius: "999px",
     padding: "6px 12px",
     fontSize: "12px",
@@ -3487,9 +3668,9 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "all 0.2s ease",
   },
   categoryChipActive: {
-    border: "1px solid #93c5fd",
-    background: "#dbeafe",
-    color: "#1e40af",
+    border: "1px solid var(--focus)",
+    background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
+    color: "var(--primary)",
   },
   objectToolGrid: {
     display: "grid",
@@ -3500,9 +3681,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "4px",
   },
   objectMetadataCard: {
-    border: "1px solid #dbe3ef",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
-    background: "#f8fafc",
+    background: "var(--surface-2)",
     padding: "10px",
     display: "flex",
     flexDirection: "column",
@@ -3513,19 +3694,19 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: "12px",
     fontWeight: 700,
-    color: "#1e293b",
+    color: "var(--text)",
   },
   checkboxLabel: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
     fontSize: "12px",
-    color: "#334155",
+    color: "var(--text-2)",
   },
   infoText: {
     margin: 0,
     fontSize: "14px",
-    color: "#555",
+    color: "var(--text-2)",
   },
   actionButtons: {
     display: "flex",
@@ -3536,10 +3717,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "10px 14px",
     fontSize: "13px",
     fontWeight: "500",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
-    backgroundColor: "white",
-    color: "#1e293b",
+    backgroundColor: "var(--surface)",
+    color: "var(--text)",
     cursor: "pointer",
     transition: "all 0.2s",
     display: "inline-flex",
@@ -3547,19 +3728,19 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "8px",
   },
   saveButton: {
-    backgroundColor: "#2563eb",
-    color: "#ffffff",
-    border: "1px solid #2563eb",
-    boxShadow: "0 8px 16px rgba(37, 99, 235, 0.22)",
+    backgroundColor: "var(--primary)",
+    color: "#fff",
+    border: "1px solid var(--primary)",
+    boxShadow: "0 8px 16px color-mix(in srgb, var(--primary) 32%, transparent)",
   },
   importLabel: {
     padding: "10px 20px",
     fontSize: "14px",
     fontWeight: "500",
-    border: "2px solid #0066ff",
+    border: "2px solid var(--primary)",
     borderRadius: "6px",
-    backgroundColor: "white",
-    color: "#0066ff",
+    backgroundColor: "var(--surface)",
+    color: "var(--primary)",
     cursor: "pointer",
     display: "inline-block",
   },
@@ -3579,7 +3760,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: "white",
+    backgroundColor: "var(--surface)",
     padding: "30px",
     borderRadius: "14px",
     boxShadow: "0 18px 38px rgba(0,0,0,0.25)",
@@ -3589,9 +3770,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: "min(980px, 92vw)",
     maxHeight: "88vh",
     overflowY: "auto",
-    border: "1px solid #dbe3ef",
+    border: "1px solid var(--border)",
     background:
-      "radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 35%), linear-gradient(180deg, #ffffff, #f8fafc)",
+      "radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 35%), linear-gradient(180deg, var(--surface), var(--surface-2))",
   },
   detailLayout: {
     display: "grid",
@@ -3607,10 +3788,10 @@ const styles: Record<string, React.CSSProperties> = {
     position: "relative",
     borderRadius: "14px",
     overflow: "hidden",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     width: "100%",
     aspectRatio: "16 / 9",
-    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+    background: "linear-gradient(135deg, var(--bg), color-mix(in srgb, var(--bg) 80%, var(--surface)))",
   },
   previewImage: {
     width: "100%",
@@ -3622,7 +3803,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     height: "100%",
     background:
-      "radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.4), transparent 35%), linear-gradient(140deg, #0f172a, #1e293b)",
+      "radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--primary) 55%, transparent), transparent 35%), linear-gradient(140deg, var(--bg), color-mix(in srgb, var(--bg) 80%, var(--surface)))",
   },
   previewGradient: {
     position: "absolute",
@@ -3649,7 +3830,7 @@ const styles: Record<string, React.CSSProperties> = {
   previewPlaceholderText: {
     fontSize: "12px",
     opacity: 0.92,
-    color: "#e2e8f0",
+    color: "#cbd5e1",
     marginTop: "4px",
   },
   previewOverlayButton: {
@@ -3667,9 +3848,9 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "transform 0.2s ease, background 0.2s ease",
   },
   mapInfoCard: {
-    border: "1px solid #dbe3ef",
+    border: "1px solid var(--border)",
     borderRadius: "12px",
-    background: "#f8fafc",
+    background: "var(--surface-2)",
     padding: "10px 12px",
     display: "grid",
     gap: "8px",
@@ -3679,7 +3860,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     fontSize: "13px",
-    color: "#334155",
+    color: "var(--text-2)",
   },
   detailPanel: {
     display: "grid",
@@ -3687,22 +3868,22 @@ const styles: Record<string, React.CSSProperties> = {
   },
   inlineField: {
     position: "relative",
-    border: "1px solid #dbe3ef",
+    border: "1px solid var(--border)",
     borderRadius: "12px",
-    background: "#ffffff",
+    background: "var(--surface)",
     padding: "12px",
     transition: "border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease",
     cursor: "pointer",
   },
   inlineFieldActive: {
-    border: "1px solid #93c5fd",
+    border: "1px solid var(--focus)",
     boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.15)",
     transform: "translateY(-1px)",
   },
   inlineFieldLabel: {
     fontSize: "12px",
     fontWeight: 700,
-    color: "#64748b",
+    color: "var(--text-2)",
     textTransform: "uppercase",
     letterSpacing: "0.04em",
     marginBottom: "6px",
@@ -3710,28 +3891,28 @@ const styles: Record<string, React.CSSProperties> = {
   inlineFieldValue: {
     fontSize: "17px",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "var(--text)",
     lineHeight: 1.3,
   },
   inlineFieldValueMuted: {
     fontSize: "14px",
-    color: "#475569",
+    color: "var(--text-2)",
     lineHeight: 1.5,
     whiteSpace: "pre-wrap",
   },
   inlineFieldHint: {
     marginTop: "8px",
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--text-2)",
     lineHeight: 1.4,
   },
   inlineInput: {
     width: "100%",
     padding: "10px 12px",
     fontSize: "15px",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
-    color: "#0f172a",
+    color: "var(--text)",
     boxSizing: "border-box",
     outline: "none",
   },
@@ -3739,9 +3920,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     padding: "10px 12px",
     fontSize: "14px",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--border)",
     borderRadius: "10px",
-    color: "#0f172a",
+    color: "var(--text)",
     boxSizing: "border-box",
     resize: "vertical",
     lineHeight: 1.5,
@@ -3751,7 +3932,7 @@ const styles: Record<string, React.CSSProperties> = {
     position: "absolute",
     top: "10px",
     right: "10px",
-    color: "#3b82f6",
+    color: "var(--primary)",
     opacity: 0.8,
   },
   tagWrap: {
@@ -3762,27 +3943,27 @@ const styles: Record<string, React.CSSProperties> = {
   tagChip: {
     padding: "6px 10px",
     borderRadius: "999px",
-    border: "1px solid #cbd5e1",
-    background: "#ffffff",
-    color: "#334155",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text-2)",
     fontSize: "12px",
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
   tagChipSelected: {
-    border: "1px solid #2563eb",
-    background: "#dbeafe",
-    color: "#1e40af",
+    border: "1px solid var(--primary)",
+    background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
+    color: "var(--primary)",
   },
   modalTitle: {
     fontSize: "20px",
     fontWeight: "600",
     margin: "0 0 20px 0",
-    color: "#333",
+    color: "var(--text)",
   },
   warningText: {
-    color: "#ff6b00",
+    color: "var(--warning)",
     fontSize: "14px",
     marginBottom: "20px",
   },
@@ -3794,25 +3975,25 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     fontWeight: "500",
     marginBottom: "6px",
-    color: "#555",
+    color: "var(--text-2)",
   },
   input: {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border)",
     borderRadius: "8px",
     boxSizing: "border-box",
-    color: "black",
+    color: "var(--text)",
   },
   select: {
     width: "100%",
     padding: "8px 12px",
     fontSize: "14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border)",
     borderRadius: "8px",
     boxSizing: "border-box",
-    color: "black",
+    color: "var(--text)",
   },
   modalButtons: {
     display: "flex",
@@ -3826,7 +4007,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: "500",
     border: "none",
     borderRadius: "6px",
-    backgroundColor: "#0066ff",
+    backgroundColor: "var(--primary)",
     color: "white",
     cursor: "pointer",
   },
@@ -3834,10 +4015,11 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "10px 20px",
     fontSize: "14px",
     fontWeight: "500",
-    border: "2px solid #ddd",
+    border: "2px solid var(--border)",
     borderRadius: "6px",
-    backgroundColor: "white",
-    color: "#555",
+    backgroundColor: "var(--surface)",
+    color: "var(--text-2)",
     cursor: "pointer",
   },
 };
+
