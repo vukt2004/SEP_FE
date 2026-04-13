@@ -1959,7 +1959,6 @@ export function MapEditorControls({
               </p>
             )}
           </div>
-          </>
           )}
           {rightPanelTab === "level" && (
           <>
