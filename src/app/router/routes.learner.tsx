@@ -110,6 +110,7 @@ export const learnerRoutes: RouteObject = {
     { path: "concept/:id", element: <LearnerConceptDetailPage /> },
     { path: "concepts", element: <LearnerConceptsListPage /> },
     { path: "complaints", element: <LearnerComplaintsPage /> },
+    { path: "complaints/new", element: <LearnerComplaintsPage /> },
     { path: "complaints/:id", element: <LearnerComplaintDetailPage /> },
   ],
 };

@@ -41,6 +41,7 @@ export const ROUTES = {
   /** Lộ trình của tôi – danh sách concept + map theo goal đã chọn */
   LEARNER_MY_PATH: "/app/my-path",
   LEARNER_COMPLAINTS: "/app/complaints",
+  LEARNER_COMPLAINTS_NEW: "/app/complaints/new",
   /** Đọc nội dung khái niệm – use with /app/concept/:id */
   LEARNER_CONCEPT: (id: string) => `/app/concept/${id}`,
   /** Danh sách concept – học thêm concept khác (query: goalId để lọc theo goal) */

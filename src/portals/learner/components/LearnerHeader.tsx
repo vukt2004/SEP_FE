@@ -146,6 +146,11 @@ export default function LearnerHeader() {
                 {t("nav.leaderboard")}
               </HeaderNavLink>
             </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+              <HeaderNavLink to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"} icon={MessageSquareWarning}>
+                {t("nav.complaints")}
+              </HeaderNavLink>
+            </motion.div>
           </nav>
         </div>
 

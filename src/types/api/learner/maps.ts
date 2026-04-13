@@ -304,6 +304,8 @@ export interface MapOwnershipData {
   mapExists: boolean;
   isOwned: boolean;
   isAuthor: boolean;
+  isPurchased?: boolean;
+  purchasedAt?: string | null;
 }
 
 /**

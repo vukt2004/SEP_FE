@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
 import type { ComplaintItem, ComplaintStatus } from "@/types/api/complaints";
 import type {
@@ -18,9 +18,11 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   Upload,
+  Copy,
   X,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
+import { ROUTES } from "@/lib/constants/routes";
 
 const pageSize = 10;
 
@@ -110,6 +112,36 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatVietnamDateTimeLocal(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function getVietnamNowDateTimeLocal() {
+  return formatVietnamDateTimeLocal(new Date());
+}
+
+function normalizeDateTimeLocalInput(value: string) {
+  const raw = value.trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return formatVietnamDateTimeLocal(parsed);
+}
+
 function getComplaintContextSummary(t: (key: string) => string, item: ComplaintItem) {
   const displayTitle = item.contextResolved?.displayTitle?.trim();
   const displaySubtitle = item.contextResolved?.displaySubtitle?.trim();
@@ -131,6 +163,7 @@ function getComplaintContextSummary(t: (key: string) => string, item: ComplaintI
 export default function ComplaintsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<ComplaintItem[]>([]);
@@ -153,17 +186,19 @@ export default function ComplaintsPage() {
       playHistoryId: "",
       xpTransactionId: "",
       orbitCoinTransactionId: "",
-      occurredAt: "",
+      occurredAt: getVietnamNowDateTimeLocal(),
     },
   });
   const [categoryOptions, setCategoryOptions] = useState<ComplaintCategoryConfigItem[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = useState(false);
   const [categoryOptionsError, setCategoryOptionsError] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentPreviewUrls, setAttachmentPreviewUrls] = useState<string[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
+  const [copiedContextField, setCopiedContextField] = useState("");
+  const [isUploadHover, setIsUploadHover] = useState(false);
+  const [isSubmitHovered, setIsSubmitHovered] = useState(false);
   const [keywordInput, setKeywordInput] = useState(searchParams.get("keyword") ?? "");
   const [isKeywordComposing, setIsKeywordComposing] = useState(false);
   const [sortBy, setSortBy] = useState<"id" | "subject" | "category" | "createdAt" | "status">(
@@ -175,6 +210,16 @@ export default function ComplaintsPage() {
   const keyword = searchParams.get("keyword") ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
+  const isCreateRoute = location.pathname.endsWith("/complaints/new");
+
+  const updateQuery = useCallback((key: string, value: string) => {
+    setSearchParams((p) => {
+      p.set("pageNumber", "1");
+      if (value) p.set(key, value);
+      else p.delete(key);
+      return p;
+    });
+  }, [setSearchParams]);
 
   const fallbackCategoryOptions = useMemo<ComplaintCategoryConfigItem[]>(
     () =>
@@ -200,7 +245,7 @@ export default function ComplaintsPage() {
       updateQuery("keyword", keywordInput.normalize("NFC"));
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [isKeywordComposing, keywordInput]);
+  }, [isKeywordComposing, keywordInput, updateQuery]);
 
   useEffect(() => {
     if (!createSuccess) return;
@@ -225,7 +270,7 @@ export default function ComplaintsPage() {
       playHistoryId: searchParams.get("playHistoryId") || "",
       xpTransactionId: searchParams.get("xpTransactionId") || "",
       orbitCoinTransactionId: searchParams.get("orbitCoinTransactionId") || "",
-      occurredAt: searchParams.get("occurredAt") || "",
+      occurredAt: normalizeDateTimeLocalInput(searchParams.get("occurredAt") || ""),
     };
 
     setCreateForm((prev) => ({
@@ -241,12 +286,16 @@ export default function ComplaintsPage() {
         xpTransactionId: prefillContext.xpTransactionId || prev.context.xpTransactionId || "",
         orbitCoinTransactionId:
           prefillContext.orbitCoinTransactionId || prev.context.orbitCoinTransactionId || "",
-        occurredAt: prefillContext.occurredAt || prev.context.occurredAt || "",
+        occurredAt:
+          prefillContext.occurredAt || prev.context.occurredAt || getVietnamNowDateTimeLocal(),
       },
     }));
 
-    if (prefillOpenCreate) setShowCreateForm(true);
-  }, [searchParams]);
+    if (prefillOpenCreate && !isCreateRoute) {
+      navigate(`${ROUTES.LEARNER_COMPLAINTS_NEW}?${searchParams.toString()}`, { replace: true });
+      return;
+    }
+  }, [isCreateRoute, navigate, searchParams]);
 
   useEffect(() => {
     const previewUrls = attachments.map((file) => URL.createObjectURL(file));
@@ -425,7 +474,7 @@ export default function ComplaintsPage() {
       requiredAnyContextFields
         .map((field) => ({
           field,
-          value: (createForm.context[field as keyof typeof createForm.context] as string) ?? "",
+          value: (createForm.context[field as keyof CreateComplaintRequest["context"]] as string) ?? "",
         }))
         .filter((item) => item.value.trim().length > 0),
     [createForm.context, requiredAnyContextFields],
@@ -453,8 +502,21 @@ export default function ComplaintsPage() {
   }, [allowManualContextInput, hasAnyRequiredContextValue, requiredAnyContextFields.length]);
 
   const submitReady = detailsStepDone && descriptionStepDone && contextStepDone;
+  const hasSelectedCategory = createForm.categoryKey.trim().length > 0;
   const createButtonDisabled =
-    creating || !submitReady || !!attachmentError || categoryOptionsLoading;
+    creating || !submitReady || !createForm.description.trim() || !!attachmentError || categoryOptionsLoading;
+
+  const copyContextValue = async (field: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedContextField(field);
+      window.setTimeout(() => {
+        setCopiedContextField((prev) => (prev === field ? "" : prev));
+      }, 1300);
+    } catch {
+      // Ignore clipboard failures silently.
+    }
+  };
 
   const missingFieldLabels = useMemo(() => {
     const missing: string[] = [];
@@ -511,15 +573,6 @@ export default function ComplaintsPage() {
         ? t("complaints.attachments.invalidFiles").replace("{count}", String(rejected.length))
         : "",
     );
-  }
-
-  function updateQuery(key: string, value: string) {
-    setSearchParams((p) => {
-      p.set("pageNumber", "1");
-      if (value) p.set(key, value);
-      else p.delete(key);
-      return p;
-    });
   }
 
   function goToPage(nextPage: number) {
@@ -610,7 +663,7 @@ export default function ComplaintsPage() {
           playHistoryId: "",
           xpTransactionId: "",
           orbitCoinTransactionId: "",
-          occurredAt: "",
+          occurredAt: getVietnamNowDateTimeLocal(),
         },
       });
       setAttachments([]);
@@ -631,23 +684,21 @@ export default function ComplaintsPage() {
 
   const createUi = {
     panel: {
-      border: "1px solid var(--border)",
-      borderRadius: 16,
+      border: "none",
+      borderRadius: 0,
       padding: 0,
-      overflow: "hidden",
-      background:
-        "linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, white 6%) 0%, var(--surface) 100%)",
-      boxShadow: "0 10px 24px rgba(2, 6, 23, 0.08)",
+      overflow: "visible",
+      background: "transparent",
+      boxShadow: "none",
     },
     panelHeader: {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      padding: "14px 16px",
+      padding: "0 0 16px",
       borderBottom: "1px solid var(--border)",
-      background:
-        "linear-gradient(90deg, color-mix(in srgb, var(--primary) 10%, transparent) 0%, color-mix(in srgb, var(--surface-2) 60%, transparent) 100%)",
+      background: "transparent",
     },
     panelTitleWrap: {
       display: "grid",
@@ -655,8 +706,8 @@ export default function ComplaintsPage() {
     },
     panelTitle: {
       margin: 0,
-      fontWeight: 800,
-      fontSize: 18,
+      fontWeight: 700,
+      fontSize: 24,
       color: "var(--text)",
     },
     panelSubtitle: {
@@ -666,10 +717,10 @@ export default function ComplaintsPage() {
       fontWeight: 500,
     },
     toggleBtn: {
-      border: "1px solid var(--border)",
-      borderRadius: 999,
-      padding: "9px 14px",
-      fontWeight: 700,
+      border: "1px solid color-mix(in srgb, var(--border) 86%, #cbd5e1)",
+      borderRadius: 10,
+      padding: "8px 10px",
+      fontWeight: 600,
       cursor: "pointer",
       display: "inline-flex",
       alignItems: "center",
@@ -677,33 +728,35 @@ export default function ComplaintsPage() {
     },
     formBody: {
       display: "grid",
-      gap: 16,
-      padding: 16,
+      gap: 18,
+      padding: "18px 0 0",
     },
     formGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-      gap: 16,
+      gridTemplateColumns: "minmax(0, 920px)",
+      justifyContent: "center",
+      gap: 28,
       alignItems: "start" as const,
     },
     formColumn: {
       display: "grid",
-      gap: 16,
+      gap: 18,
       alignContent: "start" as const,
     },
     card: {
-      border: "1px solid var(--border)",
-      borderRadius: 12,
-      padding: 14,
-      background: "color-mix(in srgb, var(--surface-2) 45%, transparent)",
+      border: "none",
+      borderRadius: 0,
+      padding: 0,
+      background: "transparent",
       display: "grid",
       gap: 12,
     },
     cardTitle: {
-      fontSize: 16,
-      fontWeight: 800,
+      fontSize: 18,
+      fontWeight: 700,
       color: "var(--text)",
-      letterSpacing: 0.1,
+      letterSpacing: 0,
+      marginBottom: 2,
     },
     twoCol: {
       display: "grid",
@@ -716,17 +769,17 @@ export default function ComplaintsPage() {
       gap: 6,
     },
     label: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: 700,
       color: "var(--text)",
     },
     control: {
-      border: "1px solid var(--border)",
-      borderRadius: 10,
-      padding: "10px 12px",
+      border: "1px solid color-mix(in srgb, var(--border) 92%, #cbd5e1)",
+      borderRadius: 9,
+      padding: "11px 12px",
       background: "var(--surface)",
       color: "var(--text)",
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+      boxShadow: "none",
     },
     helper: {
       minHeight: 18,
@@ -746,21 +799,36 @@ export default function ComplaintsPage() {
       justifyContent: "space-between",
       alignItems: "center",
       gap: 10,
-      paddingTop: 6,
+      paddingTop: 10,
     },
     submitBtn: {
       border: "none",
       borderRadius: 12,
-      padding: "11px 18px",
+      padding: "11px 20px",
       background: "var(--primary)",
       color: "white",
       fontWeight: 700,
-      boxShadow: "0 10px 20px color-mix(in srgb, var(--primary) 30%, transparent)",
+      boxShadow: "0 4px 10px color-mix(in srgb, var(--primary) 22%, transparent)",
+      transition: "transform 160ms ease, box-shadow 180ms ease, filter 180ms ease",
     },
   };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div
+      style={{
+        display: "grid",
+        gap: 16,
+        maxWidth: isCreateRoute ? 1080 : undefined,
+        margin: isCreateRoute ? "0 auto" : undefined,
+        background: isCreateRoute ? "color-mix(in srgb, var(--surface) 96%, white 4%)" : undefined,
+        border: isCreateRoute
+          ? "1px solid color-mix(in srgb, var(--border) 80%, #cbd5e1)"
+          : undefined,
+        borderRadius: isCreateRoute ? 16 : undefined,
+        padding: isCreateRoute ? "20px 24px 18px" : undefined,
+        boxShadow: isCreateRoute ? "0 10px 24px rgba(15, 23, 42, 0.08)" : undefined,
+      }}
+    >
       {createSuccess ? (
         <div
           style={{
@@ -801,15 +869,16 @@ export default function ComplaintsPage() {
         <AlertToast type="error" message={createError} onClose={() => setCreateError("")} />
       ) : null}
 
-      <h1 style={{ margin: 0 }}>{t("complaints.mySupportTickets")}</h1>
+      {!isCreateRoute ? <h1 style={{ margin: 0 }}>{t("complaints.mySupportTickets")}</h1> : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))",
-          gap: 12,
-        }}
-      >
+      {!isCreateRoute ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))",
+            gap: 12,
+          }}
+        >
         <div
           style={{
             border: "1px solid color-mix(in srgb, #3b82f6 28%, var(--border))",
@@ -906,33 +975,35 @@ export default function ComplaintsPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      <section style={createUi.panel}>
-        <div style={createUi.panelHeader}>
-          <div style={createUi.panelTitleWrap}>
-            <h3 style={createUi.panelTitle}>{t("complaints.createTicket")}</h3>
-            <p style={createUi.panelSubtitle}>{t("complaints.helpCenterDescription")}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowCreateForm((v) => !v);
-              setCreateError("");
-              setFieldErrors({});
-            }}
-            style={{
-              ...createUi.toggleBtn,
-              background: showCreateForm ? "rgba(239, 68, 68, 0.10)" : "var(--primary)",
-              color: showCreateForm ? "#b91c1c" : "white",
-              borderColor: showCreateForm ? "rgba(239, 68, 68, 0.35)" : "var(--primary)",
-            }}
-          >
-            {showCreateForm ? <X size={14} /> : null}
-            {showCreateForm ? t("complaints.close") : t("complaints.createTicket")}
-          </button>
         </div>
-        {showCreateForm ? (
+      ) : null}
+
+      {isCreateRoute ? (
+        <section style={createUi.panel}>
+          <div style={createUi.panelHeader}>
+            <div style={createUi.panelTitleWrap}>
+              <h3 style={createUi.panelTitle}>{t("complaints.createTicket")}</h3>
+              <p style={createUi.panelSubtitle}>{t("complaints.helpCenterDescription")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateError("");
+                setFieldErrors({});
+                navigate(ROUTES.LEARNER_COMPLAINTS);
+              }}
+              style={{
+                ...createUi.toggleBtn,
+                background: "transparent",
+                color: "var(--text-2)",
+                borderColor: "var(--border)",
+              }}
+              aria-label={t("complaints.close")}
+              title={t("complaints.close")}
+            >
+              <X size={14} />
+            </button>
+          </div>
           <form onSubmit={handleCreate} style={createUi.formBody}>
             <div style={createUi.formGrid}>
               <div style={createUi.formColumn}>
@@ -991,13 +1062,29 @@ export default function ComplaintsPage() {
                 </div>
 
                 <div style={createUi.card}>
-                  <div style={createUi.cardTitle}>{t("complaints.context.title")}</div>
-                  {requiredAnyContextFields.length === 0 ? (
-                    <div style={{ ...createUi.helper, minHeight: "auto" }}>
-                      {t("complaints.context.selectCategoryHint")}
-                    </div>
-                  ) : null}
+                  <div style={{ ...createUi.cardTitle, fontSize: 20, fontWeight: 800 }}>
+                    {t("complaints.description")}
+                  </div>
+                  <textarea
+                    placeholder={t("complaints.descriptionPlaceholder")}
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
+                    maxLength={5000}
+                    rows={5}
+                    style={{ ...createUi.control, resize: "vertical", minHeight: 112 }}
+                  />
+                  <div style={{ ...createUi.helper, ...createUi.errorText }}>
+                    {fieldErrors.description || ""}
+                  </div>
+                </div>
+              </div>
 
+              <div style={createUi.formColumn}>
+                {hasSelectedCategory ? (
+                <div style={createUi.card}>
+                  <div style={{ ...createUi.cardTitle, fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>
+                    {t("complaints.context.title")} ({t("optional")})
+                  </div>
                   {requiredAnyContextFields.length > 0 ? (
                     allowManualContextInput ? (
                       <div
@@ -1063,18 +1150,55 @@ export default function ComplaintsPage() {
                                 >
                                   {getContextLabel(t, item.field)}
                                 </div>
-                                <div
-                                  style={{
-                                    ...createUi.control,
-                                    borderRadius: 10,
-                                    fontFamily:
-                                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                    fontSize: 13,
-                                  }}
-                                  title={item.value}
-                                >
-                                  {formatContextDisplayValue(item.value)}
-                                </div>
+                                {item.field === "mapId" ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <input
+                                      readOnly
+                                      value={formatContextDisplayValue(item.value)}
+                                      style={{
+                                        ...createUi.control,
+                                        flex: 1,
+                                        fontFamily:
+                                          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                        fontSize: 13,
+                                      }}
+                                      title={item.value}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => copyContextValue(item.field, item.value)}
+                                      style={{
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 9,
+                                        padding: "8px 10px",
+                                        background: "var(--surface)",
+                                        cursor: "pointer",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        color: "var(--text)",
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      <Copy size={14} />
+                                      {copiedContextField === item.field ? t("paymentCopied") : t("paymentCopy")}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      ...createUi.control,
+                                      borderRadius: 10,
+                                      fontFamily:
+                                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                      fontSize: 13,
+                                    }}
+                                    title={item.value}
+                                  >
+                                    {formatContextDisplayValue(item.value)}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1112,37 +1236,28 @@ export default function ComplaintsPage() {
                     <div style={createUi.errorText}>{fieldErrors.context}</div>
                   ) : null}
                 </div>
-              </div>
+                ) : null}
 
-              <div style={createUi.formColumn}>
                 <div style={createUi.card}>
-                  <div style={createUi.cardTitle}>{t("complaints.description")}</div>
-                  <textarea
-                    placeholder={t("complaints.descriptionPlaceholder")}
-                    value={createForm.description}
-                    onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
-                    maxLength={5000}
-                    rows={7}
-                    style={{ ...createUi.control, resize: "vertical", minHeight: 170 }}
-                  />
-                  <div style={{ ...createUi.helper, ...createUi.errorText }}>
-                    {fieldErrors.description || ""}
+                  <div style={{ ...createUi.cardTitle, fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>
+                    {t("complaints.attachments.title")}
                   </div>
-                </div>
-
-                <div style={createUi.card}>
-                  <div style={createUi.cardTitle}>{t("complaints.attachments.title")}</div>
                   <label
                     htmlFor="complaint-attachments"
+                    onMouseEnter={() => setIsUploadHover(true)}
+                    onMouseLeave={() => setIsUploadHover(false)}
                     style={{
-                      border: "1px dashed color-mix(in srgb, var(--primary) 45%, var(--border))",
+                      border: "1px dashed color-mix(in srgb, var(--border) 75%, var(--primary))",
                       borderRadius: 12,
-                      padding: "14px 12px",
-                      background: "color-mix(in srgb, var(--surface) 86%, white 14%)",
+                      padding: "18px 14px",
+                      background: isUploadHover
+                        ? "color-mix(in srgb, var(--primary) 8%, var(--surface))"
+                        : "var(--surface)",
                       display: "grid",
-                      gap: 4,
+                      gap: 6,
                       textAlign: "center",
                       cursor: "pointer",
+                      transition: "background-color 180ms ease, border-color 180ms ease",
                     }}
                   >
                     <div
@@ -1155,7 +1270,7 @@ export default function ComplaintsPage() {
                         fontWeight: 700,
                       }}
                     >
-                      <Upload size={15} />
+                      <Upload size={22} />
                       {t("complaints.attachments.cta")}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-2)" }}>
@@ -1266,7 +1381,7 @@ export default function ComplaintsPage() {
                   <div
                     style={{
                       fontSize: 12,
-                      color: submitReady ? "#15803d" : "var(--text-2)",
+                      color: submitReady ? "#15803d" : "#d97706",
                       fontWeight: 600,
                     }}
                   >
@@ -1275,10 +1390,19 @@ export default function ComplaintsPage() {
                   <button
                     disabled={createButtonDisabled}
                     type="submit"
+                    onMouseEnter={() => setIsSubmitHovered(true)}
+                    onMouseLeave={() => setIsSubmitHovered(false)}
                     style={{
                       ...createUi.submitBtn,
                       cursor: createButtonDisabled ? "not-allowed" : "pointer",
                       opacity: createButtonDisabled ? 0.7 : 1,
+                      transform:
+                        !createButtonDisabled && isSubmitHovered ? "translateY(-1px)" : "translateY(0)",
+                      boxShadow:
+                        !createButtonDisabled && isSubmitHovered
+                          ? "0 10px 20px color-mix(in srgb, var(--primary) 28%, transparent)"
+                          : createUi.submitBtn.boxShadow,
+                      filter: !createButtonDisabled && isSubmitHovered ? "brightness(1.02)" : "none",
                     }}
                   >
                     {creating ? t("submitting") : t("complaints.createTicket")}
@@ -1287,8 +1411,23 @@ export default function ComplaintsPage() {
               </div>
             </div>
           </form>
-        ) : null}
-      </section>
+        </section>
+      ) : (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTES.LEARNER_COMPLAINTS_NEW)}
+            style={{
+              ...createUi.toggleBtn,
+              background: "var(--primary)",
+              color: "white",
+              borderColor: "var(--primary)",
+            }}
+          >
+            {t("complaints.createTicket")}
+          </button>
+        </div>
+      )}
 
       {error ? (
         <div style={{ color: "var(--danger)" }}>
@@ -1296,7 +1435,8 @@ export default function ComplaintsPage() {
         </div>
       ) : null}
 
-      <section
+      {!isCreateRoute ? (
+        <section
         style={{
           border: "1px solid var(--border)",
           borderRadius: 14,
@@ -1651,7 +1791,8 @@ export default function ComplaintsPage() {
             </div>
           </div>
         ) : null}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

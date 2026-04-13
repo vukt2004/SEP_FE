@@ -190,25 +190,6 @@ export default function GameView() {
     returnTo,
   ]);
 
-  const handleReportXpIssue = useCallback(() => {
-    if (!levelId) return;
-    const params = new URLSearchParams({
-      prefill: `xp-issue-${lastSubmissionId || Date.now()}`,
-      openCreate: "1",
-      categoryKey: "RewardBalanceIssue",
-      mapId: levelId,
-      subject: t("complaints.prefill.xpIssueSubject"),
-      description: t("complaints.prefill.xpIssueDescription"),
-    });
-    if (playMapDetailIdRef.current) {
-      params.set("mapDetailId", playMapDetailIdRef.current);
-    }
-    if (lastSubmissionId) {
-      params.set("submissionId", lastSubmissionId);
-    }
-    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
-  }, [lastSubmissionId, levelId, navigate, t]);
-
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [elapsedDisplay, setElapsedDisplay] = useState(0);
@@ -2057,8 +2038,6 @@ export default function GameView() {
           onBackToMenu={handleBackToMapFlow}
           onMinimize={handleMinimizeResults}
           onClose={handleCloseResults}
-          onReportIssue={gameResult.isWin ? handleReportXpIssue : undefined}
-          reportIssueLabel={t("complaints.actions.reportIssue")}
           resultPopupEnabled={showResultPopup}
           onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
           resultPopupOnLabel={t("gameResultPopupOn")}

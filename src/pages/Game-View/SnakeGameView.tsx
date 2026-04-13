@@ -599,25 +599,6 @@ export default function SnakeGameView() {
     };
   }, [multiplayerRoomId, navigate]);
 
-  const handleReportXpIssue = useCallback(() => {
-    if (!levelId) return;
-    const params = new URLSearchParams({
-      prefill: `xp-issue-${lastSubmissionId || Date.now()}`,
-      openCreate: "1",
-      categoryKey: "RewardBalanceIssue",
-      mapId: levelId,
-      subject: t("complaints.prefill.xpIssueSubject"),
-      description: t("complaints.prefill.xpIssueDescription"),
-    });
-    if (activeMapDetailId) {
-      params.set("mapDetailId", activeMapDetailId);
-    }
-    if (lastSubmissionId) {
-      params.set("submissionId", lastSubmissionId);
-    }
-    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
-  }, [activeMapDetailId, lastSubmissionId, levelId, navigate, t]);
-
   const isGuid = (value?: string | null): value is string =>
     Boolean(value) &&
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -2275,8 +2256,6 @@ export default function SnakeGameView() {
           onNextLevel={gameResult.isWin && nextCampaignLevelId ? handleNextCampaignLevel : undefined}
           nextLevelLabel="Next level"
           multiplayerFooterNote={multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null}
-          onReportIssue={gameResult.isWin ? handleReportXpIssue : undefined}
-          reportIssueLabel={t("complaints.actions.reportIssue")}
           onMinimize={handleMinimizeResults}
           onClose={handleCloseResults}
           resultPopupEnabled={showResultPopup}

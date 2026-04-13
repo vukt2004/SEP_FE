@@ -20,7 +20,7 @@ type PurchaseModalState = {
 };
 
 export default function PackagesPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function PackagesPage() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, locale]);
 
   const handleChoose = async (pkg: Package) => {
     if (!pkg.isActive) return;
@@ -67,13 +67,19 @@ export default function PackagesPage() {
         clearCurrentUserPlanCache();
         setPurchaseModal({
           kind: "success",
-          message: response.data.message || "Package purchased successfully.",
+          message:
+            response.data.message ||
+            (locale.startsWith("vi")
+              ? "Đã mua gói thành công."
+              : "Package purchased successfully."),
         });
         return;
       }
       setPurchaseModal({
         kind: "error",
-        message: response.data.message || "Failed to purchase package.",
+        message:
+          response.data.message ||
+          (locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package."),
       });
       setLastFailedPackage(pkg);
     } catch (err) {
@@ -85,12 +91,17 @@ export default function PackagesPage() {
 
         setPurchaseModal({
           kind: isInsufficientBalance ? "insufficient" : "error",
-          message: body?.message || "Failed to purchase package.",
+          message:
+            body?.message ||
+            (locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package."),
         });
         setLastFailedPackage(pkg);
         return;
       }
-      setPurchaseModal({ kind: "error", message: "Failed to purchase package." });
+      setPurchaseModal({
+        kind: "error",
+        message: locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package.",
+      });
       setLastFailedPackage(pkg);
       console.error(err);
     } finally {
@@ -108,7 +119,6 @@ export default function PackagesPage() {
       subject: t("complaints.prefill.packagePurchaseSubject"),
       description: t("complaints.prefill.packagePurchaseDescription"),
     });
-
     navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
@@ -265,7 +275,11 @@ export default function PackagesPage() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    {purchasingId === pkg.id ? "Purchasing..." : `${t("choose")} ${pkg.name}`}
+                    {purchasingId === pkg.id
+                      ? locale.startsWith("vi")
+                        ? "Đang mua..."
+                        : "Purchasing..."
+                      : `${t("choose")} ${pkg.name}`}
                   </motion.button>
                 </motion.div>
               );
@@ -286,10 +300,16 @@ export default function PackagesPage() {
                 }`}
               >
                 {purchaseModal.kind === "success"
-                  ? "Purchase successful"
+                  ? locale.startsWith("vi")
+                    ? "Mua thành công"
+                    : "Purchase successful"
                   : purchaseModal.kind === "insufficient"
-                    ? "Insufficient balance"
-                    : "Purchase failed"}
+                    ? locale.startsWith("vi")
+                      ? "Không đủ số dư"
+                      : "Insufficient balance"
+                    : locale.startsWith("vi")
+                      ? "Mua thất bại"
+                      : "Purchase failed"}
               </h3>
               <p className={styles.modalMessage}>{purchaseModal.message}</p>
               <div className={styles.modalActions}>
@@ -301,13 +321,26 @@ export default function PackagesPage() {
                   {t("back")}
                 </button>
                 {purchaseModal.kind !== "success" && (
-                  <button
-                    type="button"
-                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                    onClick={handleReportPackagePurchaseIssue}
-                  >
-                    {t("complaints.actions.reportIssue")}
-                  </button>
+                  <>
+                    {purchaseModal.kind === "insufficient" ? (
+                      <button
+                        type="button"
+                        className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                        onClick={() => navigate(ROUTES.LEARNER_WALLET)}
+                      >
+                        {locale.startsWith("vi") ? "Nạp thêm OC" : "Top up OrbitCoin"}
+                      </button>
+                    ) : null}
+                    {purchaseModal.kind === "error" ? (
+                      <button
+                        type="button"
+                        className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                        onClick={handleReportPackagePurchaseIssue}
+                      >
+                        {t("complaints.actions.reportIssue")}
+                      </button>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

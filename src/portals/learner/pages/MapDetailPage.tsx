@@ -9,6 +9,7 @@ import {
   Bell,
   Share2,
   MessageCircle,
+  MessageSquareWarning,
   ImagePlus,
   Video,
   PlayCircle,
@@ -78,6 +79,23 @@ const HIDDEN_LEARNED_TAG_NAMES = new Set(["beginner", "expert", "easy", "medium"
 
 function isVideoMediaKind(kind: string): boolean {
   return /video/i.test(kind);
+}
+
+function getVietnamNowDateTimeLocal() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
 /** Avatar first, then gallery by sortOrder; dedupe URLs. */
@@ -343,6 +361,44 @@ export default function MapDetailPage() {
     });
   };
 
+  const handleReportMapPurchaseIssue = () => {
+    if (!map?.id || !purchaseModal || purchaseModal.kind === "success") return;
+    const isInsufficient = purchaseModal.kind === "insufficient";
+    const params = new URLSearchParams({
+      prefill: `map-purchase-${purchaseModal.kind}-${map.id}-${Date.now()}`,
+      openCreate: "1",
+      categoryKey: isInsufficient ? "PaymentIssue" : "AccessIssue",
+      mapId: map.id,
+      subject: isInsufficient
+        ? t("complaints.prefill.paymentFailureSubject")
+        : t("complaints.prefill.mapPurchaseSubject"),
+      description: isInsufficient
+        ? t("complaints.prefill.paymentFailureDescription")
+        : t("complaints.prefill.mapPurchaseDescription"),
+    });
+
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  };
+
+  const handleReportOwnedMapIssue = () => {
+    if (!map?.id || !canReportOwnedMapIssue) return;
+    const params = new URLSearchParams({
+      prefill: `map-owned-gameplay-${map.id}-${Date.now()}`,
+      openCreate: "1",
+      categoryKey: "AccessIssue",
+      mapId: map.id,
+      occurredAt: getVietnamNowDateTimeLocal(),
+      subject: locale.startsWith("vi")
+        ? "Map đã mua bị lỗi khi chơi"
+        : "Purchased map has gameplay issue",
+      description: locale.startsWith("vi")
+        ? "Tôi đã mua map này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
+        : "I purchased this map and encountered an issue during gameplay. Please help investigate.",
+    });
+
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
+  };
+
   const handleBuyMap = async () => {
     if (!map?.id) return;
 
@@ -384,25 +440,6 @@ export default function MapDetailPage() {
     } finally {
       setIsPurchasing(false);
     }
-  };
-
-  const handleReportMapPurchaseIssue = () => {
-    if (!map?.id) return;
-    const isInsufficient = purchaseModal?.kind === "insufficient";
-    const params = new URLSearchParams({
-      prefill: `map-purchase-${purchaseModal?.kind || "unknown"}-${map.id}-${Date.now()}`,
-      openCreate: "1",
-      categoryKey: isInsufficient ? "PaymentIssue" : "AccessIssue",
-      mapId: map.id,
-      subject: isInsufficient
-        ? t("complaints.prefill.paymentFailureSubject")
-        : t("complaints.prefill.mapPurchaseSubject"),
-      description: isInsufficient
-        ? t("complaints.prefill.paymentFailureDescription")
-        : t("complaints.prefill.mapPurchaseDescription"),
-    });
-
-    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
   const handleChatWithCreator = async () => {
@@ -551,6 +588,18 @@ export default function MapDetailPage() {
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
   const canPurchase =
     ownership?.isOwned !== true && map?.isPublished === true && (map?.price ?? 0) > 0;
+  const canReportOwnedMapIssue = useMemo(() => {
+    if (!map?.id || !ownership?.isOwned || ownership.isAuthor || ownership.isPurchased !== true) {
+      return false;
+    }
+    const purchasedAtRaw = ownership.purchasedAt;
+    if (!purchasedAtRaw) return false;
+    const purchasedAtMs = Date.parse(purchasedAtRaw);
+    if (Number.isNaN(purchasedAtMs)) return false;
+    const elapsedMs = Date.now() - purchasedAtMs;
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return elapsedMs >= 0 && elapsedMs <= sevenDaysMs;
+  }, [map?.id, ownership?.isOwned, ownership?.isAuthor, ownership?.isPurchased, ownership?.purchasedAt]);
   const playHint = useMemo(() => (map ? getFirstLevelPlayHint(map) : null), [map]);
   const campaignLevels = useMemo(() => {
     const levels = map?.levels ?? [];
@@ -1118,6 +1167,17 @@ export default function MapDetailPage() {
           >
             <Share2 size={16} /> {t("share")}
           </motion.button>
+          {canReportOwnedMapIssue ? (
+            <motion.button
+              type="button"
+              className={styles.steamFooterSecondary}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleReportOwnedMapIssue}
+            >
+              <MessageSquareWarning size={16} /> {t("complaints.actions.reportThisGame")}
+            </motion.button>
+          ) : null}
           {!isAuthor && (
             <motion.button
               type="button"
@@ -1133,8 +1193,8 @@ export default function MapDetailPage() {
                   ? "Đang mở chat..."
                   : "Opening chat..."
                 : locale.startsWith("vi")
-                  ? "Chat với tác giả"
-                  : "Chat with creator"}
+                  ? "Liên hệ người bán"
+                  : "Contact seller"}
             </motion.button>
           )}
         </motion.div>
@@ -1268,13 +1328,42 @@ export default function MapDetailPage() {
                   </button>
                 )}
                 {purchaseModal.kind !== "success" && (
-                  <button
-                    type="button"
-                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                    onClick={handleReportMapPurchaseIssue}
-                  >
-                    {t("complaints.actions.reportIssue")}
-                  </button>
+                  <>
+                    {purchaseModal.kind === "insufficient" ? (
+                      <button
+                        type="button"
+                        className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                        onClick={() => navigate(ROUTES.LEARNER_WALLET)}
+                      >
+                        {locale.startsWith("vi") ? "Nạp thêm OC" : "Top up OrbitCoin"}
+                      </button>
+                    ) : null}
+                    {purchaseModal.kind === "error" ? (
+                      <button
+                        type="button"
+                        className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                        onClick={handleReportMapPurchaseIssue}
+                      >
+                        {t("complaints.actions.reportThisGame")}
+                      </button>
+                    ) : null}
+                    {!isAuthor && map?.createdByUserId ? (
+                      <button
+                        type="button"
+                        className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                        onClick={handleChatWithCreator}
+                        disabled={isOpeningCreatorChat}
+                      >
+                        {isOpeningCreatorChat
+                          ? locale.startsWith("vi")
+                            ? "Đang mở chat..."
+                            : "Opening chat..."
+                          : locale.startsWith("vi")
+                            ? "Liên hệ người bán"
+                            : "Contact seller"}
+                      </button>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

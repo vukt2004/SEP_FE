@@ -1,27 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
-import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
+import { ComplaintMessageList } from "@/shared/components/complaints/ComplaintMessageList";
+import { ComplaintTimeline } from "@/shared/components/complaints/ComplaintTimeline";
 import type { ComplaintAttachment, ComplaintDetail } from "@/types/api/complaints";
 import { validateMessageContent } from "@/shared/components/complaints/complaint.utils";
 import { SendHorizontal } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { useThemeStore } from "@/stores/theme.store";
-
-const DEFAULT_AVATAR = "/brand/avatar-fallback.png";
-const PROJECT_LOGO_AVATAR = "/brand/logo.png";
-
-function normalizeId(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function applyAvatarFallback(event: React.SyntheticEvent<HTMLImageElement>) {
-  const target = event.currentTarget;
-  if (target.dataset.fallbackApplied === "1") return;
-  target.dataset.fallbackApplied = "1";
-  target.src = DEFAULT_AVATAR;
-}
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
@@ -65,8 +52,6 @@ export default function ComplaintDetailPage() {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [composerError, setComposerError] = useState("");
-  const [learnerAvatar, setLearnerAvatar] = useState<string | null>(null);
-  const [currentLearnerId, setCurrentLearnerId] = useState<string | null>(null);
   const [contentTab, setContentTab] = useState<"conversation" | "evidence">("conversation");
   const threadRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -89,25 +74,6 @@ export default function ComplaintDetailPage() {
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
-
-  useEffect(() => {
-    let ignore = false;
-    async function fetchProfile() {
-      try {
-        const res = await learnerProfileApi.getProfile();
-        if (!ignore && res.isSuccess) {
-          setLearnerAvatar(res.data?.avatarPath ?? null);
-          setCurrentLearnerId(res.data?.userId ?? null);
-        }
-      } catch {
-        // ignore profile errors on detail page
-      }
-    }
-    fetchProfile();
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   async function onSend() {
     if (!id || !data) return;
@@ -410,119 +376,16 @@ export default function ComplaintDetailPage() {
                   minHeight: 370,
                   maxHeight: 430,
                   overflowY: "auto",
-                  padding: "8px 12px 0 12px",
+                  padding: 12,
                 }}
               >
-                <div style={{ display: "grid", gap: 0 }}>
-                  {visibleMessages.length === 0 ? (
-                    <div style={{ color: "var(--text-2)", padding: "14px 0" }}>
-                      {t("complaints.detail.noMessages")}
-                    </div>
-                  ) : (
-                    visibleMessages.map((msg) => {
-                      const isLearnerMessage =
-                        normalizeId(msg.senderId) === normalizeId(currentLearnerId || data.userId);
-                      const displayName = isLearnerMessage
-                        ? t("complaints.detail.you")
-                        : t("complaints.detail.supportTeam");
-                      const avatarSrc = isLearnerMessage
-                        ? learnerAvatar || DEFAULT_AVATAR
-                        : PROJECT_LOGO_AVATAR;
-
-                      return (
-                        <div
-                          key={msg.id}
-                          style={{
-                            display: "flex",
-                            justifyContent: isLearnerMessage ? "flex-end" : "flex-start",
-                            padding: "10px 0",
-                          }}
-                        >
-                          <div
-                            style={{
-                              maxWidth: "100%",
-                              width: "100%",
-                              display: "flex",
-                              gap: 10,
-                              flexDirection: isLearnerMessage ? "row-reverse" : "row",
-                              alignItems: "flex-start",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: "50%",
-                                background: isLearnerMessage
-                                  ? "color-mix(in srgb, var(--primary) 30%, #ffffff)"
-                                  : "rgba(148,163,184,0.24)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                                border: "1px solid var(--border)",
-                                overflow: "hidden",
-                              }}
-                              aria-label={`${displayName} avatar`}
-                            >
-                              <img
-                                src={avatarSrc}
-                                alt={displayName}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                data-fallback-applied="0"
-                                onError={applyAvatarFallback}
-                              />
-                            </div>
-                            <div
-                              style={{
-                                borderRadius: 10,
-                                background: isLearnerMessage
-                                  ? "var(--primary)"
-                                  : "var(--surface-2)",
-                                color: isLearnerMessage ? "#fff" : "var(--text)",
-                                padding: "8px 10px",
-                                border: isLearnerMessage
-                                  ? "1px solid transparent"
-                                  : "1px solid var(--border)",
-                                minWidth: 0,
-                                maxWidth: "min(calc(100% - 54px), 920px)",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  justifyContent: "space-between",
-                                  gap: 8,
-                                  marginBottom: 6,
-                                  fontSize: 10,
-                                  opacity: 0.92,
-                                }}
-                              >
-                                <strong style={{ fontSize: 12, lineHeight: 1.2 }}>
-                                  {displayName}
-                                </strong>
-                                <span style={{ whiteSpace: "nowrap", lineHeight: 1.2 }}>
-                                  {new Date(msg.createdAt).toLocaleString()}
-                                </span>
-                              </div>
-                              <div
-                                style={{
-                                  whiteSpace: "pre-wrap",
-                                  wordBreak: "break-word",
-                                  lineHeight: 1.45,
-                                  fontSize: 13,
-                                }}
-                              >
-                                {msg.content}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                <ComplaintMessageList
+                  messages={visibleMessages}
+                  currentUserId={data.userId}
+                  hideInternal
+                  otherLabel={t("complaints.detail.supportTeam")}
+                  currentUserLabel={t("complaints.detail.you")}
+                />
               </div>
 
               <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)" }}>
@@ -794,42 +657,7 @@ export default function ComplaintDetailPage() {
             >
               {t("complaints.detail.timeline")}
             </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {orderedHistories.length === 0 ? (
-                <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                  {t("complaints.detail.historyHint")}
-                </div>
-              ) : (
-                orderedHistories.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{ display: "grid", gridTemplateColumns: "14px 1fr", gap: 8 }}
-                  >
-                    <div
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
-                        marginTop: 4,
-                        background:
-                          item.toStatus === "Resolved"
-                            ? "#84cc16"
-                            : item.toStatus === "InProgress"
-                              ? "#60a5fa"
-                              : "#84cc16",
-                        border: "1px solid rgba(0,0,0,0.15)",
-                      }}
-                    />
-                    <div style={{ display: "grid", gap: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{item.toStatus}</div>
-                      <div style={{ color: "var(--text-2)", fontSize: 12 }}>
-                        {new Date(item.changedAt).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <ComplaintTimeline histories={orderedHistories} />
           </section>
 
           <section style={{ padding: 14 }}>
