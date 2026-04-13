@@ -42,8 +42,6 @@ interface GameResultsModalProps {
   /** Single-player campaign: next MapDetails level */
   onNextLevel?: () => void;
   nextLevelLabel?: string;
-  onReportIssue?: () => void;
-  reportIssueLabel?: string;
   resultPopupEnabled?: boolean;
   onToggleResultPopup?: () => void;
   resultPopupOnLabel?: string;
@@ -68,8 +66,6 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   multiplayerFooterNote,
   onNextLevel,
   nextLevelLabel = "Next level",
-  onReportIssue,
-  reportIssueLabel = "Report issue",
 }) => {
   if (!isOpen) return null;
   const [isWindowExpanded, setIsWindowExpanded] = React.useState(false);
@@ -324,14 +320,6 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         ) : null}
 
         <div style={styles.actions}>
-          {onReportIssue ? (
-            <button
-              onClick={onReportIssue}
-              style={{ ...styles.secondaryButton, ...styles.reportButton }}
-            >
-              {reportIssueLabel}
-            </button>
-          ) : null}
           {isWin ? (
             <>
               <button

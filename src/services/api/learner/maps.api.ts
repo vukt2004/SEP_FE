@@ -168,6 +168,16 @@ export const learnerMapsApi = {
     );
   },
 
+  /**
+   * Create a new draft version from an approved/published map in the same game line.
+   * POST /api/learner/maps/{id}/create-version
+   */
+  createMapVersion(id: string) {
+    return learnerAxios.post<ApiResult<string | { id: string }>>(
+      `/api/learner/maps/${id}/create-version`,
+    );
+  },
+
   updateMapFromJson(id: string, params: UploadMapFromJsonParams) {
     const formData = new FormData();
     formData.append("Title", params.Title);

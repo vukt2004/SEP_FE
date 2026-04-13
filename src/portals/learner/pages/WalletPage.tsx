@@ -1,16 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import {
-  orbitCoinApi,
-  type OrbitCoinTransaction,
-  CoinTransactionTypeEnum,
-} from "@/services/api/learner/orbitcoin.api";
+import { orbitCoinApi, type OrbitCoinTransaction } from "@/services/api/learner/orbitcoin.api";
 import { useTranslation } from "@/lib/i18n/translations";
-import { useNavigate } from "react-router-dom";
-import { ROUTES } from "@/lib/constants/routes";
 
 export default function WalletPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<OrbitCoinTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +35,7 @@ export default function WalletPage() {
         if (!alive) return;
 
         if (!balanceRes.isSuccess) {
-          setError(balanceRes.message ?? "Failed to load balance");
+          setError(balanceRes.message ?? t("failedLoadBalance"));
           return;
         }
 
@@ -57,7 +50,7 @@ export default function WalletPage() {
         setTotalPages(calculatedTotalPages);
       } catch {
         if (!alive) return;
-        setError("Failed to load wallet data");
+        setError(t("failedLoadWallet"));
       } finally {
         if (alive) setLoading(false);
       }
@@ -87,7 +80,7 @@ export default function WalletPage() {
       const calculatedTotalPages = Math.ceil((res.data?.totalCount ?? 0) / pageSize);
       setTotalPages(calculatedTotalPages);
     } catch {
-      setError("Failed to load transactions");
+      setError(t("failedLoadTransactions"));
     } finally {
       setLoadingTransactions(false);
     }
@@ -138,18 +131,6 @@ export default function WalletPage() {
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  const handleReportOrbitCoinIssue = (tx: OrbitCoinTransaction) => {
-    const params = new URLSearchParams({
-      prefill: `orbit-tx-${tx.id}`,
-      openCreate: "1",
-      categoryKey: "RewardBalanceIssue",
-      orbitCoinTransactionId: tx.id,
-      subject: t("complaints.prefill.orbitCoinIssueSubject"),
-      description: t("complaints.prefill.orbitCoinIssueDescription"),
-    });
-    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
   const numericTopUp = Number(topUpAmount.replace(/,/g, ""));
@@ -215,7 +196,7 @@ export default function WalletPage() {
 
           <CashflowMiniChart
             transactions={transactions}
-            note={`Based on ${transactions.length} transactions currently loaded`}
+            note={`${transactions.length} ${t("walletChartBasedOnLoaded")}`}
           />
 
           <div style={styles.presetGrid}>
@@ -278,17 +259,12 @@ export default function WalletPage() {
           ) : (
             <>
               <div style={styles.txHead}>
-                <span>Details</span>
-                <span>Amount</span>
+                <span>{t("walletTxDetailsHeader")}</span>
+                <span>{t("walletTxAmountHeader")}</span>
               </div>
               <div style={{ display: "grid", gap: 12 }}>
                 {transactions.map((tx) => (
-                  <TransactionRow
-                    key={tx.id}
-                    transaction={tx}
-                    onReportIssue={() => handleReportOrbitCoinIssue(tx)}
-                    reportLabel={t("complaints.actions.reportIssue")}
-                  />
+                  <TransactionRow key={tx.id} transaction={tx} />
                 ))}
               </div>
 
@@ -323,16 +299,9 @@ export default function WalletPage() {
   );
 }
 
-function TransactionRow({
-  transaction,
-  onReportIssue,
-  reportLabel,
-}: {
-  transaction: OrbitCoinTransaction;
-  onReportIssue: () => void;
-  reportLabel: string;
-}) {
-  const isCredit = transaction.transactionType === CoinTransactionTypeEnum.Credit;
+function TransactionRow({ transaction }: { transaction: OrbitCoinTransaction }) {
+  const { t } = useTranslation();
+  const isCredit = transaction.amount >= 0;
   const sign = isCredit ? "+" : "-";
   const color = isCredit ? "var(--success)" : "var(--warning)";
   const tagBg = isCredit ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.14)";
@@ -341,7 +310,7 @@ function TransactionRow({
   return (
     <div style={styles.txRow}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0, flex: 1 }}>
-        <div style={styles.txTitle}>{transaction.note || "Transaction"}</div>
+        <div style={styles.txTitle}>{formatTransactionNote(transaction.note, t)}</div>
         <div style={styles.txDate}>
           {new Date(transaction.createdAt).toLocaleString(undefined, {
             year: "numeric",
@@ -353,11 +322,13 @@ function TransactionRow({
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-        <span style={pill(tagBg, color)}>{isCredit ? "Credit" : "Debit"}</span>
+        <span style={pill(tagBg, color)}>
+          {isCredit ? t("walletTxCredit") : t("walletTxDebit")}
+        </span>
         <div style={{ fontWeight: 700, fontSize: 15, color }}>
           {sign}
           {Math.abs(transaction.amount).toLocaleString("en-US")}
-          {" OrbitCoin"}
+          {` ${t("orbitCoins")}`}
         </div>
         {amountVnd !== undefined && amountVnd !== null && (
           <div style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
@@ -366,19 +337,29 @@ function TransactionRow({
         )}
         {transaction.balanceAfter !== undefined && transaction.balanceAfter !== null && (
           <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
-            {tBalanceLabel()}: {transaction.balanceAfter.toLocaleString("en-US")}
+            {t("walletTxBalance")}: {transaction.balanceAfter.toLocaleString("en-US")}
           </div>
         )}
-        <button type="button" onClick={onReportIssue} style={styles.txReportBtn}>
-          {reportLabel}
-        </button>
       </div>
     </div>
   );
 }
 
-function tBalanceLabel() {
-  return "Balance";
+function formatTransactionNote(
+  note: string | null | undefined,
+  t: (key: string) => string,
+): string {
+  if (!note || note.trim().length === 0) return t("walletTxFallback");
+
+  if (note.startsWith("Purchase map: ")) {
+    return `${t("walletNotePurchaseMapPrefix")}${note.slice("Purchase map: ".length)}`;
+  }
+
+  if (note.startsWith("Purchase package: ")) {
+    return `${t("walletNotePurchasePackagePrefix")}${note.slice("Purchase package: ".length)}`;
+  }
+
+  return note;
 }
 
 function formatVnd(value: number): string {
@@ -400,6 +381,7 @@ function CashflowMiniChart({
   transactions: OrbitCoinTransaction[];
   note: string;
 }) {
+  const { t } = useTranslation();
   // Use last N transactions to build a cumulative flow line.
   const sorted = [...transactions]
     .filter((tx) => !Number.isNaN(new Date(tx.createdAt).getTime()))
@@ -407,9 +389,7 @@ function CashflowMiniChart({
     .slice(-20);
 
   const flowValues = sorted.map((tx) =>
-    tx.transactionType === CoinTransactionTypeEnum.Credit
-      ? Math.abs(tx.amount)
-      : -Math.abs(tx.amount),
+    tx.amount >= 0 ? Math.abs(tx.amount) : -Math.abs(tx.amount),
   );
 
   const cumulative: number[] = [];
@@ -471,13 +451,13 @@ function CashflowMiniChart({
   return (
     <div style={styles.chartWrap}>
       <div style={styles.chartHeaderRow}>
-        <div style={styles.chartTitle}>Cashflow</div>
+        <div style={styles.chartTitle}>{t("walletChartTitle")}</div>
         <div style={styles.chartLegend}>
           <span style={{ ...styles.legendDot, background: "var(--success)" }} />
-          <span>In</span>
+          <span>{t("walletChartIn")}</span>
           <span style={{ width: 10 }} />
           <span style={{ ...styles.legendDot, background: "var(--warning)" }} />
-          <span>Out</span>
+          <span>{t("walletChartOut")}</span>
         </div>
       </div>
       <svg
@@ -485,7 +465,7 @@ function CashflowMiniChart({
         width="100%"
         height={height}
         role="img"
-        aria-label="Cashflow chart"
+        aria-label={t("walletChartAria")}
         style={{ display: "block" }}
       >
         {gridValues.map((tick, idx) => {

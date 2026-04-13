@@ -41,6 +41,9 @@ export const ROUTES = {
   /** Lộ trình của tôi – danh sách concept + map theo goal đã chọn */
   LEARNER_MY_PATH: "/app/my-path",
   LEARNER_COMPLAINTS: "/app/complaints",
+  LEARNER_COMPLAINTS_NEW: "/app/complaints/new",
+  LEARNER_COMPLAINT_DETAIL: (id: string) => `/app/complaints/${id}`,
+  LEARNER_COMPLAINT_OVERVIEW: (id: string) => `/app/complaints/${id}/overview`,
   /** Đọc nội dung khái niệm – use with /app/concept/:id */
   LEARNER_CONCEPT: (id: string) => `/app/concept/${id}`,
   /** Danh sách concept – học thêm concept khác (query: goalId để lọc theo goal) */
@@ -53,6 +56,7 @@ export const ROUTES = {
   CMS_MAPS: "/cms/maps",
   CMS_REPORTS: "/cms/reports",
   CMS_USERS: "/cms/users",
+  CMS_SYSTEM_ANNOUNCEMENT: "/cms/notifications/system-announcement",
   CMS_PACKAGES: "/cms/packages",
   CMS_COMPLAINTS: "/cms/complaints",
   CMS_COMPLAINT_CATEGORIES: "/cms/complaints/categories",

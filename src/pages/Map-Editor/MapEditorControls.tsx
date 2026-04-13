@@ -570,7 +570,10 @@ export function MapEditorControls({
                   objects: (snakeObjectsRaw as SnakeObjectsConfig).objects ?? {},
                 },
               ]
-            : await new ObjectSpriteLoader(gameType).loadTieredObjectDefinitions("objects", userPlan);
+            : await new ObjectSpriteLoader(gameType).loadTieredObjectDefinitions(
+                "objects",
+                userPlan,
+              );
         const mergedDefs = tieredDefs.reduce<Record<string, ObjectDefinition>>((acc, group) => {
           return { ...acc, ...group.objects };
         }, {});
@@ -606,7 +609,14 @@ export function MapEditorControls({
     return () => {
       cancelled = true;
     };
-  }, [gameType, mapData.config.type, objectCache, onObjectDefinitionsLoaded, showLeftPanel, userPlan]);
+  }, [
+    gameType,
+    mapData.config.type,
+    objectCache,
+    onObjectDefinitionsLoaded,
+    showLeftPanel,
+    userPlan,
+  ]);
 
   useEffect(() => {
     // Only the left panel loads selectable object definitions.
@@ -1099,7 +1109,50 @@ export function MapEditorControls({
       };
 
       if (isLearner) {
-        const res = await learnerMapsApi.updateMapMetadata(editingMapId, {
+        let targetMapId = editingMapId;
+        let createdVersionMapId: string | null = null;
+
+        const infoRes = await learnerMapsApi.getMapInfo(editingMapId);
+        if (!infoRes.data.isSuccess || !infoRes.data.data) {
+          alert(
+            tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+              "{message}",
+              infoRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+            ),
+          );
+          return;
+        }
+
+        const currentStatus = infoRes.data.data.mapStatus;
+        const requiresVersioning = currentStatus === "Approved" || currentStatus === "Published";
+        if (requiresVersioning) {
+          const versionRes = await learnerMapsApi.createMapVersion(editingMapId);
+          if (!versionRes.data.isSuccess) {
+            alert(
+              tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+                "{message}",
+                versionRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+              ),
+            );
+            return;
+          }
+
+          const newVersionId = parseDuplicateNewMapId(versionRes.data.data);
+          if (!newVersionId) {
+            alert(
+              tt(
+                "mapEditorDuplicateMapNoId",
+                "The server did not return a new map id. Try again or contact support.",
+              ),
+            );
+            return;
+          }
+
+          targetMapId = newVersionId;
+          createdVersionMapId = newVersionId;
+        }
+
+        const res = await learnerMapsApi.updateMapMetadata(targetMapId, {
           title: formMeta.title,
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
@@ -1120,7 +1173,7 @@ export function MapEditorControls({
           return;
         }
         if (avatarFile) {
-          const avatarResponse = await learnerMapsApi.uploadMapAvatar(editingMapId, avatarFile);
+          const avatarResponse = await learnerMapsApi.uploadMapAvatar(targetMapId, avatarFile);
           if (!avatarResponse.data.isSuccess) {
             alert(
               tt(
@@ -1136,7 +1189,7 @@ export function MapEditorControls({
         }
         if (pendingGalleryFiles.length > 0) {
           const galleryRes = await learnerMapsApi.uploadMapGallery(
-            editingMapId,
+            targetMapId,
             pendingGalleryFiles,
           );
           if (!galleryRes.data.isSuccess) {
@@ -1149,7 +1202,20 @@ export function MapEditorControls({
             return;
           }
         }
-        alert(tt("mapEditorMapInfoSavedShort", "Map info saved."));
+        if (createdVersionMapId) {
+          alert(
+            tt(
+              "mapEditorVersionDraftCreated",
+              "A new draft version was created from the approved/published map and your changes were saved there.",
+            ),
+          );
+          navigate(ROUTES.MAP_EDITOR, {
+            replace: true,
+            state: { mapId: createdVersionMapId, mode: "edit", roleContext: "learner" },
+          });
+        } else {
+          alert(tt("mapEditorMapInfoSavedShort", "Map info saved."));
+        }
         setShowMapInfoModal(false);
         setAvatarFile(null);
         setPendingGalleryFiles([]);
@@ -1352,6 +1418,49 @@ export function MapEditorControls({
 
       let targetMapIdForUpdate: string | null =
         isEditingExistingMap && editingMapId ? editingMapId : null;
+      let createdVersionMapId: string | null = null;
+
+      if (isEditingExistingMap && isLearner && editingMapId) {
+        const infoRes = await learnerMapsApi.getMapInfo(editingMapId);
+        if (!infoRes.data.isSuccess || !infoRes.data.data) {
+          alert(
+            tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+              "{message}",
+              infoRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+            ),
+          );
+          return;
+        }
+
+        const currentStatus = infoRes.data.data.mapStatus;
+        const requiresVersioning = currentStatus === "Approved" || currentStatus === "Published";
+        if (requiresVersioning) {
+          const versionRes = await learnerMapsApi.createMapVersion(editingMapId);
+          if (!versionRes.data.isSuccess) {
+            alert(
+              tt("mapEditorSaveFailed", "Save failed: {message}").replace(
+                "{message}",
+                versionRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+              ),
+            );
+            return;
+          }
+
+          const newVersionId = parseDuplicateNewMapId(versionRes.data.data);
+          if (!newVersionId) {
+            alert(
+              tt(
+                "mapEditorDuplicateMapNoId",
+                "The server did not return a new map id. Try again or contact support.",
+              ),
+            );
+            return;
+          }
+
+          targetMapIdForUpdate = newVersionId;
+          createdVersionMapId = newVersionId;
+        }
+      }
 
       if (
         isEditingExistingMap &&
@@ -1442,19 +1551,24 @@ export function MapEditorControls({
         const savedAsNewListing =
           isLearner && opts?.catalogSaveMode === "newListing" && isEditingExistingMap;
         alert(
-          savedAsNewListing
+          createdVersionMapId
             ? tt(
-                "mapEditorLevelContentSavedAsNewListing",
-                "Saved as a new map listing. The editor now uses the new map id; the original listing is unchanged.",
+                "mapEditorVersionDraftCreated",
+                "A new draft version was created from the approved/published map and your changes were saved there.",
               )
-            : isEditingExistingMap
-              ? tt("mapEditorLevelContentSavedSuccess", "Level content saved successfully!")
-              : tt("mapEditorMapSavedSuccessWithId", "Map saved successfully!{idPart}").replace(
-                  "{idPart}",
-                  mapId
-                    ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace("{id}", mapId)
-                    : "",
-                ),
+            : savedAsNewListing
+              ? tt(
+                  "mapEditorLevelContentSavedAsNewListing",
+                  "Saved as a new map listing. The editor now uses the new map id; the original listing is unchanged.",
+                )
+              : isEditingExistingMap
+                ? tt("mapEditorLevelContentSavedSuccess", "Level content saved successfully!")
+                : tt("mapEditorMapSavedSuccessWithId", "Map saved successfully!{idPart}").replace(
+                    "{idPart}",
+                    mapId
+                      ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace("{id}", mapId)
+                      : "",
+                  ),
         );
         setShowMapInfoModal(false);
         setAvatarFile(null);
@@ -1467,6 +1581,11 @@ export function MapEditorControls({
           } else {
             navigate(ROUTES.CMS_MAPS);
           }
+        } else if (createdVersionMapId && isLearner) {
+          navigate(ROUTES.MAP_EDITOR, {
+            replace: true,
+            state: { mapId: createdVersionMapId, mode: "edit", roleContext: "learner" },
+          });
         }
       } else {
         alert(
@@ -1606,6 +1725,228 @@ export function MapEditorControls({
                       </div>
                     </div>
 
+                    <div style={styles.section}>
+                      <h3 style={styles.sectionTitle}>
+                        <Layers size={16} />{" "}
+                        {tt("mapEditorLayerVisibilityTitle", "Layer Visibility")}
+                      </h3>
+                      {editorStore ? (
+                        <LayerPanel store={editorStore} hideTitle embedded />
+                      ) : (
+                        <p style={styles.helpText}>
+                          {tt(
+                            "mapEditorLayerVisibilityFallback",
+                            "Open the editor with a map to use layer visibility.",
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+                {rightPanelTab === "level" && (
+                  <>
+                    <div style={styles.section}>
+                      <h3 style={styles.sectionTitle}>
+                        <Pencil size={16} />{" "}
+                        {tt("mapEditorLevelMapDetailTitle", "Level (MapDetail)")}
+                      </h3>
+                      <p style={styles.helpText}>
+                        {tt(
+                          "mapEditorLevelMapDetailHelp",
+                          'Per-level settings (time limit, win rule, hints…). Save with "Save level content", not "Map info".',
+                        )}
+                      </p>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>{tt("mapEditorMapTypeMap", "Map Type")}</label>
+                        <select
+                          value={mapData.config.type}
+                          onChange={(e) =>
+                            onTypeChange?.(e.target.value as "platform" | "topdown" | "snake")
+                          }
+                          style={styles.select}
+                        >
+                          <option value="platform">
+                            {tt("mapEditorGameTypePlatform", "Platform")}
+                          </option>
+                          <option value="topdown">
+                            {tt("mapEditorGameTypeTopDown", "Top-down")}
+                          </option>
+                          <option value="snake">{tt("mapEditorGameTypeSnake", "Snake")}</option>
+                        </select>
+                      </div>
+                      <div style={styles.mapInfoCard}>
+                        <div style={styles.mapInfoRow}>
+                          <span>{tt("mapEditorSize", "Size")}</span>
+                          <strong>
+                            {mapData.config.width} × {mapData.config.height}{" "}
+                            {tt("mapEditorTiles", "tiles")}
+                          </strong>
+                        </div>
+                        <div style={styles.mapInfoRow}>
+                          <span>{tt("mapEditorTileSize", "Tile Size")}</span>
+                          <strong>{mapData.config.tileSize}px</strong>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          ...styles.actionButtons,
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                          marginBottom: 16,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          style={styles.actionButton}
+                          onClick={() => setShowResizeDialog(true)}
+                        >
+                          <Maximize2 size={14} /> {tt("mapEditorResizeMap", "Resize Map")}
+                        </button>
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                          {tt("mapEditorLevelObjective", "Level Objective")}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={mapData.config.levelObjective ?? ""}
+                          onChange={(e) => onLevelObjectiveChange?.(e.target.value)}
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                          {tt("mapEditorTimeLimitSeconds", "Time Limit (seconds)")}
+                        </label>
+                        <input
+                          type="number"
+                          min={30}
+                          max={3600}
+                          value={mapData.config.timeLimitSeconds}
+                          onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                          {tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={timeStarThresholdPercent}
+                          onChange={(e) =>
+                            onTimeStarThresholdChange?.(
+                              Math.max(
+                                1,
+                                Math.min(100, Number.parseInt(e.target.value, 10) || 100),
+                              ),
+                            )
+                          }
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                          {tt("mapEditorEstimatedSteps", "Estimated Steps")}
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={mapData.config.estimatedSteps}
+                          onChange={(e) =>
+                            onEstimatedStepsChange?.(
+                              Math.max(1, Number.parseInt(e.target.value) || 1),
+                            )
+                          }
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                          {tt("mapEditorWinCondition", "Win Condition")}
+                        </label>
+                        <select
+                          value={mapData.config.winCondition}
+                          onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
+                          style={styles.select}
+                        >
+                          <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
+                          <option value={2}>
+                            {tt("mapEditorCollectFruits", "Collect Fruits")}
+                          </option>
+                        </select>
+                      </div>
+                      {mapData.config.winCondition === 2 && (
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>
+                            {tt("mapEditorRequiredFruits", "Required Fruits")}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={mapData.config.requiredFruits ?? 0}
+                            onChange={(e) =>
+                              onRequiredFruitsChange?.(
+                                Math.max(0, Number.parseInt(e.target.value) || 0),
+                              )
+                            }
+                            style={styles.input}
+                          />
+                        </div>
+                      )}
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>{tt("mapEditorHints", "Hints")}</label>
+                        {displayHints.map((hint, index) => (
+                          <input
+                            key={`sidebar-hint-${index}`}
+                            type="text"
+                            value={hint}
+                            onChange={(e) => {
+                              const next = [...displayHints];
+                              next[index] = e.target.value;
+                              setDisplayHints(next);
+                            }}
+                            placeholder={tt("mapEditorHintNumber", "Hint {n}").replace(
+                              "{n}",
+                              String(index + 1),
+                            )}
+                            style={{ ...styles.input, marginBottom: 6 }}
+                          />
+                        ))}
+                        {displayHints.length < 3 && (
+                          <button
+                            type="button"
+                            style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 4 }}
+                            onClick={() => setDisplayHints([...displayHints, ""])}
+                          >
+                            + {tt("mapEditorAddHint", "Add Hint")}
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.actionButton,
+                          width: "100%",
+                          background: "#0f766e",
+                          color: "#fff",
+                          borderColor: "#0d9488",
+                        }}
+                        onClick={() => void handleSaveLevelContent()}
+                        disabled={userType === "unknown" || savingLevelContent}
+                      >
+                        <Save size={14} />{" "}
+                        {savingLevelContent
+                          ? tt("mapEditorSaving", "Saving...")
+                          : tt("mapEditorSaveLevelContent", "Save level content")}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {rightPanelTab === "rules" && (
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
               <Layers size={16} /> {tt("mapEditorLayerVisibilityTitle", "Layer Visibility")}

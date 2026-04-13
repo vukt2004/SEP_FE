@@ -144,12 +144,12 @@ export default function GameView() {
 
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
-    
+
     // Close the game result modal and clear results
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
-    
+
     const nextRoute =
       mapConfig?.type === "platform"
         ? ROUTES.PLATFORM
@@ -166,7 +166,15 @@ export default function GameView() {
         returnTo,
       },
     });
-  }, [levelId, nextCampaignLevelId, mapConfig?.type, multiplayerRoomId, navigate, roleContext, returnTo]);
+  }, [
+    levelId,
+    nextCampaignLevelId,
+    mapConfig?.type,
+    multiplayerRoomId,
+    navigate,
+    roleContext,
+    returnTo,
+  ]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
@@ -189,25 +197,6 @@ export default function GameView() {
     navigate,
     returnTo,
   ]);
-
-  const handleReportXpIssue = useCallback(() => {
-    if (!levelId) return;
-    const params = new URLSearchParams({
-      prefill: `xp-issue-${lastSubmissionId || Date.now()}`,
-      openCreate: "1",
-      categoryKey: "RewardBalanceIssue",
-      mapId: levelId,
-      subject: t("complaints.prefill.xpIssueSubject"),
-      description: t("complaints.prefill.xpIssueDescription"),
-    });
-    if (playMapDetailIdRef.current) {
-      params.set("mapDetailId", playMapDetailIdRef.current);
-    }
-    if (lastSubmissionId) {
-      params.set("submissionId", lastSubmissionId);
-    }
-    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
-  }, [lastSubmissionId, levelId, navigate, t]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -2057,8 +2046,6 @@ export default function GameView() {
           onBackToMenu={handleBackToMapFlow}
           onMinimize={handleMinimizeResults}
           onClose={handleCloseResults}
-          onReportIssue={gameResult.isWin ? handleReportXpIssue : undefined}
-          reportIssueLabel={t("complaints.actions.reportIssue")}
           resultPopupEnabled={showResultPopup}
           onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
           resultPopupOnLabel={t("gameResultPopupOn")}
