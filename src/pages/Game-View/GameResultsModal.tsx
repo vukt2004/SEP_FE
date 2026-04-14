@@ -46,6 +46,13 @@ interface GameResultsModalProps {
   onToggleResultPopup?: () => void;
   resultPopupOnLabel?: string;
   resultPopupOffLabel?: string;
+  backendScore?: number | null;
+  backendStars?: number | null;
+  backendStatus?: string | null;
+  backendMessage?: string | null;
+  backendScoreLabel?: string;
+  backendStatusLabel?: string;
+  backendMessageLabel?: string;
 }
 
 export const GameResultsModal: React.FC<GameResultsModalProps> = ({
@@ -66,6 +73,13 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
   multiplayerFooterNote,
   onNextLevel,
   nextLevelLabel = "Next level",
+  backendScore,
+  backendStars,
+  backendStatus,
+  backendMessage,
+  backendScoreLabel = "Backend score",
+  backendStatusLabel = "Backend status",
+  backendMessageLabel = "Backend message",
 }) => {
   if (!isOpen) return null;
   const [isWindowExpanded, setIsWindowExpanded] = React.useState(false);
@@ -105,7 +119,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
     blockLimit: hasBlockLimit ? (blockLimit as number) : Number.POSITIVE_INFINITY,
   };
 
-  const stars = calculateStars(
+  const calculatedStars = calculateStars(
     {
       time: elapsedTime,
       steps: stepCount,
@@ -113,6 +127,10 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
     },
     numericLimits,
   );
+  const stars =
+    backendStars != null
+      ? Math.max(0, Math.min(3, Math.round(backendStars)))
+      : calculatedStars;
 
   const subtitle =
     stars === 3
@@ -231,6 +249,12 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
         </div>
 
         <div style={styles.heroSection}>
+          {backendScore != null ? (
+            <div style={styles.scoreHeroWrap}>
+              <span style={styles.scoreHeroLabel}>{backendScoreLabel}</span>
+              <strong style={styles.scoreHeroValue}>{backendScore}</strong>
+            </div>
+          ) : null}
           <div style={styles.header}>
             <div style={styles.headerIcon}>{isWin ? "🏆" : "😔"}</div>
             <h2 style={styles.title}>{isWin ? "Level Complete!" : "Game Over"}</h2>
@@ -296,6 +320,23 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
               </div>
               <div style={styles.progressCaption}>{`${fruitsCollected} collected`}</div>
             </div>
+
+            {backendScore != null || backendStatus || backendMessage || backendStars != null ? (
+              <div style={styles.metricCard}>
+                {backendStatus ? (
+                  <div style={styles.backendRow}>
+                    <strong>{backendStatusLabel}:</strong>
+                    <span>{backendStatus}</span>
+                  </div>
+                ) : null}
+                {backendMessage ? (
+                  <div style={styles.backendRow}>
+                    <strong>{backendMessageLabel}:</strong>
+                    <span>{backendMessage}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -435,6 +476,27 @@ const styles: Record<string, React.CSSProperties> = {
     borderTopRightRadius: "20px",
     color: "#ffffff",
   },
+  scoreHeroWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "8px",
+  },
+  scoreHeroLabel: {
+    fontSize: "12px",
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    fontWeight: 800,
+    color: "rgba(255, 255, 255, 0.8)",
+  },
+  scoreHeroValue: {
+    fontSize: "44px",
+    lineHeight: 1,
+    fontWeight: 900,
+    color: "#ffffff",
+    textShadow: "0 6px 20px rgba(15, 23, 42, 0.35)",
+  },
   bodySection: {
     padding: "12px 16px 0",
   },
@@ -487,6 +549,16 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #e1e7ee",
     borderRadius: "10px",
     padding: "8px 10px",
+  },
+  backendRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "13px",
+    color: "#1f2a44",
+    lineHeight: 1.35,
+    marginTop: "4px",
   },
   metricTopRow: {
     display: "flex",
