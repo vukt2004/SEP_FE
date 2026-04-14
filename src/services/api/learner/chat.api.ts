@@ -71,15 +71,12 @@ export const learnerChatApi = {
   },
 
   deleteMessage(messageId: string) {
-    return learnerAxios.delete<ApiResult<null>>(
-      `/api/learner/chat/messages/${messageId}`,
-    );
+    return learnerAxios.delete<ApiResult<null>>(`/api/learner/chat/messages/${messageId}`);
   },
 
   getUsers(params?: { pageNumber?: number; pageSize?: number; searchTerm?: string }) {
-    return learnerAxios.get<ApiResult<PagedResult<ChatUserItem>>>(
-      "/api/learner/chat/users",
-      { params },
-    );
+    return learnerAxios.get<ApiResult<PagedResult<ChatUserItem>>>("/api/learner/chat/users", {
+      params,
+    });
   },
 };

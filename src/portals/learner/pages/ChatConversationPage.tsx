@@ -29,7 +29,11 @@ import {
 } from "@microsoft/signalr";
 import { learnerChatApi } from "@/services/api/learner/chat.api.ts";
 import type { ChatUserItem } from "@/services/api/learner/chat.api.ts";
-import type { ChatConversation, ChatConversationMember, ChatMessage } from "@/types/api/learner/chat";
+import type {
+  ChatConversation,
+  ChatConversationMember,
+  ChatMessage,
+} from "@/types/api/learner/chat";
 import { ROUTES } from "@/lib/constants/routes";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -42,12 +46,66 @@ const MESSAGES_PAGE_SIZE = 50;
 type FilterTab = "all" | "unread" | "group";
 
 const COMMON_EMOJIS = [
-  "😀","😃","😄","😁","😆","😅","🤣","😂","🙂","😊",
-  "😇","🥰","😍","🤩","😘","☺️","😚","😙","🥲","😋",
-  "😛","😜","🤪","😝","🤑","🤗","🤔","🤫","🤭","😐",
-  "😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪",
-  "👋","🤚","✋","👌","✌️","🤞","👍","👎","✊","🤝",
-  "🙏","❤️","🔥","⭐","🎉","🎊","💯","🚀","😭","🥺",
+  "😀",
+  "😃",
+  "😄",
+  "😁",
+  "😆",
+  "😅",
+  "🤣",
+  "😂",
+  "🙂",
+  "😊",
+  "😇",
+  "🥰",
+  "😍",
+  "🤩",
+  "😘",
+  "☺️",
+  "😚",
+  "😙",
+  "🥲",
+  "😋",
+  "😛",
+  "😜",
+  "🤪",
+  "😝",
+  "🤑",
+  "🤗",
+  "🤔",
+  "🤫",
+  "🤭",
+  "😐",
+  "😑",
+  "😶",
+  "😏",
+  "😒",
+  "🙄",
+  "😬",
+  "🤥",
+  "😌",
+  "😔",
+  "😪",
+  "👋",
+  "🤚",
+  "✋",
+  "👌",
+  "✌️",
+  "🤞",
+  "👍",
+  "👎",
+  "✊",
+  "🤝",
+  "🙏",
+  "❤️",
+  "🔥",
+  "⭐",
+  "🎉",
+  "🎊",
+  "💯",
+  "🚀",
+  "😭",
+  "🥺",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,7 +154,10 @@ function getCurrentUserId(token: string | null | undefined): string | null {
     );
     const payload = JSON.parse(json) as Record<string, unknown>;
     const keys = [
-      "sub", "nameid", "uid", "userId",
+      "sub",
+      "nameid",
+      "uid",
+      "userId",
       "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
     ];
     for (const k of keys) {
@@ -192,7 +253,10 @@ function EmojiPickerPanel({
           key={emoji}
           type="button"
           className={styles.emojiBtn}
-          onClick={() => { onPick(emoji); onClose(); }}
+          onClick={() => {
+            onPick(emoji);
+            onClose();
+          }}
         >
           {emoji}
         </button>
@@ -203,7 +267,9 @@ function EmojiPickerPanel({
 
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
   useEffect(() => {
-    const handler = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
@@ -236,7 +302,10 @@ function NewChatModal({
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!search.trim()) { setUsers([]); return; }
+      if (!search.trim()) {
+        setUsers([]);
+        return;
+      }
       setLoading(true);
       try {
         const res = await learnerChatApi.getUsers({ searchTerm: search.trim(), pageSize: 20 });
@@ -303,11 +372,7 @@ function InfoSection({ title }: { title: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={styles.infoSection}>
-      <button
-        type="button"
-        className={styles.infoSectionHeader}
-        onClick={() => setOpen((v) => !v)}
-      >
+      <button type="button" className={styles.infoSectionHeader} onClick={() => setOpen((v) => !v)}>
         <span>{title}</span>
         {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
       </button>
@@ -359,10 +424,7 @@ export default function ChatConversationPage() {
   const currentConversationIdRef = useRef<string | undefined>(conversationId);
   const messagesWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = useMemo(
-    () => getCurrentUserId(tokenStorage.getLearnerToken()),
-    [],
-  );
+  const currentUserId = useMemo(() => getCurrentUserId(tokenStorage.getLearnerToken()), []);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -392,7 +454,10 @@ export default function ChatConversationPage() {
   }, [messages.length]);
 
   useEffect(() => {
-    if (!attachedImage) { setAttachedImagePreview(null); return; }
+    if (!attachedImage) {
+      setAttachedImagePreview(null);
+      return;
+    }
     const url = URL.createObjectURL(attachedImage);
     setAttachedImagePreview(url);
     return () => URL.revokeObjectURL(url);
@@ -414,11 +479,13 @@ export default function ChatConversationPage() {
     }
   }, []);
 
-  useEffect(() => { void loadConversations(false); }, [loadConversations]);
+  useEffect(() => {
+    void loadConversations(false);
+  }, [loadConversations]);
 
   // Auto-select the most recent conversation when landing on /app/chat with no conversationId
   useEffect(() => {
-    if (conversationId) return;           // already on a specific conversation
+    if (conversationId) return; // already on a specific conversation
     if (conversations.length === 0) return; // not loaded yet
     const first = conversations[0];
     const cp = getCounterpart(first, currentUserId, null);
@@ -432,10 +499,17 @@ export default function ChatConversationPage() {
   const fetchMessages = useCallback(
     async (silent: boolean, beforeMessageId?: string) => {
       if (!conversationId?.trim()) {
-        if (!silent) { setMessages([]); setLoadingMessages(false); setError(null); }
+        if (!silent) {
+          setMessages([]);
+          setLoadingMessages(false);
+          setError(null);
+        }
         return;
       }
-      if (!silent && !beforeMessageId) { setLoadingMessages(true); setError(null); }
+      if (!silent && !beforeMessageId) {
+        setLoadingMessages(true);
+        setError(null);
+      }
       try {
         const res = await learnerChatApi.getConversationMessages(conversationId, {
           pageNumber: 1,
@@ -470,7 +544,9 @@ export default function ChatConversationPage() {
     [conversationId, loadConversations],
   );
 
-  useEffect(() => { void fetchMessages(false); }, [fetchMessages]);
+  useEffect(() => {
+    void fetchMessages(false);
+  }, [fetchMessages]);
 
   const handleScroll = useCallback(() => {
     const wrap = messagesWrapRef.current;
@@ -510,9 +586,14 @@ export default function ChatConversationPage() {
       }
       setConversations((prev) => {
         const idx = prev.findIndex((c) => c.id === message.chatRoomId);
-        if (idx === -1) { void loadConversations(true); return prev; }
+        if (idx === -1) {
+          void loadConversations(true);
+          return prev;
+        }
         const isActive = message.chatRoomId === currentConversationIdRef.current;
-        const isSelf = !!(currentUserId && message.senderId.toLowerCase() === currentUserId.toLowerCase());
+        const isSelf = !!(
+          currentUserId && message.senderId.toLowerCase() === currentUserId.toLowerCase()
+        );
         const updated = [...prev];
         updated[idx] = {
           ...updated[idx],
@@ -529,9 +610,12 @@ export default function ChatConversationPage() {
       "ConversationUpdated",
       // C# backend sends PascalCase; SignalR JS client auto-camelCase but safe to handle both
       (data: {
-        conversationId?: string; ConversationId?: string;
-        lastMessage?: ChatMessage; LastMessage?: ChatMessage;
-        unreadCount?: number; UnreadCount?: number;
+        conversationId?: string;
+        ConversationId?: string;
+        lastMessage?: ChatMessage;
+        LastMessage?: ChatMessage;
+        unreadCount?: number;
+        UnreadCount?: number;
       }) => {
         const convId = data.conversationId ?? data.ConversationId ?? "";
         const lastMsg = data.lastMessage ?? data.LastMessage;
@@ -540,7 +624,10 @@ export default function ChatConversationPage() {
 
         setConversations((prev) => {
           const idx = prev.findIndex((c) => c.id === convId);
-          if (idx === -1) { void loadConversations(true); return prev; }
+          if (idx === -1) {
+            void loadConversations(true);
+            return prev;
+          }
           const isActive = convId === currentConversationIdRef.current;
           const updated = [...prev];
           updated[idx] = {
@@ -569,7 +656,9 @@ export default function ChatConversationPage() {
       },
     );
 
-    connection.on("ConversationClosed", () => { void loadConversations(true); });
+    connection.on("ConversationClosed", () => {
+      void loadConversations(true);
+    });
 
     // On reconnect, refresh conversation list once to catch any missed events
     connection.onreconnected(() => {
@@ -581,8 +670,13 @@ export default function ChatConversationPage() {
       }
     });
 
-    connection.start().then(() => setHubConnection(connection)).catch(console.error);
-    return () => { void connection.stop(); };
+    connection
+      .start()
+      .then(() => setHubConnection(connection))
+      .catch(console.error);
+    return () => {
+      void connection.stop();
+    };
   }, [currentUserId, loadConversations]);
 
   useEffect(() => {
@@ -607,7 +701,10 @@ export default function ChatConversationPage() {
   const conversationTitle = useMemo(() => {
     if (activeConversation)
       return getConversationDisplayName(
-        activeConversation, currentUserId, preferredOtherUserId, preferredOtherUserName,
+        activeConversation,
+        currentUserId,
+        preferredOtherUserId,
+        preferredOtherUserName,
       );
     return preferredOtherUserName?.trim() || "Cuộc trò chuyện";
   }, [activeConversation, currentUserId, preferredOtherUserId, preferredOtherUserName]);
@@ -633,9 +730,7 @@ export default function ChatConversationPage() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const openConversation = (conv: ChatConversation) => {
     const cp = getCounterpart(conv, currentUserId, preferredOtherUserId);
-    setConversations((prev) =>
-      prev.map((c) => c.id === conv.id ? { ...c, unreadCount: 0 } : c),
-    );
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, unreadCount: 0 } : c)));
     const q = new URLSearchParams();
     if (cp?.userId) q.set("otherUserId", cp.userId);
     if (cp?.userName) q.set("otherUserName", cp.userName);
@@ -646,7 +741,9 @@ export default function ChatConversationPage() {
   useEffect(() => {
     if (!conversationId) return;
     setConversations((prev) =>
-      prev.map((c) => (c.id === conversationId && c.unreadCount > 0 ? { ...c, unreadCount: 0 } : c)),
+      prev.map((c) =>
+        c.id === conversationId && c.unreadCount > 0 ? { ...c, unreadCount: 0 } : c,
+      ),
     );
   }, [conversationId]);
 
@@ -745,7 +842,7 @@ export default function ChatConversationPage() {
     try {
       await learnerChatApi.deleteMessage(msgId);
       setMessages((prev) =>
-        prev.map((m) => m.id === msgId ? { ...m, isDeleted: true, content: "" } : m),
+        prev.map((m) => (m.id === msgId ? { ...m, isDeleted: true, content: "" } : m)),
       );
     } catch {
       alert("Lỗi xoá tin nhắn.");
@@ -759,9 +856,7 @@ export default function ChatConversationPage() {
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
-
         <div className={`${styles.chatLayout} ${showRightPanel ? styles.chatLayoutWith3Col : ""}`}>
-
           {/* ── LEFT: Sidebar ───────────────────────────────────────── */}
           <aside className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
@@ -817,13 +912,20 @@ export default function ChatConversationPage() {
                 </p>
               )}
               {filteredConversations.map((item) => {
-                const name = getConversationDisplayName(item, currentUserId, preferredOtherUserId, null);
+                const name = getConversationDisplayName(
+                  item,
+                  currentUserId,
+                  preferredOtherUserId,
+                  null,
+                );
                 const snippet = item.lastMessage?.isDeleted
                   ? "(Tin nhắn đã bị xoá)"
                   : item.lastMessage?.messageType === 1
                     ? "📷 Ảnh"
                     : item.lastMessage?.content?.trim() || "";
-                const timeLabel = formatConversationTime(item.lastMessageAt ?? item.lastMessage?.createdAt);
+                const timeLabel = formatConversationTime(
+                  item.lastMessageAt ?? item.lastMessage?.createdAt,
+                );
                 const unread = item.unreadCount > 0;
                 const isActive = item.id === conversationId;
 
@@ -848,7 +950,9 @@ export default function ChatConversationPage() {
                         </span>
                       </div>
                       <div className={styles.convBottomRow}>
-                        <span className={`${styles.convSnippet} ${unread ? styles.convSnippetBold : ""}`}>
+                        <span
+                          className={`${styles.convSnippet} ${unread ? styles.convSnippetBold : ""}`}
+                        >
                           {snippet || "Bắt đầu cuộc trò chuyện"}
                         </span>
                         {unread && (
@@ -897,11 +1001,7 @@ export default function ChatConversationPage() {
             </header>
 
             {/* Messages */}
-            <div
-              ref={messagesWrapRef}
-              className={styles.messagesWrap}
-              onScroll={handleScroll}
-            >
+            <div ref={messagesWrapRef} className={styles.messagesWrap} onScroll={handleScroll}>
               {loadingMore && (
                 <div className={styles.loadMoreRow}>
                   <TypingDots />
@@ -913,7 +1013,9 @@ export default function ChatConversationPage() {
                   <div className={styles.emptyStateIcon}>
                     <MessageCircle size={52} strokeWidth={1.5} />
                   </div>
-                  <p className={styles.emptyStateText}>Chọn một cuộc trò chuyện để bắt đầu nhắn tin</p>
+                  <p className={styles.emptyStateText}>
+                    Chọn một cuộc trò chuyện để bắt đầu nhắn tin
+                  </p>
                 </div>
               ) : loadingMessages ? (
                 <div className={styles.emptyState}>
@@ -931,7 +1033,9 @@ export default function ChatConversationPage() {
                 </div>
               ) : (
                 messages.map((m, i) => {
-                  const isOwn = !!(currentUserId && m.senderId.toLowerCase() === currentUserId.toLowerCase());
+                  const isOwn = !!(
+                    currentUserId && m.senderId.toLowerCase() === currentUserId.toLowerCase()
+                  );
                   const gStart = isGroupStart(messages, i);
                   const gEnd = isGroupEnd(messages, i);
                   const isImage = m.messageType === 1 && !!m.filePath;
@@ -975,15 +1079,21 @@ export default function ChatConversationPage() {
                         {/* Reply reference */}
                         {m.replyToMessage && (
                           <div className={`${styles.replyRef} ${isOwn ? styles.replyRefOwn : ""}`}>
-                            <span className={styles.replyRefAuthor}>{m.replyToMessage.senderName}</span>
+                            <span className={styles.replyRefAuthor}>
+                              {m.replyToMessage.senderName}
+                            </span>
                             <span className={styles.replyRefText}>
-                              {m.replyToMessage.messageType === 1 ? "📷 Ảnh" : m.replyToMessage.content}
+                              {m.replyToMessage.messageType === 1
+                                ? "📷 Ảnh"
+                                : m.replyToMessage.content}
                             </span>
                           </div>
                         )}
 
                         {/* Bubble + hover actions (reply always on RIGHT) */}
-                        <div className={`${styles.bubbleWrap} ${isOwn ? styles.bubbleWrapOwn : ""}`}>
+                        <div
+                          className={`${styles.bubbleWrap} ${isOwn ? styles.bubbleWrapOwn : ""}`}
+                        >
                           <div
                             className={[
                               styles.bubble,
@@ -993,7 +1103,9 @@ export default function ChatConversationPage() {
                               gEnd && !isOwn ? styles.bubbleBottomOther : "",
                               gStart && isOwn ? styles.bubbleTopOwn : "",
                               gEnd && isOwn ? styles.bubbleBottomOwn : "",
-                            ].filter(Boolean).join(" ")}
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                           >
                             {isImage ? (
                               <button
@@ -1054,7 +1166,9 @@ export default function ChatConversationPage() {
               {/* Typing indicator */}
               {isTyping && (
                 <div className={styles.messageRow}>
-                  <span className={styles.msgAvatar} style={{ opacity: 0.5 }}>?</span>
+                  <span className={styles.msgAvatar} style={{ opacity: 0.5 }}>
+                    ?
+                  </span>
                   <div className={styles.msgBlock}>
                     <div className={styles.bubble}>
                       <TypingDots />
@@ -1136,11 +1250,7 @@ export default function ChatConversationPage() {
                 >
                   <ImageIcon size={22} />
                 </button>
-                <button
-                  type="button"
-                  className={styles.composerIconBtn}
-                  aria-label="Voice"
-                >
+                <button type="button" className={styles.composerIconBtn} aria-label="Voice">
                   <Mic size={22} />
                 </button>
                 <div className={styles.composerInputWrap}>
@@ -1246,16 +1356,11 @@ export default function ChatConversationPage() {
       />
 
       {/* Lightbox */}
-      {lightboxUrl && (
-        <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
-      )}
+      {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
 
       {/* New Chat Modal */}
       {showNewChatModal && (
-        <NewChatModal
-          onClose={() => setShowNewChatModal(false)}
-          onSelect={handleNewChat}
-        />
+        <NewChatModal onClose={() => setShowNewChatModal(false)} onSelect={handleNewChat} />
       )}
     </div>
   );
