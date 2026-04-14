@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
-import { tokenStorage } from "@/lib/storage/tokenStorage";
 
 const pageSize = 10;
 
@@ -96,35 +95,6 @@ function normalizeText(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-}
-
-function getCurrentLearnerUserId(token: string | null | undefined): string | null {
-  if (!token || typeof token !== "string") return null;
-  const parts = token.split(".");
-  if (parts.length < 2) return null;
-  try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(
-      Array.prototype.map
-        .call(atob(base64), (c: string) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(""),
-    );
-    const payload = JSON.parse(json) as Record<string, unknown>;
-    const claimKeys = [
-      "sub",
-      "nameid",
-      "uid",
-      "userId",
-      "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
-    ];
-    for (const key of claimKeys) {
-      const value = payload[key];
-      if (typeof value === "string" && value.trim().length > 0) return value.trim();
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function formatContextDisplayValue(value: string) {
@@ -479,7 +449,6 @@ export default function ComplaintsPage() {
     () => !loading && !error && pagedItems.length === 0,
     [error, loading, pagedItems.length],
   );
-  const currentUserId = useMemo(() => getCurrentLearnerUserId(tokenStorage.getLearnerToken()), []);
   const activeCategory = useMemo(
     () => categoryOptions.find((item) => item.categoryKey === createForm.categoryKey) ?? null,
     [categoryOptions, createForm.categoryKey],
@@ -638,10 +607,7 @@ export default function ComplaintsPage() {
   }
 
   function getComplaintRoute(item: ComplaintItem) {
-    const isOwnerComplaint =
-      !!currentUserId && String(item.userId).toLowerCase() === String(currentUserId).toLowerCase();
-    if (isOwnerComplaint || !currentUserId) return ROUTES.LEARNER_COMPLAINT_DETAIL(item.id);
-    return ROUTES.LEARNER_COMPLAINT_OVERVIEW(item.id);
+    return ROUTES.LEARNER_COMPLAINT_DETAIL(item.id);
   }
 
   async function handleCreate(e: React.FormEvent) {
