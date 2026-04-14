@@ -1095,157 +1095,166 @@ export default function PlatformGameView() {
     setSubmissionFeedback(null);
   }, []);
 
-  const handleSubmitRun = useCallback(async (options?: { skipConfirm?: boolean }) => {
-    if (!workspaceRef.current || submitLoading || submitted) return;
+  const handleSubmitRun = useCallback(
+    async (options?: { skipConfirm?: boolean }) => {
+      if (!workspaceRef.current || submitLoading || submitted) return;
 
-    const engine = engineRef.current;
-    if (!engine) return;
+      const engine = engineRef.current;
+      if (!engine) return;
 
-    const program = generateAST(workspaceRef.current);
-    const astSpec = JSON.stringify(program);
-    const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
-    if (!options?.skipConfirm) {
-      if (!isProgramChecked) {
-        const precheckOk = await runAutoSubmitPrecheck(astSpec);
-        if (!precheckOk) {
-          showWarningToast(t("gameSubmitAutoCheckFailed"));
-          return;
-        }
-      }
-      void handleSubmitRun({ skipConfirm: true });
-      return;
-    }
-
-    const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
-    const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto ? lastEvaluatedIsWinRef.current : false;
-
-    if (!isProgramCheckedAfterAuto) {
-      showWarningToast(t("gameSubmitAutoCheckFailed"));
-      return;
-    }
-
-    if (executorRef.current) {
-      executorRef.current.stop();
-    }
-    setIsExecutorRunning(false);
-
-    try {
-      engine.stop();
-    } catch {
-      /* ignore stop errors while freezing the run */
-    }
-
-    const snapshot = {
-      isWin: precheckedIsWinAfterAuto,
-      stepCount: engine.getStepCount(),
-      blocksUsed,
-      elapsedTime: timerElapsedRef.current,
-      fruitsCollected: engine.getCollectedFruitsCount(),
-    };
-
-    historyRecordedRef.current = true;
-    setSubmitLoading(true);
-    try {
-      setSubmissionFeedback(null);
-
-      if (multiplayerRoomId) {
-        const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-          language: "Blockly",
-          astSpec,
-          isWin: snapshot.isWin,
-          stepsUsed: snapshot.stepCount,
-          blocksUsed: snapshot.blocksUsed,
-          time: snapshot.elapsedTime,
-          mapDetailId: activeMapDetailId ?? undefined,
-        });
-
-        if (res.data?.isSuccess) {
-          setSubmitted(true);
-          setGameResult(snapshot);
-          setSubmissionFeedback({
-            score: res.data.data?.score ?? null,
-            stars: null,
-            status: res.data.data?.status ?? null,
-            message: null,
-          });
-          setResultsDockVisible(false);
-          setShowResultsModal(true);
-          if (res.data?.data?.rankingIfAllSubmitted?.length) {
-            const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-              playerId: r.playerId,
-              score: r.score,
-              rank: r.rank,
-              status: r.status,
-            }));
-            navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
+      const program = generateAST(workspaceRef.current);
+      const astSpec = JSON.stringify(program);
+      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+      if (!options?.skipConfirm) {
+        if (!isProgramChecked) {
+          const precheckOk = await runAutoSubmitPrecheck(astSpec);
+          if (!precheckOk) {
+            showWarningToast(t("gameSubmitAutoCheckFailed"));
             return;
           }
-        } else {
-          historyRecordedRef.current = false;
-          window.alert(res.data?.message ?? "Submit failed.");
         }
-      } else {
-        if (!levelId) return;
+        void handleSubmitRun({ skipConfirm: true });
+        return;
+      }
 
-        const before = snapshot.isWin ? await learnerProfileApi.getMyXpProfile().catch(() => null) : null;
-        const validateRes = await learnerGameplayApi.validateSolution({
-          mapId: levelId,
-          mapDetailId: activeMapDetailId ?? undefined,
-          language: "Blockly",
-          astSpec,
-          playMode: 0,
-          isWin: snapshot.isWin,
-          clientStepsUsed: snapshot.stepCount,
-          clientBlocksUsed: snapshot.blocksUsed,
-          clientElapsedSeconds: snapshot.elapsedTime,
-        });
+      const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
+      const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto
+        ? lastEvaluatedIsWinRef.current
+        : false;
 
-        if (validateRes.isSuccess && validateRes.data?.submissionId) {
-          setSubmitted(true);
-          setGameResult(snapshot);
-          setSubmissionFeedback({
-            score: validateRes.data.score ?? null,
-            stars: validateRes.data.stars ?? null,
-            status: validateRes.data.status ?? null,
-            message: validateRes.data.message ?? null,
+      if (!isProgramCheckedAfterAuto) {
+        showWarningToast(t("gameSubmitAutoCheckFailed"));
+        return;
+      }
+
+      if (executorRef.current) {
+        executorRef.current.stop();
+      }
+      setIsExecutorRunning(false);
+
+      try {
+        engine.stop();
+      } catch {
+        /* ignore stop errors while freezing the run */
+      }
+
+      const snapshot = {
+        isWin: precheckedIsWinAfterAuto,
+        stepCount: engine.getStepCount(),
+        blocksUsed,
+        elapsedTime: timerElapsedRef.current,
+        fruitsCollected: engine.getCollectedFruitsCount(),
+      };
+
+      historyRecordedRef.current = true;
+      setSubmitLoading(true);
+      try {
+        setSubmissionFeedback(null);
+
+        if (multiplayerRoomId) {
+          const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+            language: "Blockly",
+            astSpec,
+            isWin: snapshot.isWin,
+            stepsUsed: snapshot.stepCount,
+            blocksUsed: snapshot.blocksUsed,
+            time: snapshot.elapsedTime,
+            mapDetailId: activeMapDetailId ?? undefined,
           });
-          setResultsDockVisible(false);
-          setShowResultsModal(true);
-        } else {
-          historyRecordedRef.current = false;
-          window.alert(validateRes.message ?? "Submit failed.");
-        }
 
-        if (snapshot.isWin) {
-          const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
-          const beforeXp = before?.data?.currentXp ?? null;
-          const afterXp = after?.data?.currentXp ?? null;
-          if (beforeXp != null && afterXp != null) {
-            const delta = afterXp - beforeXp;
-            if (delta > 0) {
-              setXpToast(`+${delta} XP`);
-              window.setTimeout(() => setXpToast(""), 2600);
+          if (res.data?.isSuccess) {
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: res.data.data?.score ?? null,
+              stars: null,
+              status: res.data.data?.status ?? null,
+              message: null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+            if (res.data?.data?.rankingIfAllSubmitted?.length) {
+              const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                playerId: r.playerId,
+                score: r.score,
+                rank: r.rank,
+                status: r.status,
+              }));
+              navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                state: { ranking, roomId: multiplayerRoomId },
+              });
+              return;
+            }
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(res.data?.message ?? "Submit failed.");
+          }
+        } else {
+          if (!levelId) return;
+
+          const before = snapshot.isWin
+            ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+            : null;
+          const validateRes = await learnerGameplayApi.validateSolution({
+            mapId: levelId,
+            mapDetailId: activeMapDetailId ?? undefined,
+            language: "Blockly",
+            astSpec,
+            playMode: 0,
+            isWin: snapshot.isWin,
+            clientStepsUsed: snapshot.stepCount,
+            clientBlocksUsed: snapshot.blocksUsed,
+            clientElapsedSeconds: snapshot.elapsedTime,
+          });
+
+          if (validateRes.isSuccess && validateRes.data?.submissionId) {
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: validateRes.data.score ?? null,
+              stars: validateRes.data.stars ?? null,
+              status: validateRes.data.status ?? null,
+              message: validateRes.data.message ?? null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(validateRes.message ?? "Submit failed.");
+          }
+
+          if (snapshot.isWin) {
+            const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+            const beforeXp = before?.data?.currentXp ?? null;
+            const afterXp = after?.data?.currentXp ?? null;
+            if (beforeXp != null && afterXp != null) {
+              const delta = afterXp - beforeXp;
+              if (delta > 0) {
+                setXpToast(`+${delta} XP`);
+                window.setTimeout(() => setXpToast(""), 2600);
+              }
             }
           }
         }
+      } catch (err) {
+        console.error("Failed to save play history", err);
+        historyRecordedRef.current = false;
+      } finally {
+        setSubmitLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to save play history", err);
-      historyRecordedRef.current = false;
-    } finally {
-      setSubmitLoading(false);
-    }
-  }, [
-    activeMapDetailId,
-    blocksUsed,
-    levelId,
-    multiplayerRoomId,
-    navigate,
-    runAutoSubmitPrecheck,
-    submitLoading,
-    submitted,
-    t,
-  ]);
+    },
+    [
+      activeMapDetailId,
+      blocksUsed,
+      levelId,
+      multiplayerRoomId,
+      navigate,
+      runAutoSubmitPrecheck,
+      submitLoading,
+      submitted,
+      t,
+    ],
+  );
 
   submitRunRef.current = handleSubmitRun;
 
@@ -1965,9 +1974,13 @@ export default function PlatformGameView() {
                 .filter(([, v]) => Array.isArray(v))
                 .map(([name, v]) => {
                   const arr = v as unknown[];
-                  const items = arr.slice(0, 20).map((item) =>
-                    typeof item === "object" && item !== null ? JSON.stringify(item) : String(item),
-                  );
+                  const items = arr
+                    .slice(0, 20)
+                    .map((item) =>
+                      typeof item === "object" && item !== null
+                        ? JSON.stringify(item)
+                        : String(item),
+                    );
                   return (
                     <div key={name} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <div style={{ minWidth: "90px", fontWeight: 700 }}>{name}:</div>
@@ -2085,7 +2098,9 @@ export default function PlatformGameView() {
       <RunDecisionModal
         isOpen={showSubmitConfirmModal}
         title={t("gameSubmitConfirmTitle")}
-        description={pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")}
+        description={
+          pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")
+        }
         primaryLabel={t("gameSubmitConfirmYes")}
         secondaryLabel={t("gameSubmitConfirmNo")}
         onPrimary={() => {

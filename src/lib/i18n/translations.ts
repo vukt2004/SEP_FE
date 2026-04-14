@@ -837,12 +837,10 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     stepExecution: "Step Execution",
     stop: "Stop",
     reset: "Reset",
-    gameWinSubmitHint:
-      "You won! You can submit now or keep editing your blocks before submitting.",
+    gameWinSubmitHint: "You won! You can submit now or keep editing your blocks before submitting.",
     gameWinDecisionPrompt:
       "You completed the game. Press OK to submit now, or Cancel to continue editing for a higher score.",
-    gameWinDecisionEditHint:
-      "If you continue editing, the run is reset and timer keeps running.",
+    gameWinDecisionEditHint: "If you continue editing, the run is reset and timer keeps running.",
     gameWinDecisionTitle: "You completed the game",
     gameWinDecisionSubmit: "Submit now",
     gameWinDecisionEdit: "Keep editing",

@@ -108,7 +108,8 @@ const styles: Record<string, React.CSSProperties> = {
   primaryButton: {
     borderRadius: "12px",
     border: "1px solid var(--primary)",
-    background: "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 82%, black 18%))",
+    background:
+      "linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 82%, black 18%))",
     color: "#fff",
     fontWeight: 800,
     fontSize: "14px",

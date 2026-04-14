@@ -128,9 +128,7 @@ export const GameResultsModal: React.FC<GameResultsModalProps> = ({
     numericLimits,
   );
   const stars =
-    backendStars != null
-      ? Math.max(0, Math.min(3, Math.round(backendStars)))
-      : calculatedStars;
+    backendStars != null ? Math.max(0, Math.min(3, Math.round(backendStars))) : calculatedStars;
 
   const subtitle =
     stars === 3

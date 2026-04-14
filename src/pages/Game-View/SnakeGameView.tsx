@@ -6,7 +6,12 @@ import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
 import { LevelType, createGameConfig } from "@/modules/engine/core/GameConfig";
 import type { LevelBlockConstraints, LevelDefinition } from "@/modules/map-system/types";
 import type { ExecutionResult } from "@/modules/executor/commands";
-import type { BlockProgram, ConditionType, PositionResolver, Rotation } from "@/modules/executor/types";
+import type {
+  BlockProgram,
+  ConditionType,
+  PositionResolver,
+  Rotation,
+} from "@/modules/executor/types";
 import type { EngineEvent } from "@/modules/engine/core/engineEvents";
 import { StepExecutor } from "@/modules/executor/StepExecutor";
 import { animationRegistry } from "@/modules/engine/systems/animation/animationRegistry";
@@ -87,7 +92,7 @@ type SnakeAssetDefinition = {
   frameWidth: number;
   frameHeight: number;
   parts: SnakePartSet;
-}
+};
 
 const snakeAsset = snakeAssetRaw as SnakeAssetDefinition;
 
@@ -126,7 +131,10 @@ function rotateDirection90(direction: Dir, rotation: Rotation): Dir {
   }
 }
 
-function resolveBodySpriteKey(firstDirection: Dir, secondDirection: Dir): keyof SnakePartSet["body"] {
+function resolveBodySpriteKey(
+  firstDirection: Dir,
+  secondDirection: Dir,
+): keyof SnakePartSet["body"] {
   const pair = [firstDirection, secondDirection].sort().join("-");
 
   switch (pair) {
@@ -698,166 +706,159 @@ export default function SnakeGameView() {
     });
     setShowResultsModal(false);
     setResultsDockVisible(false);
-  }, [
-    elapsedDisplay,
-    isLevelStarted,
-    mapConfig?.timeLimitSeconds,
-    showResultsModal,
-    t,
-  ]);
+  }, [elapsedDisplay, isLevelStarted, mapConfig?.timeLimitSeconds, showResultsModal, t]);
 
-  const handleSubmitRun = useCallback(async (options?: { skipConfirm?: boolean }) => {
-    if (!workspaceRef.current || submitLoading || submitted) return;
+  const handleSubmitRun = useCallback(
+    async (options?: { skipConfirm?: boolean }) => {
+      if (!workspaceRef.current || submitLoading || submitted) return;
 
-    const engine = engineRef.current;
-    if (!engine) return;
+      const engine = engineRef.current;
+      if (!engine) return;
 
-    const program = generateAST(workspaceRef.current);
-    const astSpec = JSON.stringify(program);
-    const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
-    if (!options?.skipConfirm) {
-      if (!isProgramChecked) {
-        const precheckOk = await runAutoSubmitPrecheck(astSpec);
-        if (!precheckOk) {
-          setStatusText(t("gameSubmitAutoCheckFailed"));
-          return;
-        }
-      }
-      void handleSubmitRun({ skipConfirm: true });
-      return;
-    }
-
-    const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
-    const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto ? lastEvaluatedIsWinRef.current : false;
-
-    if (!isProgramCheckedAfterAuto) {
-      setStatusText(t("gameSubmitAutoCheckFailed"));
-      return;
-    }
-
-    if (executorRef.current) {
-      executorRef.current.stop();
-    }
-    setIsExecutorRunning(false);
-
-    try {
-      engine.stop();
-    } catch {
-      /* ignore stop errors while freezing the run */
-    }
-
-    const snapshot = {
-      isWin: precheckedIsWinAfterAuto,
-      stepCount: engine.getStepCount(),
-      blocksUsed: blocksUsedRef.current,
-      elapsedTime: timerElapsedRef.current,
-      fruitsCollected: collectedFruitsRef.current,
-    };
-
-    historyRecordedRef.current = true;
-    setSubmitLoading(true);
-    try {
-      setSubmissionFeedback(null);
-
-      if (multiplayerRoomId) {
-        const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-          language: "Blockly",
-          astSpec,
-          isWin: snapshot.isWin,
-          stepsUsed: snapshot.stepCount,
-          blocksUsed: snapshot.blocksUsed,
-          time: snapshot.elapsedTime,
-          mapDetailId: activeMapDetailId ?? undefined,
-        });
-
-        if (res.data?.isSuccess) {
-          setSubmitted(true);
-          setGameResult(snapshot);
-          setSubmissionFeedback({
-            score: res.data.data?.score ?? null,
-            stars: null,
-            status: res.data.data?.status ?? null,
-            message: null,
-          });
-          setResultsDockVisible(false);
-          setShowResultsModal(true);
-          if (res.data?.data?.rankingIfAllSubmitted?.length) {
-            const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-              playerId: r.playerId,
-              score: r.score,
-              rank: r.rank,
-              status: r.status,
-            }));
-            navigate(ROUTES.LEARNER_ROOM_RESULT, {
-              state: { ranking, roomId: multiplayerRoomId },
-            });
+      const program = generateAST(workspaceRef.current);
+      const astSpec = JSON.stringify(program);
+      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+      if (!options?.skipConfirm) {
+        if (!isProgramChecked) {
+          const precheckOk = await runAutoSubmitPrecheck(astSpec);
+          if (!precheckOk) {
+            setStatusText(t("gameSubmitAutoCheckFailed"));
             return;
           }
-        } else {
-          historyRecordedRef.current = false;
-          window.alert(res.data?.message ?? "Submit failed.");
         }
-      } else {
-        if (!levelId) return;
+        void handleSubmitRun({ skipConfirm: true });
+        return;
+      }
 
-        const before = snapshot.isWin ? await learnerProfileApi.getMyXpProfile().catch(() => null) : null;
-        const validateRes = await learnerGameplayApi.validateSolution({
-          mapId: levelId,
-          mapDetailId: activeMapDetailId ?? undefined,
-          language: "Blockly",
-          astSpec,
-          playMode: 0,
-          isWin: snapshot.isWin,
-          clientStepsUsed: snapshot.stepCount,
-          clientBlocksUsed: snapshot.blocksUsed,
-          clientElapsedSeconds: snapshot.elapsedTime,
-        });
+      const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
+      const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto
+        ? lastEvaluatedIsWinRef.current
+        : false;
 
-        if (validateRes.isSuccess && validateRes.data?.submissionId) {
-          setLastSubmissionId(validateRes.data.submissionId);
-          setSubmitted(true);
-          setGameResult(snapshot);
-          setSubmissionFeedback({
-            score: validateRes.data.score ?? null,
-            stars: validateRes.data.stars ?? null,
-            status: validateRes.data.status ?? null,
-            message: validateRes.data.message ?? null,
+      if (!isProgramCheckedAfterAuto) {
+        setStatusText(t("gameSubmitAutoCheckFailed"));
+        return;
+      }
+
+      if (executorRef.current) {
+        executorRef.current.stop();
+      }
+      setIsExecutorRunning(false);
+
+      try {
+        engine.stop();
+      } catch {
+        /* ignore stop errors while freezing the run */
+      }
+
+      const snapshot = {
+        isWin: precheckedIsWinAfterAuto,
+        stepCount: engine.getStepCount(),
+        blocksUsed: blocksUsedRef.current,
+        elapsedTime: timerElapsedRef.current,
+        fruitsCollected: collectedFruitsRef.current,
+      };
+
+      historyRecordedRef.current = true;
+      setSubmitLoading(true);
+      try {
+        setSubmissionFeedback(null);
+
+        if (multiplayerRoomId) {
+          const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+            language: "Blockly",
+            astSpec,
+            isWin: snapshot.isWin,
+            stepsUsed: snapshot.stepCount,
+            blocksUsed: snapshot.blocksUsed,
+            time: snapshot.elapsedTime,
+            mapDetailId: activeMapDetailId ?? undefined,
           });
-          setResultsDockVisible(false);
-          setShowResultsModal(true);
-        } else {
-          historyRecordedRef.current = false;
-          window.alert(validateRes.message ?? "Submit failed.");
-        }
 
-        if (snapshot.isWin) {
-          const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
-          const beforeXp = before?.data?.currentXp ?? null;
-          const afterXp = after?.data?.currentXp ?? null;
-          if (beforeXp != null && afterXp != null) {
-            const delta = afterXp - beforeXp;
-            if (delta > 0) {
-              setXpToast(`+${delta} XP`);
-              window.setTimeout(() => setXpToast(""), 2600);
+          if (res.data?.isSuccess) {
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: res.data.data?.score ?? null,
+              stars: null,
+              status: res.data.data?.status ?? null,
+              message: null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+            if (res.data?.data?.rankingIfAllSubmitted?.length) {
+              const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                playerId: r.playerId,
+                score: r.score,
+                rank: r.rank,
+                status: r.status,
+              }));
+              navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                state: { ranking, roomId: multiplayerRoomId },
+              });
+              return;
+            }
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(res.data?.message ?? "Submit failed.");
+          }
+        } else {
+          if (!levelId) return;
+
+          const before = snapshot.isWin
+            ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+            : null;
+          const validateRes = await learnerGameplayApi.validateSolution({
+            mapId: levelId,
+            mapDetailId: activeMapDetailId ?? undefined,
+            language: "Blockly",
+            astSpec,
+            playMode: 0,
+            isWin: snapshot.isWin,
+            clientStepsUsed: snapshot.stepCount,
+            clientBlocksUsed: snapshot.blocksUsed,
+            clientElapsedSeconds: snapshot.elapsedTime,
+          });
+
+          if (validateRes.isSuccess && validateRes.data?.submissionId) {
+            setLastSubmissionId(validateRes.data.submissionId);
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: validateRes.data.score ?? null,
+              stars: validateRes.data.stars ?? null,
+              status: validateRes.data.status ?? null,
+              message: validateRes.data.message ?? null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(validateRes.message ?? "Submit failed.");
+          }
+
+          if (snapshot.isWin) {
+            const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+            const beforeXp = before?.data?.currentXp ?? null;
+            const afterXp = after?.data?.currentXp ?? null;
+            if (beforeXp != null && afterXp != null) {
+              const delta = afterXp - beforeXp;
+              if (delta > 0) {
+                setXpToast(`+${delta} XP`);
+                window.setTimeout(() => setXpToast(""), 2600);
+              }
             }
           }
         }
+      } catch (saveErr) {
+        console.error("Failed to save play history", saveErr);
+        historyRecordedRef.current = false;
+      } finally {
+        setSubmitLoading(false);
       }
-    } catch (saveErr) {
-      console.error("Failed to save play history", saveErr);
-      historyRecordedRef.current = false;
-    } finally {
-      setSubmitLoading(false);
-    }
-  }, [
-    activeMapDetailId,
-    levelId,
-    multiplayerRoomId,
-    navigate,
-    submitLoading,
-    submitted,
-    t,
-  ]);
+    },
+    [activeMapDetailId, levelId, multiplayerRoomId, navigate, submitLoading, submitted, t],
+  );
 
   async function runAutoSubmitPrecheck(targetAstSpec: string): Promise<boolean> {
     if (!workspaceRef.current || !engineRef.current) return false;
@@ -1050,30 +1051,33 @@ export default function SnakeGameView() {
     [appendBodyCell, buildTrailCells],
   );
 
-  const finishRunAsResult = useCallback((isWin: boolean) => {
-    if (resultShownRef.current) return;
+  const finishRunAsResult = useCallback(
+    (isWin: boolean) => {
+      if (resultShownRef.current) return;
 
-    const engine = engineRef.current;
-    if (!engine) return;
+      const engine = engineRef.current;
+      if (!engine) return;
 
-    if (isWin) {
+      if (isWin) {
+        resultShownRef.current = true;
+        setShowWinDecisionModal(true);
+        return;
+      }
+
       resultShownRef.current = true;
-      setShowWinDecisionModal(true);
-      return;
-    }
-
-    resultShownRef.current = true;
-    setIsExecutorRunning(false);
-    setGameResult({
-      isWin,
-      stepCount: engine.getStepCount(),
-      blocksUsed: blocksUsedRef.current,
-      elapsedTime: timerElapsedRef.current,
-      fruitsCollected: collectedFruitsRef.current,
-    });
-    setShowResultsModal(false);
-    setResultsDockVisible(false);
-  }, [t]);
+      setIsExecutorRunning(false);
+      setGameResult({
+        isWin,
+        stepCount: engine.getStepCount(),
+        blocksUsed: blocksUsedRef.current,
+        elapsedTime: timerElapsedRef.current,
+        fruitsCollected: collectedFruitsRef.current,
+      });
+      setShowResultsModal(false);
+      setResultsDockVisible(false);
+    },
+    [t],
+  );
 
   const triggerSnakeFailure = useCallback(
     (message: string, reason: SnakeFailureReason = "trap") => {
@@ -1928,7 +1932,10 @@ export default function SnakeGameView() {
               void handleSubmitRun();
             }}
             disabled={isLoading || !!error || submitLoading || submitted}
-            style={controlButtonStyle("primary", isLoading || !!error || submitLoading || submitted)}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || submitLoading || submitted,
+            )}
           >
             <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
           </button>
@@ -2399,7 +2406,9 @@ export default function SnakeGameView() {
       <RunDecisionModal
         isOpen={showSubmitConfirmModal}
         title={t("gameSubmitConfirmTitle")}
-        description={pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")}
+        description={
+          pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")
+        }
         primaryLabel={t("gameSubmitConfirmYes")}
         secondaryLabel={t("gameSubmitConfirmNo")}
         onPrimary={() => {

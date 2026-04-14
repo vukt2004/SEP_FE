@@ -1138,7 +1138,9 @@ export default function GameView() {
     }
 
     const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
-    const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto ? lastEvaluatedIsWinRef.current : false;
+    const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto
+      ? lastEvaluatedIsWinRef.current
+      : false;
 
     if (!isProgramCheckedAfterAuto) {
       showWarningToast(t("gameSubmitAutoCheckFailed"));
@@ -1206,7 +1208,9 @@ export default function GameView() {
           window.alert(res.data?.message ?? "Submit failed.");
         }
       } else {
-        const before = snapshot.isWin ? await learnerProfileApi.getMyXpProfile().catch(() => null) : null;
+        const before = snapshot.isWin
+          ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+          : null;
         const validateRes = await learnerGameplayApi.validateSolution({
           mapId: levelId as string,
           mapDetailId: playMapDetailIdRef.current ?? undefined,
@@ -2136,7 +2140,9 @@ export default function GameView() {
       <RunDecisionModal
         isOpen={showSubmitConfirmModal}
         title={t("gameSubmitConfirmTitle")}
-        description={pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")}
+        description={
+          pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")
+        }
         primaryLabel={t("gameSubmitConfirmYes")}
         secondaryLabel={t("gameSubmitConfirmNo")}
         onPrimary={() => {
