@@ -5,6 +5,7 @@ import type {
   UploadMapApiResult,
   GetMapsParams,
   MapsListResult,
+  MostPlayedCreatedMapsLeaderboardResult,
   MapDetailResult,
   MapOwnershipResult,
   MapInfoResult,
@@ -13,6 +14,7 @@ import type {
   DuplicateMapAsNewRequest,
 } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
+import type { LeaderboardPeriodType } from "@/types/api/learner/xp";
 
 /**
  * Learner Maps API
@@ -43,6 +45,19 @@ export const learnerMapsApi = {
     return learnerAxios.get<MapsListResult>("/api/learner/maps", {
       params,
     });
+  },
+
+  getMostPlayedCreatedLeaderboard(
+    periodType: LeaderboardPeriodType = "Week",
+    pageNumber = 1,
+    pageSize = 20,
+  ) {
+    return learnerAxios.get<MostPlayedCreatedMapsLeaderboardResult>(
+      "/api/learner/maps/leaderboard/most-played-created",
+      {
+        params: { periodType, pageNumber, pageSize },
+      },
+    );
   },
 
   /**

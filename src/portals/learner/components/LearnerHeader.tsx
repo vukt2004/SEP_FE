@@ -21,6 +21,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
 import { learnerNotificationsApi } from "@/services/api/learner/notifications.api";
 import { notificationHub } from "@/lib/realtime/notificationHub";
+import { getLocalizedNotificationContent } from "@/lib/notifications/notificationContent";
 import { useThemeStore } from "@/stores/theme.store";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
@@ -147,6 +148,7 @@ export default function LearnerHeader() {
         readAt: toString(obj.readAt ?? obj.ReadAt) || null,
         createdAt,
         actionUrl: toString(obj.actionUrl ?? obj.ActionUrl) || null,
+        payloadJson: toString(obj.payloadJson ?? obj.PayloadJson) || null,
         actor: toActor(obj.actor ?? obj.Actor),
       };
     };
@@ -189,6 +191,11 @@ export default function LearnerHeader() {
       setUnreadCount(0);
     });
 
+    const offReconnected = notificationHub.on("Reconnected", () => {
+      void loadUnreadCount();
+      void loadNotifications();
+    });
+
     void notificationHub.connect().catch(() => {
       // Keep header usable even if realtime connection fails.
     });
@@ -198,6 +205,7 @@ export default function LearnerHeader() {
       offUnread();
       offRead();
       offAllRead();
+      offReconnected();
       void notificationHub.disconnect();
     };
   }, []);
@@ -296,7 +304,8 @@ export default function LearnerHeader() {
   );
 
   const getActorInitial = (item: NotificationItem) => {
-    const source = item.actor?.fullName?.trim() || item.title.trim();
+    const localized = getLocalizedNotificationContent(item, t);
+    const source = item.actor?.fullName?.trim() || localized.title.trim();
     if (!source) return "N";
     const parts = source.split(/\s+/).filter(Boolean);
     const first = parts[0]?.[0] ?? "N";
@@ -552,88 +561,124 @@ export default function LearnerHeader() {
                         {t("notification.empty")}
                       </div>
                     ) : (
-                      visibleNotifications.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => void openNotification(item)}
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            background: item.isRead ? "transparent" : "rgba(24, 119, 242, 0.12)",
-                            borderBottom: "1px solid var(--border)",
-                            textAlign: "left",
-                            padding: "10px 14px",
-                            display: "flex",
-                            gap: 10,
-                            alignItems: "flex-start",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <div
+                      visibleNotifications.map((item) => {
+                        const content = getLocalizedNotificationContent(item, t);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => void openNotification(item)}
                             style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 999,
-                              background:
-                                "linear-gradient(135deg, color-mix(in srgb, var(--primary) 62%, #fff) 0%, color-mix(in srgb, var(--primary) 28%, #0ea5e9) 100%)",
-                              color: "white",
-                              fontSize: 12,
-                              fontWeight: 800,
-                              display: "grid",
-                              placeItems: "center",
-                              flex: "0 0 36px",
-                            }}
-                          >
-                            {getActorInitial(item)}
-                          </div>
-                          <div
-                            style={{
-                              flex: 1,
+                              width: "100%",
+                              border: "none",
+                              background: item.isRead ? "transparent" : "rgba(24, 119, 242, 0.12)",
+                              borderBottom: "1px solid var(--border)",
+                              textAlign: "left",
+                              padding: "10px 14px",
                               display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
+                              gap: 10,
+                              alignItems: "flex-start",
+                              cursor: "pointer",
                             }}
                           >
                             <div
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: 10,
+                                width: 36,
+                                height: 36,
+                                borderRadius: 999,
+                                background:
+                                  "linear-gradient(135deg, color-mix(in srgb, var(--primary) 62%, #fff) 0%, color-mix(in srgb, var(--primary) 28%, #0ea5e9) 100%)",
+                                color: "white",
+                                fontSize: 12,
+                                fontWeight: 800,
+                                display: "grid",
+                                placeItems: "center",
+                                flex: "0 0 36px",
                               }}
                             >
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-                                {item.title}
-                              </span>
-                              {!item.isRead ? (
-                                <span
-                                  style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: 999,
-                                    background: "#1877f2",
-                                    flex: "0 0 8px",
-                                  }}
-                                />
-                              ) : null}
+                              {getActorInitial(item)}
                             </div>
-                            <span style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>
-                              {item.body}
-                            </span>
-                            <span
+                            <div
                               style={{
-                                fontSize: 11,
-                                color: item.isRead ? "var(--muted)" : "#1877f2",
-                                fontWeight: 700,
+                                flex: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
                               }}
                             >
-                              {toRelativeTime(item.createdAt)}
-                            </span>
-                          </div>
-                        </button>
-                      ))
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 10,
+                                }}
+                              >
+                                <span
+                                  style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}
+                                >
+                                  {content.title}
+                                </span>
+                                {!item.isRead ? (
+                                  <span
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: 999,
+                                      background: "#1877f2",
+                                      flex: "0 0 8px",
+                                    }}
+                                  />
+                                ) : null}
+                              </div>
+                              <span
+                                style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}
+                              >
+                                {content.body}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: item.isRead ? "var(--muted)" : "#1877f2",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {toRelativeTime(item.createdAt)}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })
                     )}
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      padding: "10px 14px",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationOpen(false);
+                        navigate(ROUTES.LEARNER_NOTIFICATIONS ?? "/app/notifications");
+                      }}
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--primary)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("notification.viewAll")}
+                    </button>
                   </div>
                 </motion.div>
               ) : null}
@@ -745,6 +790,14 @@ export default function LearnerHeader() {
                   >
                     <MessageCircle size={18} />
                     <span>{locale === "vi" ? "Cuộc trò chuyện" : "Conversations"}</span>
+                  </NavLink>
+                  <NavLink
+                    to={ROUTES.LEARNER_COMPLAINTS ?? "/app/complaints"}
+                    onClick={() => setMenuOpen(false)}
+                    style={menuLinkStyle}
+                  >
+                    <MessageSquareWarning size={18} />
+                    <span>{t("nav.complaints")}</span>
                   </NavLink>
                   <button
                     type="button"

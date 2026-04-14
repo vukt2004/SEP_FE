@@ -68,6 +68,17 @@ export interface MapTag {
  */
 export type MapTagsResult = ApiResult<MapTag[]>;
 
+export interface MostPlayedCreatedMapLeaderboardItem {
+  rank: number;
+  mapId: string;
+  mapTitle: string;
+  creatorUserId: string;
+  creatorDisplayName: string;
+  playCount: number;
+  uniquePlayerCount: number;
+  lastPlayedAt?: string | null;
+}
+
 /**
  * Response data after uploading a map
  */
@@ -312,3 +323,17 @@ export interface MapOwnershipData {
  * Map ownership check API response
  */
 export type MapOwnershipResult = ApiResult<MapOwnershipData>;
+
+export interface SimplePaginationResult<T> {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  items: T[];
+}
+
+export type MostPlayedCreatedMapsLeaderboardResult = ApiResult<
+  SimplePaginationResult<MostPlayedCreatedMapLeaderboardItem>
+>;
