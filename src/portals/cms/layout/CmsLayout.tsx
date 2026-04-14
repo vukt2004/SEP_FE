@@ -12,6 +12,8 @@ import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
 import { ROUTES } from "@/lib/constants/routes";
 import { useState } from "react";
 import { getCmsRoleLabel, type CmsRole } from "@/lib/auth/role";
+import { useTranslation } from "@/lib/i18n/translations";
+import { useLanguageStore } from "@/stores/language.store";
 import {
   LayoutDashboard,
   Map,
@@ -34,6 +36,9 @@ const CmsLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, role } = useCmsAuthStore();
+  const { t } = useTranslation();
+  const locale = useLanguageStore((s) => s.locale);
+  const setLocale = useLanguageStore((s) => s.setLocale);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
@@ -43,52 +48,62 @@ const CmsLayout: React.FC = () => {
 
   const navItems: Array<{
     path: string;
-    label: string;
+    labelKey: string;
     icon: LucideIcon;
     roles: CmsRole[];
   }> = [
-    { path: ROUTES.CMS_DASHBOARD, label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_DASHBOARD,
+      labelKey: "cmsLayout.nav.dashboard",
+      icon: LayoutDashboard,
+      roles: ["admin"],
+    },
     {
       path: ROUTES.CMS_MAPS,
-      label: "Games",
+      labelKey: "cmsLayout.nav.games",
       icon: Map,
       roles: ["admin", "moderator"],
     },
     {
       path: ROUTES.CMS_GAMEPLAY,
-      label: "Gameplay scoring",
+      labelKey: "cmsLayout.nav.gameplay",
       icon: SlidersHorizontal,
       roles: ["admin"],
     },
     {
       path: ROUTES.CMS_ORBITCOIN,
-      label: "OrbitCoin rate",
+      labelKey: "cmsLayout.nav.orbitcoin",
       icon: Coins,
       roles: ["admin"],
     },
-    { path: ROUTES.CMS_USERS, label: "Users", icon: Users, roles: ["admin"] },
+    { path: ROUTES.CMS_USERS, labelKey: "cmsLayout.nav.users", icon: Users, roles: ["admin"] },
     {
       path: ROUTES.CMS_SYSTEM_ANNOUNCEMENT,
-      label: "System announcement",
+      labelKey: "cmsLayout.nav.announcement",
       icon: Megaphone,
       roles: ["admin"],
     },
     {
       path: ROUTES.CMS_REPORTS,
-      label: "Reports",
+      labelKey: "cmsLayout.nav.reports",
       icon: Flag,
       roles: ["admin", "moderator"],
     },
-    { path: ROUTES.CMS_PACKAGES, label: "Packages", icon: Package, roles: ["admin"] },
+    {
+      path: ROUTES.CMS_PACKAGES,
+      labelKey: "cmsLayout.nav.packages",
+      icon: Package,
+      roles: ["admin"],
+    },
     {
       path: ROUTES.CMS_COMPLAINTS,
-      label: "Complaints",
+      labelKey: "cmsLayout.nav.complaints",
       icon: MessageSquareWarning,
       roles: ["admin", "moderator"],
     },
     {
       path: ROUTES.CMS_COMPLAINT_CATEGORIES,
-      label: "Complaint categories",
+      labelKey: "cmsLayout.nav.complaintCategories",
       icon: Tags,
       roles: ["admin"],
     },
@@ -131,7 +146,7 @@ const CmsLayout: React.FC = () => {
                 QuackOrbit
               </div>
               <div style={{ color: "var(--text-2)", fontSize: "12px" }}>
-                CMS {getCmsRoleLabel(role)}
+                {t("cmsLayout.cmsLabel")} {getCmsRoleLabel(role)}
               </div>
             </div>
           )}
@@ -172,7 +187,7 @@ const CmsLayout: React.FC = () => {
                 }}
               >
                 <IconComponent size={20} />
-                {!isSidebarCollapsed && <span>{item.label}</span>}
+                {!isSidebarCollapsed && <span>{t(item.labelKey)}</span>}
               </Link>
             );
           })}
@@ -195,7 +210,7 @@ const CmsLayout: React.FC = () => {
           }}
         >
           {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          {!isSidebarCollapsed && <span>Collapse</span>}
+          {!isSidebarCollapsed && <span>{t("cmsLayout.collapse")}</span>}
         </button>
       </aside>
 
@@ -217,11 +232,35 @@ const CmsLayout: React.FC = () => {
         >
           <div>
             <h1 style={{ color: "var(--text)", fontSize: "20px", fontWeight: "600", margin: 0 }}>
-              {visibleNavItems.find((item) => isActive(item.path))?.label || "CMS"}
+              {(() => {
+                const activeItem = visibleNavItems.find((item) => isActive(item.path));
+                return activeItem ? t(activeItem.labelKey) : t("cmsLayout.titleFallback");
+              })()}
             </h1>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "en" ? "vi" : "en")}
+              style={{
+                padding: "8px 12px",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                color: "var(--text-2)",
+                cursor: "pointer",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+              }}
+              title={t("language")}
+            >
+              <span>{locale === "en" ? t("languageVi") : t("languageEn")}</span>
+            </button>
+
             {/* Role Badge */}
             <div
               style={{
@@ -265,7 +304,7 @@ const CmsLayout: React.FC = () => {
               }}
             >
               <User size={18} />
-              <span>Profile</span>
+              <span>{t("cmsLayout.profile")}</span>
             </button>
 
             {/* Logout Button */}
@@ -296,7 +335,7 @@ const CmsLayout: React.FC = () => {
               }}
             >
               <LogOut size={18} />
-              <span>Logout</span>
+              <span>{t("logout")}</span>
             </button>
           </div>
         </header>

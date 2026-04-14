@@ -43,12 +43,21 @@ export interface PaginationResult<T> {
 export type UserListResult = PaginationResult<UserListItem>;
 export type UserDetailResult = ApiResult<UserDetail>;
 
+export type CmsUserRoleFilter = "Learner" | "Admin" | "Moderator";
+
 export interface GetUsersParams {
+  page?: number;
   pageNumber?: number;
   pageSize?: number;
   search?: string;
+  email?: string;
+  phoneNumber?: string;
+  role?: CmsUserRoleFilter;
   status?: EntityStatusEnum;
-  role?: RoleEnum;
+  joiningFrom?: string;
+  joiningTo?: string;
+  sortBy?: string;
+  isAscending?: boolean;
 }
 
 export interface UpdateUserRequest {

@@ -14,8 +14,10 @@ import { cmsPackagesApi } from "@/services/api/cms/packages.api";
 import type { PackageListItem, PackageDetail, PackageStatusEnum } from "@/types/api/cms/packages";
 import { Modal } from "../components/Modal";
 import { Plus, Eye, Pencil, Check } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export const PackagesPage: React.FC = () => {
+  const { t, locale } = useTranslation();
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export const PackagesPage: React.FC = () => {
         setTotalItems(paginationData.totalItems);
       }
     } catch (err) {
-      setError("Failed to load packages");
+      setError(t("cmsPackages.failedLoad"));
       console.error("Packages fetch error:", err);
     } finally {
       setLoading(false);
@@ -88,10 +90,10 @@ export const PackagesPage: React.FC = () => {
         setSelectedPackage(packageDetail);
         setDetailModalOpen(true);
       } else {
-        alert("Package not found");
+        alert(t("cmsPackages.notFound"));
       }
     } catch (err) {
-      alert("Failed to load package details");
+      alert(t("cmsPackages.failedLoadDetail"));
       console.error("Package detail error:", err);
     } finally {
       setActionLoading(false);
@@ -104,15 +106,15 @@ export const PackagesPage: React.FC = () => {
       setActionLoading(true);
       const response = await cmsPackagesApi.createPackage(createForm);
       if (response.data.isSuccess) {
-        alert(`Package created successfully! ID: ${response.data.data}`);
+        alert(`${t("cmsPackages.createSuccess")} ID: ${response.data.data}`);
         setCreateModalOpen(false);
         setCreateForm({ name: "", durationDays: 0, limit: 0, price: 0, featuresSpec: "" });
         fetchPackages();
       } else {
-        alert(response.data.message || "Failed to create package");
+        alert(response.data.message || t("cmsPackages.failedCreate"));
       }
     } catch (err) {
-      alert("Failed to create package");
+      alert(t("cmsPackages.failedCreate"));
       console.error("Create package error:", err);
     } finally {
       setActionLoading(false);
@@ -136,10 +138,10 @@ export const PackagesPage: React.FC = () => {
         });
         setUpdateModalOpen(true);
       } else {
-        alert("Package not found");
+        alert(t("cmsPackages.notFound"));
       }
     } catch (err) {
-      alert("Failed to load package details");
+      alert(t("cmsPackages.failedLoadDetail"));
       console.error("Package detail error:", err);
     } finally {
       setActionLoading(false);
@@ -153,15 +155,15 @@ export const PackagesPage: React.FC = () => {
       setActionLoading(true);
       const response = await cmsPackagesApi.updatePackage(selectedPackage.id, updateForm);
       if (response.data.isSuccess) {
-        alert(response.data.message || "Package updated successfully!");
+        alert(response.data.message || t("cmsPackages.updateSuccess"));
         setUpdateModalOpen(false);
         setSelectedPackage(null);
         fetchPackages();
       } else {
-        alert(response.data.message || "Failed to update package");
+        alert(response.data.message || t("cmsPackages.failedUpdate"));
       }
     } catch (err) {
-      alert("Failed to update package");
+      alert(t("cmsPackages.failedUpdate"));
       console.error("Update package error:", err);
     } finally {
       setActionLoading(false);
@@ -171,13 +173,13 @@ export const PackagesPage: React.FC = () => {
   const getPackageStatusLabel = (status: PackageStatusEnum) => {
     switch (status) {
       case 0:
-        return "Inactive";
+        return t("cmsPackages.status.inactive");
       case 1:
-        return "Active";
+        return t("cmsPackages.status.active");
       case 2:
-        return "Archived";
+        return t("cmsPackages.status.archived");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
@@ -195,20 +197,29 @@ export const PackagesPage: React.FC = () => {
   };
 
   const formatDuration = (days: number) => {
-    if (days === 0) return "Unlimited";
+    if (days === 0) return t("cmsPackages.unlimited");
     if (days >= 365) {
       const years = Math.floor(days / 365);
-      return `${years} ${years === 1 ? "year" : "years"}`;
+      if (locale === "vi") {
+        return `${years} ${t("cmsPackages.yearUnit")}`;
+      }
+      return `${years} ${years === 1 ? t("cmsPackages.year") : t("cmsPackages.years")}`;
     }
     if (days >= 30) {
       const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? "month" : "months"}`;
+      if (locale === "vi") {
+        return `${months} ${t("cmsPackages.monthUnit")}`;
+      }
+      return `${months} ${months === 1 ? t("cmsPackages.month") : t("cmsPackages.months")}`;
     }
-    return `${days} ${days === 1 ? "day" : "days"}`;
+    if (locale === "vi") {
+      return `${days} ${t("cmsPackages.dayUnit")}`;
+    }
+    return `${days} ${days === 1 ? t("cmsPackages.day") : t("cmsPackages.days")}`;
   };
 
   const formatLimit = (limit: number | null) => {
-    if (limit === null || limit === 0) return "Unlimited";
+    if (limit === null || limit === 0) return t("cmsPackages.unlimited");
     return limit.toString();
   };
 
@@ -234,7 +245,7 @@ export const PackagesPage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading packages...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>{t("cmsPackages.loading")}</p>
         </div>
       </div>
     );
@@ -260,9 +271,9 @@ export const PackagesPage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            Packages Management
+            {t("cmsPackages.title")}
           </h1>
-          <p style={{ color: "var(--text-2)" }}>Manage user subscription packages</p>
+          <p style={{ color: "var(--text-2)" }}>{t("cmsPackages.subtitle")}</p>
         </div>
         <button
           onClick={() => setCreateModalOpen(true)}
@@ -281,7 +292,7 @@ export const PackagesPage: React.FC = () => {
           }}
         >
           <Plus size={16} />
-          <span>Create Package</span>
+          <span>{t("cmsPackages.create")}</span>
         </button>
       </div>
 
@@ -304,7 +315,7 @@ export const PackagesPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Packages
+            {t("cmsPackages.totalPackages")}
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {totalItems}
@@ -320,7 +331,7 @@ export const PackagesPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Active Packages
+            {t("cmsPackages.activePackages")}
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {packages.filter((p) => p.isActive).length}
@@ -376,7 +387,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  PACKAGE NAME
+                  {t("cmsPackages.table.packageName")}
                 </th>
                 <th
                   style={{
@@ -387,7 +398,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  DURATION
+                  {t("cmsPackages.table.duration")}
                 </th>
                 <th
                   style={{
@@ -398,7 +409,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  LIMIT
+                  {t("cmsPackages.table.limit")}
                 </th>
                 <th
                   style={{
@@ -409,7 +420,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  PRICE
+                  {t("cmsPackages.table.price")}
                 </th>
                 <th
                   style={{
@@ -420,7 +431,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  STATUS
+                  {t("cmsPackages.table.status")}
                 </th>
                 <th
                   style={{
@@ -431,7 +442,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  FEATURES
+                  {t("cmsPackages.table.features")}
                 </th>
                 <th
                   style={{
@@ -442,7 +453,7 @@ export const PackagesPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  ACTIONS
+                  {t("cmsPackages.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -478,7 +489,7 @@ export const PackagesPage: React.FC = () => {
                         fontWeight: pkg.price > 0 ? "500" : "normal",
                       }}
                     >
-                      {pkg.price > 0 ? `$${pkg.price.toFixed(2)}` : "Free"}
+                      {pkg.price > 0 ? `$${pkg.price.toFixed(2)}` : t("free")}
                     </div>
                   </td>
                   <td style={{ padding: "16px" }}>
@@ -517,7 +528,7 @@ export const PackagesPage: React.FC = () => {
                             gap: "4px",
                           }}
                         >
-                          <Check size={14} /> Available
+                          <Check size={14} /> {t("cmsPackages.available")}
                         </span>
                       )}
                     </div>
@@ -533,7 +544,7 @@ export const PackagesPage: React.FC = () => {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {pkg.featuresSpec || "—"}
+                      {pkg.featuresSpec || t("cmsPackages.none")}
                     </div>
                   </td>
                   <td style={{ padding: "16px" }}>
@@ -552,7 +563,7 @@ export const PackagesPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="View Details"
+                        title={t("cmsPackages.action.viewDetails")}
                       >
                         <Eye size={16} />
                       </button>
@@ -570,7 +581,7 @@ export const PackagesPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="Edit Package"
+                        title={t("cmsPackages.action.editPackage")}
                       >
                         <Pencil size={16} />
                       </button>
@@ -596,7 +607,7 @@ export const PackagesPage: React.FC = () => {
             }}
           >
             <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-              Showing page {currentPage} of {totalPages}
+              {t("showingPage")} {currentPage} {t("of")} {totalPages}
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
@@ -614,7 +625,7 @@ export const PackagesPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Previous
+                {t("previous")}
               </button>
 
               <button
@@ -631,7 +642,7 @@ export const PackagesPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Next
+                {t("next")}
               </button>
             </div>
           </div>
@@ -642,7 +653,7 @@ export const PackagesPage: React.FC = () => {
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Create New Package"
+        title={t("cmsPackages.createModalTitle")}
         maxWidth="600px"
       >
         <form
@@ -660,7 +671,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Package Name *
+              {t("cmsPackages.field.packageName")} *
             </label>
             <input
               type="text"
@@ -676,7 +687,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="Enter package name"
+                placeholder={t("cmsPackages.placeholder.packageName")}
             />
           </div>
 
@@ -691,7 +702,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Duration (Days) *
+              {t("cmsPackages.field.durationDays")} *
             </label>
             <input
               type="number"
@@ -710,7 +721,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for unlimited"
+                placeholder={t("cmsPackages.placeholder.unlimited")}
             />
           </div>
 
@@ -725,7 +736,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Usage Limit *
+              {t("cmsPackages.field.usageLimit")} *
             </label>
             <input
               type="number"
@@ -744,7 +755,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for unlimited"
+                placeholder={t("cmsPackages.placeholder.unlimited")}
             />
           </div>
 
@@ -759,7 +770,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Price *
+              {t("cmsPackages.field.price")} *
             </label>
             <input
               type="number"
@@ -779,7 +790,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for free"
+                placeholder={t("cmsPackages.placeholder.free")}
             />
           </div>
 
@@ -794,7 +805,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Features Specification *
+              {t("cmsPackages.field.featuresSpec")} *
             </label>
             <textarea
               value={createForm.featuresSpec}
@@ -812,7 +823,7 @@ export const PackagesPage: React.FC = () => {
                 resize: "vertical",
                 fontFamily: "inherit",
               }}
-              placeholder="Describe package features"
+              placeholder={t("cmsPackages.placeholder.featuresSpec")}
             />
           </div>
 
@@ -840,7 +851,7 @@ export const PackagesPage: React.FC = () => {
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -856,7 +867,7 @@ export const PackagesPage: React.FC = () => {
                 cursor: actionLoading ? "not-allowed" : "pointer",
               }}
             >
-              {actionLoading ? "Creating..." : "Create Package"}
+              {actionLoading ? t("cmsPackages.creating") : t("cmsPackages.create")}
             </button>
           </div>
         </form>
@@ -866,7 +877,7 @@ export const PackagesPage: React.FC = () => {
       <Modal
         isOpen={updateModalOpen}
         onClose={() => setUpdateModalOpen(false)}
-        title="Update Package"
+        title={t("cmsPackages.updateModalTitle")}
         maxWidth="600px"
       >
         <form
@@ -884,7 +895,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Package Name *
+              {t("cmsPackages.field.packageName")} *
             </label>
             <input
               type="text"
@@ -900,7 +911,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="Enter package name"
+                placeholder={t("cmsPackages.placeholder.packageName")}
             />
           </div>
 
@@ -915,7 +926,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Duration (Days) *
+              {t("cmsPackages.field.durationDays")} *
             </label>
             <input
               type="number"
@@ -934,7 +945,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for unlimited"
+                placeholder={t("cmsPackages.placeholder.unlimited")}
             />
           </div>
 
@@ -949,7 +960,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Usage Limit *
+              {t("cmsPackages.field.usageLimit")} *
             </label>
             <input
               type="number"
@@ -968,7 +979,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for unlimited"
+                placeholder={t("cmsPackages.placeholder.unlimited")}
             />
           </div>
 
@@ -983,7 +994,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Price *
+              {t("cmsPackages.field.price")} *
             </label>
             <input
               type="number"
@@ -1003,7 +1014,7 @@ export const PackagesPage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="0 for free"
+                placeholder={t("cmsPackages.placeholder.free")}
             />
           </div>
 
@@ -1018,7 +1029,7 @@ export const PackagesPage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Features Specification *
+              {t("cmsPackages.field.featuresSpec")} *
             </label>
             <textarea
               value={updateForm.featuresSpec}
@@ -1036,7 +1047,7 @@ export const PackagesPage: React.FC = () => {
                 resize: "vertical",
                 fontFamily: "inherit",
               }}
-              placeholder="Describe package features"
+              placeholder={t("cmsPackages.placeholder.featuresSpec")}
             />
           </div>
 
@@ -1054,7 +1065,7 @@ export const PackagesPage: React.FC = () => {
                 }}
               />
               <span style={{ fontSize: "14px", color: "var(--text)" }}>
-                Package is active and available for purchase
+                {t("cmsPackages.field.activeForPurchase")}
               </span>
             </label>
           </div>
@@ -1083,7 +1094,7 @@ export const PackagesPage: React.FC = () => {
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -1099,7 +1110,7 @@ export const PackagesPage: React.FC = () => {
                 cursor: actionLoading ? "not-allowed" : "pointer",
               }}
             >
-              {actionLoading ? "Updating..." : "Update Package"}
+              {actionLoading ? t("cmsPackages.updating") : t("cmsPackages.update")}
             </button>
           </div>
         </form>
@@ -1109,7 +1120,7 @@ export const PackagesPage: React.FC = () => {
       <Modal
         isOpen={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
-        title="Package Details"
+        title={t("cmsPackages.detailModalTitle")}
         maxWidth="700px"
       >
         {selectedPackage && (
@@ -1161,7 +1172,7 @@ export const PackagesPage: React.FC = () => {
                       gap: "4px",
                     }}
                   >
-                    <Check size={14} /> Currently Available
+                    <Check size={14} /> {t("cmsPackages.currentlyAvailable")}
                   </span>
                 )}
               </div>
@@ -1171,7 +1182,7 @@ export const PackagesPage: React.FC = () => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Duration
+                  {t("cmsPackages.field.duration")}
                 </div>
                 <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
                   {formatDuration(selectedPackage.durationDays)}
@@ -1179,7 +1190,7 @@ export const PackagesPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Limit
+                  {t("cmsPackages.field.limit")}
                 </div>
                 <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
                   {formatLimit(selectedPackage.limit)}
@@ -1187,7 +1198,7 @@ export const PackagesPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Price
+                  {t("cmsPackages.field.price")}
                 </div>
                 <div
                   style={{
@@ -1196,15 +1207,17 @@ export const PackagesPage: React.FC = () => {
                     fontWeight: "600",
                   }}
                 >
-                  {selectedPackage.price > 0 ? `$${selectedPackage.price.toFixed(2)}` : "Free"}
+                  {selectedPackage.price > 0 ? `$${selectedPackage.price.toFixed(2)}` : t("free")}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Availability
+                  {t("cmsPackages.field.availability")}
                 </div>
                 <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                  {selectedPackage.isActive ? "Available" : "Unavailable"}
+                  {selectedPackage.isActive
+                    ? t("cmsPackages.available")
+                    : t("cmsPackages.unavailable")}
                 </div>
               </div>
             </div>
@@ -1219,7 +1232,7 @@ export const PackagesPage: React.FC = () => {
                   marginBottom: "8px",
                 }}
               >
-                Features Specification
+                {t("cmsPackages.field.featuresSpec")}
               </div>
               <div
                 style={{
@@ -1236,7 +1249,7 @@ export const PackagesPage: React.FC = () => {
                   overflow: "auto",
                 }}
               >
-                {selectedPackage.featuresSpec || "No features specified"}
+                {selectedPackage.featuresSpec || t("cmsPackages.noFeatures")}
               </div>
             </div>
 
@@ -1248,7 +1261,7 @@ export const PackagesPage: React.FC = () => {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Package ID
+                {t("cmsPackages.packageId")}
               </div>
               <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
                 {selectedPackage.id}

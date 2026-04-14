@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw, Save, Coins } from "lucide-react";
 import { cmsOrbitCoinApi, type CmsExchangeRateDto } from "@/services/api/cms/orbitcoin.api";
+import { useTranslation } from "@/lib/i18n/translations";
 
 type FormState = {
   rate: string;
@@ -34,6 +35,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 const OrbitCoinExchangeRatePage: React.FC = () => {
+  const { t, locale } = useTranslation();
+  const localeTag = locale === "vi" ? "vi-VN" : "en-US";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +60,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
     try {
       const { data } = await cmsOrbitCoinApi.getExchangeRate();
       if (!data.isSuccess || !data.data) {
-        setError(data.message || data.errors?.join(", ") || "Failed to load exchange rate");
+        setError(data.message || data.errors?.join(", ") || t("cmsOrbit.failedLoad"));
         return;
       }
 
@@ -69,11 +72,11 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
         rate: String(dto.rate),
       }));
     } catch {
-      setError("Failed to load exchange rate");
+      setError(t("cmsOrbit.failedLoad"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadExchangeRateHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -103,7 +106,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
 
   const handleSave = async () => {
     if (!canSave) {
-      setError("Rate must be a positive number.");
+      setError(t("cmsOrbit.positiveRate"));
       return;
     }
 
@@ -119,7 +122,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
       });
 
       if (!data.isSuccess || !data.data) {
-        setError(data.message || data.errors?.join(", ") || "Update failed");
+        setError(data.message || data.errors?.join(", ") || t("cmsOrbit.updateFailed"));
         return;
       }
 
@@ -131,10 +134,10 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
         rate: String(dto.rate),
         reason: "",
       }));
-      setSuccess(data.message || "Exchange rate updated successfully.");
+      setSuccess(data.message || t("cmsOrbit.updateSuccess"));
       await loadExchangeRateHistory();
     } catch {
-      setError("Update failed");
+      setError(t("cmsOrbit.updateFailed"));
     } finally {
       setSaving(false);
       setConfirmOpen(false);
@@ -142,10 +145,14 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
   };
 
   const confirmMessage = useMemo(() => {
-    const currentText = currentRate != null ? currentRate.toLocaleString("vi-VN") : "N/A";
-    const nextText = Number.isFinite(numericRate) ? numericRate.toLocaleString("vi-VN") : "N/A";
-    return `Apply exchange rate change from ${currentText} to ${nextText} VND / 1 OrbitCoin?`;
-  }, [currentRate, numericRate]);
+    const currentText = currentRate != null ? currentRate.toLocaleString(localeTag) : t("cmsOrbit.na");
+    const nextText = Number.isFinite(numericRate)
+      ? numericRate.toLocaleString(localeTag)
+      : t("cmsOrbit.na");
+    return t("cmsOrbit.confirmMessage")
+      .replace("{current}", currentText)
+      .replace("{next}", nextText);
+  }, [currentRate, localeTag, numericRate, t]);
 
   return (
     <div style={{ padding: 24, display: "grid", gap: 16 }}>
@@ -174,10 +181,10 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>
-              OrbitCoin Exchange Rate
+              {t("cmsOrbit.title")}
             </h2>
             <p style={{ margin: "4px 0 0", color: "var(--text-2)", fontSize: 14 }}>
-              Manage conversion rate between OrbitCoin and VND for future top-up orders.
+              {t("cmsOrbit.subtitle")}
             </p>
           </div>
         </div>
@@ -203,18 +210,20 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
           }}
         >
           <RefreshCw size={16} />
-          Refresh
+          {t("cmsOrbit.refresh")}
         </button>
       </div>
 
       <div style={{ ...cardStyle, display: "grid", gap: 10 }}>
-        <div style={{ color: "var(--text-2)", fontSize: 13 }}>Current active rate</div>
+        <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("cmsOrbit.currentRate")}</div>
         <div style={{ color: "var(--text)", fontSize: 28, fontWeight: 700 }}>
-          {currentRate != null ? `${currentRate.toLocaleString("vi-VN")} VND / 1 OrbitCoin` : "--"}
+          {currentRate != null
+            ? `${currentRate.toLocaleString(localeTag)} ${t("cmsOrbit.vndPerOrbitCoin")}`
+            : "--"}
         </div>
         {lastUpdatedAt ? (
           <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-            Last updated: {new Date(lastUpdatedAt).toLocaleString()}
+            {t("cmsOrbit.lastUpdated")}: {new Date(lastUpdatedAt).toLocaleString(localeTag)}
           </div>
         ) : null}
       </div>
@@ -224,7 +233,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
           <div
             style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}
           >
-            <Loader2 size={16} className="spin" /> Loading...
+            <Loader2 size={16} className="spin" /> {t("cmsOrbit.loading")}
           </div>
         ) : null}
 
@@ -259,7 +268,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
         ) : null}
 
         <div>
-          <label style={labelStyle}>Rate (VND for 1 OrbitCoin)</label>
+          <label style={labelStyle}>{t("cmsOrbit.field.rate")}</label>
           <input
             type="number"
             min={0}
@@ -267,17 +276,17 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
             value={form.rate}
             onChange={(e) => setForm((prev) => ({ ...prev, rate: e.target.value }))}
             style={inputStyle}
-            placeholder="Example: 1000"
+            placeholder={t("cmsOrbit.placeholder.rate")}
           />
         </div>
 
         <div>
-          <label style={labelStyle}>Reason (optional)</label>
+          <label style={labelStyle}>{t("cmsOrbit.field.reason")}</label>
           <textarea
             value={form.reason}
             onChange={(e) => setForm((prev) => ({ ...prev, reason: e.target.value }))}
             style={{ ...inputStyle, minHeight: 88, resize: "vertical" }}
-            placeholder="Reason for this rate update"
+            placeholder={t("cmsOrbit.placeholder.reason")}
           />
         </div>
 
@@ -289,7 +298,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
           }}
         >
           <div>
-            <label style={labelStyle}>Effective from (optional)</label>
+            <label style={labelStyle}>{t("cmsOrbit.field.effectiveFrom")}</label>
             <input
               type="datetime-local"
               value={form.effectiveFrom}
@@ -298,7 +307,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
             />
           </div>
           <div>
-            <label style={labelStyle}>Effective to (optional)</label>
+            <label style={labelStyle}>{t("cmsOrbit.field.effectiveTo")}</label>
             <input
               type="datetime-local"
               value={form.effectiveTo}
@@ -328,21 +337,25 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
             }}
           >
             {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-            {saving ? "Saving..." : "Update rate"}
+            {saving ? t("cmsOrbit.saving") : t("cmsOrbit.updateRate")}
           </button>
         </div>
       </div>
 
       <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>Rate change history</h3>
+          <h3 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>
+            {t("cmsOrbit.historyTitle")}
+          </h3>
           <span style={{ color: "var(--text-2)", fontSize: 13 }}>
-            {historyLoading ? "Refreshing..." : `${history.length} records`}
+            {historyLoading
+              ? t("cmsOrbit.refreshing")
+              : `${history.length} ${t("cmsOrbit.records")}`}
           </span>
         </div>
 
         {history.length === 0 ? (
-          <div style={{ color: "var(--text-2)", fontSize: 14 }}>No exchange rate history yet.</div>
+          <div style={{ color: "var(--text-2)", fontSize: 14 }}>{t("cmsOrbit.noHistory")}</div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {history.map((item) => (
@@ -368,7 +381,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                   }}
                 >
                   <div style={{ color: "var(--text)", fontWeight: 600 }}>
-                    {item.rate.toLocaleString("vi-VN")} VND / 1 OrbitCoin
+                    {item.rate.toLocaleString(localeTag)} {t("cmsOrbit.vndPerOrbitCoin")}
                   </div>
                   <div
                     style={{
@@ -377,20 +390,24 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                       fontWeight: 600,
                     }}
                   >
-                    {item.isActive ? "Active" : "Archived"}
+                    {item.isActive ? t("cmsOrbit.status.active") : t("cmsOrbit.status.archived")}
                   </div>
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                  Effective:{" "}
-                  {item.effectiveFrom ? new Date(item.effectiveFrom).toLocaleString() : "-"}
+                  {t("cmsOrbit.effective")}: {" "}
+                  {item.effectiveFrom ? new Date(item.effectiveFrom).toLocaleString(localeTag) : "-"}
                   {" -> "}
-                  {item.effectiveTo ? new Date(item.effectiveTo).toLocaleString() : "No end"}
+                  {item.effectiveTo
+                    ? new Date(item.effectiveTo).toLocaleString(localeTag)
+                    : t("cmsOrbit.noEnd")}
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                  Updated: {new Date(item.updatedAt || item.createdAt || "").toLocaleString()}
+                  {t("cmsOrbit.updated")}: {new Date(item.updatedAt || item.createdAt || "").toLocaleString(localeTag)}
                 </div>
                 {item.reason ? (
-                  <div style={{ color: "var(--text)", fontSize: 13 }}>Reason: {item.reason}</div>
+                  <div style={{ color: "var(--text)", fontSize: 13 }}>
+                    {t("cmsOrbit.reason")}: {item.reason}
+                  </div>
                 ) : null}
               </div>
             ))}
@@ -425,10 +442,12 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>Confirm rate update</h3>
+            <h3 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>
+              {t("cmsOrbit.confirmTitle")}
+            </h3>
             <p style={{ margin: 0, color: "var(--text-2)", lineHeight: 1.5 }}>{confirmMessage}</p>
             <p style={{ margin: 0, color: "var(--text-2)", fontSize: 13 }}>
-              This affects upcoming top-up conversions from OrbitCoin to VND.
+              {t("cmsOrbit.confirmHint")}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
@@ -444,7 +463,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                   cursor: saving ? "not-allowed" : "pointer",
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -464,7 +483,7 @@ const OrbitCoinExchangeRatePage: React.FC = () => {
                 }}
               >
                 {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                {saving ? "Updating..." : "Confirm update"}
+                {saving ? t("cmsOrbit.updating") : t("cmsOrbit.confirmUpdate")}
               </button>
             </div>
           </div>

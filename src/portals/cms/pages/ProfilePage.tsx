@@ -13,8 +13,11 @@ import { cmsAuthApi } from "@/services/api/cms/auth.api";
 import type { ProfileResponse, UpdateProfileRequest } from "@/types/api/cms/auth";
 import { Modal } from "../components/Modal";
 import { Pencil } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export const ProfilePage: React.FC = () => {
+  const { t, locale } = useTranslation();
+  const localeTag = locale === "vi" ? "vi-VN" : "en-US";
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export const ProfilePage: React.FC = () => {
         setProfile(profileData);
       }
     } catch (err) {
-      setError("Failed to load profile");
+      setError(t("cmsProfile.failedLoad"));
       console.error("Profile fetch error:", err);
     } finally {
       setLoading(false);
@@ -82,14 +85,14 @@ export const ProfilePage: React.FC = () => {
       const response = await cmsAuthApi.updateProfile(updateData);
 
       if (response.data.isSuccess) {
-        alert("Profile updated successfully!");
+        alert(t("cmsProfile.updateSuccess"));
         setEditModalOpen(false);
         fetchProfile(); // Refresh profile data
       } else {
-        alert(response.data.message || "Failed to update profile");
+        alert(response.data.message || t("cmsProfile.updateFailed"));
       }
     } catch (err) {
-      alert("Failed to update profile");
+      alert(t("cmsProfile.updateFailed"));
       console.error("Update profile error:", err);
     } finally {
       setActionLoading(false);
@@ -104,16 +107,16 @@ export const ProfilePage: React.FC = () => {
   };
 
   const formatGender = (gender: number | null) => {
-    if (gender === null) return "—";
+    if (gender === null) return t("cmsProfile.none");
     switch (gender) {
       case 0:
-        return "Male";
+        return t("cmsProfile.gender.male");
       case 1:
-        return "Female";
+        return t("cmsProfile.gender.female");
       case 2:
-        return "Other";
+        return t("cmsProfile.gender.other");
       default:
-        return "—";
+        return t("cmsProfile.none");
     }
   };
 
@@ -139,7 +142,7 @@ export const ProfilePage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading profile...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>{t("cmsProfile.loading")}</p>
         </div>
       </div>
     );
@@ -157,7 +160,7 @@ export const ProfilePage: React.FC = () => {
             color: "var(--danger)",
           }}
         >
-          {error || "Failed to load profile"}
+          {error || t("cmsProfile.failedLoad")}
         </div>
       </div>
     );
@@ -183,9 +186,9 @@ export const ProfilePage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            My Profile
+            {t("cmsProfile.title")}
           </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage your account information</p>
+          <p style={{ color: "var(--text-2)" }}>{t("cmsProfile.subtitle")}</p>
         </div>
         <button
           onClick={handleOpenEditModal}
@@ -204,7 +207,7 @@ export const ProfilePage: React.FC = () => {
           }}
         >
           <Pencil size={16} />
-          <span>Edit Profile</span>
+          <span>{t("cmsProfile.editProfile")}</span>
         </button>
       </div>
 
@@ -257,10 +260,10 @@ export const ProfilePage: React.FC = () => {
             >
               {profile.firstName && profile.lastName
                 ? `${profile.firstName} ${profile.lastName}`
-                : profile.email || "Admin User"}
+                : profile.email || t("cmsProfile.adminUser")}
             </h2>
             <p style={{ color: "var(--text-2)", fontSize: "14px", marginBottom: "8px" }}>
-              {profile.position || "Administrator"}
+              {profile.position || t("cmsProfile.administrator")}
             </p>
             <p style={{ color: "var(--text-2)", fontSize: "14px" }}>{profile.email}</p>
           </div>
@@ -276,54 +279,54 @@ export const ProfilePage: React.FC = () => {
               marginBottom: "24px",
             }}
           >
-            Personal Information
+            {t("cmsProfile.personalInfo")}
           </h3>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px" }}>
             {/* First Name */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                First Name
+                {t("cmsProfile.field.firstName")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.firstName || "—"}
+                {profile.firstName || t("cmsProfile.none")}
               </div>
             </div>
 
             {/* Last Name */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Last Name
+                {t("cmsProfile.field.lastName")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.lastName || "—"}
+                {profile.lastName || t("cmsProfile.none")}
               </div>
             </div>
 
             {/* Email */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Email Address
+                {t("cmsProfile.field.email")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.email || "—"}
+                {profile.email || t("cmsProfile.none")}
               </div>
             </div>
 
             {/* Phone */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Phone Number
+                {t("cmsProfile.field.phone")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.phoneNumber || "—"}
+                {profile.phoneNumber || t("cmsProfile.none")}
               </div>
             </div>
 
             {/* Gender */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Gender
+                {t("cmsProfile.field.gender")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
                 {formatGender(profile.gender)}
@@ -333,27 +336,29 @@ export const ProfilePage: React.FC = () => {
             {/* Date of Birth */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Date of Birth
+                {t("cmsProfile.field.dateOfBirth")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : "—"}
+                {profile.dateOfBirth
+                  ? new Date(profile.dateOfBirth).toLocaleDateString(localeTag)
+                  : t("cmsProfile.none")}
               </div>
             </div>
 
             {/* Position */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                Position
+                {t("cmsProfile.field.position")}
               </div>
               <div style={{ color: "var(--text)", fontSize: "16px", fontWeight: "500" }}>
-                {profile.position || "—"}
+                {profile.position || t("cmsProfile.none")}
               </div>
             </div>
 
             {/* User ID */}
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                User ID
+                {t("cmsProfile.field.userId")}
               </div>
               <div
                 style={{
@@ -363,7 +368,7 @@ export const ProfilePage: React.FC = () => {
                   wordBreak: "break-all",
                 }}
               >
-                {profile.userId || "—"}
+                {profile.userId || t("cmsProfile.none")}
               </div>
             </div>
           </div>
@@ -378,7 +383,7 @@ export const ProfilePage: React.FC = () => {
               }}
             >
               <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "8px" }}>
-                Bio
+                {t("cmsProfile.field.bio")}
               </div>
               <div
                 style={{
@@ -401,7 +406,7 @@ export const ProfilePage: React.FC = () => {
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title="Edit Profile"
+        title={t("cmsProfile.editModalTitle")}
         maxWidth="600px"
       >
         <form
@@ -419,7 +424,7 @@ export const ProfilePage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              First Name
+              {t("cmsProfile.field.firstName")}
             </label>
             <input
               type="text"
@@ -434,7 +439,7 @@ export const ProfilePage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="Enter first name"
+              placeholder={t("cmsProfile.placeholder.firstName")}
             />
           </div>
 
@@ -449,7 +454,7 @@ export const ProfilePage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Last Name
+              {t("cmsProfile.field.lastName")}
             </label>
             <input
               type="text"
@@ -464,7 +469,7 @@ export const ProfilePage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="Enter last name"
+              placeholder={t("cmsProfile.placeholder.lastName")}
             />
           </div>
 
@@ -479,7 +484,7 @@ export const ProfilePage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Phone Number
+              {t("cmsProfile.field.phone")}
             </label>
             <input
               type="tel"
@@ -494,7 +499,7 @@ export const ProfilePage: React.FC = () => {
                 color: "var(--text)",
                 fontSize: "14px",
               }}
-              placeholder="Enter phone number"
+              placeholder={t("cmsProfile.placeholder.phone")}
             />
           </div>
 
@@ -509,7 +514,7 @@ export const ProfilePage: React.FC = () => {
                 marginBottom: "8px",
               }}
             >
-              Profile Picture
+              {t("cmsProfile.field.profilePicture")}
             </label>
             <input
               type="file"
@@ -527,7 +532,7 @@ export const ProfilePage: React.FC = () => {
             />
             {editForm.avatarFile && (
               <p style={{ fontSize: "12px", color: "var(--text-2)", marginTop: "8px" }}>
-                Selected: {editForm.avatarFile.name}
+                {t("cmsProfile.selected")}: {editForm.avatarFile.name}
               </p>
             )}
           </div>
@@ -556,7 +561,7 @@ export const ProfilePage: React.FC = () => {
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -572,7 +577,7 @@ export const ProfilePage: React.FC = () => {
                 cursor: actionLoading ? "not-allowed" : "pointer",
               }}
             >
-              {actionLoading ? "Saving..." : "Save Changes"}
+              {actionLoading ? t("saving") : t("cmsProfile.saveChanges")}
             </button>
           </div>
         </form>

@@ -7,16 +7,24 @@
  * - Publishing status
  * - Tags and concepts
  * - Pagination controls
- * - Action buttons (View, Approve, Reject)
+ * - Action buttons (View, Review)
  */
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
-import type { MapListItem, MapStatusEnum, MapDetail } from "@/types/api/cms/maps";
+import type {
+  GetMapsParams,
+  MapListItem,
+  MapStatusEnum,
+  MapDetail,
+  MapSortBy as ApiMapSortBy,
+  MapStatusFilter,
+} from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
 import { Eye, Check, CheckCircle, X, Plus, Search, Play } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import { useTranslation } from "@/lib/i18n/translations";
 import {
   canCreateMaps,
   getCurrentUserPlan,
@@ -102,8 +110,227 @@ const resolveMapPreviewUrl = (mapLike: unknown): string | null => {
   return null;
 };
 
+type MapsPageSortBy = "title" | "createdAt" | "difficulty" | "price";
+type MapSortOrder = "asc" | "desc";
+
+const mapStatusToFilterCode: Record<MapStatusEnum, MapStatusFilter> = {
+  Draft: 0,
+  PendingReview: 1,
+  Approved: 2,
+  Rejected: 3,
+  Published: 4,
+};
+
+const mapSortToApiValue: Record<MapsPageSortBy, ApiMapSortBy> = {
+  createdAt: "CreatedAt",
+  title: "Title",
+  difficulty: "Difficulty",
+  price: "Price",
+};
+
+const buildMapsQueryParams = (
+  pageNumber: number,
+  pageSize: number,
+  searchTerm: string,
+  mapStatus: MapStatusEnum | "",
+  difficulty: number | "",
+  sortBy: MapsPageSortBy,
+  sortOrder: MapSortOrder,
+): GetMapsParams => {
+  const normalizedSearch = searchTerm.trim();
+  const resolvedStatus = mapStatus === "" ? undefined : mapStatusToFilterCode[mapStatus];
+  const resolvedDifficulty = difficulty === "" ? undefined : difficulty;
+
+  return {
+    pageNumber,
+    pageSize,
+    search: normalizedSearch || undefined,
+    mapStatus: resolvedStatus,
+    difficulty: resolvedDifficulty,
+    sortBy: mapSortToApiValue[sortBy],
+    sortAscending: sortOrder === "asc",
+  };
+};
+
+type ReviewDecision = "pass" | "fail" | null;
+
+type ReviewSection = {
+  key: string;
+  titleKey: string;
+  criteria: Array<{
+    key: string;
+    labelKey: string;
+  }>;
+};
+
+type ReviewCriterion = {
+  key: string;
+  sectionTitleKey: string;
+  labelKey: string;
+};
+
+const MAP_REVIEW_SECTIONS: ReviewSection[] = [
+  {
+    key: "validity",
+    titleKey: "cmsReview.section.validity",
+    criteria: [
+      {
+        key: "validity-start-goal",
+        labelKey: "cmsReview.criteria.validity.startGoal",
+      },
+      {
+        key: "validity-solvable",
+        labelKey: "cmsReview.criteria.validity.solvable",
+      },
+      {
+        key: "validity-soft-lock",
+        labelKey: "cmsReview.criteria.validity.softLock",
+      },
+      {
+        key: "validity-no-wrong-path",
+        labelKey: "cmsReview.criteria.validity.noWrongPath",
+      },
+      {
+        key: "validity-objects",
+        labelKey: "cmsReview.criteria.validity.objects",
+      },
+    ],
+  },
+  {
+    key: "difficulty",
+    titleKey: "cmsReview.section.difficulty",
+    criteria: [
+      {
+        key: "difficulty-match-level",
+        labelKey: "cmsReview.criteria.difficulty.matchLevel",
+      },
+      {
+        key: "difficulty-not-too-easy",
+        labelKey: "cmsReview.criteria.difficulty.notTooEasy",
+      },
+      {
+        key: "difficulty-not-too-hard",
+        labelKey: "cmsReview.criteria.difficulty.notTooHard",
+      },
+      {
+        key: "difficulty-step-count",
+        labelKey: "cmsReview.criteria.difficulty.stepCount",
+      },
+      {
+        key: "difficulty-time",
+        labelKey: "cmsReview.criteria.difficulty.time",
+      },
+    ],
+  },
+  {
+    key: "fairness",
+    titleKey: "cmsReview.section.fairness",
+    criteria: [
+      {
+        key: "fairness-no-unfair-traps",
+        labelKey: "cmsReview.criteria.fairness.noUnfairTraps",
+      },
+      {
+        key: "fairness-no-unreasonable-loss",
+        labelKey: "cmsReview.criteria.fairness.noUnreasonableLoss",
+      },
+      {
+        key: "fairness-clear-mechanics",
+        labelKey: "cmsReview.criteria.fairness.clearMechanics",
+      },
+    ],
+  },
+  {
+    key: "technical-quality",
+    titleKey: "cmsReview.section.technicalQuality",
+    criteria: [
+      {
+        key: "technical-no-bug",
+        labelKey: "cmsReview.criteria.technicalQuality.noBug",
+      },
+      {
+        key: "technical-object-correct",
+        labelKey: "cmsReview.criteria.technicalQuality.objectCorrect",
+      },
+    ],
+  },
+  {
+    key: "visual-ux",
+    titleKey: "cmsReview.section.visualUx",
+    criteria: [
+      {
+        key: "visual-clear-layout",
+        labelKey: "cmsReview.criteria.visualUx.clearLayout",
+      },
+      {
+        key: "visual-no-spam",
+        labelKey: "cmsReview.criteria.visualUx.noSpam",
+      },
+      {
+        key: "visual-important-elements",
+        labelKey: "cmsReview.criteria.visualUx.importantElements",
+      },
+      {
+        key: "visual-asset-usage",
+        labelKey: "cmsReview.criteria.visualUx.assetUsage",
+      },
+    ],
+  },
+  {
+    key: "content-safety",
+    titleKey: "cmsReview.section.contentSafety",
+    criteria: [
+      {
+        key: "safety-map-name",
+        labelKey: "cmsReview.criteria.contentSafety.mapName",
+      },
+      {
+        key: "safety-description",
+        labelKey: "cmsReview.criteria.contentSafety.description",
+      },
+      {
+        key: "safety-sensitive",
+        labelKey: "cmsReview.criteria.contentSafety.sensitive",
+      },
+    ],
+  },
+  {
+    key: "metadata",
+    titleKey: "cmsReview.section.metadata",
+    criteria: [
+      {
+        key: "metadata-has-name",
+        labelKey: "cmsReview.criteria.metadata.hasName",
+      },
+      {
+        key: "metadata-has-description",
+        labelKey: "cmsReview.criteria.metadata.hasDescription",
+      },
+      {
+        key: "metadata-has-tags",
+        labelKey: "cmsReview.criteria.metadata.hasTags",
+      },
+    ],
+  },
+];
+
+const MAP_REVIEW_CRITERIA: ReviewCriterion[] = MAP_REVIEW_SECTIONS.flatMap((section) =>
+  section.criteria.map((criterion) => ({
+    key: criterion.key,
+    sectionTitleKey: section.titleKey,
+    labelKey: criterion.labelKey,
+  })),
+);
+
+const createInitialReviewDecisions = (): Record<string, ReviewDecision> =>
+  MAP_REVIEW_CRITERIA.reduce<Record<string, ReviewDecision>>((acc, criterion) => {
+    acc[criterion.key] = null;
+    return acc;
+  }, {});
+
 export const MapsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t, locale } = useTranslation();
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const canCreateMap = canCreateMaps(userPlan);
   const [maps, setMaps] = useState<MapListItem[]>([]);
@@ -118,62 +345,57 @@ export const MapsPage: React.FC = () => {
 
   // Modal and action states
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedMap, setSelectedMap] = useState<MapDetail | null>(null);
   const [selectedMapForAction, setSelectedMapForAction] = useState<{
     id: string;
     title: string;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [reviewNote, setReviewNote] = useState("");
-  const [rejectReason, setRejectReason] = useState("");
+  const [reviewDecisions, setReviewDecisions] = useState<Record<string, ReviewDecision>>(() =>
+    createInitialReviewDecisions(),
+  );
+  const [otherReviewReason, setOtherReviewReason] = useState("");
+  const [reviewValidationError, setReviewValidationError] = useState<string | null>(null);
 
   // Search, filter & sort state
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<MapStatusEnum | "">("");
   const [filterDifficulty, setFilterDifficulty] = useState<number | "">("");
-  const [sortBy, setSortBy] = useState<"title" | "createdAt" | "difficulty" | "price">("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<MapsPageSortBy>("createdAt");
+  const [sortOrder, setSortOrder] = useState<MapSortOrder>("desc");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   const fetchMaps = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await cmsMapsApi.getMaps({
-        pageNumber: currentPage,
-        pageSize,
-        searchTerm: searchTerm || undefined,
-        mapStatus: filterStatus !== "" ? filterStatus : undefined,
-        difficulty: filterDifficulty !== "" ? (filterDifficulty as number) : undefined,
-      });
+      const response = await cmsMapsApi.getMaps(
+        buildMapsQueryParams(
+          currentPage,
+          pageSize,
+          debouncedSearchTerm,
+          filterStatus,
+          filterDifficulty,
+          sortBy,
+          sortOrder,
+        ),
+      );
 
       const paginationData = response.data.data;
       if (paginationData) {
-        const items = [...paginationData.items];
-        // Client-side sort
-        items.sort((a, b) => {
-          let aVal: string | number = 0;
-          let bVal: string | number = 0;
-          if (sortBy === "title") {
-            aVal = a.title.toLowerCase();
-            bVal = b.title.toLowerCase();
-          } else if (sortBy === "difficulty") {
-            aVal = a.difficulty;
-            bVal = b.difficulty;
-          } else if (sortBy === "price") {
-            aVal = a.price;
-            bVal = b.price;
-          } else {
-            aVal = a.createdAt;
-            bVal = b.createdAt;
-          }
-          if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-          if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-          return 0;
-        });
-        setMaps(items);
+        setMaps(paginationData.items);
         setTotalPages(paginationData.totalPages);
         setTotalItems(paginationData.totalItems);
       }
@@ -183,7 +405,15 @@ export const MapsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchTerm, filterStatus, filterDifficulty, sortBy, sortOrder]);
+  }, [
+    currentPage,
+    pageSize,
+    debouncedSearchTerm,
+    filterStatus,
+    filterDifficulty,
+    sortBy,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     fetchMaps();
@@ -234,16 +464,20 @@ export const MapsPage: React.FC = () => {
     }
   };
 
-  const handleOpenApproveModal = (mapId: string, mapTitle: string) => {
+  const handleOpenReviewModal = (mapId: string, mapTitle: string) => {
     setSelectedMapForAction({ id: mapId, title: mapTitle });
-    setReviewNote("");
-    setApproveModalOpen(true);
+    setReviewDecisions(createInitialReviewDecisions());
+    setOtherReviewReason("");
+    setReviewValidationError(null);
+    setReviewModalOpen(true);
   };
 
-  const handleOpenRejectModal = (mapId: string, mapTitle: string) => {
-    setSelectedMapForAction({ id: mapId, title: mapTitle });
-    setRejectReason("");
-    setRejectModalOpen(true);
+  const handleCloseReviewModal = () => {
+    setReviewModalOpen(false);
+    setSelectedMapForAction(null);
+    setReviewDecisions(createInitialReviewDecisions());
+    setOtherReviewReason("");
+    setReviewValidationError(null);
   };
 
   const getPlayRoute = (mapType: MapListItem["type"]) => {
@@ -262,49 +496,78 @@ export const MapsPage: React.FC = () => {
     });
   };
 
-  const handleApprove = async (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMapForAction) return;
 
+    const unevaluatedCriteria = MAP_REVIEW_CRITERIA.filter(
+      (criterion) => reviewDecisions[criterion.key] === null,
+    );
+
+    if (unevaluatedCriteria.length > 0) {
+      setReviewValidationError(t("cmsReview.validationAllCriteria"));
+      return;
+    }
+
+    const failedCriteria = MAP_REVIEW_CRITERIA.filter(
+      (criterion) => reviewDecisions[criterion.key] === "fail",
+    );
+
+    const trimmedOtherReason = otherReviewReason.trim();
+
     try {
       setActionLoading(true);
-      await cmsMapsApi.approveMap(selectedMapForAction.id, {
-        reviewNote: reviewNote || undefined,
-      });
-      alert("Game approved successfully!");
-      setApproveModalOpen(false);
-      setSelectedMapForAction(null);
-      setReviewNote("");
+
+      if (failedCriteria.length === 0) {
+        await cmsMapsApi.approveMap(selectedMapForAction.id, {
+          reviewNote: trimmedOtherReason || undefined,
+        });
+        alert(t("cmsReview.approveSuccess"));
+      } else {
+        const failedCriteriaSummary = failedCriteria
+          .map((criterion, index) => {
+            const sectionTitle = t(criterion.sectionTitleKey);
+            const criterionLabel = t(criterion.labelKey);
+            return `${index + 1}. [${sectionTitle}] ${criterionLabel}`;
+          })
+          .join("\n");
+
+        const rejectReason = [
+          t("cmsReview.checklistFailed"),
+          t("cmsReview.failedCriteria"),
+          failedCriteriaSummary,
+          trimmedOtherReason ? `${t("cmsReview.otherReason")}:\n${trimmedOtherReason}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
+        await cmsMapsApi.rejectMap(selectedMapForAction.id, {
+          rejectReason,
+        });
+        alert(t("cmsReview.rejectSuccess"));
+      }
+
+      handleCloseReviewModal();
       fetchMaps();
     } catch (err) {
-      alert("Failed to approve game");
-      console.error("Approve error:", err);
+      alert(t("cmsReview.submitFailed"));
+      console.error("Submit review error:", err);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleReject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMapForAction) return;
-
-    try {
-      setActionLoading(true);
-      await cmsMapsApi.rejectMap(selectedMapForAction.id, {
-        rejectReason: rejectReason || undefined,
-      });
-      alert("Game rejected successfully!");
-      setRejectModalOpen(false);
-      setSelectedMapForAction(null);
-      setRejectReason("");
-      fetchMaps();
-    } catch (err) {
-      alert("Failed to reject game");
-      console.error("Reject error:", err);
-    } finally {
-      setActionLoading(false);
-    }
+  const setCriterionDecision = (criterionKey: string, decision: Exclude<ReviewDecision, null>) => {
+    setReviewValidationError(null);
+    setReviewDecisions((prev) => ({
+      ...prev,
+      [criterionKey]: decision,
+    }));
   };
+
+  const reviewedCriteriaCount = MAP_REVIEW_CRITERIA.filter(
+    (criterion) => reviewDecisions[criterion.key] !== null,
+  ).length;
 
   const handleFilterChange = (updaters: Array<() => void>) => {
     updaters.forEach((fn) => fn());
@@ -358,7 +621,7 @@ export const MapsPage: React.FC = () => {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -1061,45 +1324,24 @@ export const MapsPage: React.FC = () => {
                         <Eye size={16} />
                       </button>
 
-                      {/* Approve */}
+                      {/* Review */}
                       {map.mapStatus === "PendingReview" && (
                         <button
-                          onClick={() => handleOpenApproveModal(map.id, map.title)}
+                          onClick={() => handleOpenReviewModal(map.id, map.title)}
                           disabled={actionLoading}
                           style={{
                             padding: "6px 12px",
                             background: "transparent",
                             border: "1px solid var(--border)",
                             borderRadius: "6px",
-                            color: "var(--success)",
+                            color: "var(--warning)",
                             cursor: "pointer",
                             fontSize: "12px",
                             transition: "all 0.2s ease",
                           }}
-                          title="Approve Game"
+                          title={t("cmsReview.openReview")}
                         >
                           <CheckCircle size={16} />
-                        </button>
-                      )}
-
-                      {/* Reject */}
-                      {map.mapStatus === "PendingReview" && (
-                        <button
-                          onClick={() => handleOpenRejectModal(map.id, map.title)}
-                          disabled={actionLoading}
-                          style={{
-                            padding: "6px 12px",
-                            background: "transparent",
-                            border: "1px solid var(--border)",
-                            borderRadius: "6px",
-                            color: "var(--danger)",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            transition: "all 0.2s ease",
-                          }}
-                          title="Reject Game"
-                        >
-                          <X size={16} />
                         </button>
                       )}
                     </div>
@@ -1654,22 +1896,141 @@ export const MapsPage: React.FC = () => {
         )}
       </Modal>
 
-      {/* Approve Game Modal */}
+      {/* Review Game Modal */}
       <Modal
-        isOpen={approveModalOpen}
-        onClose={() => setApproveModalOpen(false)}
-        title="Approve Game"
-        maxWidth="500px"
+        isOpen={reviewModalOpen}
+        onClose={handleCloseReviewModal}
+        title={t("cmsReview.title")}
+        maxWidth="900px"
       >
         {selectedMapForAction && (
           <form
-            onSubmit={handleApprove}
-            style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+            onSubmit={handleSubmitReview}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
             <div>
-              <p style={{ color: "var(--text)", fontSize: "14px", marginBottom: "16px" }}>
-                Are you sure you want to approve <strong>"{selectedMapForAction.title}"</strong>?
+              <p style={{ color: "var(--text)", fontSize: "14px", marginBottom: "4px" }}>
+                {t("cmsReview.reviewing")} <strong>"{selectedMapForAction.title}"</strong>
               </p>
+              <p style={{ color: "var(--text-2)", fontSize: "12px", margin: 0 }}>
+                {t("cmsReview.instructions")}
+              </p>
+            </div>
+
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text-2)",
+                fontSize: "13px",
+              }}
+            >
+              {t("cmsReview.criteriaReviewed")}: {reviewedCriteriaCount}/{MAP_REVIEW_CRITERIA.length}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {MAP_REVIEW_SECTIONS.map((section) => (
+                <div
+                  key={section.key}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    background: "var(--surface)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "10px 12px",
+                      background: "var(--surface-2)",
+                      borderBottom: "1px solid var(--border)",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {t(section.titleKey)}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {section.criteria.map((criterion) => {
+                      const decision = reviewDecisions[criterion.key];
+
+                      return (
+                        <div
+                          key={criterion.key}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr auto",
+                            gap: "12px",
+                            alignItems: "center",
+                            padding: "10px 12px",
+                            borderBottom: "1px solid var(--border)",
+                          }}
+                        >
+                          <div style={{ color: "var(--text)", fontSize: "13px", lineHeight: "1.45" }}>
+                            {t(criterion.labelKey)}
+                          </div>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={() => setCriterionDecision(criterion.key, "pass")}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 10px",
+                                borderRadius: "8px",
+                                border:
+                                  decision === "pass"
+                                    ? "1px solid var(--success)"
+                                    : "1px solid var(--border)",
+                                background:
+                                  decision === "pass"
+                                    ? "color-mix(in srgb, var(--success) 18%, transparent)"
+                                    : "transparent",
+                                color: decision === "pass" ? "var(--success)" : "var(--text-2)",
+                                fontSize: "12px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Check size={14} /> {t("cmsReview.pass")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCriterionDecision(criterion.key, "fail")}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 10px",
+                                borderRadius: "8px",
+                                border:
+                                  decision === "fail"
+                                    ? "1px solid var(--danger)"
+                                    : "1px solid var(--border)",
+                                background:
+                                  decision === "fail"
+                                    ? "color-mix(in srgb, var(--danger) 18%, transparent)"
+                                    : "transparent",
+                                color: decision === "fail" ? "var(--danger)" : "var(--text-2)",
+                                fontSize: "12px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <X size={14} /> {t("cmsReview.fail")}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div>
               <label
                 style={{
                   display: "block",
@@ -1679,11 +2040,11 @@ export const MapsPage: React.FC = () => {
                   marginBottom: "8px",
                 }}
               >
-                Review Note (Optional)
+                {t("cmsReview.otherReasonLabel")}
               </label>
               <textarea
-                value={reviewNote}
-                onChange={(e) => setReviewNote(e.target.value)}
+                value={otherReviewReason}
+                onChange={(e) => setOtherReviewReason(e.target.value)}
                 rows={4}
                 style={{
                   width: "100%",
@@ -1695,115 +2056,38 @@ export const MapsPage: React.FC = () => {
                   fontSize: "14px",
                   resize: "vertical",
                   fontFamily: "inherit",
+                  boxSizing: "border-box",
                 }}
-                placeholder="Add a review note (optional)"
+                placeholder={t("cmsReview.otherReasonPlaceholder")}
               />
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "flex-end",
-                paddingTop: "16px",
-                borderTop: "1px solid var(--border)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setApproveModalOpen(false)}
-                disabled={actionLoading}
+            {reviewValidationError && (
+              <div
                 style={{
-                  padding: "10px 20px",
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  cursor: actionLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                style={{
-                  padding: "10px 20px",
-                  background: actionLoading ? "var(--surface-2)" : "var(--success)",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: actionLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                {actionLoading ? "Approving..." : "Approve Game"}
-              </button>
-            </div>
-          </form>
-        )}
-      </Modal>
-
-      {/* Reject Game Modal */}
-      <Modal
-        isOpen={rejectModalOpen}
-        onClose={() => setRejectModalOpen(false)}
-        title="Reject Game"
-        maxWidth="500px"
-      >
-        {selectedMapForAction && (
-          <form
-            onSubmit={handleReject}
-            style={{ display: "flex", flexDirection: "column", gap: "20px" }}
-          >
-            <div>
-              <p style={{ color: "var(--text)", fontSize: "14px", marginBottom: "16px" }}>
-                Are you sure you want to reject <strong>"{selectedMapForAction.title}"</strong>?
-              </p>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  color: "var(--text)",
-                  marginBottom: "8px",
-                }}
-              >
-                Rejection Reason (Optional)
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={4}
-                style={{
-                  width: "100%",
                   padding: "10px 12px",
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
                   borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "14px",
-                  resize: "vertical",
-                  fontFamily: "inherit",
+                  border: "1px solid var(--danger)",
+                  background: "color-mix(in srgb, var(--danger) 12%, transparent)",
+                  color: "var(--danger)",
+                  fontSize: "13px",
                 }}
-                placeholder="Add a rejection reason (optional)"
-              />
-            </div>
+              >
+                {reviewValidationError}
+              </div>
+            )}
 
             <div
               style={{
                 display: "flex",
                 gap: "12px",
                 justifyContent: "flex-end",
-                paddingTop: "16px",
-                borderTop: "1px solid var(--border)",
+                paddingTop: "8px",
               }}
             >
               <button
                 type="button"
-                onClick={() => setRejectModalOpen(false)}
+                onClick={handleCloseReviewModal}
                 disabled={actionLoading}
                 style={{
                   padding: "10px 20px",
@@ -1815,14 +2099,14 @@ export const MapsPage: React.FC = () => {
                   cursor: actionLoading ? "not-allowed" : "pointer",
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
                 style={{
                   padding: "10px 20px",
-                  background: actionLoading ? "var(--surface-2)" : "var(--danger)",
+                  background: actionLoading ? "var(--surface-2)" : "var(--primary)",
                   border: "none",
                   borderRadius: "8px",
                   color: "white",
@@ -1831,7 +2115,7 @@ export const MapsPage: React.FC = () => {
                   cursor: actionLoading ? "not-allowed" : "pointer",
                 }}
               >
-                {actionLoading ? "Rejecting..." : "Reject Game"}
+                {actionLoading ? t("cmsReview.submitting") : t("cmsReview.submit")}
               </button>
             </div>
           </form>

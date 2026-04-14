@@ -324,7 +324,7 @@ export default function SnakeGameView() {
     fruitsCollected: number;
   } | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
-  const [lastSubmissionId, setLastSubmissionId] = useState<string | null>(null);
+  const [, setLastSubmissionId] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showResultPopup, setShowResultPopup] = useState(true);

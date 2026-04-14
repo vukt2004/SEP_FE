@@ -76,7 +76,7 @@ export default function GameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
-  const [lastSubmissionId, setLastSubmissionId] = useState<string | null>(null);
+  const [, setLastSubmissionId] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);

@@ -9,13 +9,20 @@
  * - Action buttons (View, Edit, Toggle Status)
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { cmsUsersApi } from "@/services/api/cms/users.api";
-import type { UserListItem, UserDetail, EntityStatusEnum, RoleEnum } from "@/types/api/cms/users";
+import type {
+  UserListItem,
+  UserDetail,
+  EntityStatusEnum,
+  RoleEnum,
+} from "@/types/api/cms/users";
 import { Modal } from "../components/Modal";
-import { Eye, Pencil, Lock, CheckCircle, Check, X } from "lucide-react";
+import { Eye, Pencil, Lock, CheckCircle, Check, X, Search } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export const UsersPage: React.FC = () => {
+  const { t, locale } = useTranslation();
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,30 +49,74 @@ export const UsersPage: React.FC = () => {
     newRole: 1 as RoleEnum,
   });
 
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
+  // Search, filter and sort state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<EntityStatusEnum | "">("");
+  const [joiningFrom, setJoiningFrom] = useState("");
+  const [joiningTo, setJoiningTo] = useState("");
+  const [sortBy, setSortBy] = useState("CreatedAt");
+  const [isAscending, setIsAscending] = useState(false);
 
-  const fetchUsers = async () => {
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    filterStatus !== "" ||
+    joiningFrom !== "" ||
+    joiningTo !== "";
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const response = await cmsUsersApi.getUsers({
-        pageNumber: currentPage,
+        page: currentPage,
         pageSize,
+        search: debouncedSearchTerm.trim() || undefined,
+        status: filterStatus === "" ? undefined : filterStatus,
+        joiningFrom: joiningFrom || undefined,
+        joiningTo: joiningTo || undefined,
+        sortBy,
+        isAscending,
       });
 
       setUsers(response.data.items);
       setTotalPages(response.data.totalPages);
       setTotalItems(response.data.totalItems);
     } catch (err) {
-      setError("Failed to load users");
+      setError(t("cmsUsers.failedLoadUsers"));
       console.error("Users fetch error:", err);
     } finally {
       setLoading(false);
     }
+  }, [
+    currentPage,
+    pageSize,
+    debouncedSearchTerm,
+    filterStatus,
+    joiningFrom,
+    joiningTo,
+    sortBy,
+    isAscending,
+  ]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleFilterChange = (updaters: Array<() => void>) => {
+    updaters.forEach((fn) => fn());
+    setCurrentPage(1);
   };
 
   const handleViewDetails = async (userId: string) => {
@@ -77,10 +128,10 @@ export const UsersPage: React.FC = () => {
         setSelectedUser(user);
         setViewModalOpen(true);
       } else {
-        alert("User not found");
+        alert(t("cmsUsers.userNotFound"));
       }
     } catch (err) {
-      alert("Failed to load user details");
+      alert(t("cmsUsers.failedLoadUserDetails"));
       console.error("User detail error:", err);
     } finally {
       setActionLoading(false);
@@ -104,10 +155,10 @@ export const UsersPage: React.FC = () => {
         });
         setEditModalOpen(true);
       } else {
-        alert("User not found");
+        alert(t("cmsUsers.userNotFound"));
       }
     } catch (err) {
-      alert("Failed to load user details");
+      alert(t("cmsUsers.failedLoadUserDetails"));
       console.error("User detail error:", err);
     } finally {
       setActionLoading(false);
@@ -120,11 +171,11 @@ export const UsersPage: React.FC = () => {
     try {
       setActionLoading(true);
       await cmsUsersApi.updateUser(selectedUser.id, editForm);
-      alert("User updated successfully!");
+      alert(t("cmsUsers.updatedSuccess"));
       setEditModalOpen(false);
       fetchUsers();
     } catch (err) {
-      alert("Failed to update user");
+      alert(t("cmsUsers.failedUpdate"));
       console.error("Update error:", err);
     } finally {
       setActionLoading(false);
@@ -133,9 +184,9 @@ export const UsersPage: React.FC = () => {
 
   const handleToggleStatus = async (user: UserListItem) => {
     const newStatus: EntityStatusEnum = user.status === 1 ? 0 : 1;
-    const statusLabel = newStatus === 1 ? "activate" : "deactivate";
+    const statusLabel = newStatus === 1 ? t("cmsUsers.activate") : t("cmsUsers.deactivate");
 
-    if (!confirm(`Are you sure you want to ${statusLabel} ${user.firstName} ${user.lastName}?`)) {
+    if (!confirm(`${t("cmsUsers.confirmToggle")}: ${statusLabel} ${user.firstName} ${user.lastName}?`)) {
       return;
     }
 
@@ -145,10 +196,10 @@ export const UsersPage: React.FC = () => {
         userIds: [user.id],
         status: newStatus,
       });
-      alert(`User ${statusLabel}d successfully!`);
+      alert(`${t("cmsUsers.userLabel")} ${statusLabel} ${t("cmsUsers.success")}`);
       fetchUsers();
     } catch (err) {
-      alert(`Failed to ${statusLabel} user`);
+      alert(`${t("cmsUsers.failedTo")} ${statusLabel} ${t("cmsUsers.userLabel")}`);
       console.error("Status toggle error:", err);
     } finally {
       setActionLoading(false);
@@ -156,13 +207,15 @@ export const UsersPage: React.FC = () => {
   };
 
   const getRoleLabel = (roles: RoleEnum[]) => {
-    if (roles.includes(0)) return "Admin";
-    if (roles.includes(1)) return "Learner";
-    return "User";
+    if (roles.includes(0)) return t("cmsUsers.role.admin");
+    if (roles.includes(2)) return t("cmsUsers.role.moderator");
+    if (roles.includes(1)) return t("cmsUsers.role.learner");
+    return t("cmsUsers.role.user");
   };
 
   const getRoleColor = (roles: RoleEnum[]) => {
     if (roles.includes(0)) return "var(--primary)";
+    if (roles.includes(2)) return "var(--warning)";
     if (roles.includes(1)) return "var(--info)";
     return "var(--text-2)";
   };
@@ -170,15 +223,15 @@ export const UsersPage: React.FC = () => {
   const getStatusLabel = (status: EntityStatusEnum) => {
     switch (status) {
       case 0:
-        return "Inactive";
+        return t("cmsUsers.status.inactive");
       case 1:
-        return "Active";
+        return t("cmsUsers.status.active");
       case 2:
-        return "Suspended";
+        return t("cmsUsers.status.suspended");
       case 3:
-        return "Deleted";
+        return t("cmsUsers.status.deleted");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
@@ -199,7 +252,7 @@ export const UsersPage: React.FC = () => {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -228,7 +281,7 @@ export const UsersPage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading users...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>{t("cmsUsers.loading")}</p>
         </div>
       </div>
     );
@@ -246,9 +299,9 @@ export const UsersPage: React.FC = () => {
             marginBottom: "8px",
           }}
         >
-          Users Management
+          {t("cmsUsers.title")}
         </h1>
-        <p style={{ color: "var(--text-2)" }}>View and manage all platform users</p>
+        <p style={{ color: "var(--text-2)" }}>{t("cmsUsers.subtitle")}</p>
       </div>
 
       {/* Stats */}
@@ -270,12 +323,166 @@ export const UsersPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Users
+            {t("cmsUsers.totalUsers")}
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {totalItems}
           </div>
         </div>
+      </div>
+
+      {/* Search, Filter & Sort */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ position: "relative", flex: "1", minWidth: "220px", maxWidth: "320px" }}>
+          <Search
+            size={15}
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--text-2)",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
+            placeholder={t("cmsUsers.searchPlaceholder")}
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 32px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              color: "var(--text)",
+              fontSize: "14px",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <select
+          value={filterStatus}
+          onChange={(e) =>
+            handleFilterChange([
+              () => setFilterStatus(e.target.value === "" ? "" : (Number(e.target.value) as EntityStatusEnum)),
+            ])
+          }
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="">{t("cmsUsers.allStatuses")}</option>
+          <option value={1}>{t("cmsUsers.status.active")}</option>
+          <option value={0}>{t("cmsUsers.status.inactive")}</option>
+        </select>
+
+        <input
+          type="date"
+          value={joiningFrom}
+          onChange={(e) => handleFilterChange([() => setJoiningFrom(e.target.value)])}
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+          }}
+          title={t("cmsUsers.joinedFrom")}
+        />
+
+        <input
+          type="date"
+          value={joiningTo}
+          min={joiningFrom || undefined}
+          onChange={(e) => handleFilterChange([() => setJoiningTo(e.target.value)])}
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+          }}
+          title={t("cmsUsers.joinedTo")}
+        />
+
+        <select
+          value={sortBy}
+          onChange={(e) => handleFilterChange([() => setSortBy(e.target.value)])}
+          style={{
+            padding: "8px 12px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          <option value="CreatedAt">{t("cmsUsers.sortJoinedDate")}</option>
+          <option value="FirstName">{t("cmsUsers.sortFirstName")}</option>
+          <option value="Email">{t("cmsUsers.sortEmail")}</option>
+          <option value="LastLoginAt">{t("cmsUsers.sortLastLogin")}</option>
+        </select>
+
+        <button
+          onClick={() => handleFilterChange([() => setIsAscending((prev) => !prev)])}
+          style={{
+            padding: "8px 14px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            color: "var(--text)",
+            fontSize: "14px",
+            cursor: "pointer",
+            fontWeight: "500",
+          }}
+          title={isAscending ? t("cmsUsers.ascending") : t("cmsUsers.descending")}
+        >
+          {isAscending ? `↑ ${t("cmsUsers.asc")}` : `↓ ${t("cmsUsers.desc")}`}
+        </button>
+
+        {hasActiveFilters && (
+          <button
+            onClick={() =>
+              handleFilterChange([
+                () => setSearchTerm(""),
+                () => setFilterStatus(""),
+                () => setJoiningFrom(""),
+                () => setJoiningTo(""),
+              ])
+            }
+            style={{
+              padding: "8px 14px",
+              background: "transparent",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              color: "var(--text-2)",
+              fontSize: "13px",
+              cursor: "pointer",
+            }}
+          >
+            {t("clearFilters")}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -326,7 +533,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  NAME
+                  {t("cmsUsers.table.name")}
                 </th>
                 <th
                   style={{
@@ -337,7 +544,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  EMAIL
+                  {t("cmsUsers.table.email")}
                 </th>
                 <th
                   style={{
@@ -348,7 +555,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  ROLE
+                  {t("cmsUsers.table.role")}
                 </th>
                 <th
                   style={{
@@ -359,7 +566,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  STATUS
+                  {t("cmsUsers.table.status")}
                 </th>
                 <th
                   style={{
@@ -370,7 +577,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  JOINED
+                  {t("cmsUsers.table.joined")}
                 </th>
                 <th
                   style={{
@@ -381,7 +588,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  LAST LOGIN
+                  {t("cmsUsers.table.lastLogin")}
                 </th>
                 <th
                   style={{
@@ -392,7 +599,7 @@ export const UsersPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  ACTIONS
+                  {t("cmsUsers.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -508,7 +715,7 @@ export const UsersPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="View Details"
+                        title={t("cmsUsers.action.viewDetails")}
                       >
                         <Eye size={16} />
                       </button>
@@ -527,7 +734,7 @@ export const UsersPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="Edit User"
+                        title={t("cmsUsers.action.editUser")}
                       >
                         <Pencil size={16} />
                       </button>
@@ -546,7 +753,11 @@ export const UsersPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title={user.status === 1 ? "Deactivate" : "Activate"}
+                        title={
+                          user.status === 1
+                            ? t("cmsUsers.action.deactivate")
+                            : t("cmsUsers.action.activate")
+                        }
                       >
                         {user.status === 1 ? <Lock size={16} /> : <CheckCircle size={16} />}
                       </button>
@@ -572,7 +783,7 @@ export const UsersPage: React.FC = () => {
             }}
           >
             <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-              Showing page {currentPage} of {totalPages}
+              {t("showingPage")} {currentPage} {t("of")} {totalPages}
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
@@ -590,7 +801,7 @@ export const UsersPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Previous
+                {t("previous")}
               </button>
 
               <button
@@ -607,7 +818,7 @@ export const UsersPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Next
+                {t("next")}
               </button>
             </div>
           </div>
@@ -615,7 +826,11 @@ export const UsersPage: React.FC = () => {
       </div>
 
       {/* View Details Modal */}
-      <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="User Details">
+      <Modal
+        isOpen={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        title={t("cmsUsers.viewModalTitle")}
+      >
         {selectedUser && (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div
@@ -655,37 +870,37 @@ export const UsersPage: React.FC = () => {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Phone Number
+                  {t("cmsUsers.field.phoneNumber")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{selectedUser.phoneNumber || "—"}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Status
+                  {t("cmsUsers.field.status")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{getStatusLabel(selectedUser.status)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Role
+                  {t("cmsUsers.field.role")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{getRoleLabel(selectedUser.roles)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Joined Date
+                  {t("cmsUsers.field.joinedDate")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{formatDate(selectedUser.joiningAt)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Last Login
+                  {t("cmsUsers.field.lastLogin")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{formatDate(selectedUser.lastLoginAt)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Email Confirmed
+                  {t("cmsUsers.field.emailConfirmed")}
                 </div>
                 <div
                   style={{
@@ -697,18 +912,18 @@ export const UsersPage: React.FC = () => {
                 >
                   {selectedUser.emailConfirmed ? (
                     <>
-                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                      <Check size={16} color="var(--success)" /> <span>{t("cmsUsers.yes")}</span>
                     </>
                   ) : (
                     <>
-                      <X size={16} color="var(--danger)" /> <span>No</span>
+                      <X size={16} color="var(--danger)" /> <span>{t("cmsUsers.no")}</span>
                     </>
                   )}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Phone Confirmed
+                  {t("cmsUsers.field.phoneConfirmed")}
                 </div>
                 <div
                   style={{
@@ -720,18 +935,18 @@ export const UsersPage: React.FC = () => {
                 >
                   {selectedUser.phoneNumberConfirmed ? (
                     <>
-                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                      <Check size={16} color="var(--success)" /> <span>{t("cmsUsers.yes")}</span>
                     </>
                   ) : (
                     <>
-                      <X size={16} color="var(--danger)" /> <span>No</span>
+                      <X size={16} color="var(--danger)" /> <span>{t("cmsUsers.no")}</span>
                     </>
                   )}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  User ID
+                  {t("cmsUsers.field.userId")}
                 </div>
                 <div style={{ color: "var(--text)", fontSize: "11px", fontFamily: "monospace" }}>
                   {selectedUser.id}
@@ -743,7 +958,11 @@ export const UsersPage: React.FC = () => {
       </Modal>
 
       {/* Edit User Modal */}
-      <Modal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit User">
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title={t("cmsUsers.editModalTitle")}
+      >
         {selectedUser && (
           <form
             onSubmit={(e) => {
@@ -761,7 +980,7 @@ export const UsersPage: React.FC = () => {
                   marginBottom: "6px",
                 }}
               >
-                First Name
+                {t("cmsUsers.field.firstName")}
               </label>
               <input
                 type="text"
@@ -788,7 +1007,7 @@ export const UsersPage: React.FC = () => {
                   marginBottom: "6px",
                 }}
               >
-                Last Name
+                {t("cmsUsers.field.lastName")}
               </label>
               <input
                 type="text"
@@ -815,7 +1034,7 @@ export const UsersPage: React.FC = () => {
                   marginBottom: "6px",
                 }}
               >
-                Email
+                {t("cmsUsers.field.email")}
               </label>
               <input
                 type="email"
@@ -842,7 +1061,7 @@ export const UsersPage: React.FC = () => {
                   marginBottom: "6px",
                 }}
               >
-                Phone Number
+                {t("cmsUsers.field.phoneNumber")}
               </label>
               <input
                 type="tel"
@@ -870,7 +1089,7 @@ export const UsersPage: React.FC = () => {
                     marginBottom: "6px",
                   }}
                 >
-                  Role
+                  {t("cmsUsers.field.role")}
                 </label>
                 <select
                   value={editForm.newRole}
@@ -887,8 +1106,8 @@ export const UsersPage: React.FC = () => {
                     fontSize: "14px",
                   }}
                 >
-                  <option value={0}>Admin</option>
-                  <option value={1}>Learner</option>
+                  <option value={0}>{t("cmsUsers.role.admin")}</option>
+                  <option value={1}>{t("cmsUsers.role.learner")}</option>
                 </select>
               </div>
 
@@ -901,7 +1120,7 @@ export const UsersPage: React.FC = () => {
                     marginBottom: "6px",
                   }}
                 >
-                  Status
+                  {t("cmsUsers.field.status")}
                 </label>
                 <select
                   value={editForm.status}
@@ -918,10 +1137,10 @@ export const UsersPage: React.FC = () => {
                     fontSize: "14px",
                   }}
                 >
-                  <option value={0}>Inactive</option>
-                  <option value={1}>Active</option>
-                  <option value={2}>Suspended</option>
-                  <option value={3}>Deleted</option>
+                  <option value={0}>{t("cmsUsers.status.inactive")}</option>
+                  <option value={1}>{t("cmsUsers.status.active")}</option>
+                  <option value={2}>{t("cmsUsers.status.suspended")}</option>
+                  <option value={3}>{t("cmsUsers.status.deleted")}</option>
                 </select>
               </div>
             </div>
@@ -943,7 +1162,7 @@ export const UsersPage: React.FC = () => {
                   opacity: actionLoading ? 0.6 : 1,
                 }}
               >
-                {actionLoading ? "Saving..." : "Save Changes"}
+                {actionLoading ? t("saving") : t("cmsUsers.saveChanges")}
               </button>
               <button
                 type="button"
@@ -961,7 +1180,7 @@ export const UsersPage: React.FC = () => {
                   cursor: "pointer",
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </form>
