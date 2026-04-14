@@ -74,11 +74,14 @@ export default function LeaderboardPage() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [myAvatarPath, setMyAvatarPath] = useState<string | null>(null);
 
-  const [topLevelData, setTopLevelData] = useState<PaginationResult<XpLeaderboardItem> | null>(null);
-  const [xpGainData, setXpGainData] = useState<PaginationResult<XpGainLeaderboardItem> | null>(null);
-  const [mostPlayedData, setMostPlayedData] = useState<
-    SimplePaginationResult<MostPlayedCreatedMapLeaderboardItem> | null
-  >(null);
+  const [topLevelData, setTopLevelData] = useState<PaginationResult<XpLeaderboardItem> | null>(
+    null,
+  );
+  const [xpGainData, setXpGainData] = useState<PaginationResult<XpGainLeaderboardItem> | null>(
+    null,
+  );
+  const [mostPlayedData, setMostPlayedData] =
+    useState<SimplePaginationResult<MostPlayedCreatedMapLeaderboardItem> | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +186,10 @@ export default function LeaderboardPage() {
 
   const myRankItem = useMemo(() => {
     if (!myUserId) return null;
-    if (tab === "top-level") return (topLevelData?.items ?? []).find((i) => i.userId === myUserId) ?? null;
-    if (tab === "xp-gain") return (xpGainData?.items ?? []).find((i) => i.userId === myUserId) ?? null;
+    if (tab === "top-level")
+      return (topLevelData?.items ?? []).find((i) => i.userId === myUserId) ?? null;
+    if (tab === "xp-gain")
+      return (xpGainData?.items ?? []).find((i) => i.userId === myUserId) ?? null;
     return (mostPlayedData?.items ?? []).find((i) => i.creatorUserId === myUserId) ?? null;
   }, [myUserId, tab, topLevelData?.items, xpGainData?.items, mostPlayedData?.items]);
 
@@ -307,7 +312,9 @@ export default function LeaderboardPage() {
                         <p className="text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
                           {t("leaderboard.info.resetTitle")}
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{resetText}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {resetText}
+                        </p>
                         <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                           {t("leaderboard.info.resetNote")}
                         </p>
@@ -409,7 +416,6 @@ export default function LeaderboardPage() {
               <span className={loading ? "inline-block animate-spin" : "inline-block"}>↻</span>
               {t("leaderboard.refresh")}
             </button>
-
           </div>
         </aside>
 
@@ -582,14 +588,10 @@ function PodiumGrid({
           item={item}
           tab={tab}
           isCurrentUser={
-            tab === "most-played"
-              ? item.creatorUserId === myUserId
-              : item.userId === myUserId
+            tab === "most-played" ? item.creatorUserId === myUserId : item.userId === myUserId
           }
           avatarSrc={getAvatarSrc(item)}
-          initials={getInitials(
-            tab === "most-played" ? item.creatorDisplayName : item.displayName,
-          )}
+          initials={getInitials(tab === "most-played" ? item.creatorDisplayName : item.displayName)}
           t={t}
         />
       ))}
@@ -743,7 +745,10 @@ function TopLevelTable({
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={`${item.userId}-${item.rank}`} className={rowClass(item.rank, item.userId === myUserId)}>
+            <tr
+              key={`${item.userId}-${item.rank}`}
+              className={rowClass(item.rank, item.userId === myUserId)}
+            >
               <td className="px-5 py-4 text-center text-sm font-bold">{renderRank(item.rank)}</td>
               <td className="px-5 py-4">
                 <div className="mx-auto flex w-[260px] max-w-full items-center gap-2">
@@ -816,7 +821,10 @@ function XpGainTable({
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={`${item.userId}-${item.rank}`} className={rowClass(item.rank, item.userId === myUserId)}>
+            <tr
+              key={`${item.userId}-${item.rank}`}
+              className={rowClass(item.rank, item.userId === myUserId)}
+            >
               <td className="px-5 py-4 text-center text-sm font-bold">{renderRank(item.rank)}</td>
               <td className="px-5 py-4">
                 <div className="mx-auto flex w-[260px] max-w-full items-center gap-2">
@@ -896,7 +904,9 @@ function MostPlayedTable({
               className={rowClass(item.rank, item.creatorUserId === myUserId)}
             >
               <td className="px-5 py-4 text-center text-sm font-bold">{renderRank(item.rank)}</td>
-              <td className="px-5 py-4 text-center text-sm font-bold text-slate-900 dark:text-slate-100">{item.mapTitle}</td>
+              <td className="px-5 py-4 text-center text-sm font-bold text-slate-900 dark:text-slate-100">
+                {item.mapTitle}
+              </td>
               <td className="px-5 py-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
                 {item.creatorDisplayName}
               </td>

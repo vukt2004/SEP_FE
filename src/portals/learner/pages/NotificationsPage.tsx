@@ -26,7 +26,9 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [filter, setFilter] = useState<NotificationFilter>(() => parseFilter(searchParams.get("filter")));
+  const [filter, setFilter] = useState<NotificationFilter>(() =>
+    parseFilter(searchParams.get("filter")),
+  );
   const [page, setPage] = useState<number>(() => parsePage(searchParams.get("page")));
 
   const [allPageItems, setAllPageItems] = useState<NotificationItem[]>([]);
@@ -63,22 +65,25 @@ export default function NotificationsPage() {
     }
   }, []);
 
-  const loadAllPage = useCallback(async (targetPage: number) => {
-    const res = await learnerNotificationsApi.getNotifications({
-      pageNumber: targetPage,
-      pageSize: PAGE_SIZE,
-    });
-    if (!res.data?.isSuccess) {
-      throw new Error(res.data?.message ?? t("notification.loadFailed"));
-    }
+  const loadAllPage = useCallback(
+    async (targetPage: number) => {
+      const res = await learnerNotificationsApi.getNotifications({
+        pageNumber: targetPage,
+        pageSize: PAGE_SIZE,
+      });
+      if (!res.data?.isSuccess) {
+        throw new Error(res.data?.message ?? t("notification.loadFailed"));
+      }
 
-    const payload = res.data.data;
-    setAllPageItems(payload?.items ?? []);
-    setAllTotalPages(Math.max(1, payload?.totalPages ?? 1));
-    setAllTotalItems(payload?.totalItems ?? 0);
-    setAllHasPrevious(Boolean(payload?.hasPrevious));
-    setAllHasNext(Boolean(payload?.hasNext));
-  }, [t]);
+      const payload = res.data.data;
+      setAllPageItems(payload?.items ?? []);
+      setAllTotalPages(Math.max(1, payload?.totalPages ?? 1));
+      setAllTotalItems(payload?.totalItems ?? 0);
+      setAllHasPrevious(Boolean(payload?.hasPrevious));
+      setAllHasNext(Boolean(payload?.hasNext));
+    },
+    [t],
+  );
 
   const loadUnreadList = useCallback(async () => {
     const res = await learnerNotificationsApi.getUnreadNotifications();
@@ -431,7 +436,9 @@ export default function NotificationsPage() {
                 key={item.id}
                 className={[
                   "flex items-start gap-3 border-b border-slate-100 p-4 transition dark:border-slate-800",
-                  item.isRead ? "bg-white dark:bg-slate-900" : "bg-indigo-50/40 dark:bg-indigo-950/20",
+                  item.isRead
+                    ? "bg-white dark:bg-slate-900"
+                    : "bg-indigo-50/40 dark:bg-indigo-950/20",
                 ].join(" ")}
               >
                 <span
@@ -449,9 +456,14 @@ export default function NotificationsPage() {
                   className="flex-1 text-left"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{content.title}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {content.title}
+                    </h3>
                     {!item.isRead ? (
-                      <span className="inline-flex h-2 w-2 rounded-full bg-indigo-500" aria-hidden />
+                      <span
+                        className="inline-flex h-2 w-2 rounded-full bg-indigo-500"
+                        aria-hidden
+                      />
                     ) : null}
                   </div>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{content.body}</p>

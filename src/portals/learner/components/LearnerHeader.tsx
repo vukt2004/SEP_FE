@@ -565,85 +565,89 @@ export default function LearnerHeader() {
                       visibleNotifications.map((item) => {
                         const content = getLocalizedNotificationContent(item, t);
                         return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => void openNotification(item)}
-                          style={{
-                            width: "100%",
-                            border: "none",
-                            background: item.isRead ? "transparent" : "rgba(24, 119, 242, 0.12)",
-                            borderBottom: "1px solid var(--border)",
-                            textAlign: "left",
-                            padding: "10px 14px",
-                            display: "flex",
-                            gap: 10,
-                            alignItems: "flex-start",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <div
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => void openNotification(item)}
                             style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 999,
-                              background:
-                                "linear-gradient(135deg, color-mix(in srgb, var(--primary) 62%, #fff) 0%, color-mix(in srgb, var(--primary) 28%, #0ea5e9) 100%)",
-                              color: "white",
-                              fontSize: 12,
-                              fontWeight: 800,
-                              display: "grid",
-                              placeItems: "center",
-                              flex: "0 0 36px",
-                            }}
-                          >
-                            {getActorInitial(item)}
-                          </div>
-                          <div
-                            style={{
-                              flex: 1,
+                              width: "100%",
+                              border: "none",
+                              background: item.isRead ? "transparent" : "rgba(24, 119, 242, 0.12)",
+                              borderBottom: "1px solid var(--border)",
+                              textAlign: "left",
+                              padding: "10px 14px",
                               display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
+                              gap: 10,
+                              alignItems: "flex-start",
+                              cursor: "pointer",
                             }}
                           >
                             <div
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: 10,
+                                width: 36,
+                                height: 36,
+                                borderRadius: 999,
+                                background:
+                                  "linear-gradient(135deg, color-mix(in srgb, var(--primary) 62%, #fff) 0%, color-mix(in srgb, var(--primary) 28%, #0ea5e9) 100%)",
+                                color: "white",
+                                fontSize: 12,
+                                fontWeight: 800,
+                                display: "grid",
+                                placeItems: "center",
+                                flex: "0 0 36px",
                               }}
                             >
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-                                {content.title}
-                              </span>
-                              {!item.isRead ? (
-                                <span
-                                  style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: 999,
-                                    background: "#1877f2",
-                                    flex: "0 0 8px",
-                                  }}
-                                />
-                              ) : null}
+                              {getActorInitial(item)}
                             </div>
-                            <span style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>
-                              {content.body}
-                            </span>
-                            <span
+                            <div
                               style={{
-                                fontSize: 11,
-                                color: item.isRead ? "var(--muted)" : "#1877f2",
-                                fontWeight: 700,
+                                flex: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
                               }}
                             >
-                              {toRelativeTime(item.createdAt)}
-                            </span>
-                          </div>
-                        </button>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 10,
+                                }}
+                              >
+                                <span
+                                  style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}
+                                >
+                                  {content.title}
+                                </span>
+                                {!item.isRead ? (
+                                  <span
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: 999,
+                                      background: "#1877f2",
+                                      flex: "0 0 8px",
+                                    }}
+                                  />
+                                ) : null}
+                              </div>
+                              <span
+                                style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}
+                              >
+                                {content.body}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: item.isRead ? "var(--muted)" : "#1877f2",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {toRelativeTime(item.createdAt)}
+                              </span>
+                            </div>
+                          </button>
                         );
                       })
                     )}
