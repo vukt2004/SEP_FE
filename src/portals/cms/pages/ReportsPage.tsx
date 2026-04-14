@@ -14,8 +14,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { cmsReportsApi } from "@/services/api/cms/reports.api";
 import type { ReportListItem } from "@/types/api/cms/reports";
 import { CheckCircle, X } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 export const ReportsPage: React.FC = () => {
+  const { t, locale } = useTranslation();
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,28 +48,32 @@ export const ReportsPage: React.FC = () => {
         setTotalItems(paginationData.totalItems);
       }
     } catch (err) {
-      setError("Failed to load reports");
+      setError(t("cmsReports.failedLoad"));
       console.error("Reports fetch error:", err);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, t]);
 
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
 
   const handleResolve = async (reportId: string, mapTitle: string) => {
-    const reviewNote = prompt(`Resolve report for "${mapTitle}"?\n\nEnter review note (optional):`);
+    const reviewNote = prompt(
+      t("cmsReports.resolvePrompt")
+        .replace("{mapTitle}", mapTitle)
+        .replace("{noteLabel}", t("cmsReports.promptOptionalNote")),
+    );
     if (reviewNote === null) return; // User cancelled
 
     try {
       setActionLoading(true);
       await cmsReportsApi.resolveReport(reportId, { reviewNote: reviewNote || undefined });
-      alert("Report resolved successfully!");
+      alert(t("cmsReports.resolveSuccess"));
       fetchReports();
     } catch (err) {
-      alert("Failed to resolve report");
+      alert(t("cmsReports.resolveFailed"));
       console.error("Resolve error:", err);
     } finally {
       setActionLoading(false);
@@ -75,16 +81,20 @@ export const ReportsPage: React.FC = () => {
   };
 
   const handleDismiss = async (reportId: string, mapTitle: string) => {
-    const reviewNote = prompt(`Dismiss report for "${mapTitle}"?\n\nEnter review note (optional):`);
+    const reviewNote = prompt(
+      t("cmsReports.dismissPrompt")
+        .replace("{mapTitle}", mapTitle)
+        .replace("{noteLabel}", t("cmsReports.promptOptionalNote")),
+    );
     if (reviewNote === null) return; // User cancelled
 
     try {
       setActionLoading(true);
       await cmsReportsApi.dismissReport(reportId, { reviewNote: reviewNote || undefined });
-      alert("Report dismissed successfully!");
+      alert(t("cmsReports.dismissSuccess"));
       fetchReports();
     } catch (err) {
-      alert("Failed to dismiss report");
+      alert(t("cmsReports.dismissFailed"));
       console.error("Dismiss error:", err);
     } finally {
       setActionLoading(false);
@@ -100,9 +110,18 @@ export const ReportsPage: React.FC = () => {
     return "var(--text-2)";
   };
 
+  const getStatusLabel = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes("pending")) return t("cmsReports.status.pending");
+    if (statusLower.includes("resolved")) return t("cmsReports.status.resolved");
+    if (statusLower.includes("rejected")) return t("cmsReports.status.rejected");
+    if (statusLower.includes("review")) return t("cmsReports.status.review");
+    return status;
+  };
+
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "—";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return t("cmsReports.none");
+    return new Date(dateString).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -133,7 +152,7 @@ export const ReportsPage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading reports...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>{t("cmsReports.loading")}</p>
         </div>
       </div>
     );
@@ -151,9 +170,9 @@ export const ReportsPage: React.FC = () => {
             marginBottom: "8px",
           }}
         >
-          Community Reports
+          {t("cmsReports.title")}
         </h1>
-        <p style={{ color: "var(--text-2)" }}>View and manage user-submitted reports</p>
+        <p style={{ color: "var(--text-2)" }}>{t("cmsReports.subtitle")}</p>
       </div>
 
       {/* Stats */}
@@ -175,7 +194,7 @@ export const ReportsPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Reports
+            {t("cmsReports.totalReports")}
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {totalItems}
@@ -191,7 +210,7 @@ export const ReportsPage: React.FC = () => {
           }}
         >
           <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Current Page
+            {t("cmsReports.currentPage")}
           </div>
           <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
             {reports.length}
@@ -247,7 +266,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  MAP
+                  {t("cmsReports.table.map")}
                 </th>
                 <th
                   style={{
@@ -258,7 +277,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  REASON
+                  {t("cmsReports.table.reason")}
                 </th>
                 <th
                   style={{
@@ -269,7 +288,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  DETAILS
+                  {t("cmsReports.table.details")}
                 </th>
                 <th
                   style={{
@@ -280,7 +299,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  STATUS
+                  {t("cmsReports.table.status")}
                 </th>
                 <th
                   style={{
@@ -291,7 +310,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  REPORTED BY
+                  {t("cmsReports.table.reportedBy")}
                 </th>
                 <th
                   style={{
@@ -302,7 +321,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  CREATED AT
+                  {t("cmsReports.table.createdAt")}
                 </th>
                 <th
                   style={{
@@ -313,7 +332,7 @@ export const ReportsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  ACTIONS
+                  {t("cmsReports.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -370,7 +389,7 @@ export const ReportsPage: React.FC = () => {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {report.details || "—"}
+                      {report.details || t("cmsReports.none")}
                     </div>
                   </td>
                   <td style={{ padding: "16px" }}>
@@ -395,7 +414,7 @@ export const ReportsPage: React.FC = () => {
                           background: getStatusColor(report.reportStatus),
                         }}
                       ></span>
-                      {report.reportStatus}
+                      {getStatusLabel(report.reportStatus)}
                     </span>
                   </td>
                   <td style={{ padding: "16px" }}>
@@ -428,7 +447,7 @@ export const ReportsPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="Resolve Report"
+                        title={t("cmsReports.action.resolve")}
                       >
                         <CheckCircle size={16} />
                       </button>
@@ -447,7 +466,7 @@ export const ReportsPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="Dismiss Report"
+                        title={t("cmsReports.action.dismiss")}
                       >
                         <X size={16} />
                       </button>
@@ -473,7 +492,7 @@ export const ReportsPage: React.FC = () => {
             }}
           >
             <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-              Showing page {currentPage} of {totalPages}
+              {t("cmsReports.showingPage")} {currentPage} {t("cmsReports.of")} {totalPages}
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
@@ -491,7 +510,7 @@ export const ReportsPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Previous
+                {t("previous")}
               </button>
 
               <button
@@ -508,7 +527,7 @@ export const ReportsPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Next
+                {t("next")}
               </button>
             </div>
           </div>

@@ -32,7 +32,7 @@ export const cmsUsersApi = {
    * Get paginated list of users
    * GET /api/cms/users
    *
-   * @param params - Query parameters (pageNumber, pageSize, search, status, role)
+    * @param params - Query parameters (page, pageSize, search, email, phoneNumber, role, status, joiningFrom, joiningTo, sortBy, isAscending)
    * @returns Paginated user list
    */
   getUsers(params?: GetUsersParams) {

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FileJson2, Link as LinkIcon, Megaphone, Send, Sparkles } from "lucide-react";
 import { cmsNotificationsApi } from "@/services/api/cms/notifications.api";
 import { AlertToast } from "@/shared/components/AlertToast";
+import { useTranslation } from "@/lib/i18n/translations";
 
 type FormState = {
   title: string;
@@ -17,31 +18,31 @@ const initialFormState: FormState = {
   payloadJson: "",
 };
 
-const quickTemplates = [
-  {
-    title: "Bảo trì hệ thống",
-    body: "Nền tảng sẽ được bảo trì tối nay từ 23:00 đến 23:30. Vui lòng lưu lại tiến trình của bạn trước thời gian này.",
-    actionUrl: "/status",
-  },
-  {
-    title: "Sự kiện học tập mới",
-    body: "Một sự kiện học tập mới đã bắt đầu. Tham gia ngay hôm nay để nhận thêm phần thưởng và leo hạng trên bảng xếp hạng tuần.",
-    actionUrl: "/app/browse",
-  },
-  {
-    title: "Cập nhật tính năng",
-    body: "Chúng tôi đã phát hành bản cập nhật với thông báo nhanh hơn và quy trình CMS gọn gàng hơn cho quản trị viên.",
-    actionUrl: "/cms/dashboard",
-  },
+const quickTemplateDefs = [
+  { key: "maintenance", actionUrl: "/status" },
+  { key: "event", actionUrl: "/app/browse" },
+  { key: "feature", actionUrl: "/cms/dashboard" },
 ] as const;
 
 const SystemAnnouncementPage: React.FC = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FormState>(initialFormState);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{
     type: "success" | "warning" | "error";
     message: string;
   } | null>(null);
+
+  const quickTemplates = useMemo(
+    () =>
+      quickTemplateDefs.map((template) => ({
+        key: template.key,
+        title: t(`cmsAnnouncement.template.${template.key}.title`),
+        body: t(`cmsAnnouncement.template.${template.key}.body`),
+        actionUrl: template.actionUrl,
+      })),
+    [t],
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -69,7 +70,7 @@ const SystemAnnouncementPage: React.FC = () => {
     const body = form.body.trim();
 
     if (!title || !body) {
-      setToast({ type: "warning", message: "Title and body are required." });
+      setToast({ type: "warning", message: t("cmsAnnouncement.validation.titleBodyRequired") });
       return;
     }
 
@@ -77,7 +78,7 @@ const SystemAnnouncementPage: React.FC = () => {
       try {
         JSON.parse(form.payloadJson);
       } catch {
-        setToast({ type: "error", message: "Payload JSON must be valid JSON." });
+        setToast({ type: "error", message: t("cmsAnnouncement.validation.invalidJson") });
         return;
       }
     }
@@ -97,19 +98,19 @@ const SystemAnnouncementPage: React.FC = () => {
           message:
             response.data.message ??
             response.data.errors?.join(", ") ??
-            "Failed to send announcement.",
+            t("cmsAnnouncement.failedSend"),
         });
         return;
       }
 
       setToast({
         type: "success",
-        message: response.data.message ?? "Announcement sent successfully.",
+        message: response.data.message ?? t("cmsAnnouncement.sentSuccess"),
       });
       setForm(initialFormState);
     } catch (error) {
       console.error("Send system announcement failed:", error);
-      setToast({ type: "error", message: "Failed to send announcement." });
+      setToast({ type: "error", message: t("cmsAnnouncement.failedSend") });
     } finally {
       setSubmitting(false);
     }
@@ -127,17 +128,17 @@ const SystemAnnouncementPage: React.FC = () => {
       <div className="mb-8 rounded-3xl border border-[var(--border)] bg-[linear-gradient(135deg,rgba(14,165,233,0.16),rgba(15,23,42,0.03))] p-6 shadow-sm">
         <div className="space-y-4">
           <h1 className="text-3xl font-bold tracking-tight text-[var(--text)] md:text-4xl">
-            Send one message to every active user
+            {t("cmsAnnouncement.title")}
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-2)]">
             <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
-              Target: All active users
+              {t("cmsAnnouncement.badge.target")}
             </span>
             <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
-              Type: SystemAnnouncement
+              {t("cmsAnnouncement.badge.type")}
             </span>
             <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
-              SignalR realtime
+              {t("cmsAnnouncement.badge.channel")}
             </span>
           </div>
         </div>
@@ -150,9 +151,11 @@ const SystemAnnouncementPage: React.FC = () => {
         >
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text)]">Compose announcement</h2>
+              <h2 className="text-xl font-semibold text-[var(--text)]">
+                {t("cmsAnnouncement.composeTitle")}
+              </h2>
               <p className="mt-1 text-sm text-[var(--text-2)]">
-                Keep it short, actionable, and easy to follow.
+                {t("cmsAnnouncement.composeSubtitle")}
               </p>
             </div>
             <Sparkles className="mt-1 text-cyan-400" size={20} />
@@ -160,40 +163,48 @@ const SystemAnnouncementPage: React.FC = () => {
 
           <div className="space-y-5">
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-[var(--text)]">Title</span>
+              <span className="text-sm font-medium text-[var(--text)]">
+                {t("cmsAnnouncement.field.title")}
+              </span>
               <input
                 value={form.title}
                 onChange={(event) => updateField("title", event.target.value)}
                 maxLength={120}
-                placeholder="Example: Planned maintenance tonight"
+                placeholder={t("cmsAnnouncement.placeholder.title")}
                 className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-cyan-400"
               />
-              <div className="text-xs text-[var(--text-2)]">{titleLength}/120 characters</div>
+              <div className="text-xs text-[var(--text-2)]">
+                {titleLength}/120 {t("cmsAnnouncement.characters")}
+              </div>
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-[var(--text)]">Body</span>
+              <span className="text-sm font-medium text-[var(--text)]">
+                {t("cmsAnnouncement.field.body")}
+              </span>
               <textarea
                 value={form.body}
                 onChange={(event) => updateField("body", event.target.value)}
                 rows={7}
                 maxLength={1000}
-                placeholder="Write the full message here..."
+                placeholder={t("cmsAnnouncement.placeholder.body")}
                 className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-cyan-400"
               />
-              <div className="text-xs text-[var(--text-2)]">{bodyLength}/1000 characters</div>
+              <div className="text-xs text-[var(--text-2)]">
+                {bodyLength}/1000 {t("cmsAnnouncement.characters")}
+              </div>
             </label>
 
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block space-y-2">
                 <span className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
                   <LinkIcon size={16} />
-                  Action URL
+                  {t("cmsAnnouncement.field.actionUrl")}
                 </span>
                 <input
                   value={form.actionUrl}
                   onChange={(event) => updateField("actionUrl", event.target.value)}
-                  placeholder="/cms/dashboard or /app/browse"
+                  placeholder={t("cmsAnnouncement.placeholder.actionUrl")}
                   className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text)] outline-none transition focus:border-cyan-400"
                 />
               </label>
@@ -201,7 +212,7 @@ const SystemAnnouncementPage: React.FC = () => {
               <label className="block space-y-2">
                 <span className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
                   <FileJson2 size={16} />
-                  Payload JSON
+                  {t("cmsAnnouncement.field.payloadJson")}
                 </span>
                 <input
                   value={form.payloadJson}
@@ -220,14 +231,14 @@ const SystemAnnouncementPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Send size={16} />
-              {submitting ? "Sending..." : "Send announcement"}
+              {submitting ? t("cmsAnnouncement.sending") : t("cmsAnnouncement.send")}
             </button>
           </div>
         </form>
 
         <aside className="space-y-6">
           <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[var(--text)]">Preview</h2>
+            <h2 className="text-xl font-semibold text-[var(--text)]">{t("cmsAnnouncement.preview")}</h2>
             <div className="mt-5 rounded-3xl border border-[var(--border)] bg-[var(--surface-2)] p-5">
               <div className="flex items-start gap-4">
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-cyan-500/15 text-cyan-300">
@@ -235,21 +246,21 @@ const SystemAnnouncementPage: React.FC = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-[var(--text)]">
-                    {form.title.trim() || "Announcement title preview"}
+                    {form.title.trim() || t("cmsAnnouncement.previewTitleFallback")}
                   </div>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-2)]">
-                    {form.body.trim() || "Your announcement body will appear here."}
+                    {form.body.trim() || t("cmsAnnouncement.previewBodyFallback")}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--text-2)]">
                     <span className="rounded-full border border-[var(--border)] px-3 py-1">
-                      SystemAnnouncement
+                      {t("cmsAnnouncement.badge.typeValue")}
                     </span>
                     <span className="rounded-full border border-[var(--border)] px-3 py-1">
-                      All active users
+                      {t("cmsAnnouncement.badge.targetValue")}
                     </span>
                     {form.actionUrl.trim() ? (
                       <span className="rounded-full border border-[var(--border)] px-3 py-1">
-                        Action: {form.actionUrl.trim()}
+                        {t("cmsAnnouncement.actionPrefix")} {form.actionUrl.trim()}
                       </span>
                     ) : null}
                   </div>
@@ -259,11 +270,13 @@ const SystemAnnouncementPage: React.FC = () => {
           </section>
 
           <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-[var(--text)]">Quick templates</h2>
+            <h2 className="text-xl font-semibold text-[var(--text)]">
+              {t("cmsAnnouncement.quickTemplates")}
+            </h2>
             <div className="mt-4 space-y-3">
               {quickTemplates.map((template) => (
                 <button
-                  key={template.title}
+                  key={template.key}
                   type="button"
                   onClick={() => applyTemplate(template)}
                   className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 text-left transition hover:border-cyan-400 hover:bg-cyan-500/5"

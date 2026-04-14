@@ -64,16 +64,26 @@ export type MapsPaginationResult = PaginationResult<MapListItem>;
  */
 export type MapsListResult = ApiResult<MapsPaginationResult>;
 
+export type MapStatusFilter = 0 | 1 | 2 | 3 | 4;
+
+export type MapSortBy = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs" | "Price";
+
 /**
  * Query parameters for getting maps list
  */
 export interface GetMapsParams {
   pageNumber?: number;
   pageSize?: number;
-  searchTerm?: string;
+  mapStatus?: MapStatusFilter;
+  publishedOnly?: boolean;
+  createdByUserId?: string;
   difficulty?: number;
-  mapStatus?: MapStatusEnum;
-  isPublished?: boolean;
+  tagId?: string;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: MapSortBy;
+  sortAscending?: boolean;
 }
 
 /**

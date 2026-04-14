@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { dashboardApi } from "../../../services/api/cms/dashboard.api";
 import type { DashboardOverview } from "../../../services/api/cms/dashboard.api";
 import { StatCard } from "../components/StatCard";
+import { useTranslation } from "@/lib/i18n/translations";
 import {
   AlertTriangle,
   Users,
@@ -100,9 +101,32 @@ const mockDashboardData: DashboardOverview = {
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const userActivityChartData = [
+    { ...userActivityData[0], name: t("cmsDashboard.activeUsers") },
+    { ...userActivityData[1], name: t("cmsDashboard.inactiveUsers") },
+    { ...userActivityData[2], name: t("cmsDashboard.newUsers") },
+  ];
+
+  const userGrowthChartData = userGrowthData.map((item, index) => ({
+    ...item,
+    month: t(`cmsDashboard.month.${index + 1}`),
+  }));
+
+  const levelCompletionChartData = levelCompletionData.map((item, index) => ({
+    ...item,
+    level: `${t("cmsDashboard.levelLabel")} ${index + 1}`,
+  }));
+
+  const weekKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  const gameSessionsChartData = gameSessionsData.map((item, index) => ({
+    ...item,
+    day: t(`cmsDashboard.day.${weekKeys[index]}`),
+  }));
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -128,7 +152,7 @@ export const DashboardPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin mb-4"></div>
-          <p className="text-[var(--text-2)]">Loading dashboard...</p>
+          <p className="text-[var(--text-2)]">{t("cmsDashboard.loading")}</p>
         </div>
       </div>
     );
@@ -146,7 +170,7 @@ export const DashboardPage: React.FC = () => {
             onClick={() => window.location.reload()}
             className="text-[var(--primary)] hover:underline"
           >
-            Try again
+            {t("cmsDashboard.tryAgain")}
           </button>
         </div>
       </div>
@@ -158,8 +182,8 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text)] mb-2">Dashboard Overview</h1>
-          <p className="text-[var(--text-2)]">Platform statistics and metrics at a glance</p>
+          <h1 className="text-3xl font-bold text-[var(--text)] mb-2">{t("cmsDashboard.title")}</h1>
+          <p className="text-[var(--text-2)]">{t("cmsDashboard.subtitle")}</p>
         </div>
         <button
           type="button"
@@ -167,26 +191,26 @@ export const DashboardPage: React.FC = () => {
           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400"
         >
           <Megaphone size={16} />
-          Send announcement
+          {t("cmsDashboard.sendAnnouncement")}
         </button>
       </div>
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <StatCard
-          label="Total Users"
+          label={t("cmsDashboard.totalUsers")}
           value={data.totalUsers}
           icon={<Users size={28} />}
           variant="primary"
         />
         <StatCard
-          label="Total Levels"
+          label={t("cmsDashboard.totalLevels")}
           value={data.totalLevels}
           icon={<Gamepad2 size={28} />}
           variant="info"
         />
         <StatCard
-          label="Total Maps"
+          label={t("cmsDashboard.totalMaps")}
           value={data.totalMaps}
           icon={<Map size={28} />}
           variant="accent"
@@ -196,19 +220,19 @@ export const DashboardPage: React.FC = () => {
       {/* Secondary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <StatCard
-          label="Overall Win Rate"
+          label={t("cmsDashboard.winRate")}
           value={`${data.winRate}%`}
           icon={<CheckCircle size={28} />}
           variant="success"
         />
         <StatCard
-          label="Most Played Level"
+          label={t("cmsDashboard.mostPlayed")}
           value={data.mostPlayedLevel}
           icon={<Flame size={28} />}
           variant="accent"
         />
         <StatCard
-          label="User Created Maps"
+          label={t("cmsDashboard.userCreatedMaps")}
           value={data.userCreatedMaps}
           icon={<Star size={28} />}
           variant="info"
@@ -220,8 +244,8 @@ export const DashboardPage: React.FC = () => {
         <div className="flex items-center gap-3 mb-6">
           <Trophy size={28} />
           <div>
-            <h2 className="text-xl font-bold text-[var(--text)]">Top 5 Hardest Levels</h2>
-            <p className="text-sm text-[var(--text-2)]">Ranked by failure rate</p>
+            <h2 className="text-xl font-bold text-[var(--text)]">{t("cmsDashboard.hardestTitle")}</h2>
+            <p className="text-sm text-[var(--text-2)]">{t("cmsDashboard.hardestSubtitle")}</p>
           </div>
         </div>
 
@@ -239,14 +263,14 @@ export const DashboardPage: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[var(--danger)] font-bold">{level.failRate}%</span>
-                <span className="text-[var(--text-2)] text-sm">fail rate</span>
+                <span className="text-[var(--text-2)] text-sm">{t("cmsDashboard.failRate")}</span>
               </div>
             </div>
           ))}
         </div>
 
         {data.hardestLevels.length === 0 && (
-          <p className="text-center text-[var(--muted)] py-8">No level data available</p>
+          <p className="text-center text-[var(--muted)] py-8">{t("cmsDashboard.noLevelData")}</p>
         )}
       </div>
 
@@ -257,12 +281,12 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6">
             <TrendingUp size={28} />
             <div>
-              <h2 className="text-xl font-bold text-[var(--text)]">User Growth</h2>
-              <p className="text-sm text-[var(--text-2)]">Monthly user registration trend</p>
+              <h2 className="text-xl font-bold text-[var(--text)]">{t("cmsDashboard.userGrowth")}</h2>
+              <p className="text-sm text-[var(--text-2)]">{t("cmsDashboard.userGrowthSubtitle")}</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={userGrowthData}>
+            <LineChart data={userGrowthChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="month" stroke="var(--text-2)" />
               <YAxis stroke="var(--text-2)" />
@@ -277,6 +301,7 @@ export const DashboardPage: React.FC = () => {
               <Line
                 type="monotone"
                 dataKey="users"
+                name={t("cmsDashboard.usersLegend")}
                 stroke="#3b82f6"
                 strokeWidth={3}
                 dot={{ fill: "#3b82f6", r: 5 }}
@@ -291,12 +316,14 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6">
             <BarChart3 size={28} />
             <div>
-              <h2 className="text-xl font-bold text-[var(--text)]">Level Performance</h2>
-              <p className="text-sm text-[var(--text-2)]">Completions vs failures per level</p>
+              <h2 className="text-xl font-bold text-[var(--text)]">{t("cmsDashboard.levelPerformance")}</h2>
+              <p className="text-sm text-[var(--text-2)]">
+                {t("cmsDashboard.levelPerformanceSubtitle")}
+              </p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={levelCompletionData}>
+            <BarChart data={levelCompletionChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="level" stroke="var(--text-2)" />
               <YAxis stroke="var(--text-2)" />
@@ -308,8 +335,18 @@ export const DashboardPage: React.FC = () => {
                 }}
               />
               <Legend />
-              <Bar dataKey="completions" fill="#10b981" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="failures" fill="#ef4444" radius={[8, 8, 0, 0]} />
+              <Bar
+                dataKey="completions"
+                name={t("cmsDashboard.completionsLegend")}
+                fill="#10b981"
+                radius={[8, 8, 0, 0]}
+              />
+              <Bar
+                dataKey="failures"
+                name={t("cmsDashboard.failuresLegend")}
+                fill="#ef4444"
+                radius={[8, 8, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -319,14 +356,14 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6">
             <PieChart size={28} />
             <div>
-              <h2 className="text-xl font-bold text-[var(--text)]">User Activity</h2>
-              <p className="text-sm text-[var(--text-2)]">Distribution of user engagement</p>
+              <h2 className="text-xl font-bold text-[var(--text)]">{t("cmsDashboard.userActivity")}</h2>
+              <p className="text-sm text-[var(--text-2)]">{t("cmsDashboard.userActivitySubtitle")}</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <RechartsPie>
               <Pie
-                data={userActivityData}
+                data={userActivityChartData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -337,7 +374,7 @@ export const DashboardPage: React.FC = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {userActivityData.map((entry, index) => (
+                {userActivityChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -357,12 +394,12 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-6">
             <Activity size={28} />
             <div>
-              <h2 className="text-xl font-bold text-[var(--text)]">Weekly Sessions</h2>
-              <p className="text-sm text-[var(--text-2)]">Game sessions throughout the week</p>
+              <h2 className="text-xl font-bold text-[var(--text)]">{t("cmsDashboard.weeklySessions")}</h2>
+              <p className="text-sm text-[var(--text-2)]">{t("cmsDashboard.weeklySessionsSubtitle")}</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={gameSessionsData}>
+            <AreaChart data={gameSessionsChartData}>
               <defs>
                 <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />

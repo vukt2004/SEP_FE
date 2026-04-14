@@ -4,10 +4,15 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
 import { getCmsHomeRoute } from "@/lib/auth/role";
+import { useTranslation } from "@/lib/i18n/translations";
+import { useLanguageStore } from "@/stores/language.store";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useCmsAuthStore((s) => s.login);
+  const { t } = useTranslation();
+  const locale = useLanguageStore((s) => s.locale);
+  const setLocale = useLanguageStore((s) => s.setLocale);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +28,7 @@ export default function LoginPage() {
       const role = await login(email, password);
       navigate(getCmsHomeRoute(role));
     } catch (err) {
-      setError("Login failed. Please check your credentials.");
+      setError(t("cmsLogin.failed"));
       console.error("Login error:", err);
     } finally {
       setLoading(false);
@@ -36,16 +41,37 @@ export default function LoginPage() {
 
   return (
     <div className="login-page" style={pageStyle}>
+      <button
+        type="button"
+        onClick={() => setLocale(locale === "en" ? "vi" : "en")}
+        style={{
+          position: "fixed",
+          top: "16px",
+          right: "16px",
+          zIndex: 20,
+          padding: "8px 12px",
+          borderRadius: "8px",
+          border: "1px solid var(--border)",
+          background: "var(--surface)",
+          color: "var(--text)",
+          cursor: "pointer",
+          fontSize: "13px",
+        }}
+        title={t("language")}
+      >
+        {locale === "en" ? t("languageVi") : t("languageEn")}
+      </button>
+
       <div className="login-brand">
         <div className="login-brand-content">
           <h1 style={{ color: "#2563EB" }}>QuackOrbit</h1>
-          <p>Manage content, levels, and moderation.</p>
+          <p>{t("cmsLogin.subtitle")}</p>
         </div>
       </div>
 
       <div className="login-form-wrapper">
         <div className="login-card">
-          <h2>Admin / Moderator Login</h2>
+          <h2>{t("cmsLogin.title")}</h2>
 
           {error && (
             <div
@@ -67,7 +93,7 @@ export default function LoginPage() {
             <input
               className="login-input"
               type="email"
-              placeholder="Email"
+              placeholder={t("cmsLogin.email")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
@@ -77,7 +103,7 @@ export default function LoginPage() {
             <input
               className="login-input"
               type="password"
-              placeholder="Password"
+              placeholder={t("cmsLogin.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
@@ -90,11 +116,11 @@ export default function LoginPage() {
               style={{ backgroundColor: "#2563EB" }}
               disabled={loading}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t("cmsLogin.signingIn") : t("cmsLogin.signIn")}
             </button>
           </form>
 
-          <div className="login-footer">Manage your learning platform</div>
+          <div className="login-footer">{t("cmsLogin.footer")}</div>
         </div>
       </div>
     </div>
