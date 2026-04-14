@@ -108,6 +108,7 @@ export interface Map {
   timeLimitMs: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
+  reviewNote?: string | null;
   price: number;
   freeTrialAttemptLimit?: number;
   createdByUserId: string;
@@ -251,6 +252,7 @@ export interface MapDetail {
   timeLimitMs?: number;
   isPublished: boolean;
   mapStatus: MapStatusEnum;
+  reviewNote?: string | null;
   price: number;
   freeTrialAttemptLimit?: number;
   createdByUserId: string;

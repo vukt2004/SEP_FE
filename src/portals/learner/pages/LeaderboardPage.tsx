@@ -588,10 +588,16 @@ function PodiumGrid({
           item={item}
           tab={tab}
           isCurrentUser={
-            tab === "most-played" ? item.creatorUserId === myUserId : item.userId === myUserId
+            tab === "most-played"
+              ? (item as MostPlayedCreatedMapLeaderboardItem).creatorUserId === myUserId
+              : (item as XpLeaderboardItem | XpGainLeaderboardItem).userId === myUserId
           }
           avatarSrc={getAvatarSrc(item)}
-          initials={getInitials(tab === "most-played" ? item.creatorDisplayName : item.displayName)}
+          initials={getInitials(
+            tab === "most-played"
+              ? (item as MostPlayedCreatedMapLeaderboardItem).creatorDisplayName
+              : (item as XpLeaderboardItem | XpGainLeaderboardItem).displayName,
+          )}
           t={t}
         />
       ))}
@@ -615,7 +621,10 @@ function PodiumCard({
   t: (key: string) => string;
 }) {
   const theme = getRankTheme(item.rank);
-  const name = tab === "most-played" ? item.creatorDisplayName : item.displayName;
+  const name =
+    tab === "most-played"
+      ? (item as MostPlayedCreatedMapLeaderboardItem).creatorDisplayName
+      : (item as XpLeaderboardItem | XpGainLeaderboardItem).displayName;
   const valueLabel =
     tab === "top-level"
       ? `${(item as XpLeaderboardItem).currentXp.toLocaleString()} XP`

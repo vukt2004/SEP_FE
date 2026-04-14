@@ -77,17 +77,16 @@ export interface GetChatMessagesParams {
 }
 
 export interface SendConversationMessageRequest {
-  chatRoomId: string;
   content: string;
   messageType?: ChatMessageType;
   replyToMessageId?: string | null;
-  fileName?: string | null;
-  fileSize?: number | null;
 }
 
 export interface SendConversationMessageBody {
-  request: SendConversationMessageRequest;
-  filePath?: string | null;
+  content: string;
+  messageType?: ChatMessageType;
+  replyToMessageId?: string | null;
+  imageFile?: File | null;
 }
 
 export type PrivateConversationResult = ApiResult<ChatConversation>;
