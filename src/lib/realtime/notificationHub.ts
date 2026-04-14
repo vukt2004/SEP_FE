@@ -9,6 +9,11 @@ class NotificationHubClient {
   private connection: signalR.HubConnection | null = null;
   private handlers: Map<string, Set<Handler>> = new Map();
 
+  private emit(event: string, ...args: unknown[]) {
+    const set = this.handlers.get(event);
+    if (set) set.forEach((handler) => handler(...args));
+  }
+
   private getBaseUrl(): string {
     const base = import.meta.env.VITE_API_BASE_URL;
     if (base && typeof base === "string") return base.replace(/\/$/, "");
@@ -46,10 +51,13 @@ class NotificationHubClient {
 
     for (const event of events) {
       this.connection.on(event, (...args: unknown[]) => {
-        const set = this.handlers.get(event);
-        if (set) set.forEach((handler) => handler(...args));
+        this.emit(event, ...args);
       });
     }
+
+    this.connection.onreconnected((connectionId?: string) => {
+      this.emit("Reconnected", connectionId);
+    });
 
     await this.connection.start();
   }

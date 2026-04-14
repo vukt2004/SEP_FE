@@ -44,6 +44,9 @@ const LearnerRegisterPage = React.lazy(() => import("@/portals/learner/pages/Reg
 const LearnerVerifyOtpPage = React.lazy(() => import("@/portals/learner/pages/VerifyOtpPage"));
 const LearnerProfilePage = React.lazy(() => import("@/portals/learner/pages/ProfilePage"));
 const LearnerLeaderboardPage = React.lazy(() => import("@/portals/learner/pages/LeaderboardPage"));
+const LearnerNotificationsPage = React.lazy(
+  () => import("@/portals/learner/pages/NotificationsPage"),
+);
 const LearnerModeSelectPage = React.lazy(() => import("@/portals/learner/pages/ModeSelectPage"));
 const LearnerRoomCreatePage = React.lazy(() => import("@/portals/learner/pages/RoomCreatePage"));
 const LearnerRoomJoinPage = React.lazy(() => import("@/portals/learner/pages/RoomJoinPage"));
@@ -91,6 +94,7 @@ export const learnerRoutes: RouteObject = {
     { index: true, element: <LearnerMarketplacePage /> },
     { path: "profile", element: <LearnerProfilePage /> },
     { path: "leaderboard", element: <LearnerLeaderboardPage /> },
+    { path: "notifications", element: <LearnerNotificationsPage /> },
     { path: "wallet", element: <LearnerWalletPage /> },
     { path: "wallet/payment-success", element: <LearnerPaymentSuccessPage /> },
     { path: "wallet/payment-failure", element: <LearnerPaymentFailurePage /> },

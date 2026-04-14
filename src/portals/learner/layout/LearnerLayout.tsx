@@ -9,9 +9,9 @@ export default function LearnerLayout() {
       <main
         style={{
           flex: 1,
-          padding: "24px 48px 40px",
-          margin: "0 auto",
-          maxWidth: 1440,
+          width: "100%",
+          padding: "24px 16px 40px",
+          margin: 0,
           minWidth: 0,
         }}
       >

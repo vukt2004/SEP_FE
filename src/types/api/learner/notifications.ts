@@ -17,6 +17,7 @@ export interface NotificationItem {
   readAt?: string | null;
   createdAt: string;
   actionUrl?: string | null;
+  payloadJson?: string | null;
   actor?: NotificationActor | null;
 }
 

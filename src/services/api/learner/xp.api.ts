@@ -1,12 +1,27 @@
 import { learnerAxios } from "@/services/http/axios.learner";
-import type { XpLeaderboardResult } from "@/types/api/learner/xp";
+import type {
+  LeaderboardPeriodType,
+  XpGainLeaderboardResult,
+  XpLeaderboardResult,
+} from "@/types/api/learner/xp";
 
 const BASE = "/api/learner/xp";
 
 export const learnerXpApi = {
-  getLeaderboard(pageNumber = 1, pageSize = 20) {
-    return learnerAxios.get<XpLeaderboardResult>(`${BASE}/leaderboard`, {
+  getTopLevelLeaderboard(pageNumber = 1, pageSize = 20) {
+    return learnerAxios.get<XpLeaderboardResult>(`${BASE}/leaderboard/top-level`, {
       params: { pageNumber, pageSize },
     });
+  },
+
+  getXpGainLeaderboard(periodType: LeaderboardPeriodType = "Week", pageNumber = 1, pageSize = 20) {
+    return learnerAxios.get<XpGainLeaderboardResult>(`${BASE}/leaderboard/xp-gain`, {
+      params: { periodType, pageNumber, pageSize },
+    });
+  },
+
+  // Backward-compatible alias for old callers.
+  getLeaderboard(pageNumber = 1, pageSize = 20) {
+    return learnerXpApi.getTopLevelLeaderboard(pageNumber, pageSize);
   },
 };

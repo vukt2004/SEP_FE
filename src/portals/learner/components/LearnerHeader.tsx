@@ -22,6 +22,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
 import { learnerNotificationsApi } from "@/services/api/learner/notifications.api";
 import { notificationHub } from "@/lib/realtime/notificationHub";
+import { getLocalizedNotificationContent } from "@/lib/notifications/notificationContent";
 import { useThemeStore } from "@/stores/theme.store";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
@@ -148,6 +149,7 @@ export default function LearnerHeader() {
         readAt: toString(obj.readAt ?? obj.ReadAt) || null,
         createdAt,
         actionUrl: toString(obj.actionUrl ?? obj.ActionUrl) || null,
+        payloadJson: toString(obj.payloadJson ?? obj.PayloadJson) || null,
         actor: toActor(obj.actor ?? obj.Actor),
       };
     };
@@ -190,6 +192,11 @@ export default function LearnerHeader() {
       setUnreadCount(0);
     });
 
+    const offReconnected = notificationHub.on("Reconnected", () => {
+      void loadUnreadCount();
+      void loadNotifications();
+    });
+
     void notificationHub.connect().catch(() => {
       // Keep header usable even if realtime connection fails.
     });
@@ -199,6 +206,7 @@ export default function LearnerHeader() {
       offUnread();
       offRead();
       offAllRead();
+      offReconnected();
       void notificationHub.disconnect();
     };
   }, []);
@@ -297,7 +305,8 @@ export default function LearnerHeader() {
   );
 
   const getActorInitial = (item: NotificationItem) => {
-    const source = item.actor?.fullName?.trim() || item.title.trim();
+    const localized = getLocalizedNotificationContent(item, t);
+    const source = item.actor?.fullName?.trim() || localized.title.trim();
     if (!source) return "N";
     const parts = source.split(/\s+/).filter(Boolean);
     const first = parts[0]?.[0] ?? "N";
@@ -553,7 +562,9 @@ export default function LearnerHeader() {
                         {t("notification.empty")}
                       </div>
                     ) : (
-                      visibleNotifications.map((item) => (
+                      visibleNotifications.map((item) => {
+                        const content = getLocalizedNotificationContent(item, t);
+                        return (
                         <button
                           key={item.id}
                           type="button"
@@ -605,7 +616,7 @@ export default function LearnerHeader() {
                               }}
                             >
                               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-                                {item.title}
+                                {content.title}
                               </span>
                               {!item.isRead ? (
                                 <span
@@ -620,7 +631,7 @@ export default function LearnerHeader() {
                               ) : null}
                             </div>
                             <span style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>
-                              {item.body}
+                              {content.body}
                             </span>
                             <span
                               style={{
@@ -633,8 +644,38 @@ export default function LearnerHeader() {
                             </span>
                           </div>
                         </button>
-                      ))
+                        );
+                      })
                     )}
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      padding: "10px 14px",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationOpen(false);
+                        navigate(ROUTES.LEARNER_NOTIFICATIONS ?? "/app/notifications");
+                      }}
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--primary)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("notification.viewAll")}
+                    </button>
                   </div>
                 </motion.div>
               ) : null}
