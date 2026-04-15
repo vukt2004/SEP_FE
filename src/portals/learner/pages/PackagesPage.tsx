@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { learnerPackagesApi } from "@/services/api/learner/packages.api";
-import type { Package } from "@/types/api/learner/packages";
+import type { Package, UserPackage } from "@/types/api/learner/packages";
 import type { ApiResult } from "@/types/api/common";
 import { useTranslation } from "@/lib/i18n/translations";
 import { clearCurrentUserPlanCache } from "@/lib/auth/subscriptionPlan";
@@ -19,6 +19,84 @@ type PurchaseModalState = {
   message: string;
 };
 
+type NormalizedPlan = "free" | "pro" | "creator";
+
+const PLAN_RANK: Record<NormalizedPlan, number> = {
+  free: 0,
+  pro: 1,
+  creator: 2,
+};
+
+function normalizePlanName(name: string): NormalizedPlan | null {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized.includes("creator") || normalized.includes("enterprise")) {
+    return "creator";
+  }
+  if (normalized.includes("pro") || normalized.includes("premium")) {
+    return "pro";
+  }
+  if (normalized.includes("free") || normalized.includes("basic") || normalized.includes("starter")) {
+    return "free";
+  }
+
+  return null;
+}
+
+function isPackageActiveNow(pkg: UserPackage): boolean {
+  const hasRemaining = pkg.remaining === null || pkg.remaining > 0;
+  const expiresAtMs = Date.parse(pkg.expiresAt);
+  const notExpired = Number.isFinite(expiresAtMs) ? expiresAtMs > Date.now() : true;
+  return hasRemaining && notExpired;
+}
+
+function pickCurrentPackage(items: UserPackage[]): UserPackage | null {
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
+
+  const activeItems = items.filter(isPackageActiveNow);
+  const candidates = activeItems.length > 0 ? activeItems : items;
+
+  const ranked = [...candidates].sort((a, b) => {
+    const rankA = normalizePlanName(a.name);
+    const rankB = normalizePlanName(b.name);
+    if (rankA && rankB && PLAN_RANK[rankA] !== PLAN_RANK[rankB]) {
+      return PLAN_RANK[rankB] - PLAN_RANK[rankA];
+    }
+    if (a.price !== b.price) {
+      return b.price - a.price;
+    }
+    const purchasedA = Date.parse(a.purchasedAt);
+    const purchasedB = Date.parse(b.purchasedAt);
+    if (Number.isFinite(purchasedA) && Number.isFinite(purchasedB) && purchasedA !== purchasedB) {
+      return purchasedB - purchasedA;
+    }
+    const expiresA = Date.parse(a.expiresAt);
+    const expiresB = Date.parse(b.expiresAt);
+    if (Number.isFinite(expiresA) && Number.isFinite(expiresB) && expiresA !== expiresB) {
+      return expiresB - expiresA;
+    }
+    return 0;
+  });
+
+  return ranked[0] ?? null;
+}
+
+function isSameOrLowerPackage(target: Package, current: UserPackage | null): boolean {
+  if (!current) return false;
+
+  const currentRank = normalizePlanName(current.name);
+  const targetRank = normalizePlanName(target.name);
+
+  if (currentRank && targetRank) {
+    return PLAN_RANK[targetRank] <= PLAN_RANK[currentRank];
+  }
+
+  return target.price <= current.price;
+}
+
 export default function PackagesPage() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
@@ -27,6 +105,8 @@ export default function PackagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
+  const [currentPackage, setCurrentPackage] = useState<UserPackage | null>(null);
+  const [confirmingPackage, setConfirmingPackage] = useState<Package | null>(null);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
   const [lastFailedPackage, setLastFailedPackage] = useState<Package | null>(null);
 
@@ -36,12 +116,34 @@ export default function PackagesPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await learnerPackagesApi.getAll(1, 20);
+        const [packageResult, myPackageResult] = await Promise.allSettled([
+          learnerPackagesApi.getAll(1, 20),
+          learnerPackagesApi.getMyPackages(1, 20, true),
+        ]);
+
         if (cancelled) return;
-        if (response.data.isSuccess && response.data.data) {
-          setPackages(response.data.data.items ?? []);
+
+        if (packageResult.status === "fulfilled") {
+          if (packageResult.value.data.isSuccess && packageResult.value.data.data) {
+            setPackages(packageResult.value.data.data.items ?? []);
+          } else {
+            setError(packageResult.value.data.message || t("failedLoadPackages"));
+          }
         } else {
-          setError(response.data.message || t("failedLoadPackages"));
+          setError(t("errorLoadingPackages"));
+          console.error(packageResult.reason);
+        }
+
+        if (myPackageResult.status === "fulfilled") {
+          if (myPackageResult.value.data.isSuccess && myPackageResult.value.data.data) {
+            const myItems = myPackageResult.value.data.data.items ?? [];
+            setCurrentPackage(pickCurrentPackage(myItems));
+          } else {
+            setCurrentPackage(null);
+          }
+        } else {
+          setCurrentPackage(null);
+          console.warn("Failed to load learner active package", myPackageResult.reason);
         }
       } catch (err) {
         if (!cancelled) {
@@ -58,8 +160,7 @@ export default function PackagesPage() {
     };
   }, [t, locale]);
 
-  const handleChoose = async (pkg: Package) => {
-    if (!pkg.isActive) return;
+  const executePurchase = async (pkg: Package) => {
     try {
       setPurchasingId(pkg.id);
       const response = await learnerPackagesApi.purchase(pkg.id);
@@ -107,6 +208,18 @@ export default function PackagesPage() {
     } finally {
       setPurchasingId(null);
     }
+  };
+
+  const handleChoose = (pkg: Package) => {
+    if (!pkg.isActive || isSameOrLowerPackage(pkg, currentPackage) || purchasingId) return;
+    setConfirmingPackage(pkg);
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!confirmingPackage) return;
+    const selectedPackage = confirmingPackage;
+    setConfirmingPackage(null);
+    await executePurchase(selectedPackage);
   };
 
   const handleReportPackagePurchaseIssue = () => {
@@ -170,6 +283,14 @@ export default function PackagesPage() {
     return defaults[index % defaults.length];
   };
 
+  const formatDate = (isoDate: string) => {
+    const value = Date.parse(isoDate);
+    if (!Number.isFinite(value)) {
+      return isoDate;
+    }
+    return new Date(value).toLocaleDateString(locale.startsWith("vi") ? "vi-VN" : "en-US");
+  };
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -217,6 +338,27 @@ export default function PackagesPage() {
           <h1 className={styles.title}>{t("flexiblePlansTitle")}</h1>
         </motion.header>
 
+        <motion.section
+          className={styles.currentPackagePanel}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <span className={styles.currentPackageLabel}>
+            {locale.startsWith("vi") ? "Gói hiện tại" : "Current package"}
+          </span>
+          <strong className={styles.currentPackageName}>{currentPackage?.name ?? "Free"}</strong>
+          <span className={styles.currentPackageMeta}>
+            {currentPackage
+              ? locale.startsWith("vi")
+                ? `Hết hạn: ${formatDate(currentPackage.expiresAt)}`
+                : `Expires: ${formatDate(currentPackage.expiresAt)}`
+              : locale.startsWith("vi")
+                ? "Bạn chưa có gói trả phí đang hoạt động."
+                : "You do not have an active paid package yet."}
+          </span>
+        </motion.section>
+
         {visiblePackages.length === 0 ? (
           <div className={styles.emptyWrap}>{t("noPackagesAvailable")}</div>
         ) : (
@@ -229,6 +371,9 @@ export default function PackagesPage() {
             {visiblePackages.map((pkg, index) => {
               const featured =
                 hoveredIndex !== null ? hoveredIndex === index : index === defaultFeaturedIndex;
+              const isCurrentPackageCard = currentPackage?.packageId === pkg.id;
+              const isLockedByCurrent = isSameOrLowerPackage(pkg, currentPackage);
+              const isDisabled = !pkg.isActive || purchasingId === pkg.id || isLockedByCurrent;
               const { display, unit, original } = getDisplayPrice(pkg);
               const features = parseFeatures(pkg.featuresSpec);
               if (features.length === 0) {
@@ -241,14 +386,23 @@ export default function PackagesPage() {
               return (
                 <motion.div
                   key={pkg.id}
-                  className={`${styles.card} ${featured ? styles.cardFeatured : ""}`}
+                  className={`${styles.card} ${featured ? styles.cardFeatured : ""} ${
+                    isCurrentPackageCard ? styles.cardCurrent : ""
+                  }`}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                   variants={cardVariants}
                   whileHover={{ y: -6, transition: { duration: 0.2 } }}
                   whileTap={{ scale: 0.99 }}
                 >
-                  <h3 className={styles.cardName}>{pkg.name}</h3>
+                  <div className={styles.cardHeaderRow}>
+                    <h3 className={styles.cardName}>{pkg.name}</h3>
+                    {isCurrentPackageCard ? (
+                      <span className={styles.currentBadge}>
+                        {locale.startsWith("vi") ? "Hiện tại" : "Current"}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className={styles.priceRow}>
                     <span className={styles.cardPrice}>{display}</span>
                     <span className={styles.cardPriceUnit}>{unit}</span>
@@ -271,7 +425,7 @@ export default function PackagesPage() {
                     type="button"
                     className={styles.btnChoose}
                     onClick={() => handleChoose(pkg)}
-                    disabled={!pkg.isActive || purchasingId === pkg.id}
+                    disabled={isDisabled}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
@@ -279,12 +433,51 @@ export default function PackagesPage() {
                       ? locale.startsWith("vi")
                         ? "Đang mua..."
                         : "Purchasing..."
-                      : `${t("choose")} ${pkg.name}`}
+                      : isCurrentPackageCard
+                        ? locale.startsWith("vi")
+                          ? "Gói hiện tại"
+                          : "Current package"
+                        : isLockedByCurrent
+                          ? locale.startsWith("vi")
+                            ? "Chỉ mua được gói cao hơn"
+                            : "Higher package required"
+                          : `${t("choose")} ${pkg.name}`}
                   </motion.button>
                 </motion.div>
               );
             })}
           </motion.div>
+        )}
+
+        {confirmingPackage && (
+          <div className={styles.modalOverlay} onClick={() => setConfirmingPackage(null)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>
+                {locale.startsWith("vi") ? "Xác nhận mua gói" : "Confirm package purchase"}
+              </h3>
+              <p className={styles.modalMessage}>
+                {locale.startsWith("vi")
+                  ? `Bạn có chắc muốn mua gói ${confirmingPackage.name} với giá ${formatPrice(confirmingPackage.price)} ${CURRENCY}?`
+                  : `Do you want to purchase ${confirmingPackage.name} for ${formatPrice(confirmingPackage.price)} ${CURRENCY}?`}
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalBtn}
+                  onClick={() => setConfirmingPackage(null)}
+                >
+                  {locale.startsWith("vi") ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                  onClick={handleConfirmPurchase}
+                >
+                  {locale.startsWith("vi") ? "Xác nhận mua" : "Confirm"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {purchaseModal && (
