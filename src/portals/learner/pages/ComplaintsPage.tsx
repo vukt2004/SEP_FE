@@ -1248,7 +1248,7 @@ export default function ComplaintsPage() {
                               },
                             }))
                           }
-                          max={new Date().toISOString().slice(0, 16)}
+                          max={getVietnamNowDateTimeLocal()}
                           style={createUi.control}
                         />
                       </div>

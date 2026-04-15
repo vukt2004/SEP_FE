@@ -14,19 +14,16 @@ import { ROUTES } from "@/lib/constants/routes";
 function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
-
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
 function isPreviewableImage(file: ComplaintAttachment) {
   const mime = (file.mimeType ?? "").toLowerCase();
   if (mime.startsWith("image/")) return true;
   return /\.(png|jpe?g|gif|webp)$/i.test(file.fileName);
 }
-
 function formatDurationBetween(
   startIso: string,
   endIso: string | null,
@@ -76,6 +73,13 @@ export default function ComplaintDetailPage() {
     void fetchDetail();
   }, [fetchDetail]);
 
+  // Nếu là seller (isLimitedView), redirect sang overview
+  useEffect(() => {
+    if (data && (data as any).isLimitedView) {
+      navigate(`/app/complaints/${id}/overview`, { replace: true });
+    }
+  }, [data, id, navigate]);
+
   async function onSend() {
     if (!id || !data) return;
     const msgError = validateMessageContent(content);
@@ -107,9 +111,15 @@ export default function ComplaintDetailPage() {
     return [...(sourceMessage?.attachments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [data]);
 
-  if (loading && !data) return <div>{t("complaints.detail.loading")}</div>;
-  if (error) return <div style={{ color: "var(--danger)" }}>{error}</div>;
-  if (!data) return <div>{t("complaints.detail.noComplaint")}</div>;
+  if (loading && !data) {
+    return <div>{t("complaints.detail.loading")}</div>;
+  }
+  if (error) {
+    return <div style={{ color: "var(--danger)" }}>{error}</div>;
+  }
+  if (!data) {
+    return <div>{t("complaints.detail.noComplaint")}</div>;
+  }
 
   const isResolved = data.complaintStatus === "Resolved";
   const visibleMessages = [...data.messages]
