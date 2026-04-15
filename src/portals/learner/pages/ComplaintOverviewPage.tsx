@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
+import { learnerChatApi } from "@/services/api/learner/chat.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import type { ComplaintAttachment, ComplaintDetail } from "@/types/api/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
+import { MessageCircle } from "lucide-react";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,6 +29,7 @@ export default function ComplaintOverviewPage() {
   const [data, setData] = useState<ComplaintDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [openingChat, setOpeningChat] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -48,6 +52,56 @@ export default function ComplaintOverviewPage() {
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
+
+  const handleChatWithReporter = async () => {
+    console.log("ComplaintOverviewPage: handleChatWithReporter clicked", { userId: data?.userId, openingChat });
+    if (!data) return;
+    try {
+      setOpeningChat(true);
+
+      // Determine reporter userId. Some limited views omit `userId`, so try fallbacks.
+      let reporterId: string | undefined = data.userId;
+
+      if (!reporterId) {
+        // Try to find a senderId from the visible messages that is not the current user.
+        const profileRes = await learnerProfileApi.getProfile().catch(() => null);
+        const myUserId = profileRes?.data?.userId;
+        reporterId = data.messages?.find((m) => !m.isInternal && m.senderId && m.senderId !== myUserId)
+          ?.senderId;
+        // Fallback to first message senderId (best-effort)
+        if (!reporterId && data.messages?.length) reporterId = data.messages[0].senderId;
+      }
+
+      if (!reporterId) {
+        alert(t("complaints.detail.cannotFindReporter") || "Cannot find reporter information.");
+        return;
+      }
+
+      // Reporter display name: avoid calling CMS APIs from learner portal (prevents CMS login redirect).
+      const reporterName = reporterId;
+
+      // Create or get conversation with reporter
+      const response = await learnerChatApi.getOrCreatePrivateConversation(reporterId);
+      const conversationId = response.data.data?.id;
+      if (!response.data.isSuccess || !conversationId) {
+        alert(
+          response.data.message ||
+            (t("complaints.detail.cannotOpenChat") || "Unable to open chat with reporter."),
+        );
+        return;
+      }
+      const params = new URLSearchParams({
+        otherUserId: reporterId,
+        otherUserName: reporterName,
+      });
+      navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conversationId)}?${params.toString()}`);
+    } catch (err) {
+      console.error(err);
+      alert(t("complaints.detail.errorOpeningChat") || "Error opening chat.");
+    } finally {
+      setOpeningChat(false);
+    }
+  }
 
   const evidenceAttachments = useMemo(() => {
     const sourceMessage =
@@ -88,6 +142,32 @@ export default function ComplaintOverviewPage() {
             ← {t("complaints.detail.backToComplaints")}
           </button>
           <ComplaintStatusBadge status={data.complaintStatus} />
+          {data.contextType?.toLowerCase() === "map" && (
+            <button
+              type="button"
+              onClick={handleChatWithReporter}
+              disabled={openingChat}
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--primary)",
+                color: "white",
+                borderRadius: 6,
+                padding: "5px 11px",
+                fontSize: 12,
+                cursor: openingChat ? "not-allowed" : "pointer",
+                opacity: openingChat ? 0.7 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+              title={t("complaints.detail.chatWithReporter") || "Chat with reporter"}
+            >
+              <MessageCircle size={14} />
+              {openingChat ? t("complaints.detail.openingChat") || "Opening..." : t("complaints.detail.contactReporter") || "Contact reporter"}
+            </button>
+          )}
         </div>
 
         <div>

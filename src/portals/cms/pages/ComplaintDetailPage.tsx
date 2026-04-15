@@ -49,6 +49,32 @@ function getUid5(value: string) {
   return (value || "").replace(/-/g, "").slice(0, 5);
 }
 
+function formatContextType(value?: string | null) {
+  if (!value) return "";
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseContextDataJson(raw?: string | null) {
+  if (!raw) return {} as Record<string, string>;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {} as Record<string, string>;
+    const asStringRecord: Record<string, string> = {};
+    Object.entries(parsed as Record<string, unknown>).forEach(([key, value]) => {
+      if (typeof value === "string" && value.trim()) {
+        asStringRecord[key] = value.trim();
+      }
+    });
+    return asStringRecord;
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+
 export default function ComplaintDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -109,6 +135,24 @@ export default function ComplaintDetailPage() {
       const historyActorIds = Array.from(new Set(detail.statusHistories.map((h) => h.changedBy).filter(Boolean)));
       const userIds = Array.from(new Set([detail.userId, ...senderIds, ...historyActorIds].filter(Boolean)));
 
+      async function resolveUser(userId: string) {
+        const byId = await cmsUsersApi.getUserById(userId).catch(() => null);
+        const byIdUser = byId?.data?.data;
+        if (byIdUser?.id) {
+          return byIdUser;
+        }
+
+        const bySearch = await cmsUsersApi
+          .getUsers({ page: 1, pageSize: 20, search: userId })
+          .catch(() => null);
+        const exactUser = bySearch?.data?.items?.find((u) => u.id === userId);
+        if (exactUser?.id) {
+          return exactUser;
+        }
+
+        return null;
+      }
+
       const selfRes = await cmsAuthApi.getProfile().catch(() => null);
       const selfProfile = selfRes?.data?.data;
       if (selfProfile?.userId) {
@@ -119,10 +163,10 @@ export default function ComplaintDetailPage() {
         };
       }
 
-      const userResults = await Promise.allSettled(userIds.map((userId) => cmsUsersApi.getUserById(userId)));
+      const userResults = await Promise.allSettled(userIds.map((userId) => resolveUser(userId)));
       userResults.forEach((result) => {
         if (result.status !== "fulfilled") return;
-        const user = result.value.data.data;
+        const user = result.value;
         if (!user?.id) return;
         next[user.id] = {
           name: buildDisplayName(user.firstName, user.lastName, user.email, "User"),
@@ -240,7 +284,52 @@ export default function ComplaintDetailPage() {
   if (!data) return <div style={{ padding: 24 }}>No complaint found.</div>;
   const currentStatus = normalizeComplaintStatus(data.complaintStatus);
   const allowedTransitions = getAllowedStatusTransitions(data.complaintStatus);
-  const customerName = participants[data.userId]?.name ?? data.userId;
+  const customerName = participants[data.userId]?.name ?? "Customer";
+  const contextData = parseContextDataJson(data.contextDataJson);
+  const linkedOrderType = (data.contextResolved?.linkedOrder?.paymentTargetType ?? "").trim().toLowerCase();
+  const normalizedContextType = ((data.contextType ?? linkedOrderType) || "").trim().toLowerCase();
+
+  const mapContextId =
+    normalizedContextType === "map"
+      ? (data.contextId ||
+        contextData.MapId ||
+        contextData.mapId ||
+        data.contextResolved?.linkedOrder?.paymentTargetId ||
+        data.contextResolved?.referenceCode ||
+        "")
+      : "";
+  const packageContextId =
+    normalizedContextType === "package"
+      ? (data.contextId ||
+        contextData.PackageId ||
+        contextData.packageId ||
+        data.contextResolved?.linkedOrder?.paymentTargetId ||
+        data.contextResolved?.referenceCode ||
+        "")
+      : "";
+
+  const contextAction = mapContextId
+    ? {
+      label: "Reported map",
+      title: "Open reported map in CMS Maps",
+      cta: `Open map #${mapContextId.slice(0, 8)}`,
+      link: `/cms/maps?mapId=${encodeURIComponent(mapContextId)}`,
+    }
+    : packageContextId
+      ? {
+        label: "Reported package",
+        title: "Open reported package in CMS Packages",
+        cta: `Open package #${packageContextId.slice(0, 8)}`,
+        link: `/cms/packages?packageId=${encodeURIComponent(packageContextId)}`,
+      }
+      : null;
+  const reportedAbout = data.contextResolved?.displayTitle?.trim() || data.subject;
+  const reportedAboutSub = data.contextResolved?.displaySubtitle?.trim() || "";
+  const issueType = formatContextType(data.contextType) || data.category;
+  const issueReference =
+    data.contextResolved?.referenceCode?.trim() ||
+    data.contextKey?.trim() ||
+    (data.contextId ? `#${data.contextId.slice(0, 8)}` : "");
   const formatHistoryActor = (changedBy: string) => {
     const actorName = participants[changedBy]?.name ?? "User";
     return `${actorName} (${getUid5(changedBy)})`;
@@ -440,7 +529,9 @@ export default function ComplaintDetailPage() {
                 orderedMessages.map((msg) => {
                   const isUserMessage = msg.senderId === data.userId;
                   const isCmsMessage = cmsSelfId ? msg.senderId === cmsSelfId : !isUserMessage;
-                  const displayName = participants[msg.senderId]?.name ?? msg.senderId;
+                  const displayName =
+                    participants[msg.senderId]?.name ??
+                    (isUserMessage ? customerName : "Support Agent");
                   const avatarPath = participants[msg.senderId]?.avatarPath;
                   const avatarSrc = avatarPath || (isCmsMessage ? PROJECT_LOGO_AVATAR : DEFAULT_AVATAR);
                   const isInternalNote = msg.isInternal;
@@ -624,6 +715,56 @@ export default function ComplaintDetailPage() {
               <div><strong>Customer:</strong> {customerName}</div>
               <div><strong>Ticket ID:</strong> #{data.id.slice(0, 8)}</div>
               <div><strong>Category:</strong> {data.category}</div>
+              <div>
+                <strong>Reported about:</strong>
+                <div
+                  style={{
+                    marginTop: 6,
+                    color: "var(--text)",
+                    lineHeight: 1.45,
+                    wordBreak: "break-word",
+                    fontWeight: 600,
+                  }}
+                >
+                  {reportedAbout}
+                </div>
+                {reportedAboutSub ? (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      color: "var(--text-2)",
+                      lineHeight: 1.45,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {reportedAboutSub}
+                  </div>
+                ) : null}
+              </div>
+              <div><strong>Issue type:</strong> {issueType}</div>
+              {issueReference ? <div><strong>Reference:</strong> {issueReference}</div> : null}
+              {contextAction ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <strong>{contextAction.label}:</strong>
+                  <button
+                    type="button"
+                    onClick={() => navigate(contextAction.link)}
+                    style={{
+                      border: "1px solid var(--border)",
+                      background: "var(--bg)",
+                      color: "var(--text)",
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                    title={contextAction.title}
+                  >
+                    {contextAction.cta}
+                  </button>
+                </div>
+              ) : null}
               <div><strong>Created:</strong> {new Date(data.createdAt).toLocaleDateString()}</div>
               <div>
                 <strong>Status:</strong>{" "}
@@ -634,7 +775,7 @@ export default function ComplaintDetailPage() {
                 )}
               </div>
               <div>
-                <strong>Description:</strong>
+                <strong>Issue details:</strong>
                 <div
                   style={{
                     marginTop: 6,

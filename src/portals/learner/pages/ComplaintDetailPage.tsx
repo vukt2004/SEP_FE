@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
+import { learnerChatApi } from "@/services/api/learner/chat.api";
+import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { ComplaintMessageList } from "@/shared/components/complaints/ComplaintMessageList";
 import { ComplaintTimeline } from "@/shared/components/complaints/ComplaintTimeline";
 import type { ComplaintAttachment, ComplaintDetail } from "@/types/api/complaints";
 import { validateMessageContent } from "@/shared/components/complaints/complaint.utils";
-import { SendHorizontal } from "lucide-react";
+import { SendHorizontal, MessageCircle } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { useThemeStore } from "@/stores/theme.store";
 import { ROUTES } from "@/lib/constants/routes";
@@ -51,6 +53,7 @@ export default function ComplaintDetailPage() {
   const [sending, setSending] = useState(false);
   const [composerError, setComposerError] = useState("");
   const [contentTab, setContentTab] = useState<"conversation" | "evidence">("conversation");
+  const [openingChat, setOpeningChat] = useState(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -102,6 +105,47 @@ export default function ComplaintDetailPage() {
       setComposerError("Send message failed.");
     } finally {
       setSending(false);
+    }
+  }
+
+  const handleChatWithReporter = async () => {
+    console.log("ComplaintDetailPage: handleChatWithReporter clicked", { contextId: data?.contextId, openingChat });
+    if (!data || !data.contextId) return;
+    try {
+      setOpeningChat(true);
+      // Get map owner info
+      const mapRes = await learnerMapsApi.getMapById(data.contextId, false);
+      if (!mapRes.data.isSuccess || !mapRes.data.data) {
+        alert(t("complaints.detail.cannotFindMapOwner") || "Cannot find map owner information.");
+        return;
+      }
+      const mapOwnerId = mapRes.data.data.createdByUserId;
+      if (!mapOwnerId) {
+        alert(t("complaints.detail.mapOwnerNotFound") || "Map owner not found.");
+        return;
+      }
+      // Create or get conversation with map owner
+      const response = await learnerChatApi.getOrCreatePrivateConversation(mapOwnerId);
+      const conversationId = response.data.data?.id;
+      if (!response.data.isSuccess || !conversationId) {
+        alert(
+          response.data.message ||
+            (t("complaints.detail.cannotOpenChat") || "Unable to open chat with map owner."),
+        );
+        return;
+      }
+      const ownerName =
+        mapRes.data.data.createdByUserName?.trim() || mapOwnerId;
+      const params = new URLSearchParams({
+        otherUserId: mapOwnerId,
+        otherUserName: ownerName,
+      });
+      navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conversationId)}?${params.toString()}`);
+    } catch (err) {
+      console.error(err);
+      alert(t("complaints.detail.errorOpeningChat") || "Error opening chat.");
+    } finally {
+      setOpeningChat(false);
     }
   }
 
@@ -218,6 +262,7 @@ export default function ComplaintDetailPage() {
             alignItems: "center",
             padding: "8px 10px",
             borderBottom: "1px solid var(--border)",
+            flexWrap: "wrap",
           }}
         >
           <button
@@ -254,6 +299,32 @@ export default function ComplaintDetailPage() {
             </h2>
           </div>
           <ComplaintStatusBadge status={data.complaintStatus} />
+          {data.contextType?.toLowerCase() === "map" && (
+            <button
+              type="button"
+              onClick={handleChatWithReporter}
+              disabled={openingChat}
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--primary)",
+                color: "white",
+                borderRadius: 6,
+                padding: "5px 11px",
+                fontSize: 12,
+                cursor: openingChat ? "not-allowed" : "pointer",
+                opacity: openingChat ? 0.7 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+              title={t("complaints.detail.chatWithMapOwner") || "Chat with map owner"}
+            >
+              <MessageCircle size={14} />
+              {openingChat ? t("complaints.detail.openingChat") || "Opening..." : t("complaints.detail.contactMapOwner") || "Contact owner"}
+            </button>
+          )}
         </div>
 
         <div

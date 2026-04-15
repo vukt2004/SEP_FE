@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { cmsPackagesApi } from "@/services/api/cms/packages.api";
 import type { PackageListItem, PackageDetail, PackageStatusEnum } from "@/types/api/cms/packages";
 import { Modal } from "../components/Modal";
@@ -17,6 +18,7 @@ import { Plus, Eye, Pencil, Check } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 
 export const PackagesPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t, locale } = useTranslation();
   const [packages, setPackages] = useState<PackageListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ export const PackagesPage: React.FC = () => {
     fetchPackages();
   }, [fetchPackages]);
 
-  const handleViewDetails = async (packageId: string) => {
+  const handleViewDetails = useCallback(async (packageId: string) => {
     try {
       setActionLoading(true);
       const response = await cmsPackagesApi.getPackageById(packageId);
@@ -98,7 +100,22 @@ export const PackagesPage: React.FC = () => {
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    const packageIdFromQuery = searchParams.get("packageId")?.trim();
+    if (!packageIdFromQuery) return;
+    void handleViewDetails(packageIdFromQuery);
+  }, [handleViewDetails, searchParams]);
+
+  const handleCloseDetailModal = useCallback(() => {
+    setDetailModalOpen(false);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("packageId");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const handleCreatePackage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -873,7 +890,6 @@ export const PackagesPage: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Update Package Modal */}
       <Modal
         isOpen={updateModalOpen}
         onClose={() => setUpdateModalOpen(false)}
@@ -1119,7 +1135,7 @@ export const PackagesPage: React.FC = () => {
       {/* Package Detail Modal */}
       <Modal
         isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
+        onClose={handleCloseDetailModal}
         title={t("cmsPackages.detailModalTitle")}
         maxWidth="700px"
       >
