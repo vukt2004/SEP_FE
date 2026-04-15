@@ -24,9 +24,13 @@ export const learnerPackagesApi = {
     );
   },
 
-  getMyPackages(page: number = 1, pageSize: number = 20) {
+  getMyPackages(pageNumber: number = 1, pageSize: number = 20, activeOnly?: boolean) {
     return learnerAxios.get<MyPackagesResult>("/api/learner/marketplace/my-packages", {
-      params: { page, pageSize },
+      params: {
+        pageNumber,
+        pageSize,
+        ...(typeof activeOnly === "boolean" ? { activeOnly } : {}),
+      },
     });
   },
 };
