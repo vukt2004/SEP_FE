@@ -478,6 +478,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     pendingReview: "Pending Review",
     approved: "Approved",
     rejected: "Rejected",
+    rejectedReviewNoteLabel: "Reviewer note",
     published: "Published",
     showingPage: "Showing page",
     of: "of",
@@ -1213,6 +1214,27 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     stepExecution: "Step Execution",
     stop: "Stop",
     reset: "Reset",
+    gameWinSubmitHint: "You won! You can submit now or keep editing your blocks before submitting.",
+    gameWinDecisionPrompt:
+      "You completed the game. Press OK to submit now, or Cancel to continue editing for a higher score.",
+    gameWinDecisionEditHint: "If you continue editing, the run is reset and timer keeps running.",
+    gameWinDecisionTitle: "You completed the game",
+    gameWinDecisionSubmit: "Submit now",
+    gameWinDecisionEdit: "Keep editing",
+    gameSubmitConfirmWin:
+      "Do you want to submit this solution now? You can still replay and optimize later.",
+    gameSubmitConfirmUnsolved:
+      "Do you want to submit now? If win condition is not completed, the score will be 0.",
+    gameSubmitRunBeforeSubmitChanged:
+      "You changed blocks after the last run. Please run again so the system can verify win/loss before submitting.",
+    gameSubmitAutoCheckFailed:
+      "Auto-check could not complete. Please press Run once, then submit again.",
+    gameSubmitConfirmTitle: "Confirm submission",
+    gameSubmitConfirmYes: "Confirm submit",
+    gameSubmitConfirmNo: "Continue editing",
+    gameResultBackendScore: "Backend score",
+    gameResultBackendStatus: "Backend status",
+    gameResultBackendMessage: "Backend message",
     gameLevelToPlay: "Level to play",
     gameLevelOption: "Level {n}",
     selectLevel: "Select level",
@@ -1282,6 +1304,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     "snake.statusLevelStarted": "Level started. Press Run to execute blocks.",
     "snake.statusAppleCollected": "Apple collected. Worm grows.",
     "snake.statusWinCompleted": "Win condition completed. Stage complete.",
+    "snake.statusWinReadySubmit":
+      "You won! Submit now to record your result, or keep editing before submitting.",
     "snake.statusProgramEndedBeforeWin": "Program ended before meeting win condition.",
     "snake.statusNoMoreSteps": "No more steps to execute.",
     "snake.statusExecutionStopped": "Execution stopped.",
@@ -2097,6 +2121,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     pendingReview: "Chờ duyệt",
     approved: "Đã duyệt",
     rejected: "Từ chối",
+    rejectedReviewNoteLabel: "Ghi chú kiểm duyệt",
     published: "Đã xuất bản",
     showingPage: "Trang",
     of: "của",
@@ -2827,6 +2852,29 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     stepExecution: "Chạy từng bước",
     stop: "Dừng",
     reset: "Làm lại",
+    gameWinSubmitHint:
+      "Bạn đã chiến thắng! Bạn có thể nộp bài ngay hoặc tiếp tục chỉnh sửa khối trước khi nộp.",
+    gameWinDecisionPrompt:
+      "Bạn đã hoàn thành game. Nhấn OK để nộp ngay, hoặc Cancel để tiếp tục chỉnh sửa và tối ưu điểm.",
+    gameWinDecisionEditHint:
+      "Nếu chọn chỉnh sửa, lượt chơi sẽ reset và thời gian vẫn tiếp tục chạy.",
+    gameWinDecisionTitle: "Bạn đã hoàn thành game",
+    gameWinDecisionSubmit: "Nộp ngay",
+    gameWinDecisionEdit: "Tiếp tục chỉnh sửa",
+    gameSubmitConfirmWin:
+      "Bạn có muốn nộp bài này ngay bây giờ không? Bạn vẫn có thể chơi lại để tối ưu sau đó.",
+    gameSubmitConfirmUnsolved:
+      "Bạn có muốn nộp bài ngay không? Nếu chưa hoàn thành điều kiện thắng thì điểm sẽ là 0.",
+    gameSubmitRunBeforeSubmitChanged:
+      "Bạn đã chỉnh sửa block sau lần chạy gần nhất. Hãy chạy lại để hệ thống kiểm tra thắng/thua trước khi nộp.",
+    gameSubmitAutoCheckFailed:
+      "Không thể tự kiểm tra trước khi nộp. Hãy bấm Chạy 1 lần rồi nộp lại.",
+    gameSubmitConfirmTitle: "Xác nhận nộp bài",
+    gameSubmitConfirmYes: "Xác nhận nộp",
+    gameSubmitConfirmNo: "Tiếp tục chỉnh sửa",
+    gameResultBackendScore: "Điểm từ hệ thống",
+    gameResultBackendStatus: "Trạng thái từ hệ thống",
+    gameResultBackendMessage: "Thông báo từ hệ thống",
     gameLevelToPlay: "Màn muốn chơi",
     gameLevelOption: "Màn {n}",
     selectLevel: "Chọn màn",
@@ -2896,6 +2944,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     "snake.statusLevelStarted": "Màn chơi đã bắt đầu. Nhấn Chạy để thực thi khối.",
     "snake.statusAppleCollected": "Đã nhặt táo. Sâu sẽ dài ra.",
     "snake.statusWinCompleted": "Hoàn thành điều kiện chiến thắng. Qua màn.",
+    "snake.statusWinReadySubmit":
+      "Bạn đã thắng! Hãy nộp bài để lưu kết quả, hoặc tiếp tục chỉnh sửa trước khi nộp.",
     "snake.statusProgramEndedBeforeWin": "Chương trình kết thúc trước khi đạt điều kiện thắng.",
     "snake.statusNoMoreSteps": "Không còn bước nào để chạy.",
     "snake.statusExecutionStopped": "Đã dừng thực thi.",

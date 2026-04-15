@@ -28,6 +28,7 @@ import GameTimer from "./GameTimer";
 import { AudioControls } from "./AudioControls";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
+import { RunDecisionModal } from "./RunDecisionModal";
 import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send, Flag } from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
@@ -67,6 +68,15 @@ export default function GameView() {
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
+  const [submissionFeedback, setSubmissionFeedback] = useState<{
+    score: number | null;
+    stars: number | null;
+    status: string | null;
+    message: string | null;
+  } | null>(null);
+  const submitRunRef = useRef<((options?: { skipConfirm?: boolean }) => Promise<void>) | null>(
+    null,
+  );
   const [hoveredControl, setHoveredControl] = useState<string | null>(null);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
@@ -90,9 +100,16 @@ export default function GameView() {
   const [revealedHints, setRevealedHints] = useState(0);
   const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(true);
+  const [showWinDecisionModal, setShowWinDecisionModal] = useState(false);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
+  const [pendingSubmitIsWin] = useState(false);
   const [hasDoor, setHasDoor] = useState(false);
   const [timerResetSignal, setTimerResetSignal] = useState(0);
   const timerElapsedRef = useRef(0);
+  const lastEvaluatedAstSpecRef = useRef<string | null>(null);
+  const lastEvaluatedIsWinRef = useRef(false);
+  const isExecutorRunningRef = useRef(false);
+  const isSilentSubmitCheckRef = useRef(false);
   const warningToastTimeoutRef = useRef<number | null>(null);
   const fruitCollectedPulseRef = useRef(false);
   const [execVariables, setExecVariables] = useState<RuntimeVariables>({});
@@ -404,39 +421,27 @@ export default function GameView() {
           if (executorRef.current) {
             executorRef.current.stop();
           }
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
+          lastEvaluatedIsWinRef.current = true;
+          if (isSilentSubmitCheckRef.current) {
+            return;
+          }
           if (levelId && playMapDetailIdRef.current) {
             markCampaignLevelCompleted(levelId, playMapDetailIdRef.current);
           }
-
-          // Prepare result immediately
-          setGameResult({
-            isWin: true,
-            stepCount: engine.getStepCount(),
-            blocksUsed: lastRunBlockCountRef.current,
-            elapsedTime: timerElapsedRef.current,
-            fruitsCollected: engine.getCollectedFruitsCount(),
-          });
-
-          if (showResultPopup) {
-            setTimeout(() => {
-              setResultsDockVisible(false);
-              setShowResultsModal(true);
-              setTimeout(() => {
-                // Keep the results visible briefly before auto-reset.
-                handlePlayAgainFromResults({ preserveResult: true });
-              }, 1200);
-            }, 1500);
-          } else {
-            handlePlayAgainFromResults({ preserveResult: true });
-          }
+          setShowWinDecisionModal(true);
         };
 
         const handleFailed = () => {
           if (executorRef.current) {
             executorRef.current.stop();
           }
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
+          if (isSilentSubmitCheckRef.current) {
+            return;
+          }
           setShowExecutionIncompleteModal(false);
           setShowTrapFailedModal(true);
         };
@@ -571,6 +576,7 @@ export default function GameView() {
 
     const existingExecutor = executorRef.current;
     if (existingExecutor && existingExecutor.hasNext()) {
+      isExecutorRunningRef.current = true;
       setIsExecutorRunning(true);
       existingExecutor.run(
         (result) => {
@@ -581,9 +587,13 @@ export default function GameView() {
         },
         500,
         () => {
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
           const engine = engineRef.current;
           if (!engine || engine.hasWon()) {
+            return;
+          }
+          if (isSilentSubmitCheckRef.current) {
             return;
           }
           setShowExecutionIncompleteModal(true);
@@ -656,6 +666,8 @@ export default function GameView() {
       }
 
       const program: BlockProgram = generateAST(workspaceRef.current);
+      lastEvaluatedAstSpecRef.current = JSON.stringify(program);
+      lastEvaluatedIsWinRef.current = false;
 
       const blocksAfterGeneration = workspaceRef.current.getAllBlocks().length;
       console.log("Blocks in workspace after generation:", blocksAfterGeneration);
@@ -766,6 +778,7 @@ export default function GameView() {
       executorRef.current = executor;
 
       // Run the executor
+      isExecutorRunningRef.current = true;
       setIsExecutorRunning(true);
       executor.run(
         (result) => {
@@ -778,9 +791,13 @@ export default function GameView() {
         },
         500,
         () => {
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
           const engine = engineRef.current;
           if (!engine || engine.hasWon() || engine.getState() === EngineState.Failed) {
+            return;
+          }
+          if (isSilentSubmitCheckRef.current) {
             return;
           }
           setShowExecutionIncompleteModal(true);
@@ -789,6 +806,42 @@ export default function GameView() {
     } catch (err) {
       console.error("Failed to run program:", err);
       alert("Error running program: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const runAutoSubmitPrecheck = async (targetAstSpec: string): Promise<boolean> => {
+    if (!workspaceRef.current || !engineRef.current) return false;
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current = null;
+    }
+
+    isSilentSubmitCheckRef.current = true;
+    handleRunProgram();
+
+    let sawRunning = isExecutorRunningRef.current;
+    const timeoutAt = Date.now() + 20000;
+    try {
+      while (Date.now() < timeoutAt) {
+        const verifiedCurrentAst = lastEvaluatedAstSpecRef.current === targetAstSpec;
+        const running = isExecutorRunningRef.current;
+
+        if (running) {
+          sawRunning = true;
+        }
+
+        if (verifiedCurrentAst && sawRunning && !running) {
+          return true;
+        }
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 60);
+        });
+      }
+      return false;
+    } finally {
+      isSilentSubmitCheckRef.current = false;
     }
   };
 
@@ -804,6 +857,9 @@ export default function GameView() {
   const handleReset = () => {
     historyRecordedRef.current = false;
     setSubmitted(false);
+    setShowWinDecisionModal(false);
+    setShowSubmitConfirmModal(false);
+    setSubmissionFeedback(null);
     timeLimitTriggeredRef.current = false;
     // Stop and reset executor
     if (executorRef.current) {
@@ -842,6 +898,8 @@ export default function GameView() {
     const preserveResult = options?.preserveResult ?? false;
     historyRecordedRef.current = false;
     setSubmitted(false);
+    setShowWinDecisionModal(false);
+    setShowSubmitConfirmModal(false);
     timeLimitTriggeredRef.current = false;
 
     if (executorRef.current) {
@@ -871,6 +929,7 @@ export default function GameView() {
     if (!preserveResult) {
       setGameResult(null);
       setLastSubmissionId(null);
+      setSubmissionFeedback(null);
     }
     setExecVariables({});
     setLastRemoved(null);
@@ -1033,10 +1092,8 @@ export default function GameView() {
       elapsedTime: Math.min(elapsedDisplay, limit),
       fruitsCollected: engine.getCollectedFruitsCount(),
     });
-    if (showResultPopup) {
-      setResultsDockVisible(false);
-      setShowResultsModal(true);
-    }
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
   }, [
     mapConfig?.timeLimitSeconds,
     isLevelStarted,
@@ -1056,126 +1113,134 @@ export default function GameView() {
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
   }, []);
 
-  const handleMultiplayerSubmit = async () => {
-    if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
+  const handleSubmitRun = async (options?: { skipConfirm?: boolean }) => {
+    if (!workspaceRef.current || submitLoading || submitted) return;
+
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const program = generateAST(workspaceRef.current);
+    const astSpec = JSON.stringify(program);
+    const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+    if (!options?.skipConfirm) {
+      if (!isProgramChecked) {
+        const precheckOk = await runAutoSubmitPrecheck(astSpec);
+        if (!precheckOk) {
+          showWarningToast(t("gameSubmitAutoCheckFailed"));
+          return;
+        }
+      }
+      void handleSubmitRun({ skipConfirm: true });
+      return;
+    }
+
+    const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
+    const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto
+      ? lastEvaluatedIsWinRef.current
+      : false;
+
+    if (!isProgramCheckedAfterAuto) {
+      showWarningToast(t("gameSubmitAutoCheckFailed"));
+      return;
+    }
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+    }
+    setIsExecutorRunning(false);
+
+    try {
+      engine.stop();
+    } catch {
+      /* ignore stop errors while freezing the run */
+    }
+
+    const snapshot = {
+      isWin: precheckedIsWinAfterAuto,
+      stepCount: engine.getStepCount(),
+      blocksUsed: lastRunBlockCountRef.current,
+      elapsedTime: timerElapsedRef.current,
+      fruitsCollected: engine.getCollectedFruitsCount(),
+    };
+
+    historyRecordedRef.current = true;
     setSubmitLoading(true);
     try {
-      const program = generateAST(workspaceRef.current);
-      const astSpec = JSON.stringify(program);
-      const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-        language: "Blockly",
-        astSpec,
-        isWin: gameResult?.isWin ?? false,
-        stepsUsed: gameResult?.stepCount ?? 0,
-        blocksUsed: gameResult?.blocksUsed ?? lastRunBlockCountRef.current,
-        time: gameResult?.elapsedTime ?? timerElapsedRef.current,
-        mapDetailId: playMapDetailIdRef.current ?? undefined,
-      });
-      if (res.data?.isSuccess) {
-        setSubmitted(true);
-        if (res.data?.data?.rankingIfAllSubmitted?.length && multiplayerRoomId) {
-          const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-            playerId: r.playerId,
-            score: r.score,
-            rank: r.rank,
-            status: r.status,
-          }));
-          navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
-          return;
+      setSubmissionFeedback(null);
+
+      if (multiplayerRoomId) {
+        const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+          language: "Blockly",
+          astSpec,
+          isWin: snapshot.isWin,
+          stepsUsed: snapshot.stepCount,
+          blocksUsed: snapshot.blocksUsed,
+          time: snapshot.elapsedTime,
+          mapDetailId: playMapDetailIdRef.current ?? undefined,
+        });
+
+        if (res.data?.isSuccess) {
+          setSubmitted(true);
+          setGameResult(snapshot);
+          setSubmissionFeedback({
+            score: res.data.data?.score ?? null,
+            stars: null,
+            status: res.data.data?.status ?? null,
+            message: null,
+          });
+          setResultsDockVisible(false);
+          setShowResultsModal(true);
+          if (res.data?.data?.rankingIfAllSubmitted?.length) {
+            const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+              playerId: r.playerId,
+              score: r.score,
+              rank: r.rank,
+              status: r.status,
+            }));
+            navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
+            return;
+          }
+        } else {
+          historyRecordedRef.current = false;
+          window.alert(res.data?.message ?? "Submit failed.");
         }
       } else {
-        window.alert(res.data?.message ?? "Submit failed.");
-      }
-    } catch {
-      window.alert("Submit failed.");
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
-
-  const isGuid = (value?: string | null): value is string =>
-    Boolean(value) &&
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-      value as string,
-    );
-
-  // Auto-save play history when the game ends.
-  // - Single player: call POST `/api/learner/gameplay/validate`
-  // - Multiplayer: call POST `/api/learner/lobby/rooms/:roomId/submit`
-  useEffect(() => {
-    if (!gameResult) return;
-    if (isCmsPreview) return;
-    if (historyRecordedRef.current) return;
-    historyRecordedRef.current = true;
-
-    void (async () => {
-      try {
-        // Multiplayer: persist when player didn't manually submit.
-        if (multiplayerRoomId) {
-          if (submitted || submitLoading) return;
-          if (!workspaceRef.current) return;
-          setSubmitLoading(true);
-          try {
-            const program = generateAST(workspaceRef.current);
-            const astSpec = gameResult.isWin ? JSON.stringify(program) : null;
-
-            const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-              language: "Blockly",
-              astSpec,
-              isWin: gameResult.isWin,
-              stepsUsed: gameResult.stepCount,
-              blocksUsed: gameResult.blocksUsed,
-              time: gameResult.elapsedTime,
-              mapDetailId: playMapDetailIdRef.current ?? undefined,
-            });
-
-            if (res.data?.isSuccess) {
-              setSubmitted(true);
-              if (res.data?.data?.rankingIfAllSubmitted?.length) {
-                const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-                  playerId: r.playerId,
-                  score: r.score,
-                  rank: r.rank,
-                  status: r.status,
-                }));
-                navigate(ROUTES.LEARNER_ROOM_RESULT, {
-                  state: { ranking, roomId: multiplayerRoomId },
-                });
-              }
-            } else {
-              window.alert(res.data?.message ?? "Submit failed.");
-            }
-          } finally {
-            setSubmitLoading(false);
-          }
-          return;
-        }
-
-        // Single player: validate & save history.
-        if (!isGuid(levelId)) return;
-        if (!workspaceRef.current) return;
-
-        const before = gameResult.isWin
+        const before = snapshot.isWin
           ? await learnerProfileApi.getMyXpProfile().catch(() => null)
           : null;
-        const program = generateAST(workspaceRef.current);
         const validateRes = await learnerGameplayApi.validateSolution({
-          mapId: levelId,
+          mapId: levelId as string,
           mapDetailId: playMapDetailIdRef.current ?? undefined,
           language: "Blockly",
-          astSpec: gameResult.isWin ? JSON.stringify(program) : null,
-          playMode: 0, // Single
-          isWin: gameResult.isWin,
-          clientStepsUsed: gameResult.stepCount,
-          clientBlocksUsed: gameResult.blocksUsed,
-          clientElapsedSeconds: gameResult.elapsedTime,
+          astSpec,
+          playMode: 0,
+          isWin: snapshot.isWin,
+          clientStepsUsed: snapshot.stepCount,
+          clientBlocksUsed: snapshot.blocksUsed,
+          clientElapsedSeconds: snapshot.elapsedTime,
         });
+
         if (validateRes.isSuccess && validateRes.data?.submissionId) {
           setLastSubmissionId(validateRes.data.submissionId);
+          setSubmitted(true);
+          setGameResult(snapshot);
+          setSubmissionFeedback({
+            score: validateRes.data.score ?? null,
+            stars: validateRes.data.stars ?? null,
+            status: validateRes.data.status ?? null,
+            message: validateRes.data.message ?? null,
+          });
+          setResultsDockVisible(false);
+          setShowResultsModal(true);
+        } else {
+          historyRecordedRef.current = false;
+          window.alert(validateRes.message ?? t("failedSubmitRating"));
         }
-        if (gameResult.isWin) {
+
+        if (snapshot.isWin) {
           const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
           const beforeXp = before?.data?.currentXp ?? null;
           const afterXp = after?.data?.currentXp ?? null;
@@ -1187,12 +1252,47 @@ export default function GameView() {
             }
           }
         }
-      } catch (err) {
-        console.error("Failed to save play history", err);
-        historyRecordedRef.current = false;
       }
-    })();
-  }, [gameResult, isCmsPreview, multiplayerRoomId, levelId, submitted, submitLoading, navigate]);
+    } catch (err) {
+      console.error("Failed to save play history", err);
+      historyRecordedRef.current = false;
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  submitRunRef.current = handleSubmitRun;
+
+  useEffect(() => {
+    isExecutorRunningRef.current = isExecutorRunning;
+  }, [isExecutorRunning]);
+
+  const handleContinueEditingAfterWin = useCallback(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    historyRecordedRef.current = false;
+    timeLimitTriggeredRef.current = false;
+    setSubmitted(false);
+    setSubmissionFeedback(null);
+    setGameResult(null);
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
+    setCollectedFruits(0);
+    setLiveSteps(0);
+    fruitCollectedPulseRef.current = false;
+    try {
+      engine.reset();
+      engine.start();
+    } catch {
+      window.location.reload();
+      return;
+    }
+    setIsLevelStarted(true);
+    showWarningToast(t("gameWinSubmitHint"));
+  }, [showWarningToast, t]);
 
   const handleEndMultiplayerGame = async () => {
     if (!multiplayerRoomId) return;
@@ -1399,30 +1499,31 @@ export default function GameView() {
             <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
           </button>
 
+          <button
+            onClick={() => {
+              void handleSubmitRun();
+            }}
+            disabled={isLoading || !!error || submitLoading || submitted}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || submitLoading || submitted,
+              hoveredControl === "submit",
+            )}
+            onMouseEnter={() => setHoveredControl("submit")}
+            onMouseLeave={() => setHoveredControl(null)}
+          >
+            <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
+          </button>
+
           {multiplayerRoomId && (
-            <>
-              <button
-                onClick={handleMultiplayerSubmit}
-                disabled={isLoading || !!error || submitLoading || submitted}
-                style={controlButtonStyle(
-                  "primary",
-                  isLoading || !!error || submitLoading || submitted,
-                  hoveredControl === "submit",
-                )}
-                onMouseEnter={() => setHoveredControl("submit")}
-                onMouseLeave={() => setHoveredControl(null)}
-              >
-                <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
-              </button>
-              <button
-                onClick={handleEndMultiplayerGame}
-                style={controlButtonStyle("warning", false, hoveredControl === "end")}
-                onMouseEnter={() => setHoveredControl("end")}
-                onMouseLeave={() => setHoveredControl(null)}
-              >
-                <Flag size={15} /> {t("endGame")}
-              </button>
-            </>
+            <button
+              onClick={handleEndMultiplayerGame}
+              style={controlButtonStyle("warning", false, hoveredControl === "end")}
+              onMouseEnter={() => setHoveredControl("end")}
+              onMouseLeave={() => setHoveredControl(null)}
+            >
+              <Flag size={15} /> {t("endGame")}
+            </button>
           )}
         </div>
 
@@ -2020,8 +2121,41 @@ export default function GameView() {
         }}
       />
 
+      <RunDecisionModal
+        isOpen={showWinDecisionModal}
+        title={t("gameWinDecisionTitle")}
+        description={`${t("gameWinDecisionPrompt")}\n\n${t("gameWinDecisionEditHint")}`}
+        primaryLabel={t("gameWinDecisionSubmit")}
+        secondaryLabel={t("gameWinDecisionEdit")}
+        onPrimary={() => {
+          setShowWinDecisionModal(false);
+          void submitRunRef.current?.({ skipConfirm: true });
+        }}
+        onSecondary={() => {
+          setShowWinDecisionModal(false);
+          handleContinueEditingAfterWin();
+        }}
+      />
+
+      <RunDecisionModal
+        isOpen={showSubmitConfirmModal}
+        title={t("gameSubmitConfirmTitle")}
+        description={
+          pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")
+        }
+        primaryLabel={t("gameSubmitConfirmYes")}
+        secondaryLabel={t("gameSubmitConfirmNo")}
+        onPrimary={() => {
+          setShowSubmitConfirmModal(false);
+          void submitRunRef.current?.({ skipConfirm: true });
+        }}
+        onSecondary={() => {
+          setShowSubmitConfirmModal(false);
+        }}
+      />
+
       {/* Game Results Modal */}
-      {gameResult && showResultPopup && (
+      {gameResult && (
         <GameResultsModal
           isOpen={showResultsModal}
           isWin={gameResult.isWin}
@@ -2050,6 +2184,13 @@ export default function GameView() {
           onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
           resultPopupOnLabel={t("gameResultPopupOn")}
           resultPopupOffLabel={t("gameResultPopupOff")}
+          backendScore={submissionFeedback?.score ?? null}
+          backendStars={submissionFeedback?.stars ?? null}
+          backendStatus={submissionFeedback?.status ?? null}
+          backendMessage={submissionFeedback?.message ?? null}
+          backendScoreLabel={t("gameResultBackendScore")}
+          backendStatusLabel={t("gameResultBackendStatus")}
+          backendMessageLabel={t("gameResultBackendMessage")}
         />
       )}
 

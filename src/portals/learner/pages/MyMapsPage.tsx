@@ -427,6 +427,12 @@ const MapCard: React.FC<MapCardProps> = ({
   const { t } = useTranslation();
   const difficultyStyle = getDifficultyBadgeStyle(map.difficulty);
   const statusStyle = getStatusBadgeStyle(map.mapStatus);
+  const rejectedReviewNote =
+    map.mapStatus === "Rejected" &&
+    typeof map.reviewNote === "string" &&
+    map.reviewNote.trim().length > 0
+      ? map.reviewNote.trim()
+      : null;
   const learnedTags = extractLearnedTags(map);
   const previewUrl =
     map.avatarUrl?.trim() ||
@@ -624,6 +630,26 @@ const MapCard: React.FC<MapCardProps> = ({
         >
           {getMapStatusLabel(map.mapStatus)}
         </span>
+
+        {rejectedReviewNote ? (
+          <div
+            style={{
+              maxWidth: "100%",
+              borderRadius: "10px",
+              border: "1px solid rgba(249, 115, 22, 0.32)",
+              background: "rgba(249, 115, 22, 0.1)",
+              color: "#9a3412",
+              fontSize: "12px",
+              lineHeight: 1.45,
+              padding: "8px 10px",
+              wordBreak: "break-word",
+            }}
+            title={rejectedReviewNote}
+          >
+            <strong>{t("rejectedReviewNoteLabel")}: </strong>
+            {rejectedReviewNote}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -778,7 +804,11 @@ export const MyMapsPage: React.FC = () => {
   const [reportLoading, setReportLoading] = useState(false);
 
   // Modal state for delete confirmation
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; mapId: string | null; mapTitle: string }>({
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    mapId: string | null;
+    mapTitle: string;
+  }>({
     open: false,
     mapId: null,
     mapTitle: "",
@@ -786,7 +816,11 @@ export const MyMapsPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Modal state for submit-for-review confirmation
-  const [submitReviewModal, setSubmitReviewModal] = useState<{ open: boolean; mapId: string | null; mapTitle: string }>({
+  const [submitReviewModal, setSubmitReviewModal] = useState<{
+    open: boolean;
+    mapId: string | null;
+    mapTitle: string;
+  }>({
     open: false,
     mapId: null,
     mapTitle: "",
@@ -1718,7 +1752,9 @@ export const MyMapsPage: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Icon + heading */}
-              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}
+              >
                 <div
                   style={{
                     width: "44px",
@@ -1763,7 +1799,14 @@ export const MyMapsPage: React.FC = () => {
               )}
 
               {/* Warning text */}
-              <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "24px", lineHeight: 1.6 }}>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-2)",
+                  marginBottom: "24px",
+                  lineHeight: 1.6,
+                }}
+              >
                 {t("submitForReviewModalWarning")}
               </p>
 
@@ -1841,7 +1884,9 @@ export const MyMapsPage: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Icon + heading */}
-              <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}
+              >
                 <div
                   style={{
                     width: "44px",
@@ -1886,7 +1931,14 @@ export const MyMapsPage: React.FC = () => {
               )}
 
               {/* Warning text */}
-              <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "24px", lineHeight: 1.6 }}>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-2)",
+                  marginBottom: "24px",
+                  lineHeight: 1.6,
+                }}
+              >
                 {t("deleteMapWarning")}
               </p>
 

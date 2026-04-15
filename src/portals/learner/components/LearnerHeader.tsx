@@ -211,19 +211,20 @@ export default function LearnerHeader() {
   }, []);
 
   useEffect(() => {
-    // Fallback keep-alive: recover from transient SignalR startup failures and refresh unread badge.
-    const timer = window.setInterval(() => {
-      void notificationHub.connect().catch(() => {
-        // Ignore and keep retrying on next tick.
-      });
-      void loadUnreadCount();
-      if (notificationOpen) {
-        void loadNotifications();
-      }
-    }, 15000);
+    // Only load initial state once when mounted (or rely on Real-time events + Reconnected!)
+    void notificationHub.connect().catch(() => {
+      // Ignore initial connect failures, hub client handles reconnection.
+    });
+    void loadUnreadCount();
+  }, [loadUnreadCount]);
 
-    return () => window.clearInterval(timer);
-  }, [loadNotifications, loadUnreadCount, notificationOpen]);
+  // Load notifications specifically when opened (assuming not fully loaded yet)
+  useEffect(() => {
+    if (notificationOpen) {
+      void loadNotifications();
+    }
+  }, [notificationOpen, loadNotifications]);
+
 
   const onLogout = () => {
     localStorage.removeItem("qo_learner_token");

@@ -6,7 +6,12 @@ import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
 import { LevelType, createGameConfig } from "@/modules/engine/core/GameConfig";
 import type { LevelBlockConstraints, LevelDefinition } from "@/modules/map-system/types";
 import type { ExecutionResult } from "@/modules/executor/commands";
-import type { BlockProgram, ConditionType, PositionResolver } from "@/modules/executor/types";
+import type {
+  BlockProgram,
+  ConditionType,
+  PositionResolver,
+  Rotation,
+} from "@/modules/executor/types";
 import type { EngineEvent } from "@/modules/engine/core/engineEvents";
 import { StepExecutor } from "@/modules/executor/StepExecutor";
 import { animationRegistry } from "@/modules/engine/systems/animation/animationRegistry";
@@ -37,6 +42,7 @@ import { TrapFailedModal } from "./TrapFailedModal";
 import { GameResultsModal } from "./GameResultsModal";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
+import { RunDecisionModal } from "./RunDecisionModal";
 
 interface CellPoint {
   row: number;
@@ -44,6 +50,30 @@ interface CellPoint {
 }
 
 type Dir = "up" | "down" | "left" | "right";
+
+type SnakeFailureReason = "trap" | "self";
+
+type SnakeGameLocationState = {
+  levelId?: string;
+  mapDetailId?: string;
+  levelFile?: string;
+  mapUrl?: string;
+  multiplayerRoomId?: string;
+  roleContext?: string;
+  returnTo?: string;
+};
+
+type SnakeLevelLoadResult = Awaited<ReturnType<typeof loadLevelFromAPI>>;
+
+const DEFAULT_SNAKE_MAP_FILE = "snake-default";
+const TILE_SIZE = 40;
+
+const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
 
 type SnakePartSet = {
   head: Record<Dir, string>;
@@ -59,7 +89,6 @@ type SnakePartSet = {
 };
 
 type SnakeAssetDefinition = {
-  basePath?: string;
   frameWidth: number;
   frameHeight: number;
   parts: SnakePartSet;
@@ -67,57 +96,67 @@ type SnakeAssetDefinition = {
 
 const snakeAsset = snakeAssetRaw as SnakeAssetDefinition;
 
-const TILE_SIZE = 48;
-
-const DIR_DELTA: Record<Dir, { dx: number; dy: number }> = {
-  up: { dx: 0, dy: -1 },
-  down: { dx: 0, dy: 1 },
-  left: { dx: -1, dy: 0 },
-  right: { dx: 1, dy: 0 },
-};
-
-const DEFAULT_SNAKE_MAP_FILE = "snakemap";
-
-type SnakeGameLocationState = {
-  levelId?: string;
-  mapDetailId?: string;
-  levelFile?: string;
-  mapUrl?: string;
-  multiplayerRoomId?: string;
-  roleContext?: "cms" | "learner";
-  returnTo?: string;
-};
-
-type SnakeFailureReason = "trap" | "self";
-
-type SnakeLevelLoadResult = {
-  level: LevelDefinition;
-  mapConfig?: Partial<MapConfig>;
-  mapDetailId: string | null;
-  levels?: MapLevelItem[];
-};
-
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+    image.src = src;
   });
 }
 
-function directionFromTo(from: CellPoint, to: CellPoint): Dir | null {
-  const dx = to.col - from.col;
-  const dy = to.row - from.row;
-  if (dx === 1 && dy === 0) return "right";
-  if (dx === -1 && dy === 0) return "left";
-  if (dx === 0 && dy === 1) return "down";
-  if (dx === 0 && dy === -1) return "up";
-  return null;
+function rotateDirection90(direction: Dir, rotation: Rotation): Dir {
+  if (rotation === "clockwise") {
+    switch (direction) {
+      case "up":
+        return "right";
+      case "right":
+        return "down";
+      case "down":
+        return "left";
+      case "left":
+        return "up";
+    }
+  }
+
+  switch (direction) {
+    case "up":
+      return "left";
+    case "left":
+      return "down";
+    case "down":
+      return "right";
+    case "right":
+      return "up";
+  }
 }
 
-function oppositeDirection(dir: Dir): Dir {
-  switch (dir) {
+function resolveBodySpriteKey(
+  firstDirection: Dir,
+  secondDirection: Dir,
+): keyof SnakePartSet["body"] {
+  const pair = [firstDirection, secondDirection].sort().join("-");
+
+  switch (pair) {
+    case "left-right":
+      return "horizontal";
+    case "down-up":
+      return "vertical";
+    case "left-up":
+      return "topLeft";
+    case "right-up":
+      return "topRight";
+    case "left-down":
+      return "bottomLeft";
+    case "down-right":
+      return "bottomRight";
+    default:
+      return "horizontal";
+  }
+}
+
+function oppositeDirection(direction: Dir): Dir {
+  switch (direction) {
     case "up":
       return "down";
     case "down":
@@ -129,34 +168,16 @@ function oppositeDirection(dir: Dir): Dir {
   }
 }
 
-function rotateDirection90(current: Dir, rotation: "clockwise" | "counterclockwise"): Dir {
-  if (rotation === "clockwise") {
-    const clockwiseMap: Record<Dir, Dir> = {
-      up: "right",
-      right: "down",
-      down: "left",
-      left: "up",
-    };
-    return clockwiseMap[current];
+function directionFromTo(from: CellPoint, to: CellPoint): Dir | null {
+  if (from.row === to.row) {
+    if (from.col === to.col + 1) return "left";
+    if (from.col + 1 === to.col) return "right";
   }
-
-  const counterclockwiseMap: Record<Dir, Dir> = {
-    up: "left",
-    left: "down",
-    down: "right",
-    right: "up",
-  };
-  return counterclockwiseMap[current];
-}
-
-function resolveBodySpriteKey(a: Dir, b: Dir): keyof SnakePartSet["body"] {
-  const key = new Set<Dir>([a, b]);
-  if (key.has("left") && key.has("right")) return "horizontal";
-  if (key.has("up") && key.has("down")) return "vertical";
-  if (key.has("up") && key.has("left")) return "topLeft";
-  if (key.has("up") && key.has("right")) return "topRight";
-  if (key.has("down") && key.has("left")) return "bottomLeft";
-  return "bottomRight";
+  if (from.col === to.col) {
+    if (from.row === to.row + 1) return "up";
+    if (from.row + 1 === to.row) return "down";
+  }
+  return null;
 }
 
 async function loadSnakeLevelFromMock(pathOrFile?: string): Promise<SnakeLevelLoadResult> {
@@ -210,20 +231,15 @@ async function loadSnakeLevelFromMock(pathOrFile?: string): Promise<SnakeLevelLo
       ...(requiredFruits !== undefined ? { requiredFruits } : {}),
     },
     mapDetailId: null,
+    levelOrder: 0,
   };
 }
 
 async function loadSnakeLevel(options: SnakeGameLocationState): Promise<SnakeLevelLoadResult> {
   if (options.levelId) {
-    const apiLevel = await loadLevelFromAPI(options.levelId, {
+    return loadLevelFromAPI(options.levelId, {
       mapDetailId: options.mapDetailId,
     });
-    return {
-      level: apiLevel.level,
-      mapConfig: apiLevel.mapConfig,
-      mapDetailId: apiLevel.mapDetailId,
-      levels: apiLevel.levels,
-    };
   }
 
   return loadSnakeLevelFromMock(options.mapUrl ?? options.levelFile);
@@ -278,6 +294,10 @@ export default function SnakeGameView() {
   const timerElapsedRef = useRef(0);
   const collectedFruitsRef = useRef(0);
   const blocksUsedRef = useRef(0);
+  const lastEvaluatedAstSpecRef = useRef<string | null>(null);
+  const lastEvaluatedIsWinRef = useRef(false);
+  const isExecutorRunningRef = useRef(false);
+  const isSilentSubmitCheckRef = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -323,11 +343,21 @@ export default function SnakeGameView() {
     elapsedTime: number;
     fruitsCollected: number;
   } | null>(null);
+  const [submissionFeedback, setSubmissionFeedback] = useState<{
+    score: number | null;
+    stars: number | null;
+    status: string | null;
+    message: string | null;
+  } | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
   const [, setLastSubmissionId] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showResultPopup, setShowResultPopup] = useState(true);
+  const [showWinDecisionModal, setShowWinDecisionModal] = useState(false);
+  const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
+  const [showClearBlocksConfirmModal, setShowClearBlocksConfirmModal] = useState(false);
+  const [pendingSubmitIsWin] = useState(false);
   const showResultPopupRef = useRef(true);
 
   const nextCampaignLevelId = useMemo(() => {
@@ -468,6 +498,7 @@ export default function SnakeGameView() {
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
 
     const nextLevelTypeRaw = (
       campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
@@ -522,44 +553,38 @@ export default function SnakeGameView() {
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
   }, []);
 
-  const handleMultiplayerSubmit = useCallback(async () => {
-    if (!multiplayerRoomId || !workspaceRef.current || submitLoading || submitted) return;
-    setSubmitLoading(true);
-    try {
-      const program = generateAST(workspaceRef.current);
-      const astSpec = JSON.stringify(program);
-      const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-        language: "Blockly",
-        astSpec,
-        isWin: gameResult?.isWin ?? false,
-        stepsUsed: gameResult?.stepCount ?? 0,
-        blocksUsed: gameResult?.blocksUsed ?? blocksUsedRef.current,
-        time: gameResult?.elapsedTime ?? timerElapsedRef.current,
-        mapDetailId: activeMapDetailId ?? undefined,
-      });
-      if (res.data?.isSuccess) {
-        setSubmitted(true);
-        if (res.data?.data?.rankingIfAllSubmitted?.length && multiplayerRoomId) {
-          const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-            playerId: r.playerId,
-            score: r.score,
-            rank: r.rank,
-            status: r.status,
-          }));
-          navigate(ROUTES.LEARNER_ROOM_RESULT, { state: { ranking, roomId: multiplayerRoomId } });
-          return;
-        }
-      } else {
-        window.alert(res.data?.message ?? "Submit failed.");
-      }
-    } catch {
-      window.alert("Submit failed.");
-    } finally {
-      setSubmitLoading(false);
-    }
-  }, [activeMapDetailId, gameResult, multiplayerRoomId, navigate, submitLoading, submitted]);
+  const handleContinueEditingAfterWin = () => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    historyRecordedRef.current = false;
+    setSubmitted(false);
+    setSubmissionFeedback(null);
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+    setGameResult(null);
+    setShowExecutionIncompleteModal(false);
+    setShowTrapFailedModal(false);
+    setSnakeFailureReason("trap");
+    resultShownRef.current = false;
+
+    resetWormRuntime();
+    restoreInitialObjects();
+    setCollectedFruits(0);
+    collectedFruitsRef.current = 0;
+    setLiveSteps(0);
+    setBlocksUsed(0);
+    blocksUsedRef.current = 0;
+
+    syncSnakeBodyCollision(false);
+    engine.reset();
+    applyLogicalFacingToEngine(engine);
+    setIsLevelStarted(true);
+    setStatusText(t("snake.statusWinReadySubmit"));
+  };
 
   const handleEndMultiplayerGame = useCallback(async () => {
     if (!multiplayerRoomId) return;
@@ -599,12 +624,6 @@ export default function SnakeGameView() {
       unsubEnd?.();
     };
   }, [multiplayerRoomId, navigate]);
-
-  const isGuid = (value?: string | null): value is string =>
-    Boolean(value) &&
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-      value as string,
-    );
 
   useEffect(() => {
     let isMounted = true;
@@ -685,119 +704,197 @@ export default function SnakeGameView() {
       elapsedTime: Math.min(elapsedDisplay, limit),
       fruitsCollected: engine.getCollectedFruitsCount(),
     });
-    if (showResultPopup) {
-      setResultsDockVisible(false);
-      setShowResultsModal(true);
-    } else {
-      setShowResultsModal(false);
-      setResultsDockVisible(false);
-    }
-  }, [
-    elapsedDisplay,
-    isLevelStarted,
-    mapConfig?.timeLimitSeconds,
-    showResultPopup,
-    showResultsModal,
-    t,
-  ]);
+    setShowResultsModal(false);
+    setResultsDockVisible(false);
+  }, [elapsedDisplay, isLevelStarted, mapConfig?.timeLimitSeconds, showResultsModal, t]);
 
-  useEffect(() => {
-    if (!gameResult) return;
-    if (isCmsPreview) return;
-    if (historyRecordedRef.current) return;
-    historyRecordedRef.current = true;
+  const handleSubmitRun = useCallback(
+    async (options?: { skipConfirm?: boolean }) => {
+      if (!workspaceRef.current || submitLoading || submitted) return;
 
-    void (async () => {
-      try {
-        if (multiplayerRoomId) {
-          if (submitted || submitLoading || !workspaceRef.current) return;
-          setSubmitLoading(true);
-          try {
-            const program = generateAST(workspaceRef.current);
-            const astSpec = gameResult.isWin ? JSON.stringify(program) : null;
+      const engine = engineRef.current;
+      if (!engine) return;
 
-            const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
-              language: "Blockly",
-              astSpec,
-              isWin: gameResult.isWin,
-              stepsUsed: gameResult.stepCount,
-              blocksUsed: gameResult.blocksUsed,
-              time: gameResult.elapsedTime,
-              mapDetailId: activeMapDetailId ?? undefined,
-            });
-
-            if (res.data?.isSuccess) {
-              setSubmitted(true);
-              if (res.data?.data?.rankingIfAllSubmitted?.length) {
-                const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
-                  playerId: r.playerId,
-                  score: r.score,
-                  rank: r.rank,
-                  status: r.status,
-                }));
-                navigate(ROUTES.LEARNER_ROOM_RESULT, {
-                  state: { ranking, roomId: multiplayerRoomId },
-                });
-              }
-            } else {
-              window.alert(res.data?.message ?? "Submit failed.");
-            }
-          } finally {
-            setSubmitLoading(false);
+      const program = generateAST(workspaceRef.current);
+      const astSpec = JSON.stringify(program);
+      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+      if (!options?.skipConfirm) {
+        if (!isProgramChecked) {
+          const precheckOk = await runAutoSubmitPrecheck(astSpec);
+          if (!precheckOk) {
+            setStatusText(t("gameSubmitAutoCheckFailed"));
+            return;
           }
-          return;
         }
+        void handleSubmitRun({ skipConfirm: true });
+        return;
+      }
 
-        if (!isGuid(levelId)) return;
-        if (!workspaceRef.current) return;
+      const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
+      const precheckedIsWinAfterAuto = isProgramCheckedAfterAuto
+        ? lastEvaluatedIsWinRef.current
+        : false;
 
-        const before = gameResult.isWin
-          ? await learnerProfileApi.getMyXpProfile().catch(() => null)
-          : null;
-        const program = generateAST(workspaceRef.current);
-        const validateRes = await learnerGameplayApi.validateSolution({
-          mapId: levelId,
-          mapDetailId: activeMapDetailId ?? undefined,
-          language: "Blockly",
-          astSpec: gameResult.isWin ? JSON.stringify(program) : null,
-          playMode: 0,
-          isWin: gameResult.isWin,
-          clientStepsUsed: gameResult.stepCount,
-          clientBlocksUsed: gameResult.blocksUsed,
-          clientElapsedSeconds: gameResult.elapsedTime,
-        });
+      if (!isProgramCheckedAfterAuto) {
+        setStatusText(t("gameSubmitAutoCheckFailed"));
+        return;
+      }
 
-        if (validateRes.isSuccess && validateRes.data?.submissionId) {
-          setLastSubmissionId(validateRes.data.submissionId);
-        }
+      if (executorRef.current) {
+        executorRef.current.stop();
+      }
+      setIsExecutorRunning(false);
 
-        if (gameResult.isWin) {
-          const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
-          const beforeXp = before?.data?.currentXp ?? null;
-          const afterXp = after?.data?.currentXp ?? null;
-          if (beforeXp != null && afterXp != null) {
-            const delta = afterXp - beforeXp;
-            if (delta > 0) {
-              setXpToast(`+${delta} XP`);
-              window.setTimeout(() => setXpToast(""), 2600);
+      try {
+        engine.stop();
+      } catch {
+        /* ignore stop errors while freezing the run */
+      }
+
+      const snapshot = {
+        isWin: precheckedIsWinAfterAuto,
+        stepCount: engine.getStepCount(),
+        blocksUsed: blocksUsedRef.current,
+        elapsedTime: timerElapsedRef.current,
+        fruitsCollected: collectedFruitsRef.current,
+      };
+
+      historyRecordedRef.current = true;
+      setSubmitLoading(true);
+      try {
+        setSubmissionFeedback(null);
+
+        if (multiplayerRoomId) {
+          const res = await learnerLobbyApi.submitSolution(multiplayerRoomId, {
+            language: "Blockly",
+            astSpec,
+            isWin: snapshot.isWin,
+            stepsUsed: snapshot.stepCount,
+            blocksUsed: snapshot.blocksUsed,
+            time: snapshot.elapsedTime,
+            mapDetailId: activeMapDetailId ?? undefined,
+          });
+
+          if (res.data?.isSuccess) {
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: res.data.data?.score ?? null,
+              stars: null,
+              status: res.data.data?.status ?? null,
+              message: null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+            if (res.data?.data?.rankingIfAllSubmitted?.length) {
+              const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
+                playerId: r.playerId,
+                score: r.score,
+                rank: r.rank,
+                status: r.status,
+              }));
+              navigate(ROUTES.LEARNER_ROOM_RESULT, {
+                state: { ranking, roomId: multiplayerRoomId },
+              });
+              return;
+            }
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(res.data?.message ?? "Submit failed.");
+          }
+        } else {
+          if (!levelId) return;
+
+          const before = snapshot.isWin
+            ? await learnerProfileApi.getMyXpProfile().catch(() => null)
+            : null;
+          const validateRes = await learnerGameplayApi.validateSolution({
+            mapId: levelId,
+            mapDetailId: activeMapDetailId ?? undefined,
+            language: "Blockly",
+            astSpec,
+            playMode: 0,
+            isWin: snapshot.isWin,
+            clientStepsUsed: snapshot.stepCount,
+            clientBlocksUsed: snapshot.blocksUsed,
+            clientElapsedSeconds: snapshot.elapsedTime,
+          });
+
+          if (validateRes.isSuccess && validateRes.data?.submissionId) {
+            setLastSubmissionId(validateRes.data.submissionId);
+            setSubmitted(true);
+            setGameResult(snapshot);
+            setSubmissionFeedback({
+              score: validateRes.data.score ?? null,
+              stars: validateRes.data.stars ?? null,
+              status: validateRes.data.status ?? null,
+              message: validateRes.data.message ?? null,
+            });
+            setResultsDockVisible(false);
+            setShowResultsModal(true);
+          } else {
+            historyRecordedRef.current = false;
+            window.alert(validateRes.message ?? "Submit failed.");
+          }
+
+          if (snapshot.isWin) {
+            const after = await learnerProfileApi.getMyXpProfile().catch(() => null);
+            const beforeXp = before?.data?.currentXp ?? null;
+            const afterXp = after?.data?.currentXp ?? null;
+            if (beforeXp != null && afterXp != null) {
+              const delta = afterXp - beforeXp;
+              if (delta > 0) {
+                setXpToast(`+${delta} XP`);
+                window.setTimeout(() => setXpToast(""), 2600);
+              }
             }
           }
         }
       } catch (saveErr) {
         console.error("Failed to save play history", saveErr);
         historyRecordedRef.current = false;
+      } finally {
+        setSubmitLoading(false);
       }
-    })();
-  }, [
-    activeMapDetailId,
-    gameResult,
-    isCmsPreview,
-    levelId,
-    multiplayerRoomId,
-    navigate,
-    submitLoading,
-    submitted,
-  ]);
+    },
+    [activeMapDetailId, levelId, multiplayerRoomId, navigate, submitLoading, submitted, t],
+  );
+
+  async function runAutoSubmitPrecheck(targetAstSpec: string): Promise<boolean> {
+    if (!workspaceRef.current || !engineRef.current) return false;
+
+    if (executorRef.current) {
+      executorRef.current.stop();
+      executorRef.current = null;
+    }
+
+    isSilentSubmitCheckRef.current = true;
+    handleRunProgram();
+
+    let sawRunning = isExecutorRunningRef.current;
+    const timeoutAt = Date.now() + 20000;
+    try {
+      while (Date.now() < timeoutAt) {
+        const verifiedCurrentAst = lastEvaluatedAstSpecRef.current === targetAstSpec;
+        const running = isExecutorRunningRef.current;
+
+        if (running) {
+          sawRunning = true;
+        }
+
+        if (verifiedCurrentAst && sawRunning && !running) {
+          return true;
+        }
+
+        await new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 60);
+        });
+      }
+      return false;
+    } finally {
+      isSilentSubmitCheckRef.current = false;
+    }
+  }
 
   useEffect(() => {
     collectedFruitsRef.current = collectedFruits;
@@ -806,6 +903,10 @@ export default function SnakeGameView() {
   useEffect(() => {
     blocksUsedRef.current = blocksUsed;
   }, [blocksUsed]);
+
+  useEffect(() => {
+    isExecutorRunningRef.current = isExecutorRunning;
+  }, [isExecutorRunning]);
 
   useEffect(() => {
     showResultPopupRef.current = showResultPopup;
@@ -950,29 +1051,33 @@ export default function SnakeGameView() {
     [appendBodyCell, buildTrailCells],
   );
 
-  const finishRunAsResult = useCallback((isWin: boolean) => {
-    if (resultShownRef.current) return;
+  const finishRunAsResult = useCallback(
+    (isWin: boolean) => {
+      if (resultShownRef.current) return;
 
-    const engine = engineRef.current;
-    if (!engine) return;
+      const engine = engineRef.current;
+      if (!engine) return;
 
-    resultShownRef.current = true;
-    setIsExecutorRunning(false);
-    setGameResult({
-      isWin,
-      stepCount: engine.getStepCount(),
-      blocksUsed: blocksUsedRef.current,
-      elapsedTime: timerElapsedRef.current,
-      fruitsCollected: collectedFruitsRef.current,
-    });
-    if (showResultPopupRef.current) {
-      setResultsDockVisible(false);
-      setShowResultsModal(true);
-    } else {
+      if (isWin) {
+        resultShownRef.current = true;
+        setShowWinDecisionModal(true);
+        return;
+      }
+
+      resultShownRef.current = true;
+      setIsExecutorRunning(false);
+      setGameResult({
+        isWin,
+        stepCount: engine.getStepCount(),
+        blocksUsed: blocksUsedRef.current,
+        elapsedTime: timerElapsedRef.current,
+        fruitsCollected: collectedFruitsRef.current,
+      });
       setShowResultsModal(false);
       setResultsDockVisible(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   const triggerSnakeFailure = useCallback(
     (message: string, reason: SnakeFailureReason = "trap") => {
@@ -1326,8 +1431,13 @@ export default function SnakeGameView() {
 
         onWin = () => {
           executorRef.current?.stop();
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
-          setStatusText(t("snake.statusWinCompleted"));
+          lastEvaluatedIsWinRef.current = true;
+          if (isSilentSubmitCheckRef.current) {
+            return;
+          }
+          setStatusText(t("snake.statusWinReadySubmit"));
           if (levelId && activeMapDetailIdNext) {
             markCampaignLevelCompleted(levelId, activeMapDetailIdNext);
           }
@@ -1335,6 +1445,9 @@ export default function SnakeGameView() {
         };
 
         onFailed = () => {
+          if (isSilentSubmitCheckRef.current) {
+            return;
+          }
           triggerSnakeFailure(t("snake.errorGameOverTrap"), "trap");
         };
 
@@ -1457,12 +1570,17 @@ export default function SnakeGameView() {
 
     const existingExecutor = executorRef.current;
     if (existingExecutor && existingExecutor.hasNext()) {
+      isExecutorRunningRef.current = true;
       setIsExecutorRunning(true);
       existingExecutor.run(
         (result) => executeResultOnEngine(result),
         420,
         () => {
+          isExecutorRunningRef.current = false;
           setIsExecutorRunning(false);
+          if (isSilentSubmitCheckRef.current) {
+            return;
+          }
           if (
             !snakeFailedRef.current &&
             !resultShownRef.current &&
@@ -1478,6 +1596,8 @@ export default function SnakeGameView() {
     }
 
     const program: BlockProgram = generateAST(workspace);
+    lastEvaluatedAstSpecRef.current = JSON.stringify(program);
+    lastEvaluatedIsWinRef.current = false;
     if (program.length === 0) {
       window.alert(t("noBlocksInWorkspace"));
       return;
@@ -1588,6 +1708,7 @@ export default function SnakeGameView() {
     });
     executorRef.current = executor;
 
+    isExecutorRunningRef.current = true;
     setIsExecutorRunning(true);
     setStatusText(t("snake.statusRunningProgram"));
 
@@ -1595,7 +1716,11 @@ export default function SnakeGameView() {
       (result) => executeResultOnEngine(result),
       420,
       () => {
+        isExecutorRunningRef.current = false;
         setIsExecutorRunning(false);
+        if (isSilentSubmitCheckRef.current) {
+          return;
+        }
         if (
           !snakeFailedRef.current &&
           !resultShownRef.current &&
@@ -1683,7 +1808,11 @@ export default function SnakeGameView() {
     setSnakeFailureReason("trap");
     setShowResultsModal(false);
     setResultsDockVisible(false);
+    setShowWinDecisionModal(false);
+    setShowSubmitConfirmModal(false);
+    setShowClearBlocksConfirmModal(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
     setStatusText(t("snake.statusResetComplete"));
     setLastSubmissionId(null);
     setSubmitted(false);
@@ -1710,9 +1839,8 @@ export default function SnakeGameView() {
 
   const handleClearBlocks = useCallback(() => {
     if (!workspaceRef.current) return;
-    if (!window.confirm(t("clearAllBlocksConfirm"))) return;
-    workspaceRef.current.clear();
-  }, [t]);
+    setShowClearBlocksConfirmModal(true);
+  }, []);
 
   const controlButtonStyle = (
     variant: "neutral" | "primary" | "danger" | "warning",
@@ -1799,25 +1927,23 @@ export default function SnakeGameView() {
             <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
           </button>
 
+          <button
+            onClick={() => {
+              void handleSubmitRun();
+            }}
+            disabled={isLoading || !!error || submitLoading || submitted}
+            style={controlButtonStyle(
+              "primary",
+              isLoading || !!error || submitLoading || submitted,
+            )}
+          >
+            <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
+          </button>
+
           {multiplayerRoomId && (
-            <>
-              <button
-                onClick={handleMultiplayerSubmit}
-                disabled={isLoading || !!error || submitLoading || submitted}
-                style={controlButtonStyle(
-                  "primary",
-                  isLoading || !!error || submitLoading || submitted,
-                )}
-              >
-                <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
-              </button>
-              <button
-                onClick={handleEndMultiplayerGame}
-                style={controlButtonStyle("warning", false)}
-              >
-                <Flag size={15} /> {t("endGame")}
-              </button>
-            </>
+            <button onClick={handleEndMultiplayerGame} style={controlButtonStyle("warning", false)}>
+              <Flag size={15} /> {t("endGame")}
+            </button>
           )}
 
           <button
@@ -2261,7 +2387,55 @@ export default function SnakeGameView() {
         }}
       />
 
-      {gameResult && showResultPopup && (
+      <RunDecisionModal
+        isOpen={showWinDecisionModal}
+        title={t("gameWinDecisionTitle")}
+        description={`${t("gameWinDecisionPrompt")}\n\n${t("gameWinDecisionEditHint")}`}
+        primaryLabel={t("gameWinDecisionSubmit")}
+        secondaryLabel={t("gameWinDecisionEdit")}
+        onPrimary={() => {
+          setShowWinDecisionModal(false);
+          void handleSubmitRun({ skipConfirm: true });
+        }}
+        onSecondary={() => {
+          setShowWinDecisionModal(false);
+          handleContinueEditingAfterWin();
+        }}
+      />
+
+      <RunDecisionModal
+        isOpen={showSubmitConfirmModal}
+        title={t("gameSubmitConfirmTitle")}
+        description={
+          pendingSubmitIsWin ? t("gameSubmitConfirmWin") : t("gameSubmitConfirmUnsolved")
+        }
+        primaryLabel={t("gameSubmitConfirmYes")}
+        secondaryLabel={t("gameSubmitConfirmNo")}
+        onPrimary={() => {
+          setShowSubmitConfirmModal(false);
+          void handleSubmitRun({ skipConfirm: true });
+        }}
+        onSecondary={() => {
+          setShowSubmitConfirmModal(false);
+        }}
+      />
+
+      <RunDecisionModal
+        isOpen={showClearBlocksConfirmModal}
+        title={t("clearWorkspace")}
+        description={t("clearAllBlocksConfirm")}
+        primaryLabel={t("gameSubmitConfirmYes")}
+        secondaryLabel={t("gameSubmitConfirmNo")}
+        onPrimary={() => {
+          setShowClearBlocksConfirmModal(false);
+          workspaceRef.current?.clear();
+        }}
+        onSecondary={() => {
+          setShowClearBlocksConfirmModal(false);
+        }}
+      />
+
+      {gameResult && (
         <GameResultsModal
           isOpen={showResultsModal}
           isWin={gameResult.isWin}
@@ -2284,6 +2458,13 @@ export default function SnakeGameView() {
           onToggleResultPopup={() => setShowResultPopup((prev) => !prev)}
           resultPopupOnLabel={t("gameResultPopupOn")}
           resultPopupOffLabel={t("gameResultPopupOff")}
+          backendScore={submissionFeedback?.score ?? null}
+          backendStars={submissionFeedback?.stars ?? null}
+          backendStatus={submissionFeedback?.status ?? null}
+          backendMessage={submissionFeedback?.message ?? null}
+          backendScoreLabel={t("gameResultBackendScore")}
+          backendStatusLabel={t("gameResultBackendStatus")}
+          backendMessageLabel={t("gameResultBackendMessage")}
           onReset={() => {
             setShowResultsModal(false);
             handlePlayAgain();
