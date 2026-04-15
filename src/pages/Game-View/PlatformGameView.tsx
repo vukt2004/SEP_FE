@@ -94,6 +94,7 @@ export default function PlatformGameView() {
   const [zoomMode, setZoomMode] = useState<"fit" | "actual">("fit");
   const [warningToast, setWarningToast] = useState<string | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
+  const [, setLastSubmissionId] = useState<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
@@ -173,6 +174,9 @@ export default function PlatformGameView() {
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
+    setSubmitted(false);
+    historyRecordedRef.current = false;
 
     const nextLevelTypeRaw = (
       campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
@@ -327,6 +331,16 @@ export default function PlatformGameView() {
     const initGame = async () => {
       try {
         historyRecordedRef.current = false;
+        setSubmitted(false);
+        setSubmitLoading(false);
+        setSubmissionFeedback(null);
+        setGameResult(null);
+        setShowResultsModal(false);
+        setResultsDockVisible(false);
+        setShowWinDecisionModal(false);
+        setShowSubmitConfirmModal(false);
+        setLastSubmissionId(null);
+        timeLimitTriggeredRef.current = false;
         setIsLoading(true);
 
         // Load level from API or fallback to mock data

@@ -110,6 +110,36 @@
   background: #e4e6eb;
 }
 
+.preferenceRow {
+  display: flex;
+  gap: 8px;
+}
+
+.preferenceBtn {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #dce0e8;
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.preferenceBtn:hover {
+  background: #edf2f7;
+  border-color: #cfd7e3;
+}
+
 /* Search */
 .searchWrap {
   display: flex;
@@ -1343,6 +1373,174 @@
 }
 
 /* ─────────────────────────────────────────────
+   Theme variants
+───────────────────────────────────────────── */
+.themeDark {
+  background: #0f172a;
+}
+
+.themeDark .bg {
+  background: radial-gradient(circle at 12% 6%, #1e293b 0%, #0f172a 45%, #020617 100%);
+}
+
+.themeDark .chatLayout {
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.55);
+}
+
+.themeDark .sidebar,
+.themeDark .chatPanel,
+.themeDark .composerWrap,
+.themeDark .rightPanel,
+.themeDark .modal {
+  background: #111827;
+}
+
+.themeDark .sidebar,
+.themeDark .rightPanel,
+.themeDark .chatHeader,
+.themeDark .sidebarHeader,
+.themeDark .composerWrap,
+.themeDark .replyPreview,
+.themeDark .attachPreview,
+.themeDark .modalHeader,
+.themeDark .modalSearch,
+.themeDark .infoSection,
+.themeDark .rightTop,
+.themeDark .chatPanel {
+  border-color: #263244;
+}
+
+.themeDark .sidebarTitle,
+.themeDark .convName,
+.themeDark .chatName,
+.themeDark .emptyStateName,
+.themeDark .rightName,
+.themeDark .memberName,
+.themeDark .modalTitle,
+.themeDark .modalSearchInput,
+.themeDark .searchInput,
+.themeDark .composerTextarea,
+.themeDark .modalUserName {
+  color: #e5e7eb;
+}
+
+.themeDark .convSnippet,
+.themeDark .convTime,
+.themeDark .stateText,
+.themeDark .emptyState,
+.themeDark .msgSenderName,
+.themeDark .msgTime,
+.themeDark .deletedMsg,
+.themeDark .attachPreviewName,
+.themeDark .replyPreviewText,
+.themeDark .rightActionItem span,
+.themeDark .infoSectionLabel,
+.themeDark .memberYouTag,
+.themeDark .modalStateText,
+.themeDark .modalUserEmail,
+.themeDark .searchWrap,
+.themeDark .searchInput::placeholder,
+.themeDark .composerTextarea::placeholder,
+.themeDark .modalSearch,
+.themeDark .replyRefText {
+  color: #94a3b8;
+}
+
+.themeDark .convItem:hover,
+.themeDark .modalUserItem:hover,
+.themeDark .composerIconBtn:hover,
+.themeDark .msgActionBtn:hover,
+.themeDark .sidebarIconBtn:hover,
+.themeDark .headerActionBtn:hover,
+.themeDark .rightActionBtn:hover,
+.themeDark .replyPreviewClose:hover {
+  background: #1f2937;
+}
+
+.themeDark .convItemActive,
+.themeDark .filterTabActive,
+.themeDark .headerActionBtnActive {
+  background: rgba(14, 116, 224, 0.22);
+}
+
+.themeDark .sidebarIconBtn,
+.themeDark .headerActionBtn,
+.themeDark .rightActionBtn,
+.themeDark .msgActionBtn,
+.themeDark .filterTab,
+.themeDark .modalCloseBtn,
+.themeDark .attachPreviewRemove {
+  background: #16202f;
+  color: #cbd5e1;
+  border-color: #2b384c;
+}
+
+.themeDark .searchWrap,
+.themeDark .composerTextarea,
+.themeDark .filterTab,
+.themeDark .replyPreview,
+.themeDark .attachPreview,
+.themeDark .mediaGridItem,
+.themeDark .modalSearch,
+.themeDark .preferenceBtn,
+.themeDark .memberYouTag {
+  background: #16202f;
+}
+
+.themeDark .preferenceBtn {
+  border-color: #2b384c;
+  color: #e2e8f0;
+}
+
+.themeDark .preferenceBtn:hover {
+  background: #1f2937;
+  border-color: #37485f;
+}
+
+.themeDark .chatStatus,
+.themeDark .rightStatus {
+  color: #22c55e;
+}
+
+.themeDark .messagesWrap,
+.themeDark .conversationList,
+.themeDark .rightPanel,
+.themeDark .modalUserList {
+  background: #111827;
+}
+
+.themeDark .bubbleOther,
+.themeDark .bubble,
+.themeDark .typingDots {
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+.themeDark .replyRef {
+  background: rgba(148, 163, 184, 0.12);
+  border-left-color: #60a5fa;
+}
+
+.themeDark .replyRefAuthor,
+.themeDark .replyPreviewName {
+  color: #93c5fd;
+}
+
+.themeDark .dot {
+  background: #cbd5e1;
+}
+
+.themeDark .composerTextarea:focus,
+.themeDark .searchInput:focus,
+.themeDark .modalSearchInput:focus {
+  background: #1f2937;
+}
+
+.themeDark .modalOverlay {
+  background: rgba(2, 6, 23, 0.7);
+}
+
+/* ─────────────────────────────────────────────
    Responsive
 ───────────────────────────────────────────── */
 @media (max-width: 1200px) {
@@ -1367,6 +1565,14 @@
   .chatLayout {
     grid-template-columns: 280px 1fr;
     border-radius: 10px;
+  }
+
+  .preferenceRow {
+    flex-wrap: wrap;
+  }
+
+  .preferenceBtn {
+    min-width: 120px;
   }
 }
 
