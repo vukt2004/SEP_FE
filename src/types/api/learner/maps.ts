@@ -256,6 +256,7 @@ export interface MapDetail {
   price: number;
   freeTrialAttemptLimit?: number;
   createdByUserId: string;
+  createdByUserName?: string | null;
   editorialContent?: string | null;
   unlockEditorialAfterStars?: number;
   createdAt: string;

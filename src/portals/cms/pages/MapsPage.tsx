@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import type {
   GetMapsParams,
@@ -331,6 +331,7 @@ const createInitialReviewDecisions = (): Record<string, ReviewDecision> =>
 
 export const MapsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t, locale } = useTranslation();
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const canCreateMap = canCreateMaps(userPlan);
@@ -435,7 +436,7 @@ export const MapsPage: React.FC = () => {
     };
   }, []);
 
-  const handleViewDetails = async (mapId: string) => {
+  const handleViewDetails = useCallback(async (mapId: string) => {
     try {
       setActionLoading(true);
       const response = await cmsMapsApi.getMapById(mapId);
@@ -461,7 +462,22 @@ export const MapsPage: React.FC = () => {
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [maps]);
+
+  useEffect(() => {
+    const mapIdFromQuery = searchParams.get("mapId")?.trim();
+    if (!mapIdFromQuery) return;
+    void handleViewDetails(mapIdFromQuery);
+  }, [handleViewDetails, searchParams]);
+
+  const handleCloseDetailModal = useCallback(() => {
+    setDetailModalOpen(false);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("mapId");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const handleOpenReviewModal = (mapId: string, mapTitle: string) => {
     setSelectedMapForAction({ id: mapId, title: mapTitle });
@@ -1367,7 +1383,7 @@ export const MapsPage: React.FC = () => {
       {/* Map Detail Modal */}
       <Modal
         isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
+        onClose={handleCloseDetailModal}
         title="Game details"
         maxWidth="800px"
       >

@@ -14,6 +14,7 @@ import {
   Moon,
   Route,
   MessageCircle,
+  MessageSquareWarning,
   Trophy,
   Bell,
 } from "lucide-react";

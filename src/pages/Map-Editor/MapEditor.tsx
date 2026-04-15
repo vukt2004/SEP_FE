@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ZoomIn, ZoomOut, Scan, ArrowLeft, Save } from "lucide-react";
+import { ZoomIn, ZoomOut, Scan, ArrowLeft } from "lucide-react";
 import { EditorStore } from "../../tools/map-editor/store/editorStore";
 import { EditorCanvas } from "../../tools/map-editor/components/EditorCanvas";
 import { createEmptyMap } from "../../tools/map-editor/utils/createEmptyMap";
@@ -590,11 +590,6 @@ export default function MapEditor() {
   const canCreateMap = canCreateMaps(userPlan);
   const isCreateMode = !mapId;
   const [zoom, setZoom] = useState(1);
-  const saveLevelRef = useRef<(() => Promise<void>) | null>(null);
-  const [headerSaveBusy, setHeaderSaveBusy] = useState(false);
-  const registerSaveLevelContent = useCallback((fn: () => Promise<void>) => {
-    saveLevelRef.current = fn;
-  }, []);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
@@ -1145,21 +1140,7 @@ export default function MapEditor() {
           )}
         </div>
         <div style={styles.headerRight}>
-          {mapData && store ? (
-            <button
-              type="button"
-              style={{
-                ...styles.headerSaveButton,
-                ...(headerSaveBusy ? { opacity: 0.65, cursor: "not-allowed" as const } : {}),
-              }}
-              onClick={() => void saveLevelRef.current?.()}
-              disabled={headerSaveBusy}
-            >
-              <Save size={16} /> {tt("mapEditorHeaderSave", "Save")}
-            </button>
-          ) : (
-            <span style={styles.headerRightSpacer} aria-hidden />
-          )}
+          <span style={styles.headerRightSpacer} aria-hidden />
         </div>
       </div>
 
@@ -1308,8 +1289,6 @@ export default function MapEditor() {
               onRequiredBlocksChange={handleRequiredBlocksChange}
               onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
               onObjectMetadataChange={handleObjectMetadataChange}
-              registerSaveLevelContent={registerSaveLevelContent}
-              onSavingLevelContentChange={setHeaderSaveBusy}
             />
           </aside>
         </div>
@@ -1360,24 +1339,9 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: "120px",
   },
   headerRightSpacer: {
-    display: "inline-block",
+    display: "block",
     width: "1px",
     height: "1px",
-  },
-  headerSaveButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 18px",
-    fontSize: "14px",
-    fontWeight: "700",
-    borderRadius: "12px",
-    border: "1px solid color-mix(in srgb, var(--success) 65%, var(--border))",
-    background:
-      "linear-gradient(180deg, color-mix(in srgb, var(--success) 85%, white 10%), color-mix(in srgb, var(--success) 72%, black 10%))",
-    color: "#fff",
-    cursor: "pointer",
-    boxShadow: "0 4px 14px color-mix(in srgb, var(--success) 50%, transparent)",
   },
   title: {
     fontSize: "30px",
