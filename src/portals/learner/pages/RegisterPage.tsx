@@ -20,7 +20,7 @@ import LoginAriaAnnouncer from "../components/login/LoginAriaAnnouncer";
 import { useThemeStore } from "@/stores/theme.store";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, ArrowLeft } from "lucide-react";
 
 import { learnerAuthApi } from "@/services/api/learner/auth.api";
 import type { LearnerRegisterForm } from "@/types/api/learner/auth";
@@ -271,7 +271,17 @@ export default function RegisterPage() {
 
   return (
     <div className="login-page" style={pageStyle}>
-      <div className="auth-topbar">
+      <button
+          type="button"
+          className="auth-back-btn"
+          onClick={() => navigate(ROUTES.LANDING)}
+          title={locale === "vi" ? "Quay lại" : "Go back"}
+          aria-label={locale === "vi" ? "Quay lại trang chủ" : "Go back to home"}
+        >
+          <ArrowLeft size={15} />
+          <span>{locale === "vi" ? "Trang chủ" : "Home"}</span>
+        </button>
+        <div className="auth-topbar">
         <button
           type="button"
           className="auth-icon-btn"
