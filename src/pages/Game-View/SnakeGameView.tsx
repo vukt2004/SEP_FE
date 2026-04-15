@@ -499,6 +499,8 @@ export default function SnakeGameView() {
     setResultsDockVisible(false);
     setGameResult(null);
     setSubmissionFeedback(null);
+    setSubmitted(false);
+    historyRecordedRef.current = false;
 
     const nextLevelTypeRaw = (
       campaignLevels.find((level) => level.id === nextCampaignLevelId)?.type ?? ""
@@ -1361,6 +1363,19 @@ export default function SnakeGameView() {
 
     const initGame = async () => {
       try {
+        historyRecordedRef.current = false;
+        setSubmitted(false);
+        setSubmitLoading(false);
+        setSubmissionFeedback(null);
+        setGameResult(null);
+        setShowResultsModal(false);
+        setResultsDockVisible(false);
+        setShowWinDecisionModal(false);
+        setShowSubmitConfirmModal(false);
+        setLastSubmissionId(null);
+        timeLimitTriggeredRef.current = false;
+        resultShownRef.current = false;
+
         const loaded = await loadSnakeLevel({ levelId, mapDetailId, levelFile, mapUrl });
         if (disposed) return;
 

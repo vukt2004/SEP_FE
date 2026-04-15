@@ -146,6 +146,7 @@ const buildMapsQueryParams = (
     pageSize,
     search: normalizedSearch || undefined,
     mapStatus: resolvedStatus,
+    publishedOnly: false,
     difficulty: resolvedDifficulty,
     sortBy: mapSortToApiValue[sortBy],
     sortAscending: sortOrder === "asc",
@@ -341,7 +342,6 @@ export const MapsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
   // Modal and action states
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -397,7 +397,6 @@ export const MapsPage: React.FC = () => {
       if (paginationData) {
         setMaps(paginationData.items);
         setTotalPages(paginationData.totalPages);
-        setTotalItems(paginationData.totalItems);
       }
     } catch (err) {
       setError("Failed to load games");
@@ -725,49 +724,6 @@ export const MapsPage: React.FC = () => {
             Upgrade to Pro to create games
           </p>
         )}
-      </div>
-
-      {/* Stats */}
-      <div
-        style={{
-          display: "flex",
-          gap: "16px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Total Games
-          </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {totalItems}
-          </div>
-        </div>
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "16px 20px",
-            minWidth: "150px",
-          }}
-        >
-          <div style={{ color: "var(--text-2)", fontSize: "13px", marginBottom: "4px" }}>
-            Published Games
-          </div>
-          <div style={{ color: "var(--text)", fontSize: "24px", fontWeight: "bold" }}>
-            {maps.filter((m) => m.isPublished).length}
-          </div>
-        </div>
       </div>
 
       {/* Search, Filter & Sort */}

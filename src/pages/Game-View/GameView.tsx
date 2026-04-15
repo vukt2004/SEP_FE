@@ -166,6 +166,9 @@ export default function GameView() {
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
+    setSubmissionFeedback(null);
+    setSubmitted(false);
+    historyRecordedRef.current = false;
 
     const nextRoute =
       mapConfig?.type === "platform"
@@ -318,6 +321,16 @@ export default function GameView() {
     const initGame = async () => {
       try {
         historyRecordedRef.current = false;
+        setSubmitted(false);
+        setSubmitLoading(false);
+        setSubmissionFeedback(null);
+        setGameResult(null);
+        setShowResultsModal(false);
+        setResultsDockVisible(false);
+        setShowWinDecisionModal(false);
+        setShowSubmitConfirmModal(false);
+        setLastSubmissionId(null);
+        timeLimitTriggeredRef.current = false;
         console.log("Starting game initialization...");
         setIsLoading(true);
 

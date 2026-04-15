@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import {
-  ArrowLeft,
   BellOff,
-  ChevronDown,
-  ChevronRight,
   Edit2,
   Image as ImageIcon,
   Info,
+  Languages,
   MessageCircle,
   Mic,
+  Moon,
   MoreHorizontal,
   Phone,
   Reply,
   Search,
   Send,
   Smile,
+  Sun,
   Trash2,
   Video,
   X,
@@ -37,6 +37,8 @@ import type {
 import { ROUTES } from "@/lib/constants/routes";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
 import { useTranslation } from "@/lib/i18n/translations";
+import { useLanguageStore } from "@/stores/language.store";
+import { useThemeStore } from "@/stores/theme.store";
 import styles from "./ChatConversationPage.module.css";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -109,23 +111,31 @@ const COMMON_EMOJIS = [
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function formatTime(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function resolveChatLocale(locale: string | undefined): string {
+  return locale?.toLowerCase().startsWith("vi") ? "vi-VN" : "en-US";
 }
 
-function formatConversationTime(iso: string | null | undefined): string {
+function formatTime(iso: string | null | undefined, locale: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(resolveChatLocale(locale), {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatConversationTime(iso: string | null | undefined, locale: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const dateLocale = resolveChatLocale(locale);
   const now = new Date();
   if (now.toDateString() === d.toDateString())
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" });
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  if (diffDays < 7) return d.toLocaleDateString(dateLocale, { weekday: "short" });
+  return d.toLocaleDateString(dateLocale, { month: "short", day: "numeric" });
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -192,12 +202,13 @@ function getConversationDisplayName(
   currentUserId: string | null,
   fallbackOtherId: string | null,
   fallbackName: string | null,
+  fallbackConversationName: string,
 ): string {
   if (conv.name?.trim()) return conv.name.trim();
   const cp = getCounterpart(conv, currentUserId, fallbackOtherId);
   if (cp?.userName?.trim()) return cp.userName.trim();
   if (fallbackName?.trim()) return fallbackName.trim();
-  return "Cuộc trò chuyện";
+  return fallbackConversationName;
 }
 
 function isGroupStart(messages: ChatMessage[], index: number): boolean {
@@ -265,7 +276,15 @@ function EmojiPickerPanel({
   );
 }
 
-function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+function ImageLightbox({
+  url,
+  onClose,
+  closeLabel,
+}: {
+  url: string;
+  onClose: () => void;
+  closeLabel: string;
+}) {
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -276,7 +295,7 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
   return (
     <div className={styles.lightboxOverlay} onClick={onClose}>
-      <button className={styles.lightboxClose} onClick={onClose} aria-label="Đóng">
+      <button className={styles.lightboxClose} onClick={onClose} aria-label={closeLabel}>
         <X size={22} />
       </button>
       <img
@@ -292,9 +311,18 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
 function NewChatModal({
   onClose,
   onSelect,
+  copy,
 }: {
   onClose: () => void;
   onSelect: (userId: string, userName: string) => void;
+  copy: {
+    title: string;
+    close: string;
+    searchUsersPlaceholder: string;
+    searchingUsers: string;
+    noUsersFound: string;
+    typeNameToSearch: string;
+  };
 }) {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<ChatUserItem[]>([]);
@@ -323,8 +351,8 @@ function NewChatModal({
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Cuộc trò chuyện mới</h3>
-          <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Đóng">
+          <h3 className={styles.modalTitle}>{copy.title}</h3>
+          <button className={styles.modalCloseBtn} onClick={onClose} aria-label={copy.close}>
             <X size={18} />
           </button>
         </div>
@@ -334,17 +362,17 @@ function NewChatModal({
             autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm người dùng..."
+            placeholder={copy.searchUsersPlaceholder}
             className={styles.modalSearchInput}
           />
         </label>
         <div className={styles.modalUserList}>
-          {loading && <p className={styles.modalStateText}>Đang tìm...</p>}
+          {loading && <p className={styles.modalStateText}>{copy.searchingUsers}</p>}
           {!loading && search.trim() && users.length === 0 && (
-            <p className={styles.modalStateText}>Không tìm thấy người dùng.</p>
+            <p className={styles.modalStateText}>{copy.noUsersFound}</p>
           )}
           {!loading && !search.trim() && (
-            <p className={styles.modalStateText}>Nhập tên để tìm người dùng.</p>
+            <p className={styles.modalStateText}>{copy.typeNameToSearch}</p>
           )}
           {users.map((u) => {
             const name = getUserDisplayName(u);
@@ -368,19 +396,6 @@ function NewChatModal({
   );
 }
 
-function InfoSection({ title }: { title: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={styles.infoSection}>
-      <button type="button" className={styles.infoSectionHeader} onClick={() => setOpen((v) => !v)}>
-        <span>{title}</span>
-        {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-      </button>
-      {open && <div className={styles.infoSectionContent} />}
-    </div>
-  );
-}
-
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function ChatConversationPage() {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -388,7 +403,126 @@ export default function ChatConversationPage() {
   const preferredOtherUserId = searchParams.get("otherUserId");
   const preferredOtherUserName = searchParams.get("otherUserName");
   const navigate = useNavigate();
-  const { locale } = useTranslation();
+  const { t, locale } = useTranslation();
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const toggleLocale = useLanguageStore((s) => s.toggle);
+  const isVi = locale.startsWith("vi");
+  const text = useMemo(
+    () =>
+      isVi
+        ? {
+            conversationFallback: "Cuộc trò chuyện",
+            cannotLoadMessages: "Không thể tải tin nhắn.",
+            loadMessagesError: "Lỗi tải tin nhắn.",
+            cannotSendMessage: "Không thể gửi tin nhắn.",
+            sendMessageError: "Lỗi gửi tin nhắn.",
+            invalidImageType: "Chỉ chấp nhận PNG, JPG, GIF, WEBP.",
+            imageTooLarge: "Ảnh không được vượt quá 10MB.",
+            cannotCreateConversation: "Không thể tạo cuộc trò chuyện.",
+            confirmDeleteMessage: "Xoá tin nhắn này?",
+            deleteMessageError: "Lỗi xoá tin nhắn.",
+            sidebarTitle: "Đoạn chat",
+            options: "Tuỳ chọn",
+            newConversation: "Cuộc trò chuyện mới",
+            searchInMessenger: "Tìm kiếm trên Messenger",
+            tabAll: "Tất cả",
+            tabUnread: "Chưa đọc",
+            tabGroup: "Nhóm",
+            loading: "Đang tải...",
+            notFound: "Không tìm thấy.",
+            noUnreadMessages: "Không có tin nhắn chưa đọc.",
+            noConversations: "Chưa có cuộc trò chuyện.",
+            deletedSnippet: "(Tin nhắn đã bị xoá)",
+            imageSnippet: "📷 Ảnh",
+            startConversation: "Bắt đầu cuộc trò chuyện",
+            activeNow: "Đang hoạt động",
+            callVoice: "Gọi điện",
+            callVideo: "Gọi video",
+            info: "Thông tin",
+            selectConversationToStart: "Chọn một cuộc trò chuyện để bắt đầu nhắn tin",
+            loadingMessages: "Đang tải tin nhắn...",
+            youRevokedMessage: "Bạn đã thu hồi một tin nhắn",
+            messageDeleted: "Tin nhắn đã bị xoá",
+            reply: "Trả lời",
+            delete: "Xoá",
+            edited: "Đã chỉnh sửa",
+            you: "Bạn",
+            cancelReply: "Huỷ trả lời",
+            emoji: "Emoji",
+            sendImage: "Gửi ảnh",
+            voice: "Ghi âm",
+            send: "Gửi",
+            unmute: "Bật lại",
+            search: "Tìm kiếm",
+            membersInChat: "Thành viên trong đoạn chat",
+            youTag: "Bạn",
+            mediaFiles: "File phương tiện",
+            close: "Đóng",
+            imageAlt: "hinh",
+            newChatTitle: "Cuộc trò chuyện mới",
+            searchUsersPlaceholder: "Tìm kiếm người dùng...",
+            searchingUsers: "Đang tìm...",
+            noUsersFound: "Không tìm thấy người dùng.",
+            typeNameToSearch: "Nhập tên để tìm người dùng.",
+          }
+        : {
+            conversationFallback: "Conversation",
+            cannotLoadMessages: "Could not load messages.",
+            loadMessagesError: "Failed to load messages.",
+            cannotSendMessage: "Could not send message.",
+            sendMessageError: "Failed to send message.",
+            invalidImageType: "Only PNG, JPG, GIF, WEBP are accepted.",
+            imageTooLarge: "Image must be smaller than 10MB.",
+            cannotCreateConversation: "Could not create conversation.",
+            confirmDeleteMessage: "Delete this message?",
+            deleteMessageError: "Failed to delete message.",
+            sidebarTitle: "Chats",
+            options: "Options",
+            newConversation: "New conversation",
+            searchInMessenger: "Search in Messenger",
+            tabAll: "All",
+            tabUnread: "Unread",
+            tabGroup: "Groups",
+            loading: "Loading...",
+            notFound: "No results found.",
+            noUnreadMessages: "No unread messages.",
+            noConversations: "No conversations yet.",
+            deletedSnippet: "(Message deleted)",
+            imageSnippet: "📷 Photo",
+            startConversation: "Start a conversation",
+            activeNow: "Active now",
+            callVoice: "Voice call",
+            callVideo: "Video call",
+            info: "Info",
+            selectConversationToStart: "Select a conversation to start chatting",
+            loadingMessages: "Loading messages...",
+            youRevokedMessage: "You unsent a message",
+            messageDeleted: "Message deleted",
+            reply: "Reply",
+            delete: "Delete",
+            edited: "Edited",
+            you: "You",
+            cancelReply: "Cancel reply",
+            emoji: "Emoji",
+            sendImage: "Send image",
+            voice: "Voice",
+            send: "Send",
+            unmute: "Unmute",
+            search: "Search",
+            membersInChat: "Members in this chat",
+            youTag: "You",
+            mediaFiles: "Media files",
+            close: "Close",
+            imageAlt: "image",
+            newChatTitle: "New conversation",
+            searchUsersPlaceholder: "Search users...",
+            searchingUsers: "Searching...",
+            noUsersFound: "No users found.",
+            typeNameToSearch: "Type a name to search users.",
+          },
+    [isVi],
+  );
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -517,7 +651,7 @@ export default function ChatConversationPage() {
           ...(beforeMessageId ? { beforeMessageId } : {}),
         });
         if (!res.data.isSuccess || !Array.isArray(res.data.data?.items)) {
-          if (!silent) setError(res.data.message ?? "Không thể tải tin nhắn.");
+          if (!silent) setError(res.data.message ?? text.cannotLoadMessages);
           return;
         }
         const sorted = [...res.data.data.items].sort(
@@ -535,13 +669,13 @@ export default function ChatConversationPage() {
         }
         setHasMore(sorted.length >= MESSAGES_PAGE_SIZE);
       } catch {
-        if (!silent) setError("Lỗi tải tin nhắn.");
+        if (!silent) setError(text.loadMessagesError);
       } finally {
         if (!silent && !beforeMessageId) setLoadingMessages(false);
         setLoadingMore(false);
       }
     },
-    [conversationId, loadConversations],
+    [conversationId, loadConversations, text.cannotLoadMessages, text.loadMessagesError],
   );
 
   useEffect(() => {
@@ -705,9 +839,16 @@ export default function ChatConversationPage() {
         currentUserId,
         preferredOtherUserId,
         preferredOtherUserName,
+        text.conversationFallback,
       );
-    return preferredOtherUserName?.trim() || "Cuộc trò chuyện";
-  }, [activeConversation, currentUserId, preferredOtherUserId, preferredOtherUserName]);
+    return preferredOtherUserName?.trim() || text.conversationFallback;
+  }, [
+    activeConversation,
+    currentUserId,
+    preferredOtherUserId,
+    preferredOtherUserName,
+    text.conversationFallback,
+  ]);
 
   const filteredConversations = useMemo(() => {
     let list = conversations;
@@ -716,11 +857,24 @@ export default function ChatConversationPage() {
     const kw = searchTerm.trim().toLowerCase();
     if (!kw) return list;
     return list.filter((c) => {
-      const name = getConversationDisplayName(c, currentUserId, preferredOtherUserId, null);
+      const name = getConversationDisplayName(
+        c,
+        currentUserId,
+        preferredOtherUserId,
+        null,
+        text.conversationFallback,
+      );
       const last = c.lastMessage?.content ?? "";
       return `${name} ${last}`.toLowerCase().includes(kw);
     });
-  }, [conversations, filterTab, searchTerm, currentUserId, preferredOtherUserId]);
+  }, [
+    conversations,
+    filterTab,
+    searchTerm,
+    currentUserId,
+    preferredOtherUserId,
+    text.conversationFallback,
+  ]);
 
   const sharedImages = useMemo(
     () => messages.filter((m) => m.messageType === 1 && m.filePath).slice(-9),
@@ -760,7 +914,7 @@ export default function ChatConversationPage() {
         replyToMessageId: replyTo?.id ?? null,
       });
       if (!res.data.isSuccess || !res.data.data) {
-        alert(res.data.message ?? "Không thể gửi tin nhắn.");
+        alert(res.data.message ?? text.cannotSendMessage);
         return;
       }
       const created = res.data.data;
@@ -774,7 +928,7 @@ export default function ChatConversationPage() {
       if (imageInputRef.current) imageInputRef.current.value = "";
       void loadConversations(true);
     } catch {
-      alert("Lỗi gửi tin nhắn.");
+      alert(text.sendMessageError);
     } finally {
       setSending(false);
     }
@@ -803,12 +957,12 @@ export default function ChatConversationPage() {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
     if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.type)) {
-      alert("Chỉ chấp nhận PNG, JPG, GIF, WEBP.");
+      alert(text.invalidImageType);
       e.target.value = "";
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert("Ảnh không được vượt quá 10MB.");
+      alert(text.imageTooLarge);
       e.target.value = "";
       return;
     }
@@ -833,27 +987,25 @@ export default function ChatConversationPage() {
         navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conv.id)}?${q}`);
       }
     } catch {
-      alert("Không thể tạo cuộc trò chuyện.");
+      alert(text.cannotCreateConversation);
     }
   };
 
   const handleDeleteMessage = async (msgId: string) => {
-    if (!confirm("Xoá tin nhắn này?")) return;
+    if (!confirm(text.confirmDeleteMessage)) return;
     try {
       await learnerChatApi.deleteMessage(msgId);
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, isDeleted: true, content: "" } : m)),
       );
     } catch {
-      alert("Lỗi xoá tin nhắn.");
+      alert(text.deleteMessageError);
     }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const isVi = locale.startsWith("vi");
-
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${theme === "dark" ? styles.themeDark : ""}`}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
         <div className={`${styles.chatLayout} ${showRightPanel ? styles.chatLayoutWith3Col : ""}`}>
@@ -861,20 +1013,42 @@ export default function ChatConversationPage() {
           <aside className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
               <div className={styles.sidebarTitleRow}>
-                <h2 className={styles.sidebarTitle}>Đoạn chat</h2>
+                <h2 className={styles.sidebarTitle}>{text.sidebarTitle}</h2>
                 <div className={styles.sidebarActions}>
-                  <button type="button" className={styles.sidebarIconBtn} aria-label="Tuỳ chọn">
+                  <button type="button" className={styles.sidebarIconBtn} aria-label={text.options}>
                     <MoreHorizontal size={18} />
                   </button>
                   <button
                     type="button"
                     className={styles.sidebarIconBtn}
-                    aria-label="Cuộc trò chuyện mới"
+                    aria-label={text.newConversation}
                     onClick={() => setShowNewChatModal(true)}
                   >
                     <Edit2 size={18} />
                   </button>
                 </div>
+              </div>
+              <div className={styles.preferenceRow}>
+                <button
+                  type="button"
+                  className={styles.preferenceBtn}
+                  onClick={() => toggleTheme()}
+                  title={theme === "dark" ? t("themeLight") : t("themeDark")}
+                  aria-label={theme === "dark" ? t("themeLight") : t("themeDark")}
+                >
+                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                  <span>{theme === "dark" ? t("themeLight") : t("themeDark")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.preferenceBtn}
+                  onClick={() => toggleLocale()}
+                  title={locale === "en" ? t("languageVi") : t("languageEn")}
+                  aria-label={t("language")}
+                >
+                  <Languages size={14} />
+                  <span>{locale === "en" ? "EN" : "VI"}</span>
+                </button>
               </div>
               <label className={styles.searchWrap}>
                 <Search size={14} />
@@ -883,7 +1057,7 @@ export default function ChatConversationPage() {
                   className={styles.searchInput}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Tìm kiếm trên Messenger"
+                  placeholder={text.searchInMessenger}
                 />
               </label>
               <div className={styles.filterTabs}>
@@ -894,21 +1068,21 @@ export default function ChatConversationPage() {
                     className={`${styles.filterTab} ${filterTab === tab ? styles.filterTabActive : ""}`}
                     onClick={() => setFilterTab(tab)}
                   >
-                    {tab === "all" ? "Tất cả" : tab === "unread" ? "Chưa đọc" : "Nhóm"}
+                    {tab === "all" ? text.tabAll : tab === "unread" ? text.tabUnread : text.tabGroup}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className={styles.conversationList}>
-              {loadingConversations && <p className={styles.stateText}>Đang tải...</p>}
+              {loadingConversations && <p className={styles.stateText}>{text.loading}</p>}
               {!loadingConversations && filteredConversations.length === 0 && (
                 <p className={styles.stateText}>
                   {searchTerm
-                    ? "Không tìm thấy."
+                    ? text.notFound
                     : filterTab === "unread"
-                      ? "Không có tin nhắn chưa đọc."
-                      : "Chưa có cuộc trò chuyện."}
+                      ? text.noUnreadMessages
+                      : text.noConversations}
                 </p>
               )}
               {filteredConversations.map((item) => {
@@ -917,14 +1091,16 @@ export default function ChatConversationPage() {
                   currentUserId,
                   preferredOtherUserId,
                   null,
+                  text.conversationFallback,
                 );
                 const snippet = item.lastMessage?.isDeleted
-                  ? "(Tin nhắn đã bị xoá)"
+                  ? text.deletedSnippet
                   : item.lastMessage?.messageType === 1
-                    ? "📷 Ảnh"
+                    ? text.imageSnippet
                     : item.lastMessage?.content?.trim() || "";
                 const timeLabel = formatConversationTime(
                   item.lastMessageAt ?? item.lastMessage?.createdAt,
+                  locale,
                 );
                 const unread = item.unreadCount > 0;
                 const isActive = item.id === conversationId;
@@ -953,7 +1129,7 @@ export default function ChatConversationPage() {
                         <span
                           className={`${styles.convSnippet} ${unread ? styles.convSnippetBold : ""}`}
                         >
-                          {snippet || "Bắt đầu cuộc trò chuyện"}
+                          {snippet || text.startConversation}
                         </span>
                         {unread && (
                           <span className={styles.unreadBadge}>
@@ -979,20 +1155,20 @@ export default function ChatConversationPage() {
                 </div>
                 <div>
                   <h3 className={styles.chatName}>{conversationTitle}</h3>
-                  <p className={styles.chatStatus}>Đang hoạt động</p>
+                  <p className={styles.chatStatus}>{text.activeNow}</p>
                 </div>
               </div>
               <div className={styles.chatHeaderActions}>
-                <button type="button" className={styles.headerActionBtn} aria-label="Gọi điện">
+                <button type="button" className={styles.headerActionBtn} aria-label={text.callVoice}>
                   <Phone size={18} />
                 </button>
-                <button type="button" className={styles.headerActionBtn} aria-label="Gọi video">
+                <button type="button" className={styles.headerActionBtn} aria-label={text.callVideo}>
                   <Video size={18} />
                 </button>
                 <button
                   type="button"
                   className={`${styles.headerActionBtn} ${showRightPanel ? styles.headerActionBtnActive : ""}`}
-                  aria-label="Thông tin"
+                  aria-label={text.info}
                   onClick={() => setShowRightPanel((v) => !v)}
                 >
                   <Info size={18} />
@@ -1013,13 +1189,11 @@ export default function ChatConversationPage() {
                   <div className={styles.emptyStateIcon}>
                     <MessageCircle size={52} strokeWidth={1.5} />
                   </div>
-                  <p className={styles.emptyStateText}>
-                    Chọn một cuộc trò chuyện để bắt đầu nhắn tin
-                  </p>
+                  <p className={styles.emptyStateText}>{text.selectConversationToStart}</p>
                 </div>
               ) : loadingMessages ? (
                 <div className={styles.emptyState}>
-                  <p className={styles.stateText}>Đang tải tin nhắn...</p>
+                  <p className={styles.stateText}>{text.loadingMessages}</p>
                 </div>
               ) : error ? (
                 <div className={styles.emptyState}>
@@ -1029,7 +1203,7 @@ export default function ChatConversationPage() {
                 <div className={styles.emptyState}>
                   <div className={styles.emptyAvatarLarge}>{getInitials(conversationTitle)}</div>
                   <h4 className={styles.emptyStateName}>{conversationTitle}</h4>
-                  <p className={styles.stateText}>Bắt đầu cuộc trò chuyện</p>
+                  <p className={styles.stateText}>{text.startConversation}</p>
                 </div>
               ) : (
                 messages.map((m, i) => {
@@ -1048,7 +1222,7 @@ export default function ChatConversationPage() {
                       >
                         {!isOwn && <span className={styles.msgAvatarSpacer} />}
                         <span className={styles.deletedMsg}>
-                          {isOwn ? "Bạn đã thu hồi một tin nhắn" : "Tin nhắn đã bị xoá"}
+                          {isOwn ? text.youRevokedMessage : text.messageDeleted}
                         </span>
                       </div>
                     );
@@ -1083,9 +1257,7 @@ export default function ChatConversationPage() {
                               {m.replyToMessage.senderName}
                             </span>
                             <span className={styles.replyRefText}>
-                              {m.replyToMessage.messageType === 1
-                                ? "📷 Ảnh"
-                                : m.replyToMessage.content}
+                              {m.replyToMessage.messageType === 1 ? text.imageSnippet : m.replyToMessage.content}
                             </span>
                           </div>
                         )}
@@ -1116,7 +1288,7 @@ export default function ChatConversationPage() {
                                 <img
                                   className={styles.msgImage}
                                   src={m.filePath!}
-                                  alt={m.fileName || "image"}
+                                  alt={m.fileName || text.imageAlt}
                                 />
                                 {m.content?.trim() && (
                                   <p className={styles.imgCaption}>{m.content}</p>
@@ -1132,7 +1304,7 @@ export default function ChatConversationPage() {
                             <button
                               type="button"
                               className={styles.msgActionBtn}
-                              title="Trả lời"
+                              title={text.reply}
                               onClick={() => setReplyTo(m)}
                             >
                               <Reply size={13} />
@@ -1141,7 +1313,7 @@ export default function ChatConversationPage() {
                               <button
                                 type="button"
                                 className={styles.msgActionBtn}
-                                title="Xoá"
+                                title={text.delete}
                                 onClick={() => void handleDeleteMessage(m.id)}
                               >
                                 <Trash2 size={13} />
@@ -1153,8 +1325,8 @@ export default function ChatConversationPage() {
                         {/* Timestamp at group end only */}
                         {gEnd && (
                           <span className={`${styles.msgTime} ${isOwn ? styles.msgTimeOwn : ""}`}>
-                            {formatTime(m.createdAt)}
-                            {m.isEdited && " · Đã chỉnh sửa"}
+                            {formatTime(m.createdAt, locale)}
+                            {m.isEdited && ` · ${text.edited}`}
                           </span>
                         )}
                       </div>
@@ -1188,17 +1360,17 @@ export default function ChatConversationPage() {
                   <Reply size={13} className={styles.replyPreviewIcon} />
                   <div className={styles.replyPreviewBody}>
                     <span className={styles.replyPreviewName}>
-                      {replyTo.senderId === currentUserId ? "Bạn" : replyTo.senderName}
+                      {replyTo.senderId === currentUserId ? text.you : replyTo.senderName}
                     </span>
                     <span className={styles.replyPreviewText}>
-                      {replyTo.messageType === 1 ? "📷 Ảnh" : replyTo.content}
+                      {replyTo.messageType === 1 ? text.imageSnippet : replyTo.content}
                     </span>
                   </div>
                   <button
                     type="button"
                     className={styles.replyPreviewClose}
                     onClick={() => setReplyTo(null)}
-                    aria-label="Huỷ trả lời"
+                    aria-label={text.cancelReply}
                   >
                     <X size={14} />
                   </button>
@@ -1237,7 +1409,7 @@ export default function ChatConversationPage() {
                 <button
                   type="button"
                   className={styles.composerIconBtn}
-                  aria-label="Emoji"
+                  aria-label={text.emoji}
                   onClick={() => setShowEmojiPicker((v) => !v)}
                 >
                   <Smile size={22} />
@@ -1245,12 +1417,12 @@ export default function ChatConversationPage() {
                 <button
                   type="button"
                   className={styles.composerIconBtn}
-                  aria-label="Gửi ảnh"
+                  aria-label={text.sendImage}
                   onClick={() => imageInputRef.current?.click()}
                 >
                   <ImageIcon size={22} />
                 </button>
-                <button type="button" className={styles.composerIconBtn} aria-label="Voice">
+                <button type="button" className={styles.composerIconBtn} aria-label={text.voice}>
                   <Mic size={22} />
                 </button>
                 <div className={styles.composerInputWrap}>
@@ -1269,7 +1441,7 @@ export default function ChatConversationPage() {
                   type="submit"
                   className={styles.composerSendBtn}
                   disabled={!conversationId || sending || (!draft.trim() && !attachedImage)}
-                  aria-label="Gửi"
+                  aria-label={text.send}
                 >
                   <Send size={18} style={{ marginLeft: 2 }} />
                 </button>
@@ -1286,19 +1458,19 @@ export default function ChatConversationPage() {
                   <span className={styles.rightOnlineDot} />
                 </div>
                 <h3 className={styles.rightName}>{conversationTitle}</h3>
-                <p className={styles.rightStatus}>Đang hoạt động</p>
+                <p className={styles.rightStatus}>{text.activeNow}</p>
                 <div className={styles.rightActions}>
                   <div className={styles.rightActionItem}>
-                    <button type="button" className={styles.rightActionBtn} aria-label="Bật lại">
+                    <button type="button" className={styles.rightActionBtn} aria-label={text.unmute}>
                       <BellOff size={16} />
                     </button>
-                    <span>Bật lại</span>
+                    <span>{text.unmute}</span>
                   </div>
                   <div className={styles.rightActionItem}>
-                    <button type="button" className={styles.rightActionBtn} aria-label="Tìm kiếm">
+                    <button type="button" className={styles.rightActionBtn} aria-label={text.search}>
                       <Search size={16} />
                     </button>
-                    <span>Tìm kiếm</span>
+                    <span>{text.search}</span>
                   </div>
                 </div>
               </div>
@@ -1307,14 +1479,14 @@ export default function ChatConversationPage() {
                 {/* Members – only for group conversations (roomType === 1) */}
                 {activeConversation && activeConversation.roomType === 1 && (
                   <div className={styles.infoSection}>
-                    <p className={styles.infoSectionLabel}>Thành viên trong đoạn chat</p>
+                    <p className={styles.infoSectionLabel}>{text.membersInChat}</p>
                     <div className={styles.memberList}>
                       {activeConversation.members.map((mem) => (
                         <div key={mem.id} className={styles.memberItem}>
                           <span className={styles.memberAvatar}>{getInitials(mem.userName)}</span>
                           <span className={styles.memberName}>{mem.userName}</span>
                           {mem.userId.toLowerCase() === currentUserId?.toLowerCase() && (
-                            <span className={styles.memberYouTag}>Bạn</span>
+                            <span className={styles.memberYouTag}>{text.youTag}</span>
                           )}
                         </div>
                       ))}
@@ -1325,7 +1497,7 @@ export default function ChatConversationPage() {
                 {/* Shared media grid – shown directly without accordion */}
                 {sharedImages.length > 0 && (
                   <div className={styles.infoSection}>
-                    <p className={styles.infoSectionLabel}>File phương tiện</p>
+                    <p className={styles.infoSectionLabel}>{text.mediaFiles}</p>
                     <div className={styles.mediaGrid}>
                       {sharedImages.map((m) => (
                         <button
@@ -1356,11 +1528,28 @@ export default function ChatConversationPage() {
       />
 
       {/* Lightbox */}
-      {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+      {lightboxUrl && (
+        <ImageLightbox
+          url={lightboxUrl}
+          closeLabel={text.close}
+          onClose={() => setLightboxUrl(null)}
+        />
+      )}
 
       {/* New Chat Modal */}
       {showNewChatModal && (
-        <NewChatModal onClose={() => setShowNewChatModal(false)} onSelect={handleNewChat} />
+        <NewChatModal
+          onClose={() => setShowNewChatModal(false)}
+          onSelect={handleNewChat}
+          copy={{
+            title: text.newChatTitle,
+            close: text.close,
+            searchUsersPlaceholder: text.searchUsersPlaceholder,
+            searchingUsers: text.searchingUsers,
+            noUsersFound: text.noUsersFound,
+            typeNameToSearch: text.typeNameToSearch,
+          }}
+        />
       )}
     </div>
   );

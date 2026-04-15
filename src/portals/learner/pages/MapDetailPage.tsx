@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Lock,
+  PlusCircle,
   Heart,
   Bell,
   Share2,
@@ -26,6 +27,7 @@ import type { MapOwnershipData } from "@/types/api/learner/maps";
 import type { ApiResult } from "@/types/api/common";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
+import { emitApiToast } from "@/shared/toast/apiToastBus";
 import "@/shared/styles/tokens.css";
 import styles from "./MapDetailPage.module.css";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
@@ -128,6 +130,7 @@ export default function MapDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [currentMediaLoadError, setCurrentMediaLoadError] = useState(false);
@@ -438,6 +441,42 @@ export default function MapDetailPage() {
     }
   };
 
+  const handleAddMapToCollection = async () => {
+    if (!map?.id) return;
+
+    try {
+      setIsAddingToCollection(true);
+      const response = await learnerMapsApi.addMapToMyMaps(map.id);
+      if (response.data.isSuccess) {
+        if (!(response.data.message ?? "").trim()) {
+          emitApiToast({ type: "success", message: t("gameAddedToCollection") });
+        }
+        const ownershipResponse = await learnerMapsApi.checkMapOwnership(map.id);
+        if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
+          setOwnership(ownershipResponse.data.data);
+        }
+        return;
+      }
+
+      if (!(response.data.message ?? "").trim()) {
+        emitApiToast({ type: "error", message: t("gameAddToCollectionFailed") });
+      }
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const body = err.response?.data as ApiResult<null> | undefined;
+        if (!(body?.message ?? "").trim()) {
+          emitApiToast({ type: "error", message: t("gameAddToCollectionFailed") });
+        }
+        return;
+      }
+
+      console.error(err);
+      emitApiToast({ type: "error", message: t("gameAddToCollectionFailed") });
+    } finally {
+      setIsAddingToCollection(false);
+    }
+  };
+
   const handleChatWithCreator = async () => {
     if (!map?.id || !map.createdByUserId) return;
 
@@ -446,12 +485,14 @@ export default function MapDetailPage() {
       const response = await learnerChatApi.getOrCreatePrivateConversation(map.createdByUserId);
       const conversationId = response.data.data?.id;
       if (!response.data.isSuccess || !conversationId) {
-        alert(
-          response.data.message ||
-            (locale.startsWith("vi")
+        if (!(response.data.message ?? "").trim()) {
+          emitApiToast({
+            type: "error",
+            message: locale.startsWith("vi")
               ? "Không thể mở cuộc trò chuyện với tác giả."
-              : "Unable to open chat with creator."),
-        );
+              : "Unable to open chat with creator.",
+          });
+        }
         return;
       }
 
@@ -462,11 +503,12 @@ export default function MapDetailPage() {
       navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conversationId)}?${params.toString()}`);
     } catch (err) {
       console.error(err);
-      alert(
-        locale.startsWith("vi")
+      emitApiToast({
+        type: "error",
+        message: locale.startsWith("vi")
           ? "Có lỗi khi mở cuộc trò chuyện với tác giả."
           : "An error occurred while opening chat with creator.",
-      );
+      });
     } finally {
       setIsOpeningCreatorChat(false);
     }
@@ -497,7 +539,7 @@ export default function MapDetailPage() {
     if (!map?.id || ownership?.isAuthor !== true || !setup) return;
     const titleTrim = editTitle.trim();
     if (!titleTrim) {
-      alert(t("mapDetailEditTitleRequired"));
+      emitApiToast({ type: "error", message: t("mapDetailEditTitleRequired") });
       return;
     }
     try {
@@ -512,31 +554,48 @@ export default function MapDetailPage() {
         learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
       });
       if (!res.data.isSuccess) {
-        alert(t("mapDetailMetadataSaveFailed").replace("{message}", res.data.message || ""));
+        if (!(res.data.message ?? "").trim()) {
+          emitApiToast({
+            type: "error",
+            message: t("mapDetailMetadataSaveFailed").replace("{message}", ""),
+          });
+        }
         return;
       }
       if (avatarFile) {
         const ar = await learnerMapsApi.uploadMapAvatar(map.id, avatarFile);
         if (!ar.data.isSuccess) {
-          alert(t("mapDetailAvatarUploadFailed").replace("{message}", ar.data.message || ""));
+          if (!(ar.data.message ?? "").trim()) {
+            emitApiToast({
+              type: "error",
+              message: t("mapDetailAvatarUploadFailed").replace("{message}", ""),
+            });
+          }
           return;
         }
       }
       if (pendingGalleryFiles.length > 0) {
         const gr = await learnerMapsApi.uploadMapGallery(map.id, pendingGalleryFiles);
         if (!gr.data.isSuccess) {
-          alert(t("mapDetailGalleryUploadFailed").replace("{message}", gr.data.message || ""));
+          if (!(gr.data.message ?? "").trim()) {
+            emitApiToast({
+              type: "error",
+              message: t("mapDetailGalleryUploadFailed").replace("{message}", ""),
+            });
+          }
           return;
         }
       }
       setAvatarFile(null);
       setPendingGalleryFiles([]);
       await loadMap();
-      alert(t("mapDetailMetadataSaved"));
+      if (!(res.data.message ?? "").trim()) {
+        emitApiToast({ type: "success", message: t("mapDetailMetadataSaved") });
+      }
       navigate(".", { replace: true, state: {} });
     } catch (e) {
       console.error(e);
-      alert(t("mapDetailMetadataSaveError"));
+      emitApiToast({ type: "error", message: t("mapDetailMetadataSaveError") });
     } finally {
       setSavingMetadata(false);
     }
@@ -581,6 +640,11 @@ export default function MapDetailPage() {
     map?.isPublished === true &&
     (map?.price ?? 0) > 0 &&
     trialRemainingAttempts > 0;
+  const canAddToCollection =
+    ownership?.isOwned !== true &&
+    ownership?.isAuthor !== true &&
+    map?.isPublished === true &&
+    (map?.price ?? 0) <= 0;
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
   const canPurchase =
     ownership?.isOwned !== true && map?.isPublished === true && (map?.price ?? 0) > 0;
@@ -1137,6 +1201,19 @@ export default function MapDetailPage() {
             >
               <Lock size={18} /> {isPurchasing ? "Purchasing..." : t("buyWithOrbitCoin")}
               {map.price > 0 && ` (${map.price.toLocaleString()} OC)`}
+            </motion.button>
+          ) : null}
+          {canAddToCollection ? (
+            <motion.button
+              type="button"
+              onClick={() => void handleAddMapToCollection()}
+              className={styles.steamFooterPrimary}
+              disabled={isAddingToCollection}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <PlusCircle size={18} />
+              {isAddingToCollection ? t("addingToCollection") : t("addToCollection")}
             </motion.button>
           ) : null}
           <motion.button
