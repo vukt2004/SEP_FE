@@ -6,6 +6,7 @@ import HeroSection from "./sections/HeroSection";
 import IntroHighlightsSection from "./sections/IntroHighlightsSection";
 import LandingFooter from "./sections/LandingFooter";
 import LandingHeader from "./sections/LandingHeader";
+import BackToTopButton from "./shared/BackToTopButton";
 
 export default function LandingPage() {
   return (
@@ -23,6 +24,7 @@ export default function LandingPage() {
 
       <FinaleSection />
       <LandingFooter />
+      <BackToTopButton />
     </div>
   );
 }
