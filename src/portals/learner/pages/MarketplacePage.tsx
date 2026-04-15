@@ -126,13 +126,23 @@ export default function MarketplacePage() {
   const [favorites] = useState<Set<string>>(() => new Set());
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [difficultyFilter] = useState<number | undefined>(undefined);
   const [typeFilter] = useState<number | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
-  const [, setTotalPages] = useState(1);
-  const [hasNext, setHasNext] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const PAGE_SIZE = 12;
+
+  // Debounce search term: only update after user stops typing for 400ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     const loadMaps = async () => {
@@ -142,37 +152,27 @@ export default function MarketplacePage() {
 
         const response = await learnerMapsApi.getMaps({
           pageNumber: currentPage,
-          pageSize: 20,
-          mapStatus: "Published", // chỉ lấy map Published cho catalog
+          pageSize: PAGE_SIZE,
+          mapStatus: "Published",
           difficulty: difficultyFilter,
           type: typeFilter,
-          search: searchTerm || undefined,
+          search: debouncedSearchTerm || undefined,
           sortBy: "CreatedAt",
           sortAscending: false,
         });
 
         if (response.data.isSuccess && response.data.data) {
-          const { items, totalPages: apiTotalPages, hasNext: apiHasNext } = response.data.data;
+          const { items, totalPages: apiTotalPages } = response.data.data;
 
-          // Bỏ qua các map do chính user tạo (isAuthor = true) nếu backend có field này
           const visibleItems = (items as (ApiMap & { isAuthor?: boolean })[]).filter(
             (m) => !m.isAuthor,
           );
 
-          setMaps((prev) => {
-            const baseIndex = currentPage === 1 ? 0 : prev.length;
-            const mapped = visibleItems.map((apiMap, idx) =>
-              mapApiMapToUiMap(apiMap as ApiMap, baseIndex + idx),
-            );
-            if (currentPage === 1) {
-              return mapped.slice(0, 100);
-            }
-            const combined = [...prev, ...mapped];
-            return combined.slice(0, 100);
-          });
-
+          const mapped = visibleItems.map((apiMap, idx) =>
+            mapApiMapToUiMap(apiMap as ApiMap, (currentPage - 1) * PAGE_SIZE + idx),
+          );
+          setMaps(mapped);
           setTotalPages(apiTotalPages);
-          setHasNext(apiHasNext && (currentPage + 1) * 20 < 100);
         } else {
           setError(response.data.message || t("failedLoadMapList"));
         }
@@ -185,7 +185,7 @@ export default function MarketplacePage() {
     };
 
     loadMaps();
-  }, [currentPage, difficultyFilter, typeFilter, searchTerm]);
+  }, [currentPage, difficultyFilter, typeFilter, debouncedSearchTerm]);
 
   useEffect(() => {
     const loadHeroMaps = async () => {
@@ -211,20 +211,28 @@ export default function MarketplacePage() {
     loadHeroMaps();
   }, []);
 
-  // Infinite scroll: khi kéo xuống cuối trang sẽ tự load thêm map (tối đa 100 bản ghi)
-  useEffect(() => {
-    const handleScroll = () => {
-      if (loading || !hasNext) return;
-      const scrollPosition = window.innerHeight + window.scrollY;
-      const threshold = document.body.offsetHeight - 200;
-      if (scrollPosition >= threshold) {
-        setCurrentPage((prev) => prev + 1);
-      }
-    };
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, hasNext]);
+  // Build visible page numbers with ellipsis
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   const tabs: { id: TabId; labelKey: string }[] = [
     { id: "trending", labelKey: "trending" },
@@ -234,12 +242,12 @@ export default function MarketplacePage() {
 
   const listMaps = useMemo(() => {
     if (activeTab === "trending") {
-      return [...maps].sort((a, b) => b.views - a.views).slice(0, 12);
+      return [...maps].sort((a, b) => b.views - a.views);
     }
     if (activeTab === "favorites") {
-      return maps.filter((m) => favorites.has(m.id)).slice(0, 12);
+      return maps.filter((m) => favorites.has(m.id));
     }
-    return [...maps].sort(() => Math.random() - 0.5).slice(0, 12);
+    return [...maps];
   }, [activeTab, favorites, maps]);
 
   // Hero hiển thị tối đa 10 map, lấy từ nguồn hero riêng; nếu lỗi thì fallback slice từ maps
@@ -273,7 +281,7 @@ export default function MarketplacePage() {
     );
   }
 
-  if (!loading && maps.length === 0) {
+  if (!loading && maps.length === 0 && !debouncedSearchTerm) {
     return (
       <div className={styles.page}>
         <div className={styles.bg} aria-hidden />
@@ -523,10 +531,7 @@ export default function MarketplacePage() {
                   type="search"
                   placeholder={t("searchMapPlaceholder")}
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   style={{
                     width: "100%",
                     padding: "10px 14px",
@@ -555,15 +560,143 @@ export default function MarketplacePage() {
               hidden: {},
             }}
           >
-            {listMaps.map((map) => (
-              <MapCard
-                key={map.id}
-                map={map}
-                tagStyles={TAG_STYLES}
-                onClick={() => goToMapDetail(map.id)}
-              />
-            ))}
+            {listMaps.length > 0 ? (
+              listMaps.map((map) => (
+                <MapCard
+                  key={map.id}
+                  map={map}
+                  tagStyles={TAG_STYLES}
+                  onClick={() => goToMapDetail(map.id)}
+                />
+              ))
+            ) : debouncedSearchTerm ? (
+              <div
+                style={{
+                  gridColumn: "1 / -1",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 16,
+                  padding: "60px 20px",
+                  color: "var(--muted)",
+                }}
+              >
+                <Search size={40} style={{ opacity: 0.4 }} />
+                <p style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+                  {t("noSearchResults") ?? "No results found"}
+                </p>
+                <p style={{ fontSize: 13, margin: 0, opacity: 0.7 }}>
+                  "{debouncedSearchTerm}"
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setDebouncedSearchTerm("");
+                  }}
+                  style={{
+                    marginTop: 8,
+                    padding: "8px 20px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--primary)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.18s ease",
+                  }}
+                >
+                  {t("clearSearch") ?? "Clear search"}
+                </button>
+              </div>
+            ) : null}
           </motion.div>
+
+          {/* Pagination */}
+          {totalPages > 1 && listMaps.length > 0 && (
+            <motion.div
+              style={{
+                ...card(),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  ...paginationBtn,
+                  opacity: currentPage === 1 ? 0.35 : 1,
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                }}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    style={{
+                      padding: "6px 4px",
+                      color: "var(--muted)",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      userSelect: "none",
+                    }}
+                  >
+                    ···
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => goToPage(page)}
+                    style={{
+                      ...paginationBtn,
+                      background:
+                        page === currentPage ? "var(--primary)" : "transparent",
+                      color:
+                        page === currentPage
+                          ? "var(--on-primary, #fff)"
+                          : "var(--text)",
+                      borderColor:
+                        page === currentPage
+                          ? "var(--primary)"
+                          : "var(--border)",
+                      fontWeight: page === currentPage ? 800 : 600,
+                    }}
+                  >
+                    {page}
+                  </button>
+                ),
+              )}
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  ...paginationBtn,
+                  opacity: currentPage === totalPages ? 0.35 : 1,
+                  cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                }}
+                aria-label="Next page"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
@@ -754,4 +887,21 @@ const iconBtn: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
+};
+
+const paginationBtn: React.CSSProperties = {
+  minWidth: 38,
+  height: 38,
+  padding: "0 10px",
+  borderRadius: 10,
+  border: "1px solid var(--border)",
+  background: "transparent",
+  color: "var(--text)",
+  fontSize: 14,
+  fontWeight: 600,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  transition: "all 0.18s ease",
 };
