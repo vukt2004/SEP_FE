@@ -111,7 +111,6 @@ export default function ComplaintDetailPage() {
     return [...(sourceMessage?.attachments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
   }, [data]);
 
-
   if (loading && !data) {
     return <div>{t("complaints.detail.loading")}</div>;
   }
