@@ -23,6 +23,7 @@ export function validateCreateComplaintForm(
     description: string;
     context: {
       paymentRecordId?: string;
+      gameId?: string;
       mapId?: string;
       packageId?: string;
       submissionId?: string;

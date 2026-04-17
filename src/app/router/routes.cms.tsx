@@ -72,7 +72,7 @@ export const cmsRoutes: RouteObject = {
       ),
     },
     {
-      path: "maps",
+      path: "games",
       element: (
         <RequireCmsRole allowedRoles={["admin", "moderator"]}>
           <CmsMapsPage />

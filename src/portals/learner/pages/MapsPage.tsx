@@ -22,6 +22,7 @@ import type { MapPlayHistoryItem } from "@/types/api/learner/gameplay";
 import type { MapOwnershipData } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import type { LocaleId } from "@/lib/i18n/translations";
+import { ROUTES } from "@/lib/constants/routes";
 import styles from "./MapsPage.module.css";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
@@ -763,8 +764,8 @@ function MapsContent() {
                       status={status}
                       progressPercent={progressPercent}
                       size="large"
-                      onPlay={() => navigate(`/app/map/${map.id}`)}
-                      onLocked={() => navigate(`/app/map/${map.id}`)}
+                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                       showContinue
                     />
                   );
@@ -798,8 +799,8 @@ function MapsContent() {
                       progressPercent={progressPercent}
                       size="large"
                       badge="recommended"
-                      onPlay={() => navigate(`/app/map/${map.id}`)}
-                      onLocked={() => navigate(`/app/map/${map.id}`)}
+                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                     />
                   );
                 })}
@@ -832,8 +833,8 @@ function MapsContent() {
                       progressPercent={progressPercent}
                       size="medium"
                       badge="start_here"
-                      onPlay={() => navigate(`/app/map/${map.id}`)}
-                      onLocked={() => navigate(`/app/map/${map.id}`)}
+                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                     />
                   );
                 })}
@@ -872,8 +873,8 @@ function MapsContent() {
                         status={status}
                         progressPercent={progressPercent}
                         size="default"
-                        onPlay={() => navigate(`/app/map/${map.id}`)}
-                        onLocked={() => navigate(`/app/map/${map.id}`)}
+                        onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                        onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                       />
                     );
                   })}

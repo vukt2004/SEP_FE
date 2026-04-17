@@ -18,6 +18,37 @@ import type {
 
 const BASE = "/api/learner/learning-path";
 
+function normalizeGameFields<T>(value: T): T {
+  if (Array.isArray(value)) {
+    value.forEach((item) => normalizeGameFields(item));
+    return value;
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const row = value as Record<string, unknown>;
+  if (row.gameId != null && row.mapId == null) row.mapId = row.gameId;
+  if (row.gameTitle != null && row.mapTitle == null) row.mapTitle = row.gameTitle;
+  if (row.gameDescription != null && row.mapDescription == null)
+    row.mapDescription = row.gameDescription;
+  if (row.gameDifficulty != null && row.mapDifficulty == null)
+    row.mapDifficulty = row.gameDifficulty;
+  if (row.gameAvatarUrl != null && row.mapAvatarUrl == null) row.mapAvatarUrl = row.gameAvatarUrl;
+  if (row.suggestedReviewGameIds != null && row.suggestedReviewMapIds == null)
+    row.suggestedReviewMapIds = row.suggestedReviewGameIds;
+
+  for (const key of Object.keys(row)) {
+    const child = row[key];
+    if (child && typeof child === "object") {
+      normalizeGameFields(child);
+    }
+  }
+
+  return value;
+}
+
 export const learnerLearningPathApi = {
   /** GET goals – danh sách mục tiêu học tập */
   getGoals() {
@@ -31,7 +62,10 @@ export const learnerLearningPathApi = {
 
   /** GET goals/:goalId/path-items – xem trước lộ trình theo goal (cấu trúc, không auth) */
   getPathItemsByGoal(goalId: string) {
-    return learnerAxios.get<PathItemsPreviewResult>(`${BASE}/goals/${goalId}/path-items`);
+    return learnerAxios.get<PathItemsPreviewResult>(`${BASE}/goals/${goalId}/path-items`).then((r) => {
+      normalizeGameFields(r.data?.data);
+      return r;
+    });
   },
 
   /** POST goals/select – chọn mục tiêu. Auth required. */
@@ -41,7 +75,10 @@ export const learnerLearningPathApi = {
 
   /** GET my-path – lộ trình hiện tại (goal đã chọn + items + IsCompleted, IsUnlocked). Auth required. */
   getMyPath() {
-    return learnerAxios.get<MyPathResult>(`${BASE}/my-path`);
+    return learnerAxios.get<MyPathResult>(`${BASE}/my-path`).then((r) => {
+      normalizeGameFields(r.data?.data);
+      return r;
+    });
   },
 
   /** GET my-path/selected-goal – mục tiêu đang chọn. Auth required. */
@@ -51,7 +88,10 @@ export const learnerLearningPathApi = {
 
   /** GET my-path/progress – tiến độ lộ trình. Auth required. */
   getMyPathProgress() {
-    return learnerAxios.get<ProgressResult>(`${BASE}/my-path/progress`);
+    return learnerAxios.get<ProgressResult>(`${BASE}/my-path/progress`).then((r) => {
+      normalizeGameFields(r.data?.data);
+      return r;
+    });
   },
 
   /** GET concepts?learningGoalId= – danh sách concept (optional filter theo goal) */

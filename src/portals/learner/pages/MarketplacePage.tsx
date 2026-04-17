@@ -8,6 +8,7 @@ import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import { ROUTES } from "@/lib/constants/routes";
 import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
@@ -256,7 +257,7 @@ export default function MarketplacePage() {
     heroSource.length > 0 ? heroSource[featuredIndex % heroSource.length] : undefined;
 
   const goToMapDetail = (mapId: string) => {
-    navigate(`/app/map/${mapId}`);
+    navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
   };
 
   if (loading) {

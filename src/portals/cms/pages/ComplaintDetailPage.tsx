@@ -289,9 +289,11 @@ export default function ComplaintDetailPage() {
   const linkedOrderType = (data.contextResolved?.linkedOrder?.paymentTargetType ?? "").trim().toLowerCase();
   const normalizedContextType = ((data.contextType ?? linkedOrderType) || "").trim().toLowerCase();
 
-  const mapContextId =
-    normalizedContextType === "map"
+  const gameContextId =
+    normalizedContextType === "map" || normalizedContextType === "game"
       ? (data.contextId ||
+        contextData.GameId ||
+        contextData.gameId ||
         contextData.MapId ||
         contextData.mapId ||
         data.contextResolved?.linkedOrder?.paymentTargetId ||
@@ -308,12 +310,12 @@ export default function ComplaintDetailPage() {
         "")
       : "";
 
-  const contextAction = mapContextId
+  const contextAction = gameContextId
     ? {
-      label: "Reported map",
-      title: "Open reported map in CMS Maps",
-      cta: `Open map #${mapContextId.slice(0, 8)}`,
-      link: `/cms/maps?mapId=${encodeURIComponent(mapContextId)}`,
+      label: "Reported game",
+      title: "Open reported game in CMS Games",
+      cta: `Open game #${gameContextId.slice(0, 8)}`,
+      link: `/cms/games?gameId=${encodeURIComponent(gameContextId)}`,
     }
     : packageContextId
       ? {

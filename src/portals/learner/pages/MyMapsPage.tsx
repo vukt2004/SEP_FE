@@ -918,7 +918,7 @@ export const MyMapsPage: React.FC = () => {
 
   const handleViewDetails = (mapId: string) => {
     // Open the map in game view for both author and collected tabs
-    navigate(`/app/map/${mapId}`);
+    navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
   };
 
   const handleUpdateMap = (mapId: string) => {
@@ -1160,6 +1160,9 @@ export const MyMapsPage: React.FC = () => {
   const sellerPolicyRoute = locale.startsWith("vi")
     ? ROUTES.SELLER_POLICY_VI
     : ROUTES.SELLER_POLICY_EN;
+  const gameCreationRuleRoute = locale.startsWith("vi")
+    ? ROUTES.GAME_CREATION_RULE_VI
+    : ROUTES.GAME_CREATION_RULE_EN;
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
     // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
@@ -1978,7 +1981,22 @@ export const MyMapsPage: React.FC = () => {
                   lineHeight: 1.6,
                 }}
               >
-                {t("submitForReviewModalWarning")}
+                {t("submitForReviewModalWarning")}{" "}
+                <a
+                  href={gameCreationRuleRoute}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: "var(--primary)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "2px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {locale.startsWith("vi")
+                    ? "Mở Game Creation Rule"
+                    : "Open game creation rule"}
+                </a>
               </p>
 
               {/* Buttons */}

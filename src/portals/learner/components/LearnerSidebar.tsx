@@ -42,7 +42,7 @@ export default function LearnerSidebar() {
           label={t("myPath")}
           icon={Route}
         />
-        <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-maps"} label={t("myMaps")} icon={Map} />
+        <SideNavLink to={ROUTES.LEARNER_MAPS ?? "/app/my-games"} label={t("myMaps")} icon={Map} />
       </nav>
     </aside>
   );

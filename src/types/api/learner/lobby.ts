@@ -15,12 +15,14 @@ export interface LobbyRoomListItem {
   maxPlayers: number;
   status: RoomStatus;
   isLocked: boolean;
+  selectedGameId?: string | null;
   selectedMapId: string | null;
 }
 
 /** Request body for creating a room */
 export interface CreateLobbyRoomRequest {
   maxPlayers?: number;
+  selectedGameId?: string | null;
   selectedMapId?: string | null;
 }
 
@@ -30,6 +32,7 @@ export interface CreateLobbyRoomResponse {
   roomCode: string;
   hostId: string;
   maxPlayers: number;
+  selectedGameId?: string | null;
   selectedMapId: string | null;
 }
 
@@ -63,14 +66,18 @@ export interface LobbyRoomDetailResponse {
   maxPlayers: number;
   status: RoomStatus;
   isLocked: boolean;
+  selectedGameId?: string | null;
   selectedMapId: string | null;
   players: LobbyPlayerDto[];
 }
 
-/** Request to set room map */
-export interface SetRoomMapRequest {
-  mapId: string;
+/** Request to set room game */
+export interface SetRoomGameRequest {
+  gameId?: string;
+  mapId?: string;
 }
+
+export type SetRoomMapRequest = SetRoomGameRequest;
 
 /** Request body for submitting solution in lobby game */
 export interface LobbySubmitSolutionRequest {
@@ -84,6 +91,7 @@ export interface LobbySubmitSolutionRequest {
   /** Thời gian chơi (giây), khớp timer màn chơi */
   time?: number;
   /** MapDetails.Id của level đang nộp — bắt buộc khi map có nhiều level. */
+  gameDetailId?: string;
   mapDetailId?: string;
 }
 

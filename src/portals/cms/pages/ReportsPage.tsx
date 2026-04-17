@@ -354,7 +354,7 @@ export const ReportsPage: React.FC = () => {
                   <td style={{ padding: "16px" }}>
                     <div>
                       <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
-                        {report.mapTitle}
+                        {report.gameTitle ?? report.mapTitle}
                       </div>
                       <div
                         style={{
@@ -363,7 +363,7 @@ export const ReportsPage: React.FC = () => {
                           fontFamily: "monospace",
                         }}
                       >
-                        {report.mapId.substring(0, 8)}...
+                        {(report.gameId ?? report.mapId).substring(0, 8)}...
                       </div>
                     </div>
                   </td>
