@@ -729,6 +729,13 @@ export default function MapDetailPage() {
   }, [map]);
   const purchaseDifficultyLabel =
     map?.difficulty === 1 ? t("easy") : map?.difficulty === 2 ? t("medium") : t("hard");
+  const buyerPolicyRoute = locale.startsWith("vi")
+    ? ROUTES.BUYER_POLICY_VI
+    : ROUTES.BUYER_POLICY_EN;
+
+  const handleOpenBuyerPolicy = () => {
+    window.open(buyerPolicyRoute, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     if (carouselItems.length > 0 && carouselIndex >= carouselItems.length) {
@@ -1410,6 +1417,18 @@ export default function MapDetailPage() {
                 {locale.startsWith("vi")
                   ? "Bạn có chắc muốn mua bản đồ này không?"
                   : "Are you sure you want to purchase this map?"}
+              </p>
+              <p className={styles.purchasePolicyNote}>
+                {locale.startsWith("vi")
+                  ? "Vui lòng xem chính sách người mua trước khi xác nhận giao dịch."
+                  : "Please review the buyer policy before confirming this purchase."}{" "}
+                <button
+                  type="button"
+                  className={styles.purchasePolicyLink}
+                  onClick={handleOpenBuyerPolicy}
+                >
+                  {locale.startsWith("vi") ? "Mở chính sách mua game" : "Open buy game policy"}
+                </button>
               </p>
               <div className={styles.modalActions}>
                 <button

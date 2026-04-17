@@ -1271,7 +1271,7 @@ export const MapsPage: React.FC = () => {
                             fontSize: "12px",
                             transition: "all 0.2s ease",
                           }}
-                          title="Play Game"
+                          title={t("cmsMaps.playGame")}
                         >
                           <Play size={16} />
                         </button>
@@ -1862,6 +1862,31 @@ export const MapsPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {selectedMap.mapStatus !== "Draft" && (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => handlePlayMap(selectedMap.id, selectedMap.type ?? "Topdown")}
+                  title={t("cmsMaps.playGame")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 16px",
+                    background: "var(--primary)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Play size={16} /> {t("cmsMaps.playGame")}
+                </button>
+              </div>
+            )}
           </div>
             );
           })()

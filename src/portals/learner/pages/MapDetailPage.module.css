@@ -774,6 +774,28 @@
   line-height: 1.5;
 }
 
+.purchasePolicyNote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.purchasePolicyLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.purchasePolicyLink:hover {
+  filter: brightness(1.08);
+}
+
 .purchaseConfirmCard {
   margin-top: 12px;
   display: grid;

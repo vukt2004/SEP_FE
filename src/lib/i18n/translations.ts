@@ -516,6 +516,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     failedDeleteMap: "Failed to delete game.",
     deleting: "Deleting...",
 
+    "cmsMaps.playGame": "Play Game",
+
     "cmsReview.openReview": "Review Game",
     "cmsReview.title": "Review Game",
     "cmsReview.reviewing": "Reviewing",
@@ -1419,7 +1421,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorLayerCollision: "Collision",
     mapEditorBlockRules: "Block Rules",
     mapEditorBlockLimitLabel: "Block Limit:",
-    mapEditorBlockLimitHint: "Set the block limit for the player",
+    mapEditorBlockLimitHint: "Number of blocks allowed to build a solution.",
     mapEditorUnlimited: "Unlimited",
     mapEditorAllowedBlocksLabel: "Allowed Blocks:",
     mapEditorAllowedBlocksHint1: "Leave empty to allow all blocks",
@@ -2167,6 +2169,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapDeletedSuccess: "Đã xóa trò chơi thành công.",
     failedDeleteMap: "Không xóa được trò chơi.",
     deleting: "Đang xóa...",
+
+    "cmsMaps.playGame": "Chơi game",
 
     "cmsReview.openReview": "Duyệt trò chơi",
     "cmsReview.title": "Duyệt trò chơi",
@@ -3068,7 +3072,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorLayerCollision: "Va chạm",
     mapEditorBlockRules: "Quy tắc khối",
     mapEditorBlockLimitLabel: "Giới hạn khối:",
-    mapEditorBlockLimitHint: "Thiết lập giới hạn khối cho người chơi",
+    mapEditorBlockLimitHint: "Số khối được phép sử dụng để tạo lời giải.",
     mapEditorUnlimited: "Không giới hạn",
     mapEditorAllowedBlocksLabel: "Khối được phép:",
     mapEditorAllowedBlocksHint1: "Để trống để cho phép tất cả khối",
