@@ -341,7 +341,7 @@ const policySections: PolicySection[] = [
         id: "5.1",
         title: "Nguyên tắc chia doanh thu",
         bullets: [
-          "Doanh thu hợp lệ được chia theo tỷ lệ 70% cho creator và 30% cho nền tảng.",
+          "Doanh thu hợp lệ được chia theo tỷ lệ 90% cho creator và 10% cho nền tảng.",
           "Tỷ lệ áp dụng cho tất cả giao dịch đủ điều kiện.",
         ],
       },

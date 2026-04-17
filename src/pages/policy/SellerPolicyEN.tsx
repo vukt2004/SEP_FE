@@ -341,7 +341,7 @@ const policySections: PolicySection[] = [
         id: "5.1",
         title: "Revenue Split Principle",
         bullets: [
-          "Valid sales are split as 70% creator and 30% platform.",
+          "Valid sales are split as 90% creator and 10% platform.",
           "This split applies to all eligible transactions.",
         ],
       },

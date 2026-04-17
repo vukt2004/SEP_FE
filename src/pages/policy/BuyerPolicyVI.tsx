@@ -142,10 +142,23 @@ const policySections: PolicySection[] = [
       {
         id: "2.5",
         title: "Chính sách số dư (Wallet Policy)",
-        bullets: [
-          "Orbit Coin không thể quy đổi ngược thành tiền mặt.",
-          "Orbit Coin không thể chuyển giữa các tài khoản, trừ khi hệ thống có hỗ trợ riêng.",
-          "Người dùng có trách nhiệm kiểm tra số dư và bảo mật tài khoản.",
+        paragraphs: [
+          "2.5.1. Sử dụng Orbit Coin",
+          "Orbit Coin được sử dụng để mua game hoặc map trên nền tảng và nhận doanh thu từ việc bán nội dung đối với Creator.",
+          "2.5.2. Quy đổi Orbit Coin sang tiền mặt",
+          "Người dùng có thể yêu cầu quy đổi Orbit Coin thành tiền mặt (cash-out) nếu đủ điều kiện. Việc quy đổi chỉ áp dụng cho số dư hợp lệ và phải thông qua các phương thức do nền tảng hỗ trợ.",
+          "2.5.3. Điều kiện rút tiền (Cash-out Conditions)",
+          "Để thực hiện rút tiền, người dùng phải có Available Balance (không phải Pending), đạt mức tối thiểu để rút tiền, và không có tranh chấp đang xử lý, yêu cầu hoàn tiền liên quan, hoặc dấu hiệu gian lận.",
+          "2.5.4. Thời gian xử lý",
+          "Yêu cầu rút tiền sẽ được xử lý trong 3 ngày làm việc. Nền tảng có quyền tạm hoãn xử lý nếu cần kiểm tra thêm.",
+          "2.5.5. Phí và tỷ giá quy đổi",
+          "Việc quy đổi có thể áp dụng phí giao dịch (transaction fee) và tỷ giá quy đổi (exchange rate) giữa Orbit Coin và tiền mặt. Tất cả thông tin sẽ được hiển thị rõ trước khi người dùng xác nhận rút tiền.",
+          "2.5.6. Hạn chế và kiểm soát",
+          "Nền tảng có quyền từ chối hoặc trì hoãn rút tiền trong các trường hợp phát hiện giao dịch bất thường, nghi ngờ gian lận hoặc lạm dụng hệ thống, hoặc vi phạm chính sách nền tảng.",
+          "2.5.7. Số dư không hợp lệ",
+          "Các loại số dư không đủ điều kiện rút gồm số dư từ giao dịch chưa hoàn tất (Pending), số dư liên quan đến giao dịch bị hoàn tiền, và số dư bị đánh dấu nghi ngờ gian lận.",
+          "2.5.8. Trách nhiệm người dùng",
+          "Người dùng chịu trách nhiệm cung cấp thông tin thanh toán chính xác, tuân thủ quy định pháp luật liên quan đến nhận tiền, và đảm bảo tài khoản không bị sử dụng trái phép.",
         ],
       },
       {

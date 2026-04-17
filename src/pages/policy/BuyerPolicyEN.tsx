@@ -142,10 +142,23 @@ const policySections: PolicySection[] = [
       {
         id: "2.5",
         title: "Wallet Policy",
-        bullets: [
-          "Orbit Coin cannot be converted back into cash.",
-          "Coin transfer between accounts is not allowed unless the system explicitly supports it.",
-          "Users are responsible for checking balance and securing their accounts.",
+        paragraphs: [
+          "2.5.1. Using Orbit Coin",
+          "Orbit Coin is used to purchase games and maps on the platform and to receive sales earnings for creators.",
+          "2.5.2. Converting Orbit Coin to Cash",
+          "Users may request conversion of Orbit Coin to cash (cash-out) when eligible. Conversion only applies to valid balances and must use payment methods supported by the platform.",
+          "2.5.3. Cash-out Conditions",
+          "To cash out, users must have Available Balance (not Pending), meet the minimum payout threshold, and have no active disputes, related refund requests, or fraud indicators.",
+          "2.5.4. Processing Time",
+          "Cash-out requests are processed within 3 business days. The platform may temporarily delay processing if additional verification is required.",
+          "2.5.5. Fees and Exchange Rate",
+          "Conversion may include a transaction fee and an exchange rate between Orbit Coin and cash. All details are shown clearly before users confirm withdrawal.",
+          "2.5.6. Restrictions and Controls",
+          "The platform may reject or delay cash-out requests when abnormal transactions are detected, fraud or abuse is suspected, or platform policy violations are identified.",
+          "2.5.7. Invalid Balances",
+          "Balances not eligible for cash-out include Pending balances, balances linked to refunded transactions, and balances flagged as suspicious for fraud.",
+          "2.5.8. User Responsibilities",
+          "Users are responsible for providing accurate payout information, complying with applicable laws for receiving funds, and securing their accounts against unauthorized use.",
         ],
       },
       {
