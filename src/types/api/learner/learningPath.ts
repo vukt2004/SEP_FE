@@ -20,10 +20,15 @@ export interface LearningPathItemDto {
   conceptDescription?: string | null;
   /** Key để FE load nội dung (vd. content/variables.md). BE trả ConceptContentKey. */
   conceptContentKey?: string | null;
+  gameId?: string | null;
   mapId?: string | null;
+  gameTitle?: string | null;
   mapTitle?: string | null;
+  gameDescription?: string | null;
   mapDescription?: string | null;
+  gameDifficulty?: number | null;
   mapDifficulty?: number | null;
+  gameAvatarUrl?: string | null;
   mapAvatarUrl?: string | null;
   isCompleted: boolean;
   isUnlocked: boolean;
@@ -79,10 +84,15 @@ export interface PathItemPreviewDto {
   conceptName?: string | null;
   conceptDescription?: string | null;
   conceptContentKey?: string | null;
+  gameId?: string | null;
   mapId?: string | null;
+  gameTitle?: string | null;
   mapTitle?: string | null;
+  gameDescription?: string | null;
   mapDescription?: string | null;
+  gameDifficulty?: number | null;
   mapDifficulty?: number | null;
+  gameAvatarUrl?: string | null;
   mapAvatarUrl?: string | null;
 }
 
@@ -99,6 +109,7 @@ export interface LearningPathProgressDto {
   totalItems?: number;
   completedCount?: number;
   percentComplete?: number;
+  suggestedReviewGameIds?: string[];
   suggestedReviewMapIds?: string[];
 }
 

@@ -465,15 +465,17 @@ export const MapsPage: React.FC = () => {
   }, [maps]);
 
   useEffect(() => {
-    const mapIdFromQuery = searchParams.get("mapId")?.trim();
-    if (!mapIdFromQuery) return;
-    void handleViewDetails(mapIdFromQuery);
+    const gameIdFromQuery =
+      searchParams.get("gameId")?.trim() || searchParams.get("mapId")?.trim();
+    if (!gameIdFromQuery) return;
+    void handleViewDetails(gameIdFromQuery);
   }, [handleViewDetails, searchParams]);
 
   const handleCloseDetailModal = useCallback(() => {
     setDetailModalOpen(false);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      next.delete("gameId");
       next.delete("mapId");
       return next;
     }, { replace: true });

@@ -180,6 +180,7 @@ export default function ComplaintsPage() {
     description: "",
     context: {
       paymentRecordId: "",
+      gameId: "",
       mapId: "",
       packageId: "",
       submissionId: "",
@@ -267,7 +268,8 @@ export default function ComplaintsPage() {
 
     const prefillContext = {
       paymentRecordId: searchParams.get("paymentRecordId") || "",
-      mapId: searchParams.get("mapId") || "",
+      gameId: searchParams.get("gameId") || searchParams.get("mapId") || "",
+      mapId: searchParams.get("mapId") || searchParams.get("gameId") || "",
       packageId: searchParams.get("packageId") || "",
       submissionId: searchParams.get("submissionId") || "",
       playHistoryId: searchParams.get("playHistoryId") || "",
@@ -282,6 +284,7 @@ export default function ComplaintsPage() {
       description: prefillDescription || prev.description,
       context: {
         paymentRecordId: prefillContext.paymentRecordId || prev.context.paymentRecordId || "",
+        gameId: prefillContext.gameId || prev.context.gameId || prev.context.mapId || "",
         mapId: prefillContext.mapId || prev.context.mapId || "",
         packageId: prefillContext.packageId || prev.context.packageId || "",
         submissionId: prefillContext.submissionId || prev.context.submissionId || "",
@@ -646,6 +649,7 @@ export default function ComplaintsPage() {
         description: createForm.description.trim(),
         context: {
           paymentRecordId: trimOrUndefined(createForm.context.paymentRecordId || ""),
+          gameId: trimOrUndefined(createForm.context.gameId || createForm.context.mapId || ""),
           mapId: trimOrUndefined(createForm.context.mapId || ""),
           packageId: trimOrUndefined(createForm.context.packageId || ""),
           submissionId: trimOrUndefined(createForm.context.submissionId || ""),
@@ -669,6 +673,7 @@ export default function ComplaintsPage() {
         description: "",
         context: {
           paymentRecordId: "",
+          gameId: "",
           mapId: "",
           packageId: "",
           submissionId: "",
@@ -1169,7 +1174,7 @@ export default function ComplaintsPage() {
                                   >
                                     {getContextLabel(t, item.field)}
                                   </div>
-                                  {item.field === "mapId" ? (
+                                  {item.field === "mapId" || item.field === "gameId" ? (
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                       <input
                                         readOnly

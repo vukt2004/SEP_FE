@@ -267,9 +267,17 @@ export default function NotificationsPage() {
       path = `/app/${path.slice("/learner/".length)}`;
     }
 
-    const mapDetailMatch = path.match(/^\/app\/maps\/([^/?#]+)/i);
-    if (mapDetailMatch?.[1]) {
-      return ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapDetailMatch[1]);
+    const gameDetailMatch = path.match(/^\/app\/(?:games|game)\/([^/?#]+)/i);
+    if (gameDetailMatch?.[1]) {
+      return ROUTES.LEARNER_MAP_DETAIL.replace(":id", gameDetailMatch[1]);
+    }
+
+    if (/^\/app\/games$/i.test(path)) {
+      return ROUTES.LEARNER_MAPS_BROWSE;
+    }
+
+    if (/^\/app\/my-games$/i.test(path)) {
+      return ROUTES.LEARNER_MAPS;
     }
     return path;
   };

@@ -16,8 +16,8 @@ export const learnerCommunityApi = {
    * @param params - Rating and comment
    * @returns Rating result
    */
-  rateMap(id: string, params: RateMapParams) {
-    return learnerAxios.post<ApiResult<null>>(`/api/learner/community/maps/${id}/rate`, params);
+  rateGame(id: string, params: RateMapParams) {
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/community/games/${id}/rate`, params);
   },
 
   /**
@@ -29,6 +29,6 @@ export const learnerCommunityApi = {
    * @returns Report result with report ID
    */
   reportMap(id: string, params: ReportMapParams) {
-    return learnerAxios.post<ApiResult<string>>(`/api/learner/community/maps/${id}/report`, params);
+    return learnerAxios.post<ApiResult<string>>(`/api/learner/community/games/${id}/report`, params);
   },
 };

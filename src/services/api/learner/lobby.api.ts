@@ -9,7 +9,7 @@ import type {
   LobbyRoomDetailResult,
   CreateLobbyRoomRequest,
   JoinLobbyRoomRequest,
-  SetRoomMapRequest,
+  SetRoomGameRequest,
   LobbySubmitSolutionRequest,
   SubmitGameResult,
 } from "@/types/api/learner/lobby";
@@ -22,16 +22,17 @@ export const learnerLobbyApi = {
     return learnerAxios.get<LobbyRoomsListResult>(`${BASE}/rooms`);
   },
 
-  /** POST /api/learner/lobby/rooms – create a new room (caller becomes host). Body: maxPlayers (default 8), selectedMapId (optional Guid). */
+  /** POST /api/learner/lobby/rooms – create a new room (caller becomes host). Body: maxPlayers (default 8), selectedGameId (optional Guid). */
   createRoom(request?: CreateLobbyRoomRequest) {
     const maxPlayers = request?.maxPlayers ?? 8;
-    const body: { maxPlayers: number; selectedMapId?: string | null } = {
+    const selectedGameId = request?.selectedGameId ?? request?.selectedMapId;
+    const body: { maxPlayers: number; selectedGameId?: string | null } = {
       maxPlayers: Math.max(2, maxPlayers),
     };
-    if (request?.selectedMapId != null && request.selectedMapId !== "") {
-      body.selectedMapId = request.selectedMapId;
+    if (selectedGameId != null && selectedGameId !== "") {
+      body.selectedGameId = selectedGameId;
     } else {
-      body.selectedMapId = null;
+      body.selectedGameId = null;
     }
     return learnerAxios.post<CreateLobbyRoomResult>(`${BASE}/rooms`, body);
   },
@@ -68,9 +69,10 @@ export const learnerLobbyApi = {
     return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/ready`);
   },
 
-  /** POST /api/learner/lobby/rooms/:roomId/map – set room map (host, body: { mapId }) */
-  setRoomMap(roomId: string, request: SetRoomMapRequest) {
-    return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/map`, request);
+  /** POST /api/learner/lobby/rooms/:roomId/game – set room game (host, body: { gameId }) */
+  setRoomMap(roomId: string, request: SetRoomGameRequest) {
+    const gameId = request.gameId ?? request.mapId;
+    return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/game`, { gameId });
   },
 
   /** POST /api/learner/lobby/rooms/:roomId/submit – submit solution when room is Playing */

@@ -23,7 +23,9 @@ export interface PaginationResult<T> {
  */
 export interface ReportListItem {
   id: string;
+  gameId?: string;
   mapId: string;
+  gameTitle?: string;
   mapTitle: string;
   userId: string;
   reason: string;

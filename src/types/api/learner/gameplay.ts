@@ -6,8 +6,10 @@ export type PlayMode = 0 | 1 | 2; // Single | Lobby | Competitive
 export type PlayModeLabel = "Single" | "Lobby" | "Competitive";
 
 export interface ValidateSolutionRequest {
-  mapId: string;
+  gameId?: string;
+  mapId?: string;
   /** Required when the map has multiple MapDetails rows (levels). */
+  gameDetailId?: string;
   mapDetailId?: string;
   language?: string;
   astSpec?: string | null;
@@ -49,7 +51,9 @@ export interface PaginationResult<T> {
 
 export interface MapPlayHistoryItem {
   id: string;
+  gameId?: string;
   mapId: string;
+  gameTitle?: string | null;
   mapTitle?: string | null;
   playMode: PlayModeLabel;
   startTime: string;
@@ -65,4 +69,6 @@ export interface MapPlayHistoryItem {
 }
 
 export type MyPlayHistoryResult = ApiResult<PaginationResult<MapPlayHistoryItem>>;
+
+export type GamePlayHistoryItem = MapPlayHistoryItem;
 

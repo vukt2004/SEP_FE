@@ -71,11 +71,15 @@ function normalizeDetail(raw: Record<string, unknown>): LobbyRoomDetailResponse 
     status,
     isLocked: Boolean(raw.isLocked ?? raw.IsLocked),
     selectedMapId:
-      raw.selectedMapId != null
-        ? String(raw.selectedMapId)
-        : raw.SelectedMapId != null
-          ? String(raw.SelectedMapId)
-          : null,
+      raw.selectedGameId != null
+        ? String(raw.selectedGameId)
+        : raw.SelectedGameId != null
+          ? String(raw.SelectedGameId)
+          : raw.selectedMapId != null
+            ? String(raw.selectedMapId)
+            : raw.SelectedMapId != null
+              ? String(raw.SelectedMapId)
+              : null,
     players: parsedPlayers,
   };
 }
@@ -95,7 +99,12 @@ function getInitialRoomFromState(state: unknown): LobbyRoomDetailResponse | null
     maxPlayers: typeof s.maxPlayers === "number" ? s.maxPlayers : 8,
     status: (s.status as LobbyRoomDetailResponse["status"]) ?? "Waiting",
     isLocked: Boolean(s.isLocked),
-    selectedMapId: s.selectedMapId != null ? String(s.selectedMapId) : null,
+    selectedMapId:
+      s.selectedGameId != null
+        ? String(s.selectedGameId)
+        : s.selectedMapId != null
+          ? String(s.selectedMapId)
+          : null,
     players: Array.isArray(s.players) ? (s.players as LobbyPlayerDto[]) : [],
   };
 }
@@ -170,9 +179,16 @@ export default function RoomDetailPage() {
             setRoom(normalizeDetail(data as unknown as Record<string, unknown>));
         });
         unsubStarted = gameLobbyHub.on("GameStarted", (data: unknown) => {
-          const d = data as { roomId?: string; mapId?: string; RoomId?: string; MapId?: string };
+          const d = data as {
+            roomId?: string;
+            gameId?: string;
+            mapId?: string;
+            RoomId?: string;
+            GameId?: string;
+            MapId?: string;
+          };
           const rid = d?.roomId ?? d?.RoomId;
-          const mid = d?.mapId ?? d?.MapId;
+          const mid = d?.gameId ?? d?.GameId ?? d?.mapId ?? d?.MapId;
           if (rid && mid) {
             leftViaButton.current = true;
             const mapId = String(mid);

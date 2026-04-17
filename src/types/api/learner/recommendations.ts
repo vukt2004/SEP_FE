@@ -1,6 +1,7 @@
 import type { ApiResult } from "../common";
 
 export interface RecommendationMapDto {
+  gameId?: string;
   mapId: string;
   title: string;
   difficulty: number;
@@ -19,8 +20,11 @@ export interface RecommendationConceptDto {
 }
 
 export interface RecommendationResultDto {
+  recommendedGames?: RecommendationMapDto[];
   recommendedMaps: RecommendationMapDto[];
+  reviewGames?: RecommendationMapDto[];
   reviewMaps: RecommendationMapDto[];
+  suggestedPracticeGames?: RecommendationMapDto[];
   suggestedPracticeMaps: RecommendationMapDto[];
   nextConcept?: RecommendationConceptDto | null;
 }

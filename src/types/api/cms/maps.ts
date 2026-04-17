@@ -26,7 +26,8 @@ export interface PaginationResult<T> {
  * 3 = Rejected
  * 4 = Published
  */
-export type MapStatusEnum = "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
+export type GameStatusEnum = "Draft" | "PendingReview" | "Approved" | "Rejected" | "Published";
+export type MapStatusEnum = GameStatusEnum;
 
 /**
  * Map item in list view
@@ -39,6 +40,7 @@ export interface MapListItem {
   type: "Topdown" | "Platform" | "Snake";
   timeLimitMs: number;
   isPublished: boolean;
+  gameStatus?: GameStatusEnum;
   mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
@@ -58,13 +60,16 @@ export interface MapListItem {
  * Pagination result for maps list
  */
 export type MapsPaginationResult = PaginationResult<MapListItem>;
+export type GamesPaginationResult = PaginationResult<GameListItem>;
 
 /**
  * Full API response wrapper for maps
  */
 export type MapsListResult = ApiResult<MapsPaginationResult>;
+export type GamesListResult = ApiResult<GamesPaginationResult>;
 
 export type MapStatusFilter = 0 | 1 | 2 | 3 | 4;
+export type GameStatusFilter = MapStatusFilter;
 
 export type MapSortBy = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs" | "Price";
 
@@ -74,6 +79,7 @@ export type MapSortBy = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs" | "
 export interface GetMapsParams {
   pageNumber?: number;
   pageSize?: number;
+  gameStatus?: GameStatusFilter;
   mapStatus?: MapStatusFilter;
   publishedOnly?: boolean;
   createdByUserId?: string;
@@ -136,6 +142,7 @@ export interface MapDetail {
   difficulty: number;
   timeLimitMs?: number;
   isPublished: boolean;
+  gameStatus?: GameStatusEnum;
   mapStatus: MapStatusEnum;
   price: number;
   createdByUserId: string;
@@ -152,6 +159,7 @@ export interface MapDetail {
   tagNames: string[];
   conceptNames: string[];
   winCondition?: number;
+  gameDetailJson?: unknown;
   avatarUrl?: string | null;
   mapDetailJson?: unknown; // Optional field that might be added by backend
   levels?: MapLevelItem[];
@@ -161,6 +169,7 @@ export interface MapDetail {
  * Map detail API response
  */
 export type MapDetailResult = ApiResult<MapDetail>;
+export type GameDetailResult = ApiResult<GameDetail>;
 
 /**
  * Approve/Reject action parameters
@@ -186,3 +195,11 @@ export interface MapTag {
  * API result for map tags list
  */
 export type MapTagsResult = ApiResult<MapTag[]>;
+
+export type GameListItem = MapListItem;
+export type GamesListItem = MapListItem;
+export type GameSortBy = MapSortBy;
+export type GamesFilter = GetMapsParams;
+export type GamesResponseDto = GamesListResult;
+export type GameDetail = MapDetail;
+export type GameTag = MapTag;

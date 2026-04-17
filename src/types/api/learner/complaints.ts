@@ -8,6 +8,7 @@ import type {
 
 export type ComplaintCreateContextInput = {
   paymentRecordId?: string;
+  gameId?: string;
   mapId?: string;
   packageId?: string;
   submissionId?: string;

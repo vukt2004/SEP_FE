@@ -15,6 +15,7 @@ export type LobbyRoomListPayload = Array<{
   maxPlayers: number;
   status: string;
   isLocked: boolean;
+  selectedGameId?: string | null;
   selectedMapId: string | null;
 }>;
 
@@ -26,6 +27,7 @@ export type RoomDtoPayload = {
   maxPlayers: number;
   status: string;
   isLocked: boolean;
+  selectedGameId?: string | null;
   selectedMapId: string | null;
   players: Array<{ playerId: string; isReady: boolean; isHost: boolean }>;
 };
@@ -33,6 +35,7 @@ export type RoomDtoPayload = {
 export type GameStartedPayload = {
   roomId: string;
   roomCode: string;
+  gameId?: string;
   mapId: string;
   players: Array<{ playerId: string; isReady: boolean; isHost: boolean }>;
   turnOrder?: string[];
