@@ -774,6 +774,70 @@
   line-height: 1.5;
 }
 
+.purchaseConfirmCard {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.purchaseConfirmThumbWrap {
+  width: 132px;
+  height: 92px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.purchaseConfirmThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.purchaseConfirmThumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.purchaseConfirmBody {
+  min-width: 0;
+  padding: 10px 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.purchaseConfirmTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.purchaseConfirmMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.purchaseConfirmPrice {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
 .modalActions {
   margin-top: 16px;
   display: flex;
@@ -804,6 +868,23 @@
 
 .modalBtnPrimary:hover {
   filter: brightness(1.08);
+}
+
+@media (max-width: 560px) {
+  .purchaseConfirmCard {
+    grid-template-columns: 1fr;
+  }
+
+  .purchaseConfirmThumbWrap {
+    width: 100%;
+    height: 140px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .purchaseConfirmBody {
+    padding: 10px;
+  }
 }
 
 .buyErrorCard {

@@ -131,6 +131,7 @@ export default function MapDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
+  const [purchaseConfirmOpen, setPurchaseConfirmOpen] = useState(false);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [currentMediaLoadError, setCurrentMediaLoadError] = useState(false);
@@ -720,6 +721,14 @@ export default function MapDetailPage() {
     (location.state as MapDetailLocationState | null)?.mapCatalogSetup === true;
   const showCatalogSetupForm = mapCatalogSetup && isAuthor;
   const currentMedia = carouselItems[carouselIndex] ?? null;
+  const purchasePreviewUrl = useMemo(() => {
+    const avatar = map?.avatarUrl?.trim();
+    if (avatar) return avatar;
+    const firstGalleryUrl = map?.gallery?.find((item) => item.url?.trim())?.url?.trim();
+    return firstGalleryUrl ?? "";
+  }, [map]);
+  const purchaseDifficultyLabel =
+    map?.difficulty === 1 ? t("easy") : map?.difficulty === 2 ? t("medium") : t("hard");
 
   useEffect(() => {
     if (carouselItems.length > 0 && carouselIndex >= carouselItems.length) {
@@ -1193,7 +1202,7 @@ export default function MapDetailPage() {
           {canPurchase ? (
             <motion.button
               type="button"
-              onClick={handleBuyMap}
+              onClick={() => setPurchaseConfirmOpen(true)}
               className={styles.steamFooterPrimary}
               disabled={isPurchasing}
               whileHover={{ scale: 1.03 }}
@@ -1362,6 +1371,74 @@ export default function MapDetailPage() {
             )}
           </section>
         )}
+
+        {purchaseConfirmOpen && canPurchase ? (
+          <div
+            className={styles.modalOverlay}
+            onClick={() => {
+              if (!isPurchasing) setPurchaseConfirmOpen(false);
+            }}
+          >
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>
+                {locale.startsWith("vi") ? "Xác nhận mua bản đồ" : "Confirm map purchase"}
+              </h3>
+              <div className={styles.purchaseConfirmCard}>
+                <div className={styles.purchaseConfirmThumbWrap}>
+                  {purchasePreviewUrl ? (
+                    <img
+                      src={purchasePreviewUrl}
+                      alt={map.title}
+                      className={styles.purchaseConfirmThumb}
+                    />
+                  ) : (
+                    <div className={styles.purchaseConfirmThumbPlaceholder}>No Preview</div>
+                  )}
+                </div>
+                <div className={styles.purchaseConfirmBody}>
+                  <p className={styles.purchaseConfirmTitle}>{map.title}</p>
+                  <p className={styles.purchaseConfirmMeta}>
+                    {t("developer")}: {getCreatorLabel()}
+                  </p>
+                  <p className={styles.purchaseConfirmMeta}>
+                    {t("difficulty")}: {purchaseDifficultyLabel}
+                  </p>
+                  <p className={styles.purchaseConfirmPrice}>{map.price.toLocaleString()} OC</p>
+                </div>
+              </div>
+              <p className={styles.modalMessage}>
+                {locale.startsWith("vi")
+                  ? "Bạn có chắc muốn mua bản đồ này không?"
+                  : "Are you sure you want to purchase this map?"}
+              </p>
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalBtn}
+                  disabled={isPurchasing}
+                  onClick={() => setPurchaseConfirmOpen(false)}
+                >
+                  {t("back")}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                  disabled={isPurchasing}
+                  onClick={async () => {
+                    setPurchaseConfirmOpen(false);
+                    await handleBuyMap();
+                  }}
+                >
+                  {isPurchasing
+                    ? locale.startsWith("vi")
+                      ? "Đang mua..."
+                      : "Purchasing..."
+                    : t("buyWithOrbitCoin")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {purchaseModal && (
           <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>
