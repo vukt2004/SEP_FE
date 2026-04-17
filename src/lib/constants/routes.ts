@@ -4,6 +4,12 @@ export const ROUTES = {
   GAME: "/game",
   SNAKE: "/snake",
   PLATFORM: "/platform",
+  BUYER_POLICY_EN: "/policy/buyer/en",
+  BUYER_POLICY_VI: "/policy/buyer/vi",
+  SELLER_POLICY_EN: "/policy/seller/en",
+  SELLER_POLICY_VI: "/policy/seller/vi",
+  GAME_CREATION_RULE_EN: "/policy/game-creation/en",
+  GAME_CREATION_RULE_VI: "/policy/game-creation/vi",
   MAP_EDITOR: "/map-editor",
   GAMEMENU: "/game-menu",
 

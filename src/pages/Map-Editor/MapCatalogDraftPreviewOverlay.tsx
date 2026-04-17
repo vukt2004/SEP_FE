@@ -115,6 +115,7 @@ export function MapCatalogDraftPreviewOverlay({
   const { locale } = useLanguageStore();
   const t = useMemo(() => getT(locale), [locale]);
   const navigate = useNavigate();
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [gallerySlideIndex, setGallerySlideIndex] = useState(0);
   const [heroLoadError, setHeroLoadError] = useState(false);
   const [keyArtLoadError, setKeyArtLoadError] = useState(false);
@@ -233,6 +234,26 @@ export function MapCatalogDraftPreviewOverlay({
     const el = carouselRef.current;
     if (!el) return;
     el.scrollBy({ left: dir * 220, behavior: "smooth" });
+  };
+
+  const gameCreationRuleRoute = locale.startsWith("vi")
+    ? ROUTES.GAME_CREATION_RULE_VI
+    : ROUTES.GAME_CREATION_RULE_EN;
+
+  const handleOpenSaveConfirmModal = () => {
+    if (saving) return;
+    setShowSaveConfirmModal(true);
+  };
+
+  const handleCloseSaveConfirmModal = () => {
+    if (saving) return;
+    setShowSaveConfirmModal(false);
+  };
+
+  const handleConfirmSaveToServer = async () => {
+    if (saving) return;
+    setShowSaveConfirmModal(false);
+    await onSaveToServer();
   };
 
   if (!open) return null;
@@ -883,7 +904,7 @@ export function MapCatalogDraftPreviewOverlay({
                 type="button"
                 className={styles.steamFooterPrimary}
                 disabled={saving}
-                onClick={() => void onSaveToServer()}
+                onClick={handleOpenSaveConfirmModal}
               >
                 <Save size={18} />{" "}
                 {saving
@@ -913,6 +934,54 @@ export function MapCatalogDraftPreviewOverlay({
                 </p>
               ) : null}
             </div>
+
+            {showSaveConfirmModal ? (
+              <div className={styles.modalOverlay} onClick={handleCloseSaveConfirmModal}>
+                <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                  <h3 className={styles.modalTitle}>
+                    {locale.startsWith("vi")
+                      ? "Xác nhận lưu và tạo trò chơi"
+                      : "Confirm save and create game"}
+                  </h3>
+                  <p className={styles.modalMessage}>
+                    {locale.startsWith("vi")
+                      ? "Vui lòng xem quy định tạo game/map trước khi xác nhận lưu."
+                      : "Please review the game/map creation rules before confirming save."}
+                  </p>
+                  <p className={styles.purchasePolicyNote}>
+                    {locale.startsWith("vi") ? "Tham khảo: " : "Reference: "}
+                    <a
+                      href={gameCreationRuleRoute}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.purchasePolicyLink}
+                    >
+                      {locale.startsWith("vi")
+                        ? "Mở Game Creation Rule"
+                        : "Open Game Creation Rule"}
+                    </a>
+                  </p>
+                  <div className={styles.modalActions}>
+                    <button
+                      type="button"
+                      className={styles.modalBtn}
+                      disabled={saving}
+                      onClick={handleCloseSaveConfirmModal}
+                    >
+                      {t("cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                      disabled={saving}
+                      onClick={() => void handleConfirmSaveToServer()}
+                    >
+                      {saving ? t("mapEditorCatalogPreviewSaving") : t("save")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </motion.div>
       </motion.div>

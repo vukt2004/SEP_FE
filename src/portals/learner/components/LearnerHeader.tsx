@@ -21,6 +21,7 @@ import {
 import { ROUTES } from "@/lib/constants/routes";
 import { orbitCoinApi } from "@/services/api/learner/orbitcoin.api";
 import { learnerNotificationsApi } from "@/services/api/learner/notifications.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { notificationHub } from "@/lib/realtime/notificationHub";
 import { getLocalizedNotificationContent } from "@/lib/notifications/notificationContent";
 import { useThemeStore } from "@/stores/theme.store";
@@ -46,6 +47,7 @@ export default function LearnerHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [userDisplayName, setUserDisplayName] = useState("");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationTab, setNotificationTab] = useState<"all" | "unread">("all");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -85,12 +87,28 @@ export default function LearnerHeader() {
     }
   }, []);
 
+  const loadUserDisplayName = useCallback(async () => {
+    try {
+      const res = await learnerProfileApi.getProfile();
+      if (!res.isSuccess) return;
+
+      const firstName = res.data?.firstName?.trim() ?? "";
+      const lastName = res.data?.lastName?.trim() ?? "";
+      const fullName = `${firstName} ${lastName}`.trim();
+      const emailFallback = res.data?.email?.split("@")[0]?.trim() ?? "";
+      setUserDisplayName(fullName || emailFallback);
+    } catch {
+      // Keep header menu usable even if profile fetch fails.
+    }
+  }, []);
+
   useEffect(() => {
     orbitCoinApi.getBalance().then((res) => {
       if (res.isSuccess && res.data) setBalance(res.data.balance);
     });
+    void loadUserDisplayName();
     void loadUnreadCount();
-  }, [loadUnreadCount]);
+  }, [loadUnreadCount, loadUserDisplayName]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -316,6 +334,7 @@ export default function LearnerHeader() {
   };
 
   const balanceStr = balance != null ? balance.toLocaleString() : "—";
+  const menuUserLabel = userDisplayName || t("user");
 
   return (
     <header
@@ -735,7 +754,18 @@ export default function LearnerHeader() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              {t("user")} • {balanceStr} OC
+              <span
+                title={menuUserLabel}
+                style={{
+                  maxWidth: 180,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {menuUserLabel}
+              </span>
+              <span> • {balanceStr} OC</span>
             </motion.button>
 
             <AnimatePresence>

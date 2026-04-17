@@ -24,6 +24,12 @@ const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
 const SnakeGameView = React.lazy(() => import("../../pages/Game-View/SnakeGameView"));
 const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
+const BuyerPolicyENPage = React.lazy(() => import("../../pages/policy/BuyerPolicyEN"));
+const BuyerPolicyVIPage = React.lazy(() => import("../../pages/policy/BuyerPolicyVI"));
+const SellerPolicyENPage = React.lazy(() => import("../../pages/policy/SellerPolicyEN"));
+const SellerPolicyVIPage = React.lazy(() => import("../../pages/policy/SellerPolicyVI"));
+const GameCreationRuleENPage = React.lazy(() => import("../../pages/policy/GameCreationRuleEN"));
+const GameCreationRuleVIPage = React.lazy(() => import("../../pages/policy/GameCreationRuleVI"));
 
 const MapEditor = React.lazy(() => import("../../pages/Map-Editor/MapEditor"));
 
@@ -75,6 +81,60 @@ const routes: RouteObject[] = [
         element: (
           <React.Suspense fallback={<AppLoader />}>
             <PlatformGameView />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.BUYER_POLICY_EN,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <BuyerPolicyENPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.BUYER_POLICY_VI,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <BuyerPolicyVIPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.SELLER_POLICY_EN,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <SellerPolicyENPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.SELLER_POLICY_VI,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <SellerPolicyVIPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.GAME_CREATION_RULE_EN,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <GameCreationRuleENPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.GAME_CREATION_RULE_VI,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <GameCreationRuleVIPage />
           </React.Suspense>
         ),
       },

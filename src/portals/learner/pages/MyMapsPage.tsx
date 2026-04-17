@@ -774,7 +774,7 @@ export const MapList: React.FC<MapListProps> = ({
 
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const canPublishAnyApprovedMap = isAdminOrModeratorLearnerJwt(tokenStorage.getLearnerToken());
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const canCreateMap = canCreateMaps(userPlan);
@@ -826,6 +826,18 @@ export const MyMapsPage: React.FC = () => {
     mapTitle: "",
   });
   const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
+
+  // Modal state for publish confirmation
+  const [publishModal, setPublishModal] = useState<{
+    open: boolean;
+    mapId: string | null;
+    mapTitle: string;
+  }>({
+    open: false,
+    mapId: null,
+    mapTitle: "",
+  });
+  const [publishLoading, setPublishLoading] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -946,28 +958,38 @@ export const MyMapsPage: React.FC = () => {
     }
   };
 
-  const handlePublishMap = async (mapId: string) => {
-    if (!confirm(t("confirmPublishMap"))) {
-      return;
-    }
+  const handleOpenPublishModal = (mapId: string) => {
+    const map = maps.find((m) => m.id === mapId);
+    setPublishModal({ open: true, mapId, mapTitle: map?.title ?? "" });
+  };
+
+  const handleClosePublishModal = () => {
+    if (publishLoading) return;
+    setPublishModal({ open: false, mapId: null, mapTitle: "" });
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!publishModal.mapId) return;
 
     try {
-      setLoading(true);
+      setPublishLoading(true);
       setError(null);
 
-      const response = await learnerMapsApi.publishMap(mapId);
+      const response = await learnerMapsApi.publishMap(publishModal.mapId);
 
       if (response.data.isSuccess) {
-        alert(t("mapPublishedSuccess"));
+        handleClosePublishModal();
         fetchMaps();
       } else {
         setError(response.data.message || t("failedPublishMap"));
+        handleClosePublishModal();
       }
     } catch (err) {
       setError(t("failedPublishMap"));
       console.error("Publish error:", err);
+      handleClosePublishModal();
     } finally {
-      setLoading(false);
+      setPublishLoading(false);
     }
   };
 
@@ -1134,6 +1156,10 @@ export const MyMapsPage: React.FC = () => {
     }
     return `${seconds}s`;
   };
+
+  const sellerPolicyRoute = locale.startsWith("vi")
+    ? ROUTES.SELLER_POLICY_VI
+    : ROUTES.SELLER_POLICY_EN;
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
     // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
@@ -1388,7 +1414,7 @@ export const MyMapsPage: React.FC = () => {
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
               onSubmitForReview={handleOpenSubmitReviewModal}
-              onPublish={handlePublishMap}
+              onPublish={handleOpenPublishModal}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
               onDelete={handleOpenDeleteModal}
@@ -1717,6 +1743,151 @@ export const MyMapsPage: React.FC = () => {
                   }}
                 >
                   {reportLoading ? t("submitting") : t("submitReport")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Publish Confirm Modal */}
+        {publishModal.open && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+            }}
+            onClick={handleClosePublishModal}
+          >
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "16px",
+                padding: "28px 28px 24px",
+                maxWidth: "480px",
+                width: "90%",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}
+              >
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    minWidth: "44px",
+                    borderRadius: "12px",
+                    background: "rgba(34,197,94,0.14)",
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Send size={20} color="#166534" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
+                    {locale.startsWith("vi") ? "Xác nhận publish map" : "Confirm publish map"}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
+                    {locale.startsWith("vi")
+                      ? "Map sẽ được công khai sau khi publish."
+                      : "The map will be publicly visible after publishing."}
+                  </div>
+                </div>
+              </div>
+
+              {publishModal.mapTitle && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    color: "var(--text)",
+                    fontWeight: 600,
+                    marginBottom: "16px",
+                  }}
+                >
+                  {publishModal.mapTitle}
+                </div>
+              )}
+
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-2)",
+                  marginBottom: "18px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {locale.startsWith("vi")
+                  ? "Vui lòng xem chính sách người bán trước khi xác nhận publish."
+                  : "Please review the seller policy before confirming publication."}{" "}
+                <a
+                  href={sellerPolicyRoute}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: "var(--primary)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "2px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {locale.startsWith("vi") ? "Mở chính sách người bán" : "Open seller policy"}
+                </a>
+              </p>
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={handleClosePublishModal}
+                  disabled={publishLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    color: "var(--text-2)",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: publishLoading ? "not-allowed" : "pointer",
+                    opacity: publishLoading ? 0.5 : 1,
+                  }}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  onClick={handleConfirmPublish}
+                  disabled={publishLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: "#166534",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: publishLoading ? "not-allowed" : "pointer",
+                    opacity: publishLoading ? 0.6 : 1,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Send size={14} />
+                  {publishLoading ? t("publishing") : t("publish")}
                 </button>
               </div>
             </div>

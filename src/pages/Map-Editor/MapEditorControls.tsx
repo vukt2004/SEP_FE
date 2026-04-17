@@ -1866,6 +1866,25 @@ export function MapEditorControls({
                       </div>
                       <div style={styles.formGroup}>
                         <label style={styles.label}>
+                          {tt("mapEditorBlockLimitLabel", "Block Limit:")}
+                        </label>
+                        <p style={styles.helpText}>
+                          {tt(
+                            "mapEditorBlockLimitHint",
+                            "Number of blocks allowed to build a solution.",
+                          )}
+                        </p>
+                        <input
+                          type="number"
+                          min="1"
+                          value={mapData.blockConstraints.blockLimit ?? ""}
+                          onChange={(e) => handleBlockLimitInput(e.target.value)}
+                          placeholder="30"
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.formGroup}>
+                        <label style={styles.label}>
                           {tt("mapEditorWinCondition", "Win Condition")}
                         </label>
                         <select
@@ -1935,23 +1954,6 @@ export function MapEditorControls({
                       <h3 style={styles.sectionTitle}>
                         {tt("mapEditorBlockRules", "Block Rules")}
                       </h3>
-
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorBlockLimitLabel", "Block Limit:")}
-                        </label>
-                        <p style={styles.helpText}>
-                          {tt("mapEditorBlockLimitHint", "Set the block limit for the player")}
-                        </p>
-                        <input
-                          type="number"
-                          min="1"
-                          value={mapData.blockConstraints.blockLimit ?? ""}
-                          onChange={(e) => handleBlockLimitInput(e.target.value)}
-                          placeholder="30"
-                          style={styles.input}
-                        />
-                      </div>
 
                       <div style={styles.formGroup}>
                         <label style={styles.label}>
