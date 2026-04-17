@@ -368,6 +368,7 @@ export default function MapDetailPage() {
       prefill: `map-purchase-${purchaseModal.kind}-${map.id}-${Date.now()}`,
       openCreate: "1",
       categoryKey: isInsufficient ? "PaymentIssue" : "AccessIssue",
+      gameName: map.title,
       mapId: map.id,
       subject: isInsufficient
         ? t("complaints.prefill.paymentFailureSubject")
@@ -386,6 +387,7 @@ export default function MapDetailPage() {
       prefill: `map-owned-gameplay-${map.id}-${Date.now()}`,
       openCreate: "1",
       categoryKey: "AccessIssue",
+      gameName: map.title,
       mapId: map.id,
       occurredAt: getVietnamNowDateTimeLocal(),
       subject: locale.startsWith("vi")

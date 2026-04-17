@@ -6,6 +6,7 @@ import type { ComplaintItem, ComplaintStatus } from "@/types/api/complaints";
 import type {
   ComplaintCategoryConfigItem,
   CreateComplaintRequest,
+  CreateComplaintResponse,
 } from "@/types/api/learner/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { AlertToast } from "@/shared/components/AlertToast";
@@ -20,6 +21,9 @@ import {
   Upload,
   Copy,
   X,
+  ArrowLeft,
+  Eye,
+  Plus,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
@@ -77,6 +81,37 @@ function trimOrUndefined(value: string) {
 function getContextLabel(t: (key: string) => string, key: string) {
   const translated = t(`complaints.contextLabel.${key}`);
   return translated === `complaints.contextLabel.${key}` ? key : translated;
+}
+
+function getGameContextDisplayName(context: CreateComplaintRequest["context"]) {
+  const gameName = context.gameId?.trim() ?? "";
+  const mapId = context.mapId?.trim() ?? "";
+  if (!gameName || !mapId || gameName === mapId) return "";
+  return gameName;
+}
+
+function getContextPresentation(
+  t: (key: string) => string,
+  locale: string,
+  context: CreateComplaintRequest["context"],
+  field: string,
+) {
+  const rawValue = (context[field as keyof typeof context] as string) ?? "";
+  const gameDisplayName = getGameContextDisplayName(context);
+
+  if ((field === "mapId" || field === "gameId") && gameDisplayName) {
+    return {
+      label: locale.startsWith("vi") ? "Tên trò chơi" : "Game name",
+      value: gameDisplayName,
+      preserveFullValue: true,
+    };
+  }
+
+  return {
+    label: getContextLabel(t, field),
+    value: rawValue,
+    preserveFullValue: false,
+  };
 }
 
 function getCategoryDisplayName(
@@ -161,7 +196,7 @@ function getComplaintContextSummary(t: (key: string) => string, item: ComplaintI
 }
 
 export default function ComplaintsPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -173,6 +208,7 @@ export default function ComplaintsPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
+  const [createdComplaint, setCreatedComplaint] = useState<CreateComplaintResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [createForm, setCreateForm] = useState<CreateComplaintRequest>({
     subject: "",
@@ -251,11 +287,7 @@ export default function ComplaintsPage() {
     return () => window.clearTimeout(timeout);
   }, [isKeywordComposing, keywordInput, updateQuery]);
 
-  useEffect(() => {
-    if (!createSuccess) return;
-    const id = window.setTimeout(() => setCreateSuccess(""), 2800);
-    return () => window.clearTimeout(id);
-  }, [createSuccess]);
+  // No auto-dismiss for createSuccess — we now show a full success screen
 
   useEffect(() => {
     const prefillToken = searchParams.get("prefill") || "";
@@ -268,7 +300,11 @@ export default function ComplaintsPage() {
 
     const prefillContext = {
       paymentRecordId: searchParams.get("paymentRecordId") || "",
-      gameId: searchParams.get("gameId") || searchParams.get("mapId") || "",
+      gameId:
+        searchParams.get("gameName") ||
+        searchParams.get("gameId") ||
+        searchParams.get("mapId") ||
+        "",
       mapId: searchParams.get("mapId") || searchParams.get("gameId") || "",
       packageId: searchParams.get("packageId") || "",
       submissionId: searchParams.get("submissionId") || "",
@@ -649,7 +685,6 @@ export default function ComplaintsPage() {
         description: createForm.description.trim(),
         context: {
           paymentRecordId: trimOrUndefined(createForm.context.paymentRecordId || ""),
-          gameId: trimOrUndefined(createForm.context.gameId || createForm.context.mapId || ""),
           mapId: trimOrUndefined(createForm.context.mapId || ""),
           packageId: trimOrUndefined(createForm.context.packageId || ""),
           submissionId: trimOrUndefined(createForm.context.submissionId || ""),
@@ -666,6 +701,10 @@ export default function ComplaintsPage() {
       if (!res.data.isSuccess) {
         setCreateError(res.data.message || t("complaints.failedCreate"));
         return;
+      }
+      // Store created complaint data for the success screen
+      if (res.data.data) {
+        setCreatedComplaint(res.data.data);
       }
       setCreateForm({
         subject: "",
@@ -846,42 +885,6 @@ export default function ComplaintsPage() {
         boxShadow: isCreateRoute ? "0 10px 24px rgba(15, 23, 42, 0.08)" : undefined,
       }}
     >
-      {createSuccess ? (
-        <div
-          style={{
-            border: "1px solid rgba(34,197,94,0.35)",
-            background: "var(--surface)",
-            borderRadius: 12,
-            padding: "10px 12px",
-            boxShadow: "0 8px 18px rgba(0,0,0,0.08)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-          role="status"
-          aria-live="polite"
-        >
-          <CheckCircle2 size={17} color="#16a34a" />
-          <span style={{ fontSize: 14, color: "var(--text)" }}>{createSuccess}</span>
-          <button
-            type="button"
-            onClick={() => setCreateSuccess("")}
-            style={{
-              marginLeft: "auto",
-              border: "none",
-              background: "transparent",
-              color: "var(--text-2)",
-              cursor: "pointer",
-              fontSize: 16,
-              lineHeight: 1,
-            }}
-            aria-label={t("complaints.closeToast")}
-          >
-            ×
-          </button>
-        </div>
-      ) : null}
-
       {createError ? (
         <AlertToast type="error" message={createError} onClose={() => setCreateError("")} />
       ) : null}
@@ -995,7 +998,355 @@ export default function ComplaintsPage() {
         </div>
       ) : null}
 
-      {isCreateRoute ? (
+      {isCreateRoute && createdComplaint ? (
+        <section
+          style={{
+            display: "grid",
+            gap: 0,
+            maxWidth: 680,
+            margin: "0 auto",
+            width: "100%",
+          }}
+        >
+          {/* Success animation circle */}
+          <div
+            style={{
+              display: "grid",
+              placeItems: "center",
+              paddingTop: 24,
+              paddingBottom: 8,
+            }}
+          >
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                display: "grid",
+                placeItems: "center",
+                boxShadow: "0 8px 32px rgba(34, 197, 94, 0.3), 0 2px 8px rgba(34, 197, 94, 0.2)",
+                animation: "successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+              }}
+            >
+              <CheckCircle2 size={40} color="white" strokeWidth={2.5} />
+            </div>
+          </div>
+
+          {/* Title */}
+          <div style={{ textAlign: "center", padding: "12px 16px 4px" }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 26,
+                fontWeight: 800,
+                color: "var(--text)",
+                lineHeight: 1.3,
+              }}
+            >
+              {createSuccess || t("complaints.createSuccess")}
+            </h2>
+            <p
+              style={{
+                margin: "8px 0 0",
+                fontSize: 14,
+                color: "var(--text-2)",
+                lineHeight: 1.5,
+              }}
+            >
+              {t("complaints.success.description")}
+            </p>
+          </div>
+
+          {/* Ticket info card */}
+          <div
+            style={{
+              margin: "18px 0 0",
+              border: "1px solid color-mix(in srgb, var(--border) 80%, #22c55e 20%)",
+              borderRadius: 14,
+              background: "var(--surface)",
+              overflow: "hidden",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
+            }}
+          >
+            {/* Card header */}
+            <div
+              style={{
+                padding: "14px 18px",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, #22c55e 8%, var(--surface)) 0%, var(--surface) 100%)",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 9,
+                    background: "rgba(34, 197, 94, 0.12)",
+                    color: "#16a34a",
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Ticket size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>
+                    {t("complaints.success.ticketId")}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "var(--text-2)",
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                    }}
+                  >
+                    #{createdComplaint.id.slice(0, 8)}
+                  </div>
+                </div>
+              </div>
+              <ComplaintStatusBadge status={createdComplaint.complaintStatus} />
+            </div>
+
+            {/* Card body */}
+            <div style={{ padding: "16px 18px", display: "grid", gap: 14 }}>
+              {/* Subject */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-2)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 4,
+                  }}
+                >
+                  {t("complaints.subject")}
+                </div>
+                <div
+                  style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", lineHeight: 1.4 }}
+                >
+                  {createdComplaint.subject}
+                </div>
+              </div>
+
+              {/* Category + Date row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--text-2)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t("complaints.category")}
+                  </div>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "4px 10px",
+                      borderRadius: 8,
+                      background: "rgba(99, 102, 241, 0.08)",
+                      color: "#6366f1",
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                  >
+                    {createdComplaint.category}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--text-2)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t("complaints.table.createDate")}
+                  </div>
+                  <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 500 }}>
+                    {createdComplaint.createdAt
+                      ? new Date(createdComplaint.createdAt).toLocaleString()
+                      : new Date().toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--text-2)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 4,
+                  }}
+                >
+                  {t("complaints.description")}
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: "var(--text)",
+                    lineHeight: 1.6,
+                    whiteSpace: "pre-wrap",
+                    background: "var(--bg)",
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    border: "1px solid var(--border)",
+                    maxHeight: 180,
+                    overflow: "auto",
+                  }}
+                >
+                  {createdComplaint.description}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              flexWrap: "wrap",
+              padding: "20px 0 8px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.LEARNER_COMPLAINT_DETAIL(createdComplaint.id))}
+              style={{
+                border: "none",
+                borderRadius: 12,
+                padding: "11px 22px",
+                background: "var(--primary)",
+                color: "white",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                boxShadow: "0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent)",
+                transition: "transform 160ms ease, box-shadow 180ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow =
+                  "0 8px 20px color-mix(in srgb, var(--primary) 30%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent)";
+              }}
+            >
+              <Eye size={16} />
+              {t("complaints.success.viewDetail")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedComplaint(null);
+                setCreateSuccess("");
+                navigate(ROUTES.LEARNER_COMPLAINTS);
+              }}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                padding: "10px 20px",
+                background: "var(--surface)",
+                color: "var(--text)",
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "background 160ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--surface)";
+              }}
+            >
+              <ArrowLeft size={16} />
+              {t("complaints.success.backToList")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedComplaint(null);
+                setCreateSuccess("");
+              }}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                padding: "10px 20px",
+                background: "var(--surface)",
+                color: "var(--text-2)",
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "background 160ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--surface)";
+              }}
+            >
+              <Plus size={16} />
+              {t("complaints.success.createAnother")}
+            </button>
+          </div>
+
+          {/* CSS keyframes for the success animation */}
+          <style>{`
+            @keyframes successPop {
+              0% { transform: scale(0); opacity: 0; }
+              60% { transform: scale(1.1); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
+        </section>
+      ) : isCreateRoute ? (
         <section style={createUi.panel}>
           <div style={createUi.panelHeader}>
             <div style={createUi.panelTitleWrap}>
@@ -1165,66 +1516,93 @@ export default function ComplaintsPage() {
                             >
                               {prefilledContextEntries.map((item) => (
                                 <div key={item.field} style={{ display: "grid", gap: 4 }}>
-                                  <div
-                                    style={{
-                                      ...createUi.label,
-                                      color: "var(--text-2)",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {getContextLabel(t, item.field)}
-                                  </div>
-                                  {item.field === "mapId" || item.field === "gameId" ? (
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                      <input
-                                        readOnly
-                                        value={formatContextDisplayValue(item.value)}
-                                        style={{
-                                          ...createUi.control,
-                                          flex: 1,
-                                          fontFamily:
-                                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                          fontSize: 13,
-                                        }}
-                                        title={item.value}
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => copyContextValue(item.field, item.value)}
-                                        style={{
-                                          border: "1px solid var(--border)",
-                                          borderRadius: 9,
-                                          padding: "8px 10px",
-                                          background: "var(--surface)",
-                                          cursor: "pointer",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: 6,
-                                          color: "var(--text)",
-                                          fontSize: 12,
-                                          fontWeight: 600,
-                                        }}
-                                      >
-                                        <Copy size={14} />
-                                        {copiedContextField === item.field
-                                          ? t("paymentCopied")
-                                          : t("paymentCopy")}
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div
-                                      style={{
-                                        ...createUi.control,
-                                        borderRadius: 10,
-                                        fontFamily:
-                                          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                        fontSize: 13,
-                                      }}
-                                      title={item.value}
-                                    >
-                                      {formatContextDisplayValue(item.value)}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const presentation = getContextPresentation(
+                                      t,
+                                      locale,
+                                      createForm.context,
+                                      item.field,
+                                    );
+
+                                    return (
+                                      <>
+                                        <div
+                                          style={{
+                                            ...createUi.label,
+                                            color: "var(--text-2)",
+                                            fontWeight: 600,
+                                          }}
+                                        >
+                                          {presentation.label}
+                                        </div>
+                                        {item.field === "mapId" || item.field === "gameId" ? (
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 8,
+                                            }}
+                                          >
+                                            <input
+                                              readOnly
+                                              value={
+                                                presentation.preserveFullValue
+                                                  ? presentation.value
+                                                  : formatContextDisplayValue(presentation.value)
+                                              }
+                                              style={{
+                                                ...createUi.control,
+                                                flex: 1,
+                                                fontFamily:
+                                                  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                                fontSize: 13,
+                                              }}
+                                              title={presentation.value}
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                copyContextValue(item.field, presentation.value)
+                                              }
+                                              style={{
+                                                border: "1px solid var(--border)",
+                                                borderRadius: 9,
+                                                padding: "8px 10px",
+                                                background: "var(--surface)",
+                                                cursor: "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: 6,
+                                                color: "var(--text)",
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              <Copy size={14} />
+                                              {copiedContextField === item.field
+                                                ? t("paymentCopied")
+                                                : t("paymentCopy")}
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div
+                                            style={{
+                                              ...createUi.control,
+                                              borderRadius: 10,
+                                              fontFamily:
+                                                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                              fontSize: 13,
+                                            }}
+                                            title={presentation.value}
+                                          >
+                                            {presentation.preserveFullValue
+                                              ? presentation.value
+                                              : formatContextDisplayValue(presentation.value)}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               ))}
                             </div>

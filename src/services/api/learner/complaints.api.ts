@@ -25,8 +25,7 @@ export const learnerComplaintsApi = {
     formData.append("description", body.description.trim());
 
     appendIfValue(formData, "context.paymentRecordId", body.context.paymentRecordId);
-    appendIfValue(formData, "context.gameId", body.context.gameId ?? body.context.mapId);
-    appendIfValue(formData, "context.mapId", body.context.mapId);
+    appendIfValue(formData, "Context.GameId", body.context.mapId);
     appendIfValue(formData, "context.packageId", body.context.packageId);
     appendIfValue(formData, "context.submissionId", body.context.submissionId);
     appendIfValue(formData, "context.playHistoryId", body.context.playHistoryId);
