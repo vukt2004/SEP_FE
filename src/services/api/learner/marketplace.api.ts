@@ -7,7 +7,7 @@ export const learnerMarketplaceApi = {
    * POST /api/learner/marketplace/maps/{mapId}/purchase
    */
   purchaseMap(mapId: string) {
-    return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/maps/${mapId}/purchase`);
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/games/${mapId}/purchase`);
   },
 };
 

@@ -379,7 +379,7 @@ export const learnerMapsApi = {
    * @returns Purchase result
    */
   purchaseMap(id: string) {
-    return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/maps/${id}/purchase`);
+    return learnerAxios.post<ApiResult<null>>(`/api/learner/marketplace/games/${id}/purchase`);
   },
 
   /**
