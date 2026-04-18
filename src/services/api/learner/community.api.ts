@@ -1,13 +1,37 @@
 // src/services/api/learner/community.api.ts
 import { learnerAxios } from "@/services/http/axios.learner";
 import type { ApiResult } from "@/types/api/common";
-import type { RateMapParams, ReportMapParams } from "@/types/api/learner/community";
+import type {
+  GameRatingItem,
+  RateMapParams,
+  ReportMapParams,
+} from "@/types/api/learner/community";
 
 /**
  * Learner Community API
  * Handles community interactions (rating, reporting, etc.)
  */
 export const learnerCommunityApi = {
+  /**
+   * Get list of ratings for a game
+   * GET /api/learner/community/games/{id}/ratings?isAuthor=false
+   *
+   * @param id - Game ID
+   * @param isAuthor - Filter by author ratings
+   */
+  getMapRatings(id: string, isAuthor: boolean = false) {
+    return learnerAxios.get<ApiResult<GameRatingItem[]>>(`/api/learner/community/games/${id}/ratings`, {
+      params: { isAuthor },
+    });
+  },
+
+  /**
+   * @deprecated Use getMapRatings instead.
+   */
+  getGameRatings(id: string, isAuthor: boolean = false) {
+    return this.getMapRatings(id, isAuthor);
+  },
+
   /**
    * Rate a community map
    * POST /api/learner/community/maps/{id}/rate
@@ -16,8 +40,15 @@ export const learnerCommunityApi = {
    * @param params - Rating and comment
    * @returns Rating result
    */
-  rateGame(id: string, params: RateMapParams) {
+  rateMap(id: string, params: RateMapParams) {
     return learnerAxios.post<ApiResult<null>>(`/api/learner/community/games/${id}/rate`, params);
+  },
+
+  /**
+   * @deprecated Use rateMap instead.
+   */
+  rateGame(id: string, params: RateMapParams) {
+    return this.rateMap(id, params);
   },
 
   /**

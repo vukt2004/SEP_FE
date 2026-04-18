@@ -62,6 +62,7 @@ export const ROUTES = {
   CMS_DASHBOARD: "/cms/dashboard",
   CMS_MAPS: "/cms/games",
   CMS_REPORTS: "/cms/reports",
+  CMS_REVENUE: "/cms/revenue",
   CMS_USERS: "/cms/users",
   CMS_SYSTEM_ANNOUNCEMENT: "/cms/notifications/system-announcement",
   CMS_PACKAGES: "/cms/packages",

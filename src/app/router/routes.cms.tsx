@@ -14,6 +14,7 @@ const CmsDashboardPage = React.lazy(() => import("@/portals/cms/pages/DashboardP
 const CmsUsersPage = React.lazy(() => import("@/portals/cms/pages/UsersPage"));
 const CmsMapsPage = React.lazy(() => import("@/portals/cms/pages/MapsPage"));
 const CmsReportsPage = React.lazy(() => import("@/portals/cms/pages/ReportsPage"));
+const CmsRevenuePage = React.lazy(() => import("@/portals/cms/pages/RevenuePage"));
 const CmsPackagesPage = React.lazy(() => import("@/portals/cms/pages/PackagesPage"));
 const CmsProfilePage = React.lazy(() => import("@/portals/cms/pages/ProfilePage"));
 const CmsSystemAnnouncementPage = React.lazy(
@@ -100,6 +101,14 @@ export const cmsRoutes: RouteObject = {
       element: (
         <RequireCmsRole allowedRoles={["admin", "moderator"]}>
           <CmsReportsPage />
+        </RequireCmsRole>
+      ),
+    },
+    {
+      path: "revenue",
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsRevenuePage />
         </RequireCmsRole>
       ),
     },

@@ -8,6 +8,7 @@ import {
   PlusCircle,
   Heart,
   Bell,
+  Star,
   Share2,
   MessageCircle,
   MessageSquareWarning,
@@ -17,9 +18,11 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { learnerCommunityApi } from "@/services/api/learner/community.api";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import { learnerChatApi } from "@/services/api/learner/chat.api.ts";
+import type { GameRatingItem } from "@/types/api/learner/community";
 import type { GetMapsParams, Map, MapLevelItem, MapTag } from "@/types/api/learner/maps";
 import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
@@ -100,6 +103,11 @@ function getVietnamNowDateTimeLocal() {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
+function renderRatingStars(value: number): string {
+  const rounded = Math.max(0, Math.min(5, Math.round(value)));
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
 /** Avatar first, then gallery by sortOrder; dedupe URLs. */
 function buildCarouselItems(map: Map | null): { url: string; kind: string; key: string }[] {
   if (!map) return [];
@@ -139,6 +147,13 @@ export default function MapDetailPage() {
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [creatorMaps, setCreatorMaps] = useState<Map[]>([]);
   const [loadingCreatorMaps, setLoadingCreatorMaps] = useState(false);
+  const [ratings, setRatings] = useState<GameRatingItem[]>([]);
+  const [loadingRatings, setLoadingRatings] = useState(false);
+  const [ratingsError, setRatingsError] = useState<string | null>(null);
+  const [rateModalOpen, setRateModalOpen] = useState(false);
+  const [rateValue, setRateValue] = useState(5);
+  const [rateComment, setRateComment] = useState("");
+  const [submittingRating, setSubmittingRating] = useState(false);
   const [isOpeningCreatorChat, setIsOpeningCreatorChat] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -205,6 +220,56 @@ export default function MapDetailPage() {
     setCarouselIndex(0);
     setCurrentMediaLoadError(false);
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!id) {
+      setRatings([]);
+      setRatingsError(null);
+      return;
+    }
+
+    const loadRatings = async () => {
+      try {
+        setLoadingRatings(true);
+        setRatingsError(null);
+        const response = await learnerCommunityApi.getMapRatings(id, false);
+
+        if (!cancelled && response.data.isSuccess && Array.isArray(response.data.data)) {
+          setRatings(response.data.data);
+          return;
+        }
+
+        if (!cancelled) {
+          setRatings([]);
+          setRatingsError(
+            response.data.message ||
+              (locale.startsWith("vi")
+                ? "Không tải được danh sách đánh giá."
+                : "Unable to load reviews."),
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setRatings([]);
+          setRatingsError(
+            locale.startsWith("vi")
+              ? "Không tải được danh sách đánh giá."
+              : "Unable to load reviews.",
+          );
+        }
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoadingRatings(false);
+      }
+    };
+
+    void loadRatings();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, locale]);
 
   useEffect(() => {
     let cancelled = false;
@@ -517,6 +582,59 @@ export default function MapDetailPage() {
     }
   };
 
+  const handleOpenRateModal = () => {
+    if (!map?.id || ownership?.isOwned !== true) return;
+    setRateValue(5);
+    setRateComment("");
+    setRateModalOpen(true);
+  };
+
+  const handleCloseRateModal = () => {
+    if (submittingRating) return;
+    setRateModalOpen(false);
+  };
+
+  const handleSubmitRating = async () => {
+    if (!map?.id || ownership?.isOwned !== true) return;
+
+    try {
+      setSubmittingRating(true);
+      const response = await learnerCommunityApi.rateMap(map.id, {
+        rating: rateValue,
+        comment: rateComment.trim() || undefined,
+      });
+
+      if (!response.data.isSuccess) {
+        emitApiToast({
+          type: "error",
+          message: response.data.message || t("failedSubmitRating"),
+        });
+        return;
+      }
+
+      emitApiToast({
+        type: "success",
+        message: locale.startsWith("vi") ? "Đã gửi đánh giá thành công." : "Rating submitted.",
+      });
+      setRateModalOpen(false);
+
+      const ratingsResponse = await learnerCommunityApi.getMapRatings(map.id, false);
+      if (ratingsResponse.data.isSuccess && Array.isArray(ratingsResponse.data.data)) {
+        setRatings(ratingsResponse.data.data);
+        setRatingsError(null);
+      }
+    } catch (err) {
+      const body = isAxiosError(err) ? (err.response?.data as ApiResult<unknown> | undefined) : null;
+      emitApiToast({
+        type: "error",
+        message: body?.message || t("failedSubmitRating"),
+      });
+      console.error(err);
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   const toggleTagSelection = (tagId: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((x) => x !== tagId) : [...prev, tagId],
@@ -618,6 +736,22 @@ export default function MapDetailPage() {
     }
   };
 
+  const formatRatingDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString(locale.startsWith("vi") ? "vi-VN" : "en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const getWinConditionLabel = (winCondition: number) => {
     switch (winCondition) {
       case 1:
@@ -651,6 +785,7 @@ export default function MapDetailPage() {
   const canPlay = ownership?.isOwned || (map?.isPublished && map?.price === 0) || canUseTrial;
   const canPurchase =
     ownership?.isOwned !== true && map?.isPublished === true && (map?.price ?? 0) > 0;
+  const canRateMap = ownership?.isOwned === true;
   const canReportOwnedMapIssue = useMemo(() => {
     if (!map?.id || !ownership?.isOwned || ownership.isAuthor || ownership.isPurchased !== true) {
       return false;
@@ -771,6 +906,11 @@ export default function MapDetailPage() {
   const knowledgeTagNames = dedupeByLower(
     rawTags.filter((tag) => !isDifficultyTag(tag) && !isSkillMechanismConcept(tag)),
   );
+  const ratingsCount = ratings.length;
+  const averageRating = useMemo(() => {
+    if (!ratingsCount) return 0;
+    return ratings.reduce((sum, row) => sum + Number(row.rating || 0), 0) / ratingsCount;
+  }, [ratings, ratingsCount]);
 
   if (loading) {
     return (
@@ -1234,6 +1374,17 @@ export default function MapDetailPage() {
               {isAddingToCollection ? t("addingToCollection") : t("addToCollection")}
             </motion.button>
           ) : null}
+          {canRateMap ? (
+            <motion.button
+              type="button"
+              className={styles.steamFooterSecondary}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleOpenRateModal}
+            >
+              <Star size={16} /> {t("rate")}
+            </motion.button>
+          ) : null}
           <motion.button
             type="button"
             className={styles.steamFooterSecondary}
@@ -1289,6 +1440,79 @@ export default function MapDetailPage() {
             </motion.button>
           )}
         </motion.div>
+
+        {!showCatalogSetupForm && (
+          <section className={styles.ratingsSection}>
+            <div className={styles.ratingsHeader}>
+              <h2 className={styles.ratingsTitle}>
+                {locale.startsWith("vi") ? "Đánh giá từ người chơi" : "Player reviews"}
+              </h2>
+              <div className={styles.ratingsSummary}>
+                {ratingsCount > 0 ? (
+                  <>
+                    <span className={styles.ratingsAverage}>{averageRating.toFixed(1)}/5</span>
+                    <span className={styles.ratingsAverageStars}>
+                      {renderRatingStars(averageRating)}
+                    </span>
+                    <span className={styles.ratingsCount}>
+                      ({ratingsCount} {locale.startsWith("vi") ? "đánh giá" : "reviews"})
+                    </span>
+                  </>
+                ) : (
+                  <span className={styles.ratingsCount}>
+                    0 {locale.startsWith("vi") ? "đánh giá" : "reviews"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {loadingRatings ? (
+              <p className={styles.ratingsState}>
+                {locale.startsWith("vi") ? "Đang tải đánh giá..." : "Loading reviews..."}
+              </p>
+            ) : ratingsError ? (
+              <p className={styles.ratingsStateError}>{ratingsError}</p>
+            ) : ratings.length === 0 ? (
+              <p className={styles.ratingsState}>
+                {locale.startsWith("vi")
+                  ? "Chưa có đánh giá nào cho trò chơi này."
+                  : "No reviews for this game yet."}
+              </p>
+            ) : (
+              <div className={styles.ratingsList}>
+                {ratings.map((item) => {
+                  const reviewer =
+                    item.isAuthor && map.createdByUserName?.trim()
+                      ? map.createdByUserName.trim()
+                      : `${locale.startsWith("vi") ? "Người chơi" : "Player"} ${item.userId.slice(0, 8)}`;
+
+                  return (
+                    <article key={item.id} className={styles.ratingItem}>
+                      <div className={styles.ratingItemTop}>
+                        <span className={styles.ratingStars}>{renderRatingStars(item.rating)}</span>
+                        <span className={styles.ratingScore}>{item.rating}/5</span>
+                      </div>
+                      <div className={styles.ratingMeta}>
+                        <span className={styles.ratingAuthor}>{reviewer}</span>
+                        {item.isAuthor && (
+                          <span className={styles.ratingAuthorBadge}>
+                            {locale.startsWith("vi") ? "Tác giả" : "Author"}
+                          </span>
+                        )}
+                        <span className={styles.ratingDot}>•</span>
+                        <span>{formatRatingDate(item.createdAt)}</span>
+                      </div>
+                      <p className={styles.ratingComment}>
+                        {item.comment?.trim() ||
+                          (locale.startsWith("vi") ? "Không có bình luận." : "No comment.")}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {!showCatalogSetupForm && map.createdByUserId && (
           <section className={styles.moreByCreatorSection}>
@@ -1536,6 +1760,65 @@ export default function MapDetailPage() {
                     ) : null}
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {rateModalOpen && (
+          <div className={styles.modalOverlay} onClick={handleCloseRateModal}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <h3 className={styles.modalTitle}>
+                {locale.startsWith("vi") ? "Đánh giá trò chơi" : "Rate this game"}
+              </h3>
+              <p className={styles.modalMessage}>
+                {locale.startsWith("vi")
+                  ? "Hãy chọn số sao và chia sẻ cảm nhận của bạn."
+                  : "Choose a star rating and share your feedback."}
+              </p>
+
+              <div className={styles.rateModalStarsRow}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`${styles.rateModalStarBtn} ${
+                      rateValue >= value ? styles.rateModalStarBtnActive : ""
+                    }`}
+                    onClick={() => setRateValue(value)}
+                    aria-label={`${value} star`}
+                  >
+                    ★
+                  </button>
+                ))}
+                <span className={styles.rateModalScore}>{rateValue}/5</span>
+              </div>
+
+              <textarea
+                value={rateComment}
+                onChange={(e) => setRateComment(e.target.value)}
+                placeholder={t("rateGamePlaceholder")}
+                className={styles.rateModalTextarea}
+                rows={4}
+              />
+
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.modalBtn}
+                  onClick={handleCloseRateModal}
+                  disabled={submittingRating}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                  onClick={() => void handleSubmitRating()}
+                  disabled={submittingRating}
+                >
+                  {submittingRating ? t("submitting") : t("submitRating")}
+                </button>
               </div>
             </div>
           </div>
