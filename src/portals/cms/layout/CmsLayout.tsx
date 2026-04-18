@@ -28,6 +28,7 @@ import {
   Megaphone,
   SlidersHorizontal,
   Coins,
+  BarChart3,
   Tags,
   type LucideIcon,
 } from "lucide-react";
@@ -88,6 +89,12 @@ const CmsLayout: React.FC = () => {
       labelKey: "cmsLayout.nav.reports",
       icon: Flag,
       roles: ["admin", "moderator"],
+    },
+    {
+      path: ROUTES.CMS_REVENUE,
+      labelKey: "cmsLayout.nav.revenue",
+      icon: BarChart3,
+      roles: ["admin"],
     },
     {
       path: ROUTES.CMS_PACKAGES,

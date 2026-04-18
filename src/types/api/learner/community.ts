@@ -19,3 +19,16 @@ export interface ReportMapParams {
   /** Additional details about the report */
   details?: string;
 }
+
+/**
+ * One rating item returned from community game ratings endpoint
+ */
+export interface GameRatingItem {
+  id: string;
+  userId: string;
+  gameId: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  isAuthor: boolean;
+}
