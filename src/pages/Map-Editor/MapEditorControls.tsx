@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brush,
@@ -16,6 +16,9 @@ import {
   LayoutGrid,
   Package,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
@@ -63,6 +66,46 @@ function parseDuplicateNewMapId(data: unknown): string | null {
 const LOCKED_TOOLTIP = "Upgrade to Creator to use this asset";
 
 const GALLERY_BATCH_MAX = 20;
+const MAX_FREE_TRIAL_ATTEMPTS = 10;
+const MAX_MAP_PRICE = 10000;
+
+type BlockConfigEntry = (typeof blocksConfig.blocks)[number];
+
+const BLOCK_CATEGORY_ORDER = [
+  "movement",
+  "control",
+  "logic",
+  "procedure",
+  "variables",
+  "math",
+  "array",
+  "queue",
+  "stack",
+  "other",
+];
+
+const BLOCK_CATEGORY_ACCENTS: Record<string, string> = {
+  movement: "#5a67d8",
+  control: "#14b8a6",
+  logic: "#f59e0b",
+  procedure: "#8b5cf6",
+  variables: "#fb7185",
+  math: "#0ea5e9",
+  array: "#22c55e",
+  queue: "#f97316",
+  stack: "#a855f7",
+  other: "#64748b",
+};
+
+const clampFreeTrialAttemptLimit = (value: number): number => {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(MAX_FREE_TRIAL_ATTEMPTS, Math.max(0, Math.floor(safe)));
+};
+
+const clampMapPrice = (value: number): number => {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(MAX_MAP_PRICE, Math.max(0, Math.floor(safe)));
+};
 
 type MapTag = {
   id: string;
@@ -135,6 +178,9 @@ interface MapEditorControlsProps {
   };
   /** Number of MapDetail levels in the editor; used to clarify map-wide vs per-level UI (e.g. one thumbnail for whole map). */
   levelSlotCount?: number;
+  /** Active level index in parent wizard; used for quick-switch dropdown in Level tab. */
+  currentLevelIndex?: number;
+  onCurrentLevelIndexChange?: (index: number) => void;
   /** For right panel Canvas tab: layer visibility + active layer (same as standalone Layer panel). */
   editorStore?: EditorStore;
   /** Wire header "Save" to the same flow as Level tab save (right panel only). */
@@ -142,7 +188,23 @@ interface MapEditorControlsProps {
   onSavingLevelContentChange?: (busy: boolean) => void;
   /** Từ GET map detail — hiển thị phiên bản nội dung trong overlay catalog */
   loadedMapContentVersion?: number | null;
+  /** Restrict visible tabs in right panel when embedding in wizard flows. */
+  allowedRightTabs?: RightPanelTabId[];
+  /** Optional default tab for right panel. */
+  initialRightTab?: RightPanelTabId;
+  /** Hide right panel tab bar when only one focused step is needed. */
+  hideRightPanelTabBar?: boolean;
+  /** Render full catalog/map-info editor inline in map tab instead of opening popup/overlay. */
+  showCatalogEditorInlineInMapTab?: boolean;
+  /** Optional controlled avatar file to persist draft media outside this component. */
+  avatarDraftFile?: File | null;
+  onAvatarDraftFileChange?: (file: File | null) => void;
+  /** Optional controlled gallery draft files to persist across step navigation. */
+  galleryDraftFiles?: File[];
+  onGalleryDraftFilesChange?: (files: File[]) => void;
 }
+
+export type RightPanelTabId = "canvas" | "level" | "rules" | "objects" | "map";
 
 interface ObjectSelectionButtonProps {
   objectId: number;
@@ -323,16 +385,9 @@ export function MapEditorControls({
   onNameChange,
   onDescriptionChange,
   onDifficultyChange,
-  onTimeLimitChange,
-  onTimeStarThresholdChange,
-  onEstimatedStepsChange,
-  onWinConditionChange,
-  onLevelObjectiveChange,
-  onRequiredFruitsChange,
   onPriceChange,
   freeTrialAttemptLimit,
   onFreeTrialAttemptLimitChange,
-  onBlockLimitChange,
   onAllowedBlocksChange,
   onRequiredBlocksChange,
   onObjectDefinitionsLoaded,
@@ -350,10 +405,20 @@ export function MapEditorControls({
   buildUploadLevels,
   getMapFormMeta,
   levelSlotCount = 1,
+  currentLevelIndex,
+  onCurrentLevelIndexChange,
   editorStore,
   registerSaveLevelContent,
   onSavingLevelContentChange,
   loadedMapContentVersion = null,
+  allowedRightTabs,
+  initialRightTab,
+  hideRightPanelTabBar = false,
+  showCatalogEditorInlineInMapTab = false,
+  avatarDraftFile,
+  onAvatarDraftFileChange,
+  galleryDraftFiles,
+  onGalleryDraftFilesChange,
 }: MapEditorControlsProps) {
   const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
@@ -364,7 +429,7 @@ export function MapEditorControls({
   const [resizeHeight, setResizeHeight] = useState(mapData.config.height);
   const [resizeTileSize, setResizeTileSize] = useState(mapData.config.tileSize);
   const [hints, setHints] = useState<string[]>(initialHints.length > 0 ? initialHints : [""]);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [internalAvatarFile, setInternalAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialAvatarUrl);
   const [resolvedAvatarPreviewUrl, setResolvedAvatarPreviewUrl] = useState<string | null>(
     initialAvatarUrl,
@@ -416,12 +481,54 @@ export function MapEditorControls({
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [savingMapMeta, setSavingMapMeta] = useState(false);
   const [savingLevelContent, setSavingLevelContent] = useState(false);
-  const [pendingGalleryFiles, setPendingGalleryFiles] = useState<File[]>([]);
+  const [internalPendingGalleryFiles, setInternalPendingGalleryFiles] = useState<File[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  type RightPanelTabId = "canvas" | "level" | "rules" | "objects" | "map";
-  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTabId>("canvas");
+  const galleryStripRef = useRef<HTMLDivElement>(null);
+  const [pendingGalleryPreviewUrls, setPendingGalleryPreviewUrls] = useState<string[]>([]);
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTabId>(() => initialRightTab ?? "canvas");
   /** Same tab again = collapse panel; other tab = switch and expand. */
   const [rightPanelTabExpanded, setRightPanelTabExpanded] = useState(true);
+  const avatarFile =
+    avatarDraftFile !== undefined
+      ? avatarDraftFile
+      : internalAvatarFile;
+  const setAvatarFile = (next: File | null) => {
+    if (avatarDraftFile !== undefined && onAvatarDraftFileChange) {
+      onAvatarDraftFileChange(next);
+      return;
+    }
+    setInternalAvatarFile(next);
+  };
+  const pendingGalleryFiles =
+    galleryDraftFiles !== undefined
+      ? galleryDraftFiles
+      : internalPendingGalleryFiles;
+  const setPendingGalleryFiles = (next: SetStateAction<File[]>) => {
+    if (galleryDraftFiles !== undefined && onGalleryDraftFilesChange) {
+      const resolved = typeof next === "function" ? next(galleryDraftFiles) : next;
+      onGalleryDraftFilesChange(resolved);
+      return;
+    }
+    setInternalPendingGalleryFiles(next);
+  };
+
+  const appendGalleryFiles = (files: File[]) => {
+    if (!files.length) return;
+    setPendingGalleryFiles((prev) => [...prev, ...files].slice(0, GALLERY_BATCH_MAX));
+  };
+
+  const scrollGalleryStrip = (direction: -1 | 1) => {
+    galleryStripRef.current?.scrollBy({ left: direction * 220, behavior: "smooth" });
+  };
+  const normalizedFreeTrialAttemptLimit = clampFreeTrialAttemptLimit(
+    Number(freeTrialAttemptLimit ?? 0),
+  );
+  const handleFreeTrialAttemptLimitInputChange = (raw: number) => {
+    onFreeTrialAttemptLimitChange?.(clampFreeTrialAttemptLimit(raw));
+  };
+  const handlePriceInputChange = (raw: number) => {
+    onPriceChange?.(clampMapPrice(raw));
+  };
   const handleRightPanelTabClick = (tab: RightPanelTabId) => {
     if (rightPanelTab === tab) {
       setRightPanelTabExpanded((v) => !v);
@@ -539,9 +646,91 @@ export function MapEditorControls({
         .map((rule) => [rule.type, { type: rule.type, minCount: Math.max(1, rule.minCount) }]),
     ).values(),
   );
+  const groupedAvailableBlocks = useMemo(() => {
+    const grouped = new Map<string, BlockConfigEntry[]>();
+
+    for (const block of availableBlocks) {
+      const rawCategory = typeof block.category === "string" ? block.category.trim() : "";
+      const category = rawCategory.length > 0 ? rawCategory : "other";
+      const bucket = grouped.get(category);
+      if (bucket) {
+        bucket.push(block);
+      } else {
+        grouped.set(category, [block]);
+      }
+    }
+
+    const orderedCategories = [...grouped.keys()].sort((a, b) => {
+      const aIndex = BLOCK_CATEGORY_ORDER.indexOf(a);
+      const bIndex = BLOCK_CATEGORY_ORDER.indexOf(b);
+      const safeA = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+      const safeB = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+      if (safeA !== safeB) return safeA - safeB;
+      return a.localeCompare(b);
+    });
+
+    return orderedCategories.map((category) => ({
+      category,
+      blocks: grouped.get(category) ?? [],
+    }));
+  }, [availableBlocks]);
   const [objectSpritesLoaded, setObjectSpritesLoaded] = useState(false);
   const showLeftPanel = sectionMode === "left";
   const showRightPanel = sectionMode === "right";
+  const rightTabItems = useMemo(
+    () => [
+      {
+        id: "canvas" as const,
+        label: tt("mapEditorRightTabCanvas", "Canvas"),
+        icon: <LayoutGrid size={16} />,
+      },
+      {
+        id: "level" as const,
+        label: tt("mapEditorRightTabLevel", "Level"),
+        icon: <Pencil size={16} />,
+      },
+      {
+        id: "rules" as const,
+        label: tt("mapEditorRightTabBlocks", "Blocks"),
+        icon: <Shapes size={16} />,
+      },
+      {
+        id: "objects" as const,
+        label: tt("mapEditorRightTabObjects", "Objects"),
+        icon: <Package size={16} />,
+      },
+      {
+        id: "map" as const,
+        label: tt("mapEditorRightTabMap", "Map"),
+        icon: <Settings2 size={16} />,
+      },
+    ],
+    [tt],
+  );
+  const visibleRightTabs = useMemo(() => {
+    if (!allowedRightTabs || allowedRightTabs.length === 0) {
+      return rightTabItems;
+    }
+
+    const allowedSet = new Set(allowedRightTabs);
+    return rightTabItems.filter((tab) => allowedSet.has(tab.id));
+  }, [allowedRightTabs, rightTabItems]);
+
+  useEffect(() => {
+    if (!showRightPanel) return;
+    if (visibleRightTabs.length === 0) return;
+
+    const hasCurrentTab = visibleRightTabs.some((tab) => tab.id === rightPanelTab);
+    if (hasCurrentTab) return;
+
+    const fallback =
+      (initialRightTab && visibleRightTabs.find((tab) => tab.id === initialRightTab)?.id) ||
+      visibleRightTabs[0]?.id;
+
+    if (fallback) {
+      setRightPanelTab(fallback);
+    }
+  }, [initialRightTab, rightPanelTab, showRightPanel, visibleRightTabs]);
 
   // Load object sprites on mount or when game type changes
   useEffect(() => {
@@ -743,6 +932,20 @@ export function MapEditorControls({
   }, [avatarFile]);
 
   useEffect(() => {
+    if (pendingGalleryFiles.length === 0) {
+      setPendingGalleryPreviewUrls([]);
+      return;
+    }
+
+    const urls = pendingGalleryFiles.map((file) => URL.createObjectURL(file));
+    setPendingGalleryPreviewUrls(urls);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [pendingGalleryFiles]);
+
+  useEffect(() => {
     const raw = avatarPreviewUrl?.trim() ?? "";
     if (!raw) {
       setResolvedAvatarPreviewUrl(null);
@@ -830,10 +1033,6 @@ export function MapEditorControls({
     .map((tag) => tag.name);
 
   const difficultyLabel = `${mapData.config.difficulty}/5`;
-  const timeStarThresholdPercent = Math.max(
-    1,
-    Math.min(100, Math.floor(mapData.config.timeStarThresholdPercent ?? 100)),
-  );
 
   const handleResizeConfirm = () => {
     // Validate map size (10-30)
@@ -855,60 +1054,33 @@ export function MapEditorControls({
     setShowResizeDialog(false);
   };
 
-  const handleBlockLimitInput = (value: string) => {
-    if (!onBlockLimitChange) return;
-
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      onBlockLimitChange(null);
-      return;
-    }
-
-    const parsed = Number(trimmed);
-    if (!Number.isFinite(parsed)) {
-      return;
-    }
-
-    onBlockLimitChange(Math.max(1, Math.floor(parsed)));
+  const toCategoryLabel = (category: string) => {
+    const key = `blockCategory.${category}`;
+    const translated = t(key);
+    if (translated !== key) return translated;
+    return category.charAt(0).toUpperCase() + category.slice(1);
   };
 
-  const updateAllowedBlock = (index: number, nextType: string) => {
+  const handleToggleAllowedBlock = (type: string) => {
     if (!onAllowedBlocksChange) return;
 
-    const next = [...normalizedAllowedBlocks];
-    next[index] = nextType;
-    const dedupedAllowed = Array.from(new Set(next));
-    onAllowedBlocksChange(dedupedAllowed);
+    const exists = normalizedAllowedBlocks.includes(type);
+    const nextAllowed = exists
+      ? normalizedAllowedBlocks.filter((item) => item !== type)
+      : [...normalizedAllowedBlocks, type];
+    onAllowedBlocksChange(nextAllowed);
 
     if (onRequiredBlocksChange) {
       const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
-        dedupedAllowed.length === 0 ? true : dedupedAllowed.includes(rule.type),
+        nextAllowed.length === 0 ? true : nextAllowed.includes(rule.type),
       );
       onRequiredBlocksChange(sanitizedRequired);
     }
   };
 
-  const addAllowedBlock = () => {
+  const handleUseAllBlocks = () => {
     if (!onAllowedBlocksChange) return;
-
-    const usedTypes = new Set(normalizedAllowedBlocks);
-    const candidate = availableBlocks.find((block) => !usedTypes.has(block.type));
-    if (!candidate) return;
-
-    onAllowedBlocksChange([...normalizedAllowedBlocks, candidate.type]);
-  };
-
-  const removeAllowedBlock = (index: number) => {
-    if (!onAllowedBlocksChange) return;
-
-    const nextAllowed = normalizedAllowedBlocks.filter((_, i) => i !== index);
-    onAllowedBlocksChange(nextAllowed);
-
-    if (!onRequiredBlocksChange) return;
-    const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
-      nextAllowed.length === 0 ? true : nextAllowed.includes(rule.type),
-    );
-    onRequiredBlocksChange(sanitizedRequired);
+    onAllowedBlocksChange([]);
   };
 
   const updateRequiredBlock = (
@@ -1002,6 +1174,7 @@ export function MapEditorControls({
   };
 
   const toBlockLabel = (type: string) => blockTypeToLabel.get(type) ?? type;
+  const hasExplicitAllowedSelection = normalizedAllowedBlocks.length > 0;
   const allowedSummary =
     normalizedAllowedBlocks.length === 0
       ? tt("mapEditorAllBlocksAllowedSummary", "All blocks allowed")
@@ -1033,14 +1206,6 @@ export function MapEditorControls({
         ? levelHints
         : [""]
       : hints;
-
-  const setDisplayHints = (next: string[]) => {
-    if (onLevelHintsChange) {
-      onLevelHintsChange(next);
-    } else {
-      setHints(next);
-    }
-  };
 
   /** Map catalog title (API Map.Title). Per-level names live in the canvas editor only — MapDetail has no separate thumbnail. */
   const previewMapTitle =
@@ -1156,9 +1321,13 @@ export function MapEditorControls({
           title: formMeta.title,
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
-          price: formMeta.price,
+          price: clampMapPrice(formMeta.price),
           ...(typeof formMeta.freeTrialAttemptLimit === "number"
-            ? { freeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+            ? {
+                freeTrialAttemptLimit: clampFreeTrialAttemptLimit(
+                  Number(formMeta.freeTrialAttemptLimit),
+                ),
+              }
             : {}),
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
           learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
@@ -1236,7 +1405,7 @@ export function MapEditorControls({
         Title: formMeta.title,
         Description: formMeta.description || "Map created with Map Editor",
         Difficulty: formMeta.difficulty,
-        Price: formMeta.price,
+        Price: clampMapPrice(formMeta.price),
         TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
         LearnedTagsCsv:
           selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds.join(",") : undefined,
@@ -1391,9 +1560,13 @@ export function MapEditorControls({
         Title: formMeta.title,
         Description: formMeta.description || "Map created with Map Editor",
         Difficulty: formMeta.difficulty,
-        Price: formMeta.price,
+        Price: clampMapPrice(formMeta.price),
         ...(typeof formMeta.freeTrialAttemptLimit === "number"
-          ? { FreeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+          ? {
+              FreeTrialAttemptLimit: clampFreeTrialAttemptLimit(
+                Number(formMeta.freeTrialAttemptLimit),
+              ),
+            }
           : {}),
         TagIdsCsv: selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
         LearnedTagsCsv:
@@ -1472,9 +1645,13 @@ export function MapEditorControls({
           title: formMeta.title,
           description: formMeta.description || "",
           difficulty: formMeta.difficulty,
-          price: formMeta.price ?? 0,
+          price: clampMapPrice(formMeta.price ?? 0),
           ...(typeof formMeta.freeTrialAttemptLimit === "number"
-            ? { freeTrialAttemptLimit: Math.max(0, Number(formMeta.freeTrialAttemptLimit)) }
+            ? {
+                freeTrialAttemptLimit: clampFreeTrialAttemptLimit(
+                  Number(formMeta.freeTrialAttemptLimit),
+                ),
+              }
             : {}),
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
           learnedTags: selectedLearnedTagIds.length > 0 ? selectedLearnedTagIds : undefined,
@@ -1610,10 +1787,14 @@ export function MapEditorControls({
 
   const handleSaveLevelContentRef = useRef(handleSaveLevelContent);
   handleSaveLevelContentRef.current = handleSaveLevelContent;
+  const registeredSaveHandlerRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  if (!registeredSaveHandlerRef.current) {
+    registeredSaveHandlerRef.current = () => handleSaveLevelContentRef.current();
+  }
 
   useEffect(() => {
     if (sectionMode !== "right" || !registerSaveLevelContent) return;
-    registerSaveLevelContent(() => handleSaveLevelContentRef.current());
+    registerSaveLevelContent(registeredSaveHandlerRef.current!);
   }, [registerSaveLevelContent, sectionMode]);
 
   useEffect(() => {
@@ -1624,68 +1805,45 @@ export function MapEditorControls({
     <div style={styles.container}>
       {showRightPanel && (
         <div style={styles.rightPanelShell}>
-          <div
-            style={styles.rightPanelTabBar}
-            role="tablist"
-            aria-label={tt("mapEditorRightPanelTabs", "Right panel sections")}
-          >
-            {(
-              [
-                {
-                  id: "canvas" as const,
-                  label: tt("mapEditorRightTabCanvas", "Canvas"),
-                  icon: <LayoutGrid size={14} />,
-                },
-                {
-                  id: "level" as const,
-                  label: tt("mapEditorRightTabLevel", "Level"),
-                  icon: <Pencil size={14} />,
-                },
-                {
-                  id: "rules" as const,
-                  label: tt("mapEditorRightTabBlocks", "Blocks"),
-                  icon: <Shapes size={14} />,
-                },
-                {
-                  id: "objects" as const,
-                  label: tt("mapEditorRightTabObjects", "Objects"),
-                  icon: <Package size={14} />,
-                },
-                {
-                  id: "map" as const,
-                  label: tt("mapEditorRightTabMap", "Map"),
-                  icon: <Settings2 size={14} />,
-                },
-              ] as const
-            ).map((tab, index, arr) => {
-              const isSelected = rightPanelTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  aria-expanded={isSelected && rightPanelTabExpanded}
-                  style={{
-                    ...styles.rightPanelTabButton,
-                    ...(index < arr.length - 1 ? styles.rightPanelTabButtonDivider : {}),
-                    ...(isSelected ? styles.rightPanelTabButtonActive : {}),
-                    ...(isSelected && !rightPanelTabExpanded
-                      ? styles.rightPanelTabButtonCollapsed
-                      : {}),
-                  }}
-                  onClick={() => handleRightPanelTabClick(tab.id)}
-                >
-                  <span style={styles.rightPanelTabButtonInner}>
-                    <span style={styles.rightPanelTabIconWrap} aria-hidden>
-                      {tab.icon}
+          {!hideRightPanelTabBar && visibleRightTabs.length > 1 && (
+            <div
+              style={{
+                ...styles.rightPanelTabBar,
+                gridTemplateColumns: `repeat(${Math.max(visibleRightTabs.length, 1)}, minmax(0, 1fr))`,
+              }}
+              role="tablist"
+              aria-label={tt("mapEditorRightPanelTabs", "Right panel sections")}
+            >
+              {visibleRightTabs.map((tab, index, arr) => {
+                const isSelected = rightPanelTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    aria-expanded={isSelected && rightPanelTabExpanded}
+                    style={{
+                      ...styles.rightPanelTabButton,
+                      ...(index < arr.length - 1 ? styles.rightPanelTabButtonDivider : {}),
+                      ...(isSelected ? styles.rightPanelTabButtonActive : {}),
+                      ...(isSelected && !rightPanelTabExpanded
+                        ? styles.rightPanelTabButtonCollapsed
+                        : {}),
+                    }}
+                    onClick={() => handleRightPanelTabClick(tab.id)}
+                  >
+                    <span style={styles.rightPanelTabButtonInner}>
+                      <span style={styles.rightPanelTabIconWrap} aria-hidden>
+                        {tab.icon}
+                      </span>
+                      <span style={styles.rightPanelTabLabel}>{tab.label}</span>
                     </span>
-                    <span style={styles.rightPanelTabLabel}>{tab.label}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div
             style={{
               ...styles.rightPanelTabContent,
@@ -1750,12 +1908,33 @@ export function MapEditorControls({
                         <Pencil size={16} />{" "}
                         {tt("mapEditorLevelMapDetailTitle", "Level (MapDetail)")}
                       </h3>
-                      <p style={styles.helpText}>
-                        {tt(
-                          "mapEditorLevelMapDetailHelp",
-                          'Per-level settings (time limit, win rule, hints…). Save with "Save level content", not "Map info".',
-                        )}
-                      </p>
+                      {typeof currentLevelIndex === "number" && onCurrentLevelIndexChange && (
+                        <div style={styles.formGroup}>
+                          <label style={styles.label}>
+                            {tt("mapEditorCurrentLevel", "Current Level")}
+                          </label>
+                          <select
+                            value={Math.max(0, Math.min(levelSlotCount - 1, currentLevelIndex))}
+                            onChange={(e) => {
+                              const nextIndex = Math.max(
+                                0,
+                                Math.min(levelSlotCount - 1, Number(e.target.value) || 0),
+                              );
+                              onCurrentLevelIndexChange(nextIndex);
+                            }}
+                            style={styles.select}
+                          >
+                            {Array.from({ length: levelSlotCount }, (_, idx) => (
+                              <option key={`level-switch-${idx}`} value={idx}>
+                                {tt("mapEditorLevelButton", "Level {n}").replace(
+                                  "{n}",
+                                  String(idx + 1),
+                                )}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div style={styles.formGroup}>
                         <label style={styles.label}>{tt("mapEditorMapTypeMap", "Map Type")}</label>
                         <select
@@ -1803,148 +1982,6 @@ export function MapEditorControls({
                           <Maximize2 size={14} /> {tt("mapEditorResizeMap", "Resize Map")}
                         </button>
                       </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorLevelObjective", "Level Objective")}
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={mapData.config.levelObjective ?? ""}
-                          onChange={(e) => onLevelObjectiveChange?.(e.target.value)}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorTimeLimitSeconds", "Time Limit (seconds)")}
-                        </label>
-                        <input
-                          type="number"
-                          min={30}
-                          max={3600}
-                          value={mapData.config.timeLimitSeconds}
-                          onChange={(e) => onTimeLimitChange?.(Number(e.target.value))}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={timeStarThresholdPercent}
-                          onChange={(e) =>
-                            onTimeStarThresholdChange?.(
-                              Math.max(
-                                1,
-                                Math.min(100, Number.parseInt(e.target.value, 10) || 100),
-                              ),
-                            )
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorEstimatedSteps", "Estimated Steps")}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={1000}
-                          value={mapData.config.estimatedSteps}
-                          onChange={(e) =>
-                            onEstimatedStepsChange?.(
-                              Math.max(1, Number.parseInt(e.target.value) || 1),
-                            )
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorBlockLimitLabel", "Block Limit:")}
-                        </label>
-                        <p style={styles.helpText}>
-                          {tt(
-                            "mapEditorBlockLimitHint",
-                            "Number of blocks allowed to build a solution.",
-                          )}
-                        </p>
-                        <input
-                          type="number"
-                          min="1"
-                          value={mapData.blockConstraints.blockLimit ?? ""}
-                          onChange={(e) => handleBlockLimitInput(e.target.value)}
-                          placeholder="30"
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>
-                          {tt("mapEditorWinCondition", "Win Condition")}
-                        </label>
-                        <select
-                          value={mapData.config.winCondition}
-                          onChange={(e) => onWinConditionChange?.(Number(e.target.value) as 1 | 2)}
-                          style={styles.select}
-                        >
-                          <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
-                          <option value={2}>
-                            {tt("mapEditorCollectFruits", "Collect Fruits")}
-                          </option>
-                        </select>
-                      </div>
-                      {mapData.config.winCondition === 2 && (
-                        <div style={styles.formGroup}>
-                          <label style={styles.label}>
-                            {tt("mapEditorRequiredFruits", "Required Fruits")}
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={mapData.config.requiredFruits ?? 0}
-                            onChange={(e) =>
-                              onRequiredFruitsChange?.(
-                                Math.max(0, Number.parseInt(e.target.value) || 0),
-                              )
-                            }
-                            style={styles.input}
-                          />
-                        </div>
-                      )}
-                      <div style={styles.formGroup}>
-                        <label style={styles.label}>{tt("mapEditorHints", "Hints")}</label>
-                        {displayHints.map((hint, index) => (
-                          <input
-                            key={`sidebar-hint-${index}`}
-                            type="text"
-                            value={hint}
-                            onChange={(e) => {
-                              const next = [...displayHints];
-                              next[index] = e.target.value;
-                              setDisplayHints(next);
-                            }}
-                            placeholder={tt("mapEditorHintNumber", "Hint {n}").replace(
-                              "{n}",
-                              String(index + 1),
-                            )}
-                            style={{ ...styles.input, marginBottom: 6 }}
-                          />
-                        ))}
-                        {displayHints.length < 3 && (
-                          <button
-                            type="button"
-                            style={{ ...styles.confirmButton, padding: "6px 10px", marginTop: 4 }}
-                            onClick={() => setDisplayHints([...displayHints, ""])}
-                          >
-                            + {tt("mapEditorAddHint", "Add Hint")}
-                          </button>
-                        )}
-                      </div>
                     </div>
                   </>
                 )}
@@ -1968,85 +2005,80 @@ export function MapEditorControls({
                             "Only selected blocks will be available to the player",
                           )}
                         </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          {normalizedAllowedBlocks.length === 0 && (
-                            <div style={styles.placeholderText}>
-                              {tt(
-                                "mapEditorAllowedBlocksEmpty",
-                                "No selection. All blocks are allowed.",
-                              )}
-                            </div>
-                          )}
-                          {normalizedAllowedBlocks.map((type, index) => (
-                            <div
-                              key={`panel-allowed-row-${type}-${index}`}
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr auto",
-                                gap: "6px",
-                                alignItems: "center",
-                              }}
-                            >
-                              <select
-                                value={type}
-                                onChange={(e) => updateAllowedBlock(index, e.target.value)}
-                                style={styles.select}
-                              >
-                                {availableBlocks
-                                  .filter(
-                                    (block) =>
-                                      block.type === type ||
-                                      !normalizedAllowedBlocks.includes(block.type),
-                                  )
-                                  .map((block) => (
-                                    <option
-                                      key={`panel-allowed-option-${block.type}`}
-                                      value={block.type}
+                        <div style={styles.allowedBlocksToolbar}>
+                          <span style={styles.allowedBlocksSelectedText}>
+                            {tt(
+                              "mapEditorAllowedBlocksSelectedCount",
+                              "Selected {selected}/{total}",
+                            )
+                              .replace("{selected}", String(normalizedAllowedBlocks.length))
+                              .replace("{total}", String(availableBlocks.length))}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleUseAllBlocks}
+                            disabled={normalizedAllowedBlocks.length === 0 || !onAllowedBlocksChange}
+                            style={{
+                              ...styles.allowedBlocksUseAllButton,
+                              ...(normalizedAllowedBlocks.length === 0 || !onAllowedBlocksChange
+                                ? styles.allowedBlocksUseAllButtonDisabled
+                                : {}),
+                            }}
+                          >
+                            {tt("mapEditorAllowedBlocksUseAll", "Use all blocks")}
+                          </button>
+                        </div>
+
+                        <div style={styles.allowedBlockGroups}>
+                          {groupedAvailableBlocks.map(({ category, blocks }) => (
+                            <div key={`allowed-block-group-${category}`} style={styles.allowedBlockGroupCard}>
+                              <p style={styles.allowedBlockGroupTitle}>{toCategoryLabel(category)}</p>
+                              <div style={styles.allowedBlockGrid}>
+                                {blocks.map((block) => {
+                                  const selected =
+                                    hasExplicitAllowedSelection &&
+                                    normalizedAllowedBlocks.includes(block.type);
+                                  const accent =
+                                    BLOCK_CATEGORY_ACCENTS[category] ?? BLOCK_CATEGORY_ACCENTS.other;
+
+                                  return (
+                                    <button
+                                      key={`allowed-block-toggle-${block.type}`}
+                                      type="button"
+                                      onClick={() => handleToggleAllowedBlock(block.type)}
+                                      disabled={!onAllowedBlocksChange}
+                                      style={{
+                                        ...styles.allowedBlockCell,
+                                        ...(selected
+                                          ? {
+                                              ...styles.allowedBlockCellSelected,
+                                              borderColor: accent,
+                                              background: `color-mix(in srgb, ${accent} 18%, var(--surface))`,
+                                            }
+                                          : {}),
+                                        ...(!onAllowedBlocksChange ? styles.allowedBlockCellDisabled : {}),
+                                      }}
+                                      title={toBlockLabel(block.type)}
                                     >
-                                      {toBlockLabel(block.type)}
-                                    </option>
-                                  ))}
-                              </select>
-                              <button
-                                onClick={() => removeAllowedBlock(index)}
-                                style={{
-                                  padding: "6px 8px",
-                                  background: "var(--danger)",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "4px",
-                                  cursor: "pointer",
-                                  fontSize: "11px",
-                                }}
-                              >
-                                {tt("mapEditorRemove", "Remove")}
-                              </button>
+                                      <span style={styles.allowedBlockCellLabel}>
+                                        {toBlockLabel(block.type)}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           ))}
                         </div>
 
-                        <button
-                          onClick={addAllowedBlock}
-                          disabled={normalizedAllowedBlocks.length >= availableBlocks.length}
-                          style={{
-                            marginTop: "8px",
-                            padding: "8px 10px",
-                            background:
-                              normalizedAllowedBlocks.length >= availableBlocks.length
-                                ? "var(--surface-2)"
-                                : "var(--success)",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor:
-                              normalizedAllowedBlocks.length >= availableBlocks.length
-                                ? "not-allowed"
-                                : "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          + {tt("mapEditorAddAllowedBlock", "Add Allowed Block")}
-                        </button>
+                        {normalizedAllowedBlocks.length === 0 && (
+                          <div style={styles.placeholderText}>
+                            {tt(
+                              "mapEditorAllowedBlocksEmpty",
+                              "No selection. All blocks are allowed.",
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div style={styles.formGroup}>
@@ -2291,70 +2323,530 @@ export function MapEditorControls({
                 )}
                 {rightPanelTab === "map" && (
                   <>
-                    <div style={styles.section}>
-                      <h3 style={styles.sectionTitle}>
-                        <Settings2 size={16} /> {tt("mapEditorMapSettings", "Map Settings")}
-                      </h3>
-                      <div
-                        style={{
-                          ...styles.actionButtons,
-                          flexDirection: "column",
-                          alignItems: "stretch",
-                        }}
-                      >
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <label style={styles.label}>
-                            {tt("mapEditorFreeTrialAttempts", "Free trial attempts")}
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={Math.max(0, Number(freeTrialAttemptLimit ?? 0))}
-                            onChange={(e) =>
-                              onFreeTrialAttemptLimitChange?.(
-                                Math.max(0, Number(e.target.value) || 0),
-                              )
-                            }
-                            style={styles.input}
-                          />
+                    {showCatalogEditorInlineInMapTab ? (
+                      userType === "unknown" ? (
+                        <div style={styles.section}>
+                          <h3 style={styles.sectionTitle}>
+                            <Settings2 size={16} /> {tt("mapEditorMapSettings", "Map Settings")}
+                          </h3>
+                          <p style={styles.helpText}>
+                            {tt(
+                              "mapEditorLoginToSaveMaps",
+                              "You must be logged in as a learner or CMS user to save maps",
+                            )}
+                          </p>
                         </div>
-                        <button
-                          style={{ ...styles.actionButton, ...styles.saveButton }}
-                          onClick={() => {
-                            if (userType !== "unknown") {
-                              setShowCatalogDraftPreview(true);
-                              return;
-                            }
-                            setShowMapInfoModal(true);
+                      ) : (
+                        <div style={styles.inlineMapInfoShell}>
+                          <div style={styles.step1InlineCard}>
+                            <div style={styles.detailLayout}>
+                              <div style={styles.step1InlineLayout}>
+                                <div style={styles.step1MediaColumn}>
+                                  <button
+                                    type="button"
+                                    style={styles.step1HeroDropZone}
+                                    onClick={() => avatarInputRef.current?.click()}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      const dropped = Array.from(e.dataTransfer.files ?? []);
+                                      const firstImage = dropped.find((file) =>
+                                        file.type.toLowerCase().startsWith("image/"),
+                                      );
+                                      if (firstImage) {
+                                        setAvatarFile(firstImage);
+                                      }
+                                      appendGalleryFiles(
+                                        firstImage
+                                          ? dropped.filter((file) => file !== firstImage)
+                                          : dropped,
+                                      );
+                                    }}
+                                  >
+                                    {resolvedAvatarPreviewUrl ? (
+                                      <img
+                                        src={resolvedAvatarPreviewUrl}
+                                        alt={tt("mapEditorThumbnailWholeMapAlt", "Map thumbnail (whole map)")}
+                                        style={styles.step1HeroImage}
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    ) : (
+                                      <div style={styles.step1HeroPlaceholder}>
+                                        <ImagePlus size={42} />
+                                        <p style={styles.step1HeroPlaceholderText}> 
+                                          {tt(
+                                            "mapEditorGalleryHeroHint",
+                                            "Drag screenshots or videos here, or click to add gallery media",
+                                          )}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </button>
+
+                                  <input
+                                    ref={avatarInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => setAvatarFile(e.currentTarget.files?.[0] ?? null)}
+                                    style={styles.fileInput}
+                                  />
+
+                                  <input
+                                    ref={galleryInputRef}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    style={styles.fileInput}
+                                    onChange={(e) => {
+                                      const list = Array.from(e.target.files ?? []);
+                                      e.target.value = "";
+                                      appendGalleryFiles(list);
+                                    }}
+                                  />
+
+                                  <div style={styles.step1ThumbCarouselRow}>
+                                    <button
+                                      type="button"
+                                      style={styles.step1ThumbNavButton}
+                                      onClick={() => scrollGalleryStrip(-1)}
+                                      aria-label={tt("previousAria", "Previous")}
+                                    >
+                                      <ChevronLeft size={20} />
+                                    </button>
+
+                                    <div style={styles.step1ThumbViewport}>
+                                      <div ref={galleryStripRef} style={styles.step1ThumbStrip}>
+                                        <button
+                                          type="button"
+                                          style={styles.step1ThumbItem}
+                                          onClick={() => avatarInputRef.current?.click()}
+                                          title={tt("mapEditorChangeImage", "Change Image")}
+                                        >
+                                          {resolvedAvatarPreviewUrl ? (
+                                            <img
+                                              src={resolvedAvatarPreviewUrl}
+                                              alt={tt("mapEditorThumbnailWholeMapAlt", "Map thumbnail (whole map)")}
+                                              style={styles.step1ThumbImage}
+                                              referrerPolicy="no-referrer"
+                                            />
+                                          ) : (
+                                            <span style={styles.step1ThumbPlaceholderText}>COVER</span>
+                                          )}
+                                        </button>
+
+                                        {pendingGalleryFiles.map((file, idx) => (
+                                          <div key={`${file.name}-${file.size}-${idx}`} style={styles.step1ThumbItemWrap}>
+                                            <button
+                                              type="button"
+                                              style={styles.step1ThumbItem}
+                                              title={file.name}
+                                            >
+                                              {file.type.toLowerCase().startsWith("image/") ? (
+                                                <img
+                                                  src={pendingGalleryPreviewUrls[idx]}
+                                                  alt={file.name}
+                                                  style={styles.step1ThumbImage}
+                                                />
+                                              ) : (
+                                                <span style={styles.step1ThumbPlaceholderText}>VIDEO</span>
+                                              )}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              style={styles.step1ThumbRemoveButton}
+                                              onClick={() =>
+                                                setPendingGalleryFiles((prev) =>
+                                                  prev.filter((_, fileIndex) => fileIndex !== idx),
+                                                )
+                                              }
+                                              aria-label={tt("mapEditorGalleryRemove", "Remove")}
+                                            >
+                                              <X size={14} />
+                                            </button>
+                                          </div>
+                                        ))}
+
+                                        <button
+                                          type="button"
+                                          style={{ ...styles.step1ThumbItem, ...styles.step1ThumbAddItem }}
+                                          onClick={() => galleryInputRef.current?.click()}
+                                          title={tt("mapEditorGalleryAddFiles", "Add files")}
+                                        >
+                                          <Plus size={24} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      style={styles.step1ThumbNavButton}
+                                      onClick={() => scrollGalleryStrip(1)}
+                                      aria-label={tt("nextAria", "Next")}
+                                    >
+                                      <ChevronRight size={20} />
+                                    </button>
+                                  </div>
+
+                                  <p style={styles.helpText}>{thumbnailHintBelowImage}</p>
+                                  <p style={styles.helpText}>
+                                    {tt("mapEditorGalleryMaxFiles", "Up to {n} files per batch.").replace(
+                                      "{n}",
+                                      String(GALLERY_BATCH_MAX),
+                                    )}
+                                  </p>
+                                </div>
+
+                                <div style={styles.step1MetaColumn}>
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "name" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("name")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("name")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>
+                                      {levelSlotCount > 1
+                                        ? tt("mapEditorMapNameCatalog", "Map name (catalog)")
+                                        : tt("mapEditorMapName", "Map Name")}
+                                    </div>
+                                    {activeInlineField === "name" ? (
+                                      <input
+                                        autoFocus
+                                        value={
+                                          mapCatalogTitle !== undefined && onMapCatalogTitleChange
+                                            ? mapCatalogTitle
+                                            : mapData.config.name
+                                        }
+                                        onChange={(e) => {
+                                          if (onMapCatalogTitleChange) {
+                                            onMapCatalogTitleChange(e.target.value);
+                                          } else {
+                                            onNameChange?.(e.target.value);
+                                          }
+                                        }}
+                                        onBlur={() => setActiveInlineField(null)}
+                                        style={styles.inlineInput}
+                                      />
+                                    ) : (
+                                      <div style={styles.inlineFieldValue}>{previewMapTitle}</div>
+                                    )}
+                                    {(hoveredInlineField === "name" || activeInlineField === "name") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+
+                                  <div style={styles.formGroup}>
+                                    <label style={styles.label}>
+                                      {tt("mapEditorFreeTrialAttempts", "Free trial attempts")}
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={MAX_FREE_TRIAL_ATTEMPTS}
+                                      value={normalizedFreeTrialAttemptLimit}
+                                      onChange={(e) =>
+                                        handleFreeTrialAttemptLimitInputChange(
+                                          Number(e.target.value) || 0,
+                                        )
+                                      }
+                                      style={styles.input}
+                                    />
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "difficulty" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("difficulty")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("difficulty")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>
+                                      {tt("mapEditorDifficulty", "Difficulty")}
+                                    </div>
+                                    {activeInlineField === "difficulty" ? (
+                                      <select
+                                        autoFocus
+                                        value={mapData.config.difficulty}
+                                        onChange={(e) =>
+                                          onDifficultyChange?.(Number(e.target.value) as 1 | 2 | 3 | 4 | 5)
+                                        }
+                                        onBlur={() => setActiveInlineField(null)}
+                                        style={styles.inlineInput}
+                                      >
+                                        <option value={1}>1/5</option>
+                                        <option value={2}>2/5</option>
+                                        <option value={3}>3/5</option>
+                                        <option value={4}>4/5</option>
+                                        <option value={5}>5/5</option>
+                                      </select>
+                                    ) : (
+                                      <div style={styles.inlineFieldValue}>{difficultyLabel}</div>
+                                    )}
+                                    {(hoveredInlineField === "difficulty" ||
+                                      activeInlineField === "difficulty") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "price" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("price")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("price")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>{tt("mapEditorPrice", "Price")}</div>
+                                    {activeInlineField === "price" ? (
+                                      <input
+                                        autoFocus
+                                        type="number"
+                                        min={0}
+                                        max={MAX_MAP_PRICE}
+                                        value={mapData.config.price}
+                                        onChange={(e) =>
+                                          handlePriceInputChange(Number(e.target.value))
+                                        }
+                                        onBlur={() => setActiveInlineField(null)}
+                                        style={styles.inlineInput}
+                                      />
+                                    ) : (
+                                      <div style={styles.inlineFieldValue}>
+                                        {mapData.config.price > 0
+                                          ? `${mapData.config.price} OC`
+                                          : tt("mapEditorFree", "Free")}
+                                      </div>
+                                    )}
+                                    {(hoveredInlineField === "price" || activeInlineField === "price") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "description" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("description")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("description")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>
+                                      {tt("mapEditorDescription", "Description")}
+                                    </div>
+                                    {activeInlineField === "description" ? (
+                                      <textarea
+                                        autoFocus
+                                        rows={5}
+                                        value={mapData.config.description}
+                                        onChange={(e) => onDescriptionChange?.(e.target.value)}
+                                        onBlur={() => setActiveInlineField(null)}
+                                        style={styles.inlineTextarea}
+                                      />
+                                    ) : (
+                                      <div style={styles.inlineFieldValueMuted}>
+                                        {mapData.config.description ||
+                                          tt(
+                                            "mapEditorDescriptionHint",
+                                            "Add a description to help players understand the challenge.",
+                                          )}
+                                      </div>
+                                    )}
+                                    {(hoveredInlineField === "description" ||
+                                      activeInlineField === "description") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "tags" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("tags")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("tags")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>{tt("mapEditorTags", "Tags")}</div>
+                                    {activeInlineField === "tags" ? (
+                                      <div>
+                                        {loadingMapTags ? (
+                                          <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
+                                        ) : (
+                                          <div style={styles.tagWrap}>
+                                            {availableMapTags.map((tag) => {
+                                              const selected = selectedTagIds.includes(tag.id);
+                                              return (
+                                                <button
+                                                  key={tag.id}
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleTagSelection(tag.id);
+                                                  }}
+                                                  style={{
+                                                    ...styles.tagChip,
+                                                    ...(selected ? styles.tagChipSelected : {}),
+                                                  }}
+                                                >
+                                                  {tag.name}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveInlineField(null);
+                                          }}
+                                        >
+                                          {tt("mapEditorDone", "Done")}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div style={styles.tagWrap}>
+                                        {selectedTagNames.length > 0 ? (
+                                          selectedTagNames.map((name) => (
+                                            <span key={name} style={{ ...styles.tagChip, ...styles.tagChipSelected }}>
+                                              {name}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span style={styles.inlineFieldValueMuted}>
+                                            {tt("mapEditorNoTagsSelected", "No tags selected")}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {(hoveredInlineField === "tags" || activeInlineField === "tags") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+
+                                  <div
+                                    style={{
+                                      ...styles.inlineField,
+                                      ...(activeInlineField === "learnedTagsCsv" ? styles.inlineFieldActive : {}),
+                                    }}
+                                    onMouseEnter={() => setHoveredInlineField("learnedTagsCsv")}
+                                    onMouseLeave={() => setHoveredInlineField(null)}
+                                    onClick={() => setActiveInlineField("learnedTagsCsv")}
+                                  >
+                                    <div style={styles.inlineFieldLabel}>
+                                      {tt("mapEditorLearnedKnowledge", "Learned knowledge")}
+                                    </div>
+                                    {activeInlineField === "learnedTagsCsv" ? (
+                                      <div>
+                                        {loadingMapTags ? (
+                                          <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
+                                        ) : (
+                                          <div style={styles.tagWrap}>
+                                            {learnedKnowledgeTags.map((tag) => {
+                                              const selected = selectedLearnedTagIds.includes(tag.id);
+                                              return (
+                                                <button
+                                                  key={tag.id}
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleLearnedTagSelection(tag.id);
+                                                  }}
+                                                  style={{
+                                                    ...styles.tagChip,
+                                                    ...(selected ? styles.tagChipSelected : {}),
+                                                  }}
+                                                >
+                                                  {tag.name}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveInlineField(null);
+                                          }}
+                                        >
+                                          {tt("mapEditorDone", "Done")}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div style={styles.tagWrap}>
+                                        {selectedLearnedTagNames.length > 0 ? (
+                                          selectedLearnedTagNames.map((name) => (
+                                            <span
+                                              key={`learned-${name}`}
+                                              style={{ ...styles.tagChip, ...styles.tagChipSelected }}
+                                            >
+                                              {name}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span style={styles.inlineFieldValueMuted}>
+                                            {tt("mapEditorNoLearnedTagsCsv", "No learned knowledge set")}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                    {(hoveredInlineField === "learnedTagsCsv" ||
+                                      activeInlineField === "learnedTagsCsv") && (
+                                      <Pencil size={14} style={styles.inlineEditIcon} />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div style={styles.section}>
+                        <h3 style={styles.sectionTitle}>
+                          <Settings2 size={16} /> {tt("mapEditorMapSettings", "Map Settings")}
+                        </h3>
+                        <div
+                          style={{
+                            ...styles.actionButtons,
+                            flexDirection: "column",
+                            alignItems: "stretch",
                           }}
-                          disabled={userType === "unknown"}
-                          title={
-                            userType === "unknown"
-                              ? tt("mapEditorLoginToSaveMapsTitle", "Please login to save maps")
-                              : tt(
-                                  "mapEditorMapInfoButtonTitleLearner",
-                                  "Open store listing editor (title, description, difficulty, price, tags, images).",
-                                )
-                          }
                         >
-                          <Save size={14} /> {tt("mapEditorMapInfoButton", "Map info")}
-                        </button>
+                          <button
+                            style={{ ...styles.actionButton, ...styles.saveButton }}
+                            onClick={() => {
+                              if (userType !== "unknown") {
+                                setShowCatalogDraftPreview(true);
+                                return;
+                              }
+                              setShowMapInfoModal(true);
+                            }}
+                            disabled={userType === "unknown"}
+                            title={
+                              userType === "unknown"
+                                ? tt("mapEditorLoginToSaveMapsTitle", "Please login to save maps")
+                                : tt(
+                                    "mapEditorMapInfoButtonTitleLearner",
+                                    "Open store listing editor (title, description, difficulty, price, tags, images).",
+                                  )
+                            }
+                          >
+                            <Save size={14} /> {tt("mapEditorMapInfoButton", "Map info")}
+                          </button>
+                        </div>
                       </div>
-                      <p style={{ ...styles.helpText, marginTop: 8 }}>
-                        {tt(
-                          "mapEditorMapSettingsSaveLevelHint",
-                          'To save layout and MapDetail (JSON), open the Level tab and use "Save level content".',
-                        )}
-                      </p>
-                      {userType !== "unknown" && (
-                        <p style={{ ...styles.helpText, marginTop: 6 }}>
-                          {tt(
-                            "mapEditorMapTabCatalogHintLearner",
-                            'Use "Map info" to open your map detail page and edit how it appears in the store.',
-                          )}
-                        </p>
-                      )}
-                    </div>
+                    )}
                   </>
                 )}
               </>
@@ -2924,8 +3416,9 @@ export function MapEditorControls({
                         autoFocus
                         type="number"
                         min={0}
+                        max={MAX_MAP_PRICE}
                         value={mapData.config.price}
-                        onChange={(e) => onPriceChange?.(Number(e.target.value))}
+                        onChange={(e) => handlePriceInputChange(Number(e.target.value))}
                         onBlur={() => setActiveInlineField(null)}
                         style={styles.inlineInput}
                       />
@@ -3200,7 +3693,7 @@ export function MapEditorControls({
         </div>
       )}
 
-      {showRightPanel && userType !== "unknown" && (
+      {showRightPanel && userType !== "unknown" && !showCatalogEditorInlineInMapTab && (
         <MapCatalogDraftPreviewOverlay
           open={showCatalogDraftPreview}
           onClose={() => setShowCatalogDraftPreview(false)}
@@ -3220,9 +3713,11 @@ export function MapEditorControls({
           }
           onDifficultyChange={(d) => onDifficultyChange?.(d)}
           price={mapData.config.price ?? 0}
-          onPriceChange={(p) => onPriceChange?.(p)}
-          freeTrialAttemptLimit={Math.max(0, Number(freeTrialAttemptLimit ?? 0))}
-          onFreeTrialAttemptLimitChange={(v) => onFreeTrialAttemptLimitChange?.(v)}
+          onPriceChange={(p) => onPriceChange?.(clampMapPrice(p))}
+          freeTrialAttemptLimit={normalizedFreeTrialAttemptLimit}
+          onFreeTrialAttemptLimitChange={(v) =>
+            onFreeTrialAttemptLimitChange?.(clampFreeTrialAttemptLimit(v))
+          }
           loadingMapTags={loadingMapTags}
           availableMapTags={availableMapTags}
           learnedKnowledgeTags={learnedKnowledgeTags}
@@ -3286,10 +3781,10 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "stretch",
     justifyContent: "stretch",
     minWidth: 0,
-    minHeight: 56,
+    minHeight: 68,
     padding: 0,
     margin: 0,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 600,
     border: "none",
     borderRadius: 0,
@@ -3307,10 +3802,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
+    gap: 8,
     width: "100%",
     minWidth: 0,
-    padding: "8px 4px",
+    padding: "10px 8px",
     boxSizing: "border-box",
   },
   rightPanelTabIconWrap: {
@@ -3325,12 +3820,11 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     minWidth: 0,
     textAlign: "center",
-    whiteSpace: "normal",
-    wordBreak: "break-word",
-    overflowWrap: "break-word",
-    hyphens: "auto",
-    lineHeight: 1.25,
-    fontSize: 10,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    lineHeight: 1.2,
+    fontSize: 12,
     letterSpacing: "0.01em",
   },
   rightPanelTabButtonActive: {
@@ -3365,6 +3859,154 @@ const styles: Record<string, React.CSSProperties> = {
     background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
     border: "1px solid var(--border)",
     boxShadow: "0 8px 20px color-mix(in srgb, var(--bg) 32%, transparent)",
+  },
+  inlineMapInfoShell: {
+    display: "grid",
+    gap: "12px",
+  },
+  step1InlineCard: {
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "14px",
+    background:
+      "radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 35%), linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "18px",
+    boxSizing: "border-box",
+    overflow: "visible",
+  },
+  step1InlineLayout: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.2fr) minmax(320px, 0.8fr)",
+    gap: "16px",
+    alignItems: "start",
+  },
+  step1MediaColumn: {
+    display: "grid",
+    gap: "12px",
+  },
+  step1MetaColumn: {
+    display: "grid",
+    gap: "10px",
+  },
+  step1HeroDropZone: {
+    width: "100%",
+    minHeight: "360px",
+    height: "clamp(360px, 48vh, 560px)",
+    borderRadius: "10px",
+    border: "1px dashed color-mix(in srgb, var(--primary) 36%, var(--border))",
+    background: "linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 92%, #dbe7f7))",
+    color: "var(--text-2)",
+    padding: "8px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  step1HeroImage: {
+    width: "100%",
+    height: "100%",
+    maxHeight: "100%",
+    objectFit: "contain",
+    objectPosition: "center",
+    background: "color-mix(in srgb, var(--surface-2) 85%, #dbe7f7)",
+    borderRadius: "8px",
+  },
+  step1HeroPlaceholder: {
+    width: "100%",
+    minHeight: "220px",
+    borderRadius: "8px",
+    border: "1px dashed var(--border)",
+    background: "color-mix(in srgb, var(--surface-2) 86%, #dbe7f7)",
+    display: "grid",
+    placeItems: "center",
+    textAlign: "center",
+    gap: "10px",
+    padding: "20px",
+  },
+  step1HeroPlaceholderText: {
+    margin: 0,
+    fontSize: "14px",
+    color: "var(--text-2)",
+    maxWidth: "640px",
+  },
+  step1ThumbCarouselRow: {
+    display: "grid",
+    gridTemplateColumns: "42px minmax(0, 1fr) 42px",
+    alignItems: "center",
+    gap: "8px",
+  },
+  step1ThumbNavButton: {
+    height: "124px",
+    borderRadius: "6px",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text-2)",
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+  },
+  step1ThumbViewport: {
+    overflow: "hidden",
+  },
+  step1ThumbStrip: {
+    display: "flex",
+    gap: "10px",
+    overflowX: "auto",
+    paddingBottom: "2px",
+    scrollbarWidth: "none",
+  },
+  step1ThumbItemWrap: {
+    position: "relative",
+    flex: "0 0 auto",
+  },
+  step1ThumbItem: {
+    flex: "0 0 auto",
+    width: "92px",
+    height: "120px",
+    borderRadius: "8px",
+    border: "1px dashed var(--border)",
+    background: "var(--surface-2)",
+    color: "var(--text-2)",
+    display: "grid",
+    placeItems: "center",
+    cursor: "pointer",
+    overflow: "hidden",
+    padding: 0,
+  },
+  step1ThumbAddItem: {
+    borderStyle: "dashed",
+    borderColor: "color-mix(in srgb, var(--primary) 40%, var(--border))",
+    color: "var(--primary)",
+    background: "color-mix(in srgb, var(--primary) 8%, var(--surface-2))",
+  },
+  step1ThumbImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    objectPosition: "center",
+    background: "color-mix(in srgb, var(--surface-2) 88%, #dbe7f7)",
+    display: "block",
+  },
+  step1ThumbPlaceholderText: {
+    fontSize: "11px",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+  },
+  step1ThumbRemoveButton: {
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    width: "22px",
+    height: "22px",
+    borderRadius: "999px",
+    border: "1px solid color-mix(in srgb, var(--danger) 45%, var(--border))",
+    background: "color-mix(in srgb, var(--surface) 80%, var(--danger))",
+    color: "var(--danger)",
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+    padding: 0,
   },
   sectionTitle: {
     fontSize: "14px",
@@ -3411,6 +4053,85 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 4px 0",
     fontSize: "12px",
     color: "var(--text-2)",
+  },
+  allowedBlocksToolbar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "8px",
+    marginBottom: "8px",
+    flexWrap: "wrap",
+  },
+  allowedBlocksSelectedText: {
+    fontSize: "12px",
+    color: "var(--text-2)",
+    fontWeight: 600,
+  },
+  allowedBlocksUseAllButton: {
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    borderRadius: "8px",
+    padding: "6px 10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  allowedBlocksUseAllButtonDisabled: {
+    opacity: 0.6,
+    cursor: "not-allowed",
+  },
+  allowedBlockGroups: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  allowedBlockGroupCard: {
+    border: "1px solid var(--border)",
+    borderRadius: "10px",
+    background: "var(--surface-2)",
+    padding: "10px",
+  },
+  allowedBlockGroupTitle: {
+    margin: "0 0 8px 0",
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "var(--text)",
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+  },
+  allowedBlockGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "8px",
+  },
+  allowedBlockCell: {
+    border: "1px solid var(--border)",
+    borderRadius: "10px",
+    background: "var(--surface)",
+    color: "var(--text-2)",
+    padding: "10px 8px",
+    minHeight: "40px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+    textAlign: "left",
+  },
+  allowedBlockCellSelected: {
+    color: "var(--text)",
+    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--surface) 40%, transparent)",
+  },
+  allowedBlockCellDisabled: {
+    opacity: 0.6,
+    cursor: "not-allowed",
+  },
+  allowedBlockCellLabel: {
+    display: "block",
+    fontSize: "12px",
+    fontWeight: 600,
+    lineHeight: 1.25,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   tierLabel: {
     display: "inline-flex",

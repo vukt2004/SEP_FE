@@ -5,6 +5,25 @@ export type MapUploadLevelInput = {
   levelOrder: number;
   mapData: MapData;
   hints: string[];
+  hintUnlockFailures?: number[];
+  sampleSolution?: string;
+  sampleSolutionUnlockFailures?: number;
+  catalogMeta?: {
+    theme?: string;
+    targetAudience?: string;
+    pricingModel?: "free" | "paid";
+    programmingConcepts?: string[];
+  };
+};
+
+const normalizeFailureSchedule = (values: number[] | undefined, maxSize: number): number[] => {
+  if (!Array.isArray(values) || maxSize <= 0) {
+    return [];
+  }
+
+  return values
+    .slice(0, maxSize)
+    .map((value) => Math.max(1, Math.floor(Number(value) || 1)));
 };
 
 export function normalizeHintsForJson(hints: string[]): string[] {
@@ -23,9 +42,39 @@ export function buildMapUploadJsonString(levels: MapUploadLevelInput[]): string 
         `Level ${lv.levelOrder + 1}`;
       const gl = exportMapToGameFormat(lv.mapData, title);
       const hintStrings = normalizeHintsForJson(lv.hints);
+      const hintUnlockFailures = normalizeFailureSchedule(lv.hintUnlockFailures, hintStrings.length);
+      const sampleSolution = typeof lv.sampleSolution === "string" ? lv.sampleSolution.trim() : "";
+      const sampleSolutionUnlockFailures = Math.max(
+        1,
+        Math.floor(Number(lv.sampleSolutionUnlockFailures) || 3),
+      );
+      const programmingConcepts = Array.isArray(lv.catalogMeta?.programmingConcepts)
+        ? lv.catalogMeta.programmingConcepts
+            .map((concept) => concept.trim())
+            .filter((concept) => concept.length > 0)
+        : [];
       const jsonContent: Record<string, unknown> = {
         ...gl,
         ...(hintStrings.length > 0 ? { hints: hintStrings } : {}),
+        ...(hintUnlockFailures.length > 0 ? { hintUnlockFailures } : {}),
+        ...(sampleSolution.length > 0
+          ? {
+              sampleSolution,
+              sampleSolutionUnlockFailures,
+            }
+          : {}),
+        ...(lv.catalogMeta
+          ? {
+              catalogMeta: {
+                ...(lv.catalogMeta.theme?.trim() ? { theme: lv.catalogMeta.theme.trim() } : {}),
+                ...(lv.catalogMeta.targetAudience?.trim()
+                  ? { targetAudience: lv.catalogMeta.targetAudience.trim() }
+                  : {}),
+                ...(lv.catalogMeta.pricingModel ? { pricingModel: lv.catalogMeta.pricingModel } : {}),
+                ...(programmingConcepts.length > 0 ? { programmingConcepts } : {}),
+              },
+            }
+          : {}),
       };
       const timeLimitMs = Math.max(1, Math.floor(lv.mapData.config.timeLimitSeconds ?? 1)) * 1000;
       const winCondition = lv.mapData.config.winCondition === 2 ? 2 : 1;

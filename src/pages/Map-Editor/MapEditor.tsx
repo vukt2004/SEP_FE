@@ -437,7 +437,6 @@ const mapDetailToEditorMapData = (detail: MapDetailLike): MapData => {
         } else if (obj.type === "enemy" || obj.type === "slime") {
           items.push({ id: 4, type: obj.type, x: obj.position.col, y: obj.position.row });
         } else {
-          // Additional decorative objects based on their id or type
           const metaId =
             isRecord(obj.metadata) && typeof obj.metadata.objectId === "number"
               ? obj.metadata.objectId
@@ -551,10 +550,179 @@ function levelItemToMapDetailLike(map: MapDetail, level: MapLevelItem): MapDetai
   };
 }
 
+type EditorStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+type StepDefinition = {
+  id: EditorStep;
+  titleKey: string;
+  titleFallback: string;
+  summaryKey: string;
+  summaryFallback: string;
+};
+
+const STEP_DEFINITIONS: StepDefinition[] = [
+  {
+    id: 1,
+    titleKey: "mapEditorWizardStep1Title",
+    titleFallback: "Game info",
+    summaryKey: "mapEditorWizardStep1Summary",
+    summaryFallback: "Catalog metadata",
+  },
+  {
+    id: 2,
+    titleKey: "mapEditorWizardStep2Title",
+    titleFallback: "Level management",
+    summaryKey: "mapEditorWizardStep2Summary",
+    summaryFallback: "Order and minimap",
+  },
+  {
+    id: 3,
+    titleKey: "mapEditorWizardStep3Title",
+    titleFallback: "Map design",
+    summaryKey: "mapEditorWizardStep3Summary",
+    summaryFallback: "Tile editor and conditions",
+  },
+  {
+    id: 4,
+    titleKey: "mapEditorWizardStep4Title",
+    titleFallback: "Block rules",
+    summaryKey: "mapEditorWizardStep4Summary",
+    summaryFallback: "Allowed, required, and limit",
+  },
+  {
+    id: 5,
+    titleKey: "mapEditorWizardStep5Title",
+    titleFallback: "Hints and sample solution",
+    summaryKey: "mapEditorWizardStep5Summary",
+    summaryFallback: "Hint schedule and sample",
+  },
+  {
+    id: 6,
+    titleKey: "mapEditorWizardStep6Title",
+    titleFallback: "Review and submit",
+    summaryKey: "mapEditorWizardStep6Summary",
+    summaryFallback: "Checklist and save",
+  },
+];
+
+const MAX_FREE_TRIAL_ATTEMPTS = 10;
+const MAX_MAP_PRICE = 10000;
+
 export type EditorLevelSlot = {
   id: string;
   hints: string[];
+  hintUnlockFailures: number[];
+  sampleSolution: string;
+  sampleSolutionUnlockFailures: number;
   mapData: MapData;
+};
+
+const normalizeHintUnlockFailures = (value: unknown, hintCount: number): number[] => {
+  if (hintCount <= 0) {
+    return [];
+  }
+
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: hintCount }, (_, index) => {
+    const raw = source[index];
+    return Math.max(1, Math.floor(typeof raw === "number" ? raw : index + 1));
+  });
+};
+
+const extractHintUnlockFailuresFromDetailJson = (detailJson: unknown, hintCount: number): number[] => {
+  if (!detailJson || typeof detailJson !== "object") {
+    return normalizeHintUnlockFailures([], hintCount);
+  }
+
+  const rec = detailJson as Record<string, unknown>;
+  return normalizeHintUnlockFailures(rec.hintUnlockFailures, hintCount);
+};
+
+const extractSampleSolutionFromDetailJson = (
+  detailJson: unknown,
+): { sampleSolution: string; sampleSolutionUnlockFailures: number } => {
+  if (!detailJson || typeof detailJson !== "object") {
+    return { sampleSolution: "", sampleSolutionUnlockFailures: 3 };
+  }
+
+  const rec = detailJson as Record<string, unknown>;
+  const sampleSolution = typeof rec.sampleSolution === "string" ? rec.sampleSolution : "";
+  const sampleSolutionUnlockFailures = Math.max(
+    1,
+    Math.floor(typeof rec.sampleSolutionUnlockFailures === "number" ? rec.sampleSolutionUnlockFailures : 3),
+  );
+
+  return {
+    sampleSolution,
+    sampleSolutionUnlockFailures,
+  };
+};
+
+const extractCatalogMetaFromDetailJson = (
+  detailJson: unknown,
+): { theme: string; targetAudience: string; programmingConcepts: string[] } => {
+  if (!detailJson || typeof detailJson !== "object") {
+    return { theme: "", targetAudience: "", programmingConcepts: [] };
+  }
+
+  const rec = detailJson as Record<string, unknown>;
+  const rawCatalogMeta = isRecord(rec.catalogMeta) ? rec.catalogMeta : null;
+  const theme = rawCatalogMeta && typeof rawCatalogMeta.theme === "string" ? rawCatalogMeta.theme : "";
+  const targetAudience =
+    rawCatalogMeta && typeof rawCatalogMeta.targetAudience === "string"
+      ? rawCatalogMeta.targetAudience
+      : "";
+  const programmingConcepts =
+    rawCatalogMeta && Array.isArray(rawCatalogMeta.programmingConcepts)
+      ? rawCatalogMeta.programmingConcepts
+          .filter((concept): concept is string => typeof concept === "string" && concept.trim().length > 0)
+          .map((concept) => concept.trim())
+      : [];
+
+  return {
+    theme,
+    targetAudience,
+    programmingConcepts,
+  };
+};
+
+const hasConfiguredMap = (mapData: MapData): boolean => {
+  const hasPlayer = mapData.objects.items.some((item) => item.type === "player");
+  const hasGoal = mapData.objects.items.some((item) => item.type === "goal");
+  const hasTerrain =
+    mapData.layers.ground.some((row) => row.some((cell) => cell > 0)) ||
+    mapData.layers.collision.some((row) => row.some((cell) => cell > 0));
+
+  return hasPlayer && hasGoal && hasTerrain;
+};
+
+const hasValidBlockRules = (mapData: MapData): boolean => {
+  const allowed = Array.from(new Set(mapData.blockConstraints.allowedBlocks ?? []));
+  const required = Array.from(
+    new Map(
+      (mapData.blockConstraints.requiredBlocks ?? []).map((rule) => [rule.type, rule]),
+    ).values(),
+  );
+
+  if (mapData.blockConstraints.blockLimit !== null && mapData.blockConstraints.blockLimit < 1) {
+    return false;
+  }
+
+  if (allowed.length === 0) {
+    return true;
+  }
+
+  return required.every((rule) => allowed.includes(rule.type) && rule.minCount >= 1);
+};
+
+const clampFreeTrialAttemptLimit = (value: number): number => {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(MAX_FREE_TRIAL_ATTEMPTS, Math.max(0, Math.floor(safe)));
+};
+
+const clampMapPrice = (value: number): number => {
+  const safe = Number.isFinite(value) ? value : 0;
+  return Math.min(MAX_MAP_PRICE, Math.max(0, Math.floor(safe)));
 };
 
 interface EditorState {
@@ -571,6 +739,9 @@ interface EditorState {
 const newEmptySlot = (): EditorLevelSlot => ({
   id: crypto.randomUUID(),
   hints: [""],
+  hintUnlockFailures: [1],
+  sampleSolution: "",
+  sampleSolutionUnlockFailures: 3,
   mapData: createEmptyMap("platform", 20, 15, 32),
 });
 
@@ -585,18 +756,45 @@ export default function MapEditor() {
     const value = t(key);
     return value === key ? fallback : value;
   };
+  const stepDefinitions = useMemo(
+    () =>
+      STEP_DEFINITIONS.map((step) => ({
+        id: step.id,
+        title: tt(step.titleKey, step.titleFallback),
+        summary: tt(step.summaryKey, step.summaryFallback),
+      })),
+    [tt],
+  );
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const [planLoading, setPlanLoading] = useState(true);
   const canCreateMap = canCreateMaps(userPlan);
   const isCreateMode = !mapId;
   const [zoom, setZoom] = useState(1);
+  const [currentStep, setCurrentStep] = useState<EditorStep>(1);
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
+  const [draftAvatarFile, setDraftAvatarFile] = useState<File | null>(null);
+  const [draftGalleryFiles, setDraftGalleryFiles] = useState<File[]>([]);
   const [editingMapContentVersion, setEditingMapContentVersion] = useState<number | null>(null);
   const [mapFreeTrialAttemptLimit, setMapFreeTrialAttemptLimit] = useState(0);
   const [mapCatalogTitle, setMapCatalogTitle] = useState("");
+  const [gameTheme, setGameTheme] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [programmingConceptsCsv, setProgrammingConceptsCsv] = useState("");
+  const [draggingLevelIndex, setDraggingLevelIndex] = useState<number | null>(null);
+  const [dragOverLevelIndex, setDragOverLevelIndex] = useState<number | null>(null);
+  const [, setRegisteredSaveLevelContent] = useState<
+    (() => Promise<void>) | null
+  >(null);
+  const [, setSavingLevelContent] = useState(false);
+  const handleRegisterSaveLevelContent = useCallback((save: () => Promise<void>) => {
+    setRegisteredSaveLevelContent((prev) => (prev === save ? prev : save));
+  }, []);
+  const handleSavingLevelContentChange = useCallback((busy: boolean) => {
+    setSavingLevelContent((prev) => (prev === busy ? prev : busy));
+  }, []);
   const [levelSlots, setLevelSlots] = useState<EditorLevelSlot[]>(() => {
     const slot = newEmptySlot();
     return [slot];
@@ -604,6 +802,14 @@ export default function MapEditor() {
   const [activeLevelIndex, setActiveLevelIndex] = useState(0);
   const levelSlotsRef = useRef(levelSlots);
   levelSlotsRef.current = levelSlots;
+  const parsedProgrammingConcepts = useMemo(
+    () =>
+      programmingConceptsCsv
+        .split(",")
+        .map((concept) => concept.trim())
+        .filter((concept) => concept.length > 0),
+    [programmingConceptsCsv],
+  );
 
   // Lazy initialization of editor state with store
   const [editorState, setEditorState] = useState<EditorState>(() => {
@@ -645,6 +851,63 @@ export default function MapEditor() {
     [activeLevelIndex],
   );
 
+  const updateLevelSlot = useCallback(
+    (index: number, updater: (slot: EditorLevelSlot) => EditorLevelSlot) => {
+      setLevelSlots((prev) => {
+        if (!prev[index]) {
+          return prev;
+        }
+        const copy = [...prev];
+        copy[index] = updater(copy[index]);
+        return copy;
+      });
+    },
+    [],
+  );
+
+  const reorderLevels = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (fromIndex === toIndex) return;
+      const s = storeRef.current;
+      if (!s) return;
+
+      let nextActiveIndex = activeLevelIndex;
+      setLevelSlots((prev) => {
+        if (
+          fromIndex < 0 ||
+          toIndex < 0 ||
+          fromIndex >= prev.length ||
+          toIndex >= prev.length ||
+          fromIndex === toIndex
+        ) {
+          return prev;
+        }
+
+        const copy = [...prev];
+        copy[activeLevelIndex] = {
+          ...copy[activeLevelIndex],
+          mapData: structuredClone(s.getState()),
+        };
+
+        const [moving] = copy.splice(fromIndex, 1);
+        copy.splice(toIndex, 0, moving);
+
+        if (activeLevelIndex === fromIndex) {
+          nextActiveIndex = toIndex;
+        } else if (fromIndex < activeLevelIndex && toIndex >= activeLevelIndex) {
+          nextActiveIndex = activeLevelIndex - 1;
+        } else if (fromIndex > activeLevelIndex && toIndex <= activeLevelIndex) {
+          nextActiveIndex = activeLevelIndex + 1;
+        }
+
+        return copy;
+      });
+
+      setActiveLevelIndex(nextActiveIndex);
+    },
+    [activeLevelIndex],
+  );
+
   const addLevel = useCallback(() => {
     const s = storeRef.current;
     if (!s) return;
@@ -671,7 +934,15 @@ export default function MapEditor() {
         newMap.config.description = base.config.description;
       }
       newMap.config.name = `Level ${copy.length + 1}`;
-      const next = [...copy, { id: crypto.randomUUID(), hints: [""] as string[], mapData: newMap }];
+      const nextSlot: EditorLevelSlot = {
+        id: crypto.randomUUID(),
+        hints: [""],
+        hintUnlockFailures: [1],
+        sampleSolution: "",
+        sampleSolutionUnlockFailures: 3,
+        mapData: newMap,
+      };
+      const next = [...copy, nextSlot];
       setActiveLevelIndex(next.length - 1);
       return next;
     });
@@ -708,11 +979,184 @@ export default function MapEditor() {
       setLevelSlots((prev) => {
         const copy = [...prev];
         if (!copy[activeLevelIndex]) return prev;
-        copy[activeLevelIndex] = { ...copy[activeLevelIndex], hints };
+        copy[activeLevelIndex] = {
+          ...copy[activeLevelIndex],
+          hints,
+          hintUnlockFailures: normalizeHintUnlockFailures(
+            copy[activeLevelIndex].hintUnlockFailures,
+            hints.length,
+          ),
+        };
         return copy;
       });
     },
     [activeLevelIndex],
+  );
+
+  const updateActiveLevelHintUnlockFailure = useCallback(
+    (hintIndex: number, failures: number) => {
+      updateLevelSlot(activeLevelIndex, (slot) => {
+        const nextSchedule = normalizeHintUnlockFailures(slot.hintUnlockFailures, slot.hints.length);
+        nextSchedule[hintIndex] = Math.max(1, Math.floor(failures || 1));
+        return {
+          ...slot,
+          hintUnlockFailures: nextSchedule,
+        };
+      });
+    },
+    [activeLevelIndex, updateLevelSlot],
+  );
+
+  const updateLevelObjectiveByIndex = useCallback(
+    (index: number, levelObjective: string) => {
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            levelObjective,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapLevelObjective(levelObjective);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelTimeLimitByIndex = useCallback(
+    (index: number, seconds: number) => {
+      const nextTimeLimit = Math.max(30, Math.min(3600, Math.floor(seconds || 30)));
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            timeLimitSeconds: nextTimeLimit,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapTimeLimitSeconds(nextTimeLimit);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelTimeStarThresholdByIndex = useCallback(
+    (index: number, percent: number) => {
+      const nextThreshold = Math.max(1, Math.min(100, Math.floor(percent || 100)));
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            timeStarThresholdPercent: nextThreshold,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapTimeStarThresholdPercent(nextThreshold);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelEstimatedStepsByIndex = useCallback(
+    (index: number, steps: number) => {
+      const nextSteps = Math.max(1, Math.min(1000, Math.floor(steps || 1)));
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            estimatedSteps: nextSteps,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapEstimatedSteps(nextSteps);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelBlockLimitByIndex = useCallback(
+    (index: number, rawValue: string) => {
+      const trimmed = rawValue.trim();
+      if (trimmed.length > 0 && !Number.isFinite(Number(trimmed))) {
+        return;
+      }
+
+      const nextBlockLimit =
+        trimmed.length === 0 ? null : Math.max(1, Math.floor(Number(trimmed) || 1));
+
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          blockConstraints: {
+            ...slot.mapData.blockConstraints,
+            blockLimit: nextBlockLimit,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setBlockLimit(nextBlockLimit);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelWinConditionByIndex = useCallback(
+    (index: number, winCondition: 1 | 2) => {
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            winCondition,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapWinCondition(winCondition);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
+  );
+
+  const updateLevelRequiredFruitsByIndex = useCallback(
+    (index: number, requiredFruits: number) => {
+      const nextRequiredFruits = Math.max(0, Math.floor(requiredFruits || 0));
+      updateLevelSlot(index, (slot) => ({
+        ...slot,
+        mapData: {
+          ...slot.mapData,
+          config: {
+            ...slot.mapData.config,
+            requiredFruits: nextRequiredFruits,
+          },
+        },
+      }));
+
+      if (index === activeLevelIndex) {
+        store?.setMapRequiredFruits(nextRequiredFruits);
+      }
+    },
+    [activeLevelIndex, store, updateLevelSlot],
   );
 
   const buildUploadLevels = useCallback((): MapUploadLevelInput[] => {
@@ -728,8 +1172,26 @@ export default function MapEditor() {
       levelOrder: i,
       mapData: slot.mapData,
       hints: slot.hints,
+      hintUnlockFailures: normalizeHintUnlockFailures(slot.hintUnlockFailures, slot.hints.length),
+      sampleSolution: slot.sampleSolution,
+      sampleSolutionUnlockFailures: Math.max(1, Math.floor(slot.sampleSolutionUnlockFailures || 3)),
+      catalogMeta:
+        i === 0
+          ? {
+              theme: gameTheme.trim(),
+              targetAudience: targetAudience.trim(),
+              pricingModel: slot.mapData.config.price > 0 ? "paid" : "free",
+              programmingConcepts: parsedProgrammingConcepts,
+            }
+          : undefined,
     }));
-  }, [levelSlots, activeLevelIndex]);
+  }, [
+    levelSlots,
+    activeLevelIndex,
+    gameTheme,
+    targetAudience,
+    parsedProgrammingConcepts,
+  ]);
 
   const getMapFormMeta = useCallback(() => {
     const built = buildUploadLevels();
@@ -739,16 +1201,16 @@ export default function MapEditor() {
         title: "",
         description: "",
         difficulty: 1 as const,
-        price: 0,
-        freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
+        price: clampMapPrice(0),
+        freeTrialAttemptLimit: clampFreeTrialAttemptLimit(mapFreeTrialAttemptLimit),
       };
     }
     return {
       title: mapCatalogTitle.trim() || first.mapData.config.name || "Untitled",
       description: first.mapData.config.description || "",
       difficulty: first.mapData.config.difficulty,
-      price: first.mapData.config.price,
-      freeTrialAttemptLimit: mapFreeTrialAttemptLimit,
+      price: clampMapPrice(first.mapData.config.price),
+      freeTrialAttemptLimit: clampFreeTrialAttemptLimit(mapFreeTrialAttemptLimit),
     };
   }, [buildUploadLevels, mapCatalogTitle, mapFreeTrialAttemptLimit]);
 
@@ -779,8 +1241,13 @@ export default function MapEditor() {
     if (!mapId) {
       setEditingMapTagNames([]);
       setEditingMapAvatarUrl(null);
+      setDraftAvatarFile(null);
+      setDraftGalleryFiles([]);
       setMapCatalogTitle("");
       setMapFreeTrialAttemptLimit(0);
+      setGameTheme("");
+      setTargetAudience("");
+      setProgrammingConceptsCsv("");
       return;
     }
 
@@ -790,6 +1257,8 @@ export default function MapEditor() {
       try {
         setLoadingMap(true);
         setLoadError(null);
+        setDraftAvatarFile(null);
+        setDraftGalleryFiles([]);
 
         const learnerToken = tokenStorage.getLearnerToken();
         const cmsToken = tokenStorage.getCmsToken();
@@ -815,9 +1284,24 @@ export default function MapEditor() {
             ? raw.contentVersion
             : null,
         );
-        setMapFreeTrialAttemptLimit(Math.max(0, Number(raw.freeTrialAttemptLimit ?? 0)));
+        setMapFreeTrialAttemptLimit(
+          clampFreeTrialAttemptLimit(Number(raw.freeTrialAttemptLimit ?? 0)),
+        );
 
         const levels = raw.levels?.filter(Boolean) ?? [];
+        const firstLevelDetailJson = levels[0]?.detailJson;
+        const catalogMetaFromJson = extractCatalogMetaFromDetailJson(firstLevelDetailJson);
+        setGameTheme(catalogMetaFromJson.theme);
+        setTargetAudience(catalogMetaFromJson.targetAudience);
+        setProgrammingConceptsCsv(
+          (catalogMetaFromJson.programmingConcepts.length > 0
+            ? catalogMetaFromJson.programmingConcepts
+            : Array.isArray(raw.tagNames)
+              ? raw.tagNames
+              : []
+          ).join(", "),
+        );
+
         let slots: EditorLevelSlot[];
 
         if (levels.length > 0) {
@@ -832,9 +1316,17 @@ export default function MapEditor() {
                 : Array.isArray(raw.hints)
                   ? raw.hints.map((h) => h.content).filter((c) => c.trim().length > 0)
                   : [];
+            const normalizedHints = hintList.length > 0 ? hintList : [""];
+            const sampleSolution = extractSampleSolutionFromDetailJson(level.detailJson);
             return {
               id: level.id,
-              hints: hintList.length > 0 ? hintList : [""],
+              hints: normalizedHints,
+              hintUnlockFailures: extractHintUnlockFailuresFromDetailJson(
+                level.detailJson,
+                normalizedHints.length,
+              ),
+              sampleSolution: sampleSolution.sampleSolution,
+              sampleSolutionUnlockFailures: sampleSolution.sampleSolutionUnlockFailures,
               mapData,
             };
           });
@@ -842,10 +1334,14 @@ export default function MapEditor() {
           const legacyHints = Array.isArray(raw.hints)
             ? raw.hints.map((h) => h.content).filter((c) => c.trim().length > 0)
             : [];
+          const normalizedHints = legacyHints.length > 0 ? legacyHints : [""];
           slots = [
             {
               id: mapId,
-              hints: legacyHints.length > 0 ? legacyHints : [""],
+              hints: normalizedHints,
+              hintUnlockFailures: normalizeHintUnlockFailures([], normalizedHints.length),
+              sampleSolution: "",
+              sampleSolutionUnlockFailures: 3,
               mapData: mapDetailToEditorMapData(raw as MapDetailLike),
             },
           ];
@@ -1006,17 +1502,22 @@ export default function MapEditor() {
   };
 
   const handlePriceChange = (price: number) => {
-    store?.setMapPrice(price);
+    const nextPrice = clampMapPrice(price);
+    store?.setMapPrice(nextPrice);
     setLevelSlots((prev) =>
       prev.map((slot) => ({
         ...slot,
         mapData: {
           ...slot.mapData,
-          config: { ...slot.mapData.config, price },
+          config: { ...slot.mapData.config, price: nextPrice },
         },
       })),
     );
   };
+
+  const handleFreeTrialAttemptLimitChange = useCallback((value: number) => {
+    setMapFreeTrialAttemptLimit(clampFreeTrialAttemptLimit(value));
+  }, []);
 
   const handleBlockLimitChange = (blockLimit: number | null) => {
     store?.setBlockLimit(blockLimit);
@@ -1054,6 +1555,62 @@ export default function MapEditor() {
 
   const { mapData, activeLayer, selectedTile, selectedObjectId, selectedTool, canUndo, canRedo } =
     editorState;
+
+  const hydratedLevelSlots = useMemo(() => {
+    return levelSlots.map((slot, index) => {
+      if (index === activeLevelIndex && mapData) {
+        return {
+          ...slot,
+          mapData,
+        };
+      }
+
+      return slot;
+    });
+  }, [activeLevelIndex, levelSlots, mapData]);
+
+  const activeLevel = hydratedLevelSlots[activeLevelIndex] ?? null;
+
+  const stepCompletion = useMemo(() => {
+    const step1 =
+      mapCatalogTitle.trim().length > 0 &&
+      (mapData?.config.description ?? "").trim().length > 0;
+
+    const step2 =
+      hydratedLevelSlots.length > 0 &&
+      hydratedLevelSlots.every((slot) => slot.mapData.config.name.trim().length > 0);
+
+    const step3 =
+      hydratedLevelSlots.length > 0 && hydratedLevelSlots.every((slot) => hasConfiguredMap(slot.mapData));
+
+    const step4 = hydratedLevelSlots.every((slot) => hasValidBlockRules(slot.mapData));
+
+    const step5 = hydratedLevelSlots.every(
+      (slot) =>
+        slot.hints.some((hint) => hint.trim().length > 0) && slot.sampleSolution.trim().length > 0,
+    );
+
+    return {
+      1: step1,
+      2: step2,
+      3: step3,
+      4: step4,
+      5: step5,
+      6: step1 && step2 && step3 && step4 && step5,
+    } as Record<EditorStep, boolean>;
+  }, [
+    mapCatalogTitle,
+    mapData,
+    hydratedLevelSlots,
+  ]);
+
+  const goNextStep = () => {
+    setCurrentStep((prev) => (prev < 6 ? ((prev + 1) as EditorStep) : prev));
+  };
+
+  const goPreviousStep = () => {
+    setCurrentStep((prev) => (prev > 1 ? ((prev - 1) as EditorStep) : prev));
+  };
 
   if (isCreateMode && planLoading) {
     return (
@@ -1110,33 +1667,9 @@ export default function MapEditor() {
           )}
           {loadError && <p style={styles.errorText}>{loadError}</p>}
           {!loadError && mapData && (
-            <div style={styles.levelTabs}>
-              {levelSlots.map((_, i) => (
-                <button
-                  key={levelSlots[i]?.id ?? i}
-                  type="button"
-                  onClick={() => selectLevel(i)}
-                  style={{
-                    ...styles.levelTab,
-                    ...(i === activeLevelIndex ? styles.levelTabActive : {}),
-                  }}
-                >
-                  {tt("mapEditorLevelButton", "Level {n}").replace("{n}", String(i + 1))}
-                </button>
-              ))}
-              <button type="button" onClick={addLevel} style={styles.levelTabAdd}>
-                {tt("mapEditorAddLevel", "+ Level")}
-              </button>
-              {levelSlots.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeLevel(activeLevelIndex)}
-                  style={styles.levelTabRemove}
-                >
-                  {tt("mapEditorRemoveLevel", "Remove")}
-                </button>
-              )}
-            </div>
+            <p style={styles.subtitle}>
+              {tt("mapEditorWizardSubtitle", "6-step workflow for the game editor")}
+            </p>
           )}
         </div>
         <div style={styles.headerRight}>
@@ -1145,153 +1678,884 @@ export default function MapEditor() {
       </div>
 
       {mapData && store && (
-        <div style={styles.mainContent}>
-          <aside style={styles.leftSidebar}>
-            <MapEditorControls
-              sectionMode="left"
-              editingMapId={mapId}
-              loadedMapContentVersion={editingMapContentVersion}
-              editorMode={routeState?.mode}
-              initialSelectedTagNames={editingMapTagNames}
-              initialAvatarUrl={editingMapAvatarUrl}
-              initialHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
-              mapCatalogTitle={mapCatalogTitle}
-              onMapCatalogTitleChange={handleMapCatalogTitleChange}
-              levelHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
-              onLevelHintsChange={updateLevelHints}
-              buildUploadLevels={buildUploadLevels}
-              getMapFormMeta={getMapFormMeta}
-              levelSlotCount={levelSlots.length}
-              mapData={mapData}
-              userPlan={userPlan}
-              activeLayer={activeLayer}
-              selectedTile={selectedTile}
-              selectedObjectId={selectedObjectId}
-              selectedTool={selectedTool}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onTileSelect={handleTileSelect}
-              onObjectSelect={handleObjectSelect}
-              onPortalColorChange={handlePortalColorChange}
-              onToolSelect={handleToolSelect}
-              onResize={handleResize}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onTypeChange={handleTypeChange}
-              onNameChange={handleNameChange}
-              onDescriptionChange={handleDescriptionChange}
-              onDifficultyChange={handleDifficultyChange}
-              onTimeLimitChange={handleTimeLimitChange}
-              onTimeStarThresholdChange={handleTimeStarThresholdChange}
-              onEstimatedStepsChange={handleEstimatedStepsChange}
-              onWinConditionChange={handleWinConditionChange}
-              onLevelObjectiveChange={handleLevelObjectiveChange}
-              onPriceChange={handlePriceChange}
-              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
-              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
-              onBlockLimitChange={handleBlockLimitChange}
-              onAllowedBlocksChange={handleAllowedBlocksChange}
-              onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
-              onObjectMetadataChange={handleObjectMetadataChange}
-            />
-          </aside>
-
-          <section style={styles.canvasPanel}>
-            <div style={styles.canvasToolbar}>
-              <div style={styles.zoomGroup}>
+        <>
+          <div style={styles.stepperRow}>
+            {stepDefinitions.map((step) => {
+              const isActive = currentStep === step.id;
+              const isDone = stepCompletion[step.id];
+              return (
                 <button
-                  style={styles.zoomButton}
-                  onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <span style={styles.zoomText}>{Math.round(zoom * 100)}%</span>
-                <button
-                  style={styles.zoomButton}
-                  onClick={() => setZoom((z) => Math.min(2.5, z + 0.1))}
-                >
-                  <ZoomIn size={14} />
-                </button>
-                <button
-                  style={styles.zoomButton}
-                  onClick={() => setZoom(1)}
-                  title={tt("mapEditorResetZoom", "Reset zoom")}
-                >
-                  <Scan size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div style={styles.canvasContainer}>
-              <div style={styles.canvasGridBackdrop}>
-                <div
+                  key={step.id}
+                  type="button"
                   style={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: "center center",
-                    transition: "transform 0.2s ease",
-                    display: "inline-block",
+                    ...styles.stepCard,
+                    ...(isActive ? styles.stepCardActive : {}),
+                    ...(isDone ? styles.stepCardDone : {}),
                   }}
+                  onClick={() => setCurrentStep(step.id)}
                 >
-                  <EditorCanvas store={store} />
-                </div>
+                  <span style={styles.stepBadge}>
+                    {tt("mapEditorWizardStepLabel", "Step {n}").replace("{n}", String(step.id))}
+                  </span>
+                  <strong style={styles.stepTitle}>{step.title}</strong>
+                </button>
+              );
+            })}
+          </div>
+
+          {currentStep === 1 && (
+            <div style={styles.stepContentPanel}>
+              <div style={styles.stepIntroCard}>
+                <h2 style={styles.stepHeading}>
+                  {tt("mapEditorWizardStep1Heading", "Step 1 - Game info")}
+                </h2>
+              </div>
+
+              <MapEditorControls
+                sectionMode="right"
+                editorStore={store}
+                editingMapId={mapId}
+                loadedMapContentVersion={editingMapContentVersion}
+                editorMode={routeState?.mode}
+                initialSelectedTagNames={editingMapTagNames}
+                initialAvatarUrl={editingMapAvatarUrl}
+                initialHints={activeLevel?.hints ?? [""]}
+                mapCatalogTitle={mapCatalogTitle}
+                onMapCatalogTitleChange={handleMapCatalogTitleChange}
+                levelHints={activeLevel?.hints ?? [""]}
+                onLevelHintsChange={updateLevelHints}
+                buildUploadLevels={buildUploadLevels}
+                getMapFormMeta={getMapFormMeta}
+                levelSlotCount={levelSlots.length}
+                mapData={mapData}
+                userPlan={userPlan}
+                activeLayer={activeLayer}
+                selectedTile={selectedTile}
+                selectedObjectId={selectedObjectId}
+                selectedTool={selectedTool}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onTileSelect={handleTileSelect}
+                onObjectSelect={handleObjectSelect}
+                onPortalColorChange={handlePortalColorChange}
+                onToolSelect={handleToolSelect}
+                onResize={handleResize}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                onTypeChange={handleTypeChange}
+                onNameChange={handleNameChange}
+                onDescriptionChange={handleDescriptionChange}
+                onDifficultyChange={handleDifficultyChange}
+                onTimeLimitChange={handleTimeLimitChange}
+                onTimeStarThresholdChange={handleTimeStarThresholdChange}
+                onEstimatedStepsChange={handleEstimatedStepsChange}
+                onWinConditionChange={handleWinConditionChange}
+                onLevelObjectiveChange={handleLevelObjectiveChange}
+                onRequiredFruitsChange={handleRequiredFruitsChange}
+                onPriceChange={handlePriceChange}
+                freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+                onFreeTrialAttemptLimitChange={handleFreeTrialAttemptLimitChange}
+                onBlockLimitChange={handleBlockLimitChange}
+                onAllowedBlocksChange={handleAllowedBlocksChange}
+                onRequiredBlocksChange={handleRequiredBlocksChange}
+                onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+                onObjectMetadataChange={handleObjectMetadataChange}
+                allowedRightTabs={["map"]}
+                initialRightTab="map"
+                hideRightPanelTabBar
+                showCatalogEditorInlineInMapTab
+                avatarDraftFile={draftAvatarFile}
+                onAvatarDraftFileChange={setDraftAvatarFile}
+                galleryDraftFiles={draftGalleryFiles}
+                onGalleryDraftFilesChange={setDraftGalleryFiles}
+              />
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div style={styles.stepContentPanel}>
+              <div style={styles.stepIntroCard}>
+                <h2 style={styles.stepHeading}>
+                  {tt("mapEditorWizardStep2Heading", "Step 2 - Level management")}
+                </h2>
+              </div>
+
+              <div style={styles.levelHeaderRow}>
+                <button type="button" style={styles.primaryButton} onClick={addLevel}>
+                  {tt("mapEditorAddLevel", "+ Level")}
+                </button>
+              </div>
+
+              <div style={styles.levelListGrid}>
+                {hydratedLevelSlots.map((slot, index) => {
+                  const mapMissing = !hasConfiguredMap(slot.mapData);
+                  const isActive = index === activeLevelIndex;
+                  const isDragOver = dragOverLevelIndex === index;
+                  const levelTimeStarThresholdPercent = Math.max(
+                    1,
+                    Math.min(100, Math.floor(slot.mapData.config.timeStarThresholdPercent ?? 100)),
+                  );
+
+                  return (
+                    <div
+                      key={slot.id}
+                      style={{
+                        ...styles.levelCard,
+                        ...(isActive ? styles.levelCardActive : {}),
+                        ...(mapMissing ? styles.levelCardWarning : {}),
+                        ...(isDragOver ? styles.levelCardDragOver : {}),
+                      }}
+                      draggable
+                      onDragStart={() => setDraggingLevelIndex(index)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverLevelIndex(index);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverLevelIndex === index) {
+                          setDragOverLevelIndex(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggingLevelIndex !== null) {
+                          reorderLevels(draggingLevelIndex, index);
+                        }
+                        setDraggingLevelIndex(null);
+                        setDragOverLevelIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingLevelIndex(null);
+                        setDragOverLevelIndex(null);
+                      }}
+                    >
+                      <div style={styles.levelCardTop}>
+                        <span style={styles.levelOrderBadge}>
+                          {tt("mapEditorLevelButton", "Level {n}").replace(
+                            "{n}",
+                            String(index + 1),
+                          )}
+                        </span>
+                        {mapMissing && (
+                          <span style={styles.warningBadge}>
+                            {tt("mapEditorWizardMapMissing", "Map not configured")}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={styles.levelFieldStack}>
+                        <div style={{ ...styles.levelFieldItem, ...styles.levelFieldItemSpan2 }}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorLevelObjective", "Level Objective")}
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={slot.mapData.config.levelObjective ?? ""}
+                            onChange={(e) => updateLevelObjectiveByIndex(index, e.target.value)}
+                            style={styles.fieldTextarea}
+                          />
+                        </div>
+
+                        <div style={styles.levelFieldItem}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorTimeLimitSeconds", "Time Limit (seconds)")}
+                          </label>
+                          <input
+                            type="number"
+                            min={30}
+                            max={3600}
+                            value={slot.mapData.config.timeLimitSeconds}
+                            onChange={(e) => updateLevelTimeLimitByIndex(index, Number(e.target.value))}
+                            style={styles.fieldInput}
+                          />
+                        </div>
+
+                        <div style={styles.levelFieldItem}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorTimeStarThreshold", "Time Star Threshold (%)")}
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={levelTimeStarThresholdPercent}
+                            onChange={(e) =>
+                              updateLevelTimeStarThresholdByIndex(index, Number(e.target.value))
+                            }
+                            style={styles.fieldInput}
+                          />
+                        </div>
+
+                        <div style={styles.levelFieldItem}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorEstimatedSteps", "Estimated Steps")}
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={1000}
+                            value={slot.mapData.config.estimatedSteps}
+                            onChange={(e) =>
+                              updateLevelEstimatedStepsByIndex(index, Number(e.target.value))
+                            }
+                            style={styles.fieldInput}
+                          />
+                        </div>
+
+                        <div style={styles.levelFieldItem}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorBlockLimitLabel", "Block Limit:")}
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={slot.mapData.blockConstraints.blockLimit ?? ""}
+                            onChange={(e) => updateLevelBlockLimitByIndex(index, e.target.value)}
+                            placeholder="30"
+                            style={styles.fieldInput}
+                          />
+                        </div>
+
+                        <div style={styles.levelFieldItem}>
+                          <label style={styles.fieldLabel}>
+                            {tt("mapEditorWinCondition", "Win Condition")}
+                          </label>
+                          <select
+                            value={slot.mapData.config.winCondition}
+                            onChange={(e) =>
+                              updateLevelWinConditionByIndex(
+                                index,
+                                Number(e.target.value) as 1 | 2,
+                              )
+                            }
+                            style={styles.fieldSelect}
+                          >
+                            <option value={1}>{tt("mapEditorReachGoal", "Reach Goal")}</option>
+                            <option value={2}>{tt("mapEditorCollectFruits", "Collect Fruits")}</option>
+                          </select>
+                        </div>
+
+                        {slot.mapData.config.winCondition === 2 && (
+                          <div style={styles.levelFieldItem}>
+                            <label style={styles.fieldLabel}>
+                              {tt("mapEditorRequiredFruits", "Required Fruits")}
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={slot.mapData.config.requiredFruits ?? 0}
+                              onChange={(e) =>
+                                updateLevelRequiredFruitsByIndex(index, Number(e.target.value))
+                              }
+                              style={styles.fieldInput}
+                            />
+                          </div>
+                        )}
+
+                        <div style={{ ...styles.levelActionRow, ...styles.levelActionRowSpan2 }}>
+                          <button
+                            type="button"
+                            style={styles.smallButton}
+                            onClick={() => {
+                              selectLevel(index);
+                              setCurrentStep(3);
+                            }}
+                          >
+                            {tt("mapEditorWizardDesignMap", "Design map")}
+                          </button>
+                          <button
+                            type="button"
+                            style={{ ...styles.smallButton, ...styles.dangerButton }}
+                            onClick={() => removeLevel(index)}
+                            disabled={hydratedLevelSlots.length <= 1}
+                          >
+                            {tt("mapEditorRemove", "Remove")}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </section>
+          )}
 
-          <aside style={styles.rightSidebar}>
-            <MapEditorControls
-              sectionMode="right"
-              editorStore={store}
-              editingMapId={mapId}
-              loadedMapContentVersion={editingMapContentVersion}
-              editorMode={routeState?.mode}
-              initialSelectedTagNames={editingMapTagNames}
-              initialAvatarUrl={editingMapAvatarUrl}
-              initialHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
-              mapCatalogTitle={mapCatalogTitle}
-              onMapCatalogTitleChange={handleMapCatalogTitleChange}
-              levelHints={levelSlots[activeLevelIndex]?.hints ?? [""]}
-              onLevelHintsChange={updateLevelHints}
-              buildUploadLevels={buildUploadLevels}
-              getMapFormMeta={getMapFormMeta}
-              levelSlotCount={levelSlots.length}
-              mapData={mapData}
-              userPlan={userPlan}
-              activeLayer={activeLayer}
-              selectedTile={selectedTile}
-              selectedObjectId={selectedObjectId}
-              selectedTool={selectedTool}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onTileSelect={handleTileSelect}
-              onObjectSelect={handleObjectSelect}
-              onPortalColorChange={handlePortalColorChange}
-              onToolSelect={handleToolSelect}
-              onResize={handleResize}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onTypeChange={handleTypeChange}
-              onNameChange={handleNameChange}
-              onDescriptionChange={handleDescriptionChange}
-              onDifficultyChange={handleDifficultyChange}
-              onTimeLimitChange={handleTimeLimitChange}
-              onTimeStarThresholdChange={handleTimeStarThresholdChange}
-              onEstimatedStepsChange={handleEstimatedStepsChange}
-              onWinConditionChange={handleWinConditionChange}
-              onLevelObjectiveChange={handleLevelObjectiveChange}
-              onRequiredFruitsChange={handleRequiredFruitsChange}
-              onPriceChange={handlePriceChange}
-              freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
-              onFreeTrialAttemptLimitChange={setMapFreeTrialAttemptLimit}
-              onBlockLimitChange={handleBlockLimitChange}
-              onAllowedBlocksChange={handleAllowedBlocksChange}
-              onRequiredBlocksChange={handleRequiredBlocksChange}
-              onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
-              onObjectMetadataChange={handleObjectMetadataChange}
-            />
-          </aside>
-        </div>
+          {currentStep === 3 && (
+            <div style={styles.mainContent}>
+              <aside style={styles.leftSidebar}>
+                <MapEditorControls
+                  sectionMode="left"
+                  editingMapId={mapId}
+                  loadedMapContentVersion={editingMapContentVersion}
+                  editorMode={routeState?.mode}
+                  initialSelectedTagNames={editingMapTagNames}
+                  initialAvatarUrl={editingMapAvatarUrl}
+                  initialHints={activeLevel?.hints ?? [""]}
+                  mapCatalogTitle={mapCatalogTitle}
+                  onMapCatalogTitleChange={handleMapCatalogTitleChange}
+                  levelHints={activeLevel?.hints ?? [""]}
+                  onLevelHintsChange={updateLevelHints}
+                  buildUploadLevels={buildUploadLevels}
+                  getMapFormMeta={getMapFormMeta}
+                  levelSlotCount={levelSlots.length}
+                  currentLevelIndex={activeLevelIndex}
+                  onCurrentLevelIndexChange={selectLevel}
+                  mapData={mapData}
+                  userPlan={userPlan}
+                  activeLayer={activeLayer}
+                  selectedTile={selectedTile}
+                  selectedObjectId={selectedObjectId}
+                  selectedTool={selectedTool}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onTileSelect={handleTileSelect}
+                  onObjectSelect={handleObjectSelect}
+                  onPortalColorChange={handlePortalColorChange}
+                  onToolSelect={handleToolSelect}
+                  onResize={handleResize}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onTypeChange={handleTypeChange}
+                  onNameChange={handleNameChange}
+                  onDescriptionChange={handleDescriptionChange}
+                  onDifficultyChange={handleDifficultyChange}
+                  onTimeLimitChange={handleTimeLimitChange}
+                  onTimeStarThresholdChange={handleTimeStarThresholdChange}
+                  onEstimatedStepsChange={handleEstimatedStepsChange}
+                  onWinConditionChange={handleWinConditionChange}
+                  onLevelObjectiveChange={handleLevelObjectiveChange}
+                  onPriceChange={handlePriceChange}
+                  freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+                  onFreeTrialAttemptLimitChange={handleFreeTrialAttemptLimitChange}
+                  onBlockLimitChange={handleBlockLimitChange}
+                  onAllowedBlocksChange={handleAllowedBlocksChange}
+                  onRequiredBlocksChange={handleRequiredBlocksChange}
+                  onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+                  onObjectMetadataChange={handleObjectMetadataChange}
+                  avatarDraftFile={draftAvatarFile}
+                  onAvatarDraftFileChange={setDraftAvatarFile}
+                  galleryDraftFiles={draftGalleryFiles}
+                  onGalleryDraftFilesChange={setDraftGalleryFiles}
+                />
+              </aside>
+
+              <section style={styles.canvasPanel}>
+                <div style={styles.canvasToolbar}>
+                  <div style={styles.zoomGroup}>
+                    <button
+                      style={styles.zoomButton}
+                      onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <span style={styles.zoomText}>{Math.round(zoom * 100)}%</span>
+                    <button
+                      style={styles.zoomButton}
+                      onClick={() => setZoom((z) => Math.min(2.5, z + 0.1))}
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                    <button
+                      style={styles.zoomButton}
+                      onClick={() => setZoom(1)}
+                      title={tt("mapEditorResetZoom", "Reset zoom")}
+                    >
+                      <Scan size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div style={styles.canvasContainer}>
+                  <div style={styles.canvasGridBackdrop}>
+                    <div
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "center center",
+                        transition: "transform 0.2s ease",
+                        display: "inline-block",
+                      }}
+                    >
+                      <EditorCanvas store={store} />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <aside style={styles.rightSidebar}>
+                <MapEditorControls
+                  sectionMode="right"
+                  editorStore={store}
+                  editingMapId={mapId}
+                  loadedMapContentVersion={editingMapContentVersion}
+                  editorMode={routeState?.mode}
+                  initialSelectedTagNames={editingMapTagNames}
+                  initialAvatarUrl={editingMapAvatarUrl}
+                  initialHints={activeLevel?.hints ?? [""]}
+                  mapCatalogTitle={mapCatalogTitle}
+                  onMapCatalogTitleChange={handleMapCatalogTitleChange}
+                  levelHints={activeLevel?.hints ?? [""]}
+                  onLevelHintsChange={updateLevelHints}
+                  buildUploadLevels={buildUploadLevels}
+                  getMapFormMeta={getMapFormMeta}
+                  levelSlotCount={levelSlots.length}
+                  currentLevelIndex={activeLevelIndex}
+                  onCurrentLevelIndexChange={selectLevel}
+                  mapData={mapData}
+                  userPlan={userPlan}
+                  activeLayer={activeLayer}
+                  selectedTile={selectedTile}
+                  selectedObjectId={selectedObjectId}
+                  selectedTool={selectedTool}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onTileSelect={handleTileSelect}
+                  onObjectSelect={handleObjectSelect}
+                  onPortalColorChange={handlePortalColorChange}
+                  onToolSelect={handleToolSelect}
+                  onResize={handleResize}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onTypeChange={handleTypeChange}
+                  onNameChange={handleNameChange}
+                  onDescriptionChange={handleDescriptionChange}
+                  onDifficultyChange={handleDifficultyChange}
+                  onTimeLimitChange={handleTimeLimitChange}
+                  onTimeStarThresholdChange={handleTimeStarThresholdChange}
+                  onEstimatedStepsChange={handleEstimatedStepsChange}
+                  onWinConditionChange={handleWinConditionChange}
+                  onLevelObjectiveChange={handleLevelObjectiveChange}
+                  onRequiredFruitsChange={handleRequiredFruitsChange}
+                  onPriceChange={handlePriceChange}
+                  freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+                  onFreeTrialAttemptLimitChange={handleFreeTrialAttemptLimitChange}
+                  onBlockLimitChange={handleBlockLimitChange}
+                  onAllowedBlocksChange={handleAllowedBlocksChange}
+                  onRequiredBlocksChange={handleRequiredBlocksChange}
+                  onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+                  onObjectMetadataChange={handleObjectMetadataChange}
+                  avatarDraftFile={draftAvatarFile}
+                  onAvatarDraftFileChange={setDraftAvatarFile}
+                  galleryDraftFiles={draftGalleryFiles}
+                  onGalleryDraftFilesChange={setDraftGalleryFiles}
+                  allowedRightTabs={["canvas", "level", "objects"]}
+                  initialRightTab="level"
+                />
+              </aside>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div style={styles.stepContentPanel}>
+              <div style={styles.stepIntroCard}>
+                <h2 style={styles.stepHeading}>
+                  {tt("mapEditorWizardStep4Heading", "Step 4 - Block rules")}
+                </h2>
+              </div>
+
+              <div style={styles.rulesLayout}>
+                <aside style={styles.rulesLevelList}>
+                  {hydratedLevelSlots.map((slot, index) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      style={{
+                        ...styles.rulesLevelButton,
+                        ...(index === activeLevelIndex ? styles.rulesLevelButtonActive : {}),
+                      }}
+                      onClick={() => selectLevel(index)}
+                    >
+                      <span>
+                        {tt("mapEditorLevelButton", "Level {n}").replace(
+                          "{n}",
+                          String(index + 1),
+                        )}
+                      </span>
+                      <strong>
+                        {slot.mapData.config.name ||
+                          tt("mapEditorLevelButton", "Level {n}").replace(
+                            "{n}",
+                            String(index + 1),
+                          )}
+                      </strong>
+                    </button>
+                  ))}
+                </aside>
+
+                <section style={styles.rulesControlPanel}>
+                  <MapEditorControls
+                    sectionMode="right"
+                    editorStore={store}
+                    editingMapId={mapId}
+                    loadedMapContentVersion={editingMapContentVersion}
+                    editorMode={routeState?.mode}
+                    initialSelectedTagNames={editingMapTagNames}
+                    initialAvatarUrl={editingMapAvatarUrl}
+                    initialHints={activeLevel?.hints ?? [""]}
+                    mapCatalogTitle={mapCatalogTitle}
+                    onMapCatalogTitleChange={handleMapCatalogTitleChange}
+                    levelHints={activeLevel?.hints ?? [""]}
+                    onLevelHintsChange={updateLevelHints}
+                    buildUploadLevels={buildUploadLevels}
+                    getMapFormMeta={getMapFormMeta}
+                    levelSlotCount={levelSlots.length}
+                    mapData={mapData}
+                    userPlan={userPlan}
+                    activeLayer={activeLayer}
+                    selectedTile={selectedTile}
+                    selectedObjectId={selectedObjectId}
+                    selectedTool={selectedTool}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    onTileSelect={handleTileSelect}
+                    onObjectSelect={handleObjectSelect}
+                    onPortalColorChange={handlePortalColorChange}
+                    onToolSelect={handleToolSelect}
+                    onResize={handleResize}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    onTypeChange={handleTypeChange}
+                    onNameChange={handleNameChange}
+                    onDescriptionChange={handleDescriptionChange}
+                    onDifficultyChange={handleDifficultyChange}
+                    onTimeLimitChange={handleTimeLimitChange}
+                    onTimeStarThresholdChange={handleTimeStarThresholdChange}
+                    onEstimatedStepsChange={handleEstimatedStepsChange}
+                    onWinConditionChange={handleWinConditionChange}
+                    onLevelObjectiveChange={handleLevelObjectiveChange}
+                    onRequiredFruitsChange={handleRequiredFruitsChange}
+                    onPriceChange={handlePriceChange}
+                    freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+                    onFreeTrialAttemptLimitChange={handleFreeTrialAttemptLimitChange}
+                    onBlockLimitChange={handleBlockLimitChange}
+                    onAllowedBlocksChange={handleAllowedBlocksChange}
+                    onRequiredBlocksChange={handleRequiredBlocksChange}
+                    onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+                    onObjectMetadataChange={handleObjectMetadataChange}
+                    avatarDraftFile={draftAvatarFile}
+                    onAvatarDraftFileChange={setDraftAvatarFile}
+                    galleryDraftFiles={draftGalleryFiles}
+                    onGalleryDraftFilesChange={setDraftGalleryFiles}
+                    allowedRightTabs={["rules"]}
+                    initialRightTab="rules"
+                    hideRightPanelTabBar
+                  />
+                </section>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 5 && activeLevel && (
+            <div style={styles.stepContentPanel}>
+              <div style={styles.stepIntroCard}>
+                <h2 style={styles.stepHeading}>
+                  {tt("mapEditorWizardStep5Heading", "Step 5 - Hints and sample solution")}
+                </h2>
+              </div>
+
+              <div style={styles.hintsLayout}>
+                <aside style={styles.rulesLevelList}>
+                  {hydratedLevelSlots.map((slot, index) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      style={{
+                        ...styles.rulesLevelButton,
+                        ...(index === activeLevelIndex ? styles.rulesLevelButtonActive : {}),
+                      }}
+                      onClick={() => selectLevel(index)}
+                    >
+                      <span>
+                        {tt("mapEditorLevelButton", "Level {n}").replace(
+                          "{n}",
+                          String(index + 1),
+                        )}
+                      </span>
+                      <strong>
+                        {slot.mapData.config.name ||
+                          tt("mapEditorLevelButton", "Level {n}").replace(
+                            "{n}",
+                            String(index + 1),
+                          )}
+                      </strong>
+                    </button>
+                  ))}
+                </aside>
+
+                <section style={styles.hintsPanel}>
+                  <h3 style={styles.sectionTitlePlain}>
+                    {tt("mapEditorWizardHintScheduleTitle", "Hint schedule - Level {n}").replace(
+                      "{n}",
+                      String(activeLevelIndex + 1),
+                    )}
+                  </h3>
+                  {activeLevel.hints.map((hint, hintIndex) => (
+                    <div key={`hint-row-${hintIndex}`} style={styles.hintRow}>
+                      <div style={styles.hintInputWrap}>
+                        <label style={styles.fieldLabel}>
+                          {tt("mapEditorHintNumber", "Hint {n}").replace(
+                            "{n}",
+                            String(hintIndex + 1),
+                          )}
+                        </label>
+                        <input
+                          value={hint}
+                          onChange={(e) => {
+                            const nextHints = [...activeLevel.hints];
+                            nextHints[hintIndex] = e.target.value;
+                            updateLevelHints(nextHints);
+                          }}
+                          style={styles.fieldInput}
+                          placeholder={tt("mapEditorHintNumber", "Hint {n}").replace(
+                            "{n}",
+                            String(hintIndex + 1),
+                          )}
+                        />
+                      </div>
+
+                      <div style={styles.failureInputWrap}>
+                        <label style={styles.fieldLabel}>
+                          {tt(
+                            "mapEditorWizardUnlockAfterFailures",
+                            "Unlock after failures",
+                          )}
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={
+                            normalizeHintUnlockFailures(
+                              activeLevel.hintUnlockFailures,
+                              activeLevel.hints.length,
+                            )[hintIndex] ?? hintIndex + 1
+                          }
+                          onChange={(e) =>
+                            updateActiveLevelHintUnlockFailure(
+                              hintIndex,
+                              Math.max(1, Number(e.target.value) || 1),
+                            )
+                          }
+                          style={styles.fieldInput}
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={styles.levelActionRow}>
+                    {activeLevel.hints.length < 3 && (
+                      <button
+                        type="button"
+                        style={styles.smallButton}
+                        onClick={() => updateLevelHints([...activeLevel.hints, ""])}
+                      >
+                        {tt("mapEditorAddHint", "Add Hint")}
+                      </button>
+                    )}
+                    {activeLevel.hints.length > 1 && (
+                      <button
+                        type="button"
+                        style={{ ...styles.smallButton, ...styles.dangerButton }}
+                        onClick={() => updateLevelHints(activeLevel.hints.slice(0, -1))}
+                      >
+                        {tt("mapEditorWizardRemoveHint", "Remove Hint")}
+                      </button>
+                    )}
+                  </div>
+
+                  <label style={styles.fieldLabel}>
+                    {tt("mapEditorWizardSampleSolution", "Sample solution")}
+                  </label>
+                  <textarea
+                    value={activeLevel.sampleSolution}
+                    onChange={(e) =>
+                      updateLevelSlot(activeLevelIndex, (slot) => ({
+                        ...slot,
+                        sampleSolution: e.target.value,
+                      }))
+                    }
+                    style={styles.fieldTextarea}
+                    rows={6}
+                    placeholder={tt(
+                      "mapEditorWizardSampleSolutionPlaceholder",
+                      "Write the sample solution",
+                    )}
+                  />
+
+                  <label style={styles.fieldLabel}>
+                    {tt(
+                      "mapEditorWizardSampleUnlockAfterFailures",
+                      "Unlock sample solution after failures",
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={Math.max(1, activeLevel.sampleSolutionUnlockFailures || 1)}
+                    onChange={(e) =>
+                      updateLevelSlot(activeLevelIndex, (slot) => ({
+                        ...slot,
+                        sampleSolutionUnlockFailures: Math.max(1, Number(e.target.value) || 1),
+                      }))
+                    }
+                    style={styles.fieldInput}
+                  />
+                </section>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 6 && (
+            <div style={styles.stepContentPanel}>
+              <div style={styles.stepIntroCard}>
+                <h2 style={styles.stepHeading}>
+                  {tt("mapEditorWizardStep6Heading", "Step 6 - Review and submit")}
+                </h2>
+              </div>
+
+              <div style={styles.reviewLayout}>
+                <section style={styles.reviewMainPanel}>
+                  {hydratedLevelSlots.map((slot, index) => {
+                    const checks = [
+                      {
+                        label: tt("mapEditorWizardChecklistLevelName", "Level name"),
+                        pass: slot.mapData.config.name.trim().length > 0,
+                      },
+                      {
+                        label: tt("mapEditorWizardChecklistMapDesigned", "Map is designed"),
+                        pass: hasConfiguredMap(slot.mapData),
+                      },
+                      {
+                        label: tt("mapEditorWizardChecklistBlockRules", "Block rules are valid"),
+                        pass: hasValidBlockRules(slot.mapData),
+                      },
+                      {
+                        label: tt(
+                          "mapEditorWizardChecklistHints",
+                          "Hints and unlock schedule",
+                        ),
+                        pass: slot.hints.some((hint) => hint.trim().length > 0),
+                      },
+                      {
+                        label: tt("mapEditorWizardChecklistSample", "Sample solution"),
+                        pass: slot.sampleSolution.trim().length > 0,
+                      },
+                    ];
+
+                    return (
+                      <div key={slot.id} style={styles.reviewLevelCard}>
+                        <h4 style={styles.reviewLevelTitle}>
+                          {tt("mapEditorLevelButton", "Level {n}").replace(
+                            "{n}",
+                            String(index + 1),
+                          )}
+                          : {slot.mapData.config.name || tt("mapEditorUntitledMap", "Untitled")}
+                        </h4>
+                        <div style={styles.reviewChecklist}>
+                          {checks.map((check) => (
+                            <div
+                              key={`${slot.id}-${check.label}`}
+                              style={{
+                                ...styles.reviewCheckItem,
+                                ...(check.pass ? styles.reviewCheckPass : styles.reviewCheckFail),
+                              }}
+                            >
+                              {check.pass
+                                ? tt("mapEditorWizardChecklistPass", "PASS")
+                                : tt("mapEditorWizardChecklistTodo", "TODO")} - {check.label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                </section>
+
+                <aside style={styles.reviewSidePanel}>
+                  <MapEditorControls
+                    sectionMode="right"
+                    editorStore={store}
+                    editingMapId={mapId}
+                    loadedMapContentVersion={editingMapContentVersion}
+                    editorMode={routeState?.mode}
+                    initialSelectedTagNames={editingMapTagNames}
+                    initialAvatarUrl={editingMapAvatarUrl}
+                    initialHints={activeLevel?.hints ?? [""]}
+                    mapCatalogTitle={mapCatalogTitle}
+                    onMapCatalogTitleChange={handleMapCatalogTitleChange}
+                    levelHints={activeLevel?.hints ?? [""]}
+                    onLevelHintsChange={updateLevelHints}
+                    buildUploadLevels={buildUploadLevels}
+                    getMapFormMeta={getMapFormMeta}
+                    levelSlotCount={levelSlots.length}
+                    mapData={mapData}
+                    userPlan={userPlan}
+                    activeLayer={activeLayer}
+                    selectedTile={selectedTile}
+                    selectedObjectId={selectedObjectId}
+                    selectedTool={selectedTool}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    onTileSelect={handleTileSelect}
+                    onObjectSelect={handleObjectSelect}
+                    onPortalColorChange={handlePortalColorChange}
+                    onToolSelect={handleToolSelect}
+                    onResize={handleResize}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    onTypeChange={handleTypeChange}
+                    onNameChange={handleNameChange}
+                    onDescriptionChange={handleDescriptionChange}
+                    onDifficultyChange={handleDifficultyChange}
+                    onTimeLimitChange={handleTimeLimitChange}
+                    onTimeStarThresholdChange={handleTimeStarThresholdChange}
+                    onEstimatedStepsChange={handleEstimatedStepsChange}
+                    onWinConditionChange={handleWinConditionChange}
+                    onLevelObjectiveChange={handleLevelObjectiveChange}
+                    onRequiredFruitsChange={handleRequiredFruitsChange}
+                    onPriceChange={handlePriceChange}
+                    freeTrialAttemptLimit={mapFreeTrialAttemptLimit}
+                    onFreeTrialAttemptLimitChange={handleFreeTrialAttemptLimitChange}
+                    onBlockLimitChange={handleBlockLimitChange}
+                    onAllowedBlocksChange={handleAllowedBlocksChange}
+                    onRequiredBlocksChange={handleRequiredBlocksChange}
+                    onObjectDefinitionsLoaded={handleObjectDefinitionsLoaded}
+                    onObjectMetadataChange={handleObjectMetadataChange}
+                    avatarDraftFile={draftAvatarFile}
+                    onAvatarDraftFileChange={setDraftAvatarFile}
+                    galleryDraftFiles={draftGalleryFiles}
+                    onGalleryDraftFilesChange={setDraftGalleryFiles}
+                    allowedRightTabs={["map"]}
+                    initialRightTab="map"
+                    registerSaveLevelContent={handleRegisterSaveLevelContent}
+                    onSavingLevelContentChange={handleSavingLevelContentChange}
+                  />
+                </aside>
+              </div>
+            </div>
+          )}
+
+          <div style={styles.stepFooterNav}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={goPreviousStep}
+              disabled={currentStep <= 1}
+            >
+              {tt("mapEditorWizardPreviousStep", "Previous step")}
+            </button>
+            {currentStep < 6 ? (
+              <button
+                type="button"
+                style={styles.primaryButton}
+                onClick={goNextStep}
+              >
+                {tt("mapEditorWizardNextStep", "Next step")}
+              </button>
+            ) : (
+              <span aria-hidden style={styles.stepFooterSpacer} />
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -1331,6 +2595,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     minWidth: 0,
     textAlign: "center",
+    gap: "4px",
   },
   headerRight: {
     display: "flex",
@@ -1360,49 +2625,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--danger)",
     margin: "6px 0 0",
   },
-  levelTabs: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: "10px",
-  },
-  levelTab: {
-    padding: "6px 12px",
-    fontSize: "12px",
-    fontWeight: 600,
-    borderRadius: "8px",
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    color: "var(--text-2)",
-    cursor: "pointer",
-  },
-  levelTabActive: {
-    border: "1px solid var(--primary)",
-    background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
-    color: "var(--primary)",
-  },
-  levelTabAdd: {
-    padding: "6px 12px",
-    fontSize: "12px",
-    fontWeight: 600,
-    borderRadius: "8px",
-    border: "1px dashed var(--border)",
-    background: "var(--surface-2)",
-    color: "var(--text-2)",
-    cursor: "pointer",
-  },
-  levelTabRemove: {
-    padding: "6px 12px",
-    fontSize: "12px",
-    fontWeight: 600,
-    borderRadius: "8px",
-    border: "1px solid color-mix(in srgb, var(--danger) 40%, var(--border))",
-    background: "color-mix(in srgb, var(--danger) 14%, var(--surface))",
-    color: "var(--danger)",
-    cursor: "pointer",
-  },
   planBlockCard: {
     display: "grid",
     gap: "10px",
@@ -1427,6 +2649,281 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     gap: "7px",
+  },
+  stepperRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+    gap: "10px",
+    width: "100%",
+    maxWidth: "1800px",
+  },
+  stepCard: {
+    borderRadius: "12px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    cursor: "pointer",
+    textAlign: "left",
+    color: "var(--text)",
+  },
+  stepCardActive: {
+    border: "1px solid var(--primary)",
+    boxShadow: "0 10px 24px color-mix(in srgb, var(--primary) 28%, transparent)",
+  },
+  stepCardDone: {
+    background:
+      "linear-gradient(180deg, color-mix(in srgb, var(--success) 12%, var(--surface)), var(--surface-2))",
+  },
+  stepBadge: {
+    fontSize: "11px",
+    color: "var(--text-2)",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    fontWeight: 700,
+  },
+  stepTitle: {
+    fontSize: "14px",
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  stepSummary: {
+    fontSize: "12px",
+    color: "var(--text-2)",
+  },
+  stepContentPanel: {
+    width: "100%",
+    maxWidth: "1800px",
+    display: "grid",
+    gap: "12px",
+  },
+  stepIntroCard: {
+    padding: "14px 16px",
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+  },
+  stepHeading: {
+    margin: 0,
+    fontSize: "20px",
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  stepNote: {
+    margin: "6px 0 0",
+    fontSize: "13px",
+    color: "var(--text-2)",
+  },
+  metadataGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gap: "12px",
+  },
+  formCard: {
+    padding: "14px",
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    display: "grid",
+    gap: "8px",
+  },
+  fieldLabel: {
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "var(--text-2)",
+  },
+  fieldInput: {
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "9px 10px",
+    fontSize: "13px",
+  },
+  fieldTextarea: {
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "9px 10px",
+    fontSize: "13px",
+    resize: "vertical",
+  },
+  fieldSelect: {
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "9px 10px",
+    fontSize: "13px",
+  },
+  inlineHintText: {
+    fontSize: "12px",
+    color: "var(--text-2)",
+    margin: 0,
+  },
+  radioRow: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  radioLabel: {
+    display: "inline-flex",
+    gap: "6px",
+    alignItems: "center",
+    fontSize: "13px",
+    color: "var(--text)",
+  },
+  levelHeaderRow: {
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  levelListGrid: {
+    display: "grid",
+    gap: "10px",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  },
+  levelCard: {
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "12px",
+    display: "grid",
+    gap: "10px",
+  },
+  levelCardActive: {
+    border: "1px solid var(--primary)",
+    boxShadow: "0 10px 22px color-mix(in srgb, var(--primary) 25%, transparent)",
+  },
+  levelCardWarning: {
+    border: "1px solid color-mix(in srgb, var(--warning) 40%, var(--border))",
+  },
+  levelCardDragOver: {
+    outline: "2px dashed var(--primary)",
+    outlineOffset: "2px",
+  },
+  levelCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+  },
+  levelOrderBadge: {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "var(--primary)",
+    borderRadius: "999px",
+    border: "1px solid color-mix(in srgb, var(--primary) 40%, var(--border))",
+    padding: "4px 8px",
+    background: "color-mix(in srgb, var(--primary) 14%, var(--surface))",
+  },
+  warningBadge: {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "var(--warning)",
+    borderRadius: "999px",
+    border: "1px solid color-mix(in srgb, var(--warning) 45%, var(--border))",
+    padding: "4px 8px",
+    background: "color-mix(in srgb, var(--warning) 16%, var(--surface))",
+  },
+  levelCardBody: {
+    display: "grid",
+    gridTemplateColumns: "96px minmax(0, 1fr)",
+    gap: "10px",
+    alignItems: "start",
+  },
+  minimapWrap: {
+    width: "92px",
+    height: "92px",
+    borderRadius: "10px",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  minimapImage: {
+    width: "100%",
+    height: "100%",
+    imageRendering: "pixelated",
+    objectFit: "contain",
+  },
+  minimapFallback: {
+    fontSize: "11px",
+    color: "var(--text-2)",
+  },
+  levelFieldStack: {
+    display: "grid",
+    gap: "10px",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  },
+  levelFieldItem: {
+    display: "grid",
+    gap: "6px",
+    alignContent: "start",
+  },
+  levelFieldItemSpan2: {
+    gridColumn: "1 / -1",
+  },
+  levelActionRow: {
+    display: "flex",
+    gap: "8px",
+    marginTop: "4px",
+    flexWrap: "wrap",
+  },
+  levelActionRowSpan2: {
+    gridColumn: "1 / -1",
+  },
+  smallButton: {
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "7px 10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  dangerButton: {
+    border: "1px solid color-mix(in srgb, var(--danger) 38%, var(--border))",
+    color: "var(--danger)",
+    background: "color-mix(in srgb, var(--danger) 10%, var(--surface))",
+  },
+  primaryButton: {
+    border: "1px solid var(--primary)",
+    borderRadius: "10px",
+    background: "var(--primary)",
+    color: "#fff",
+    padding: "10px 14px",
+    fontSize: "13px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  secondaryButton: {
+    border: "1px solid var(--border)",
+    borderRadius: "10px",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "10px 14px",
+    fontSize: "13px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  stepFooterNav: {
+    width: "100%",
+    maxWidth: "1800px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "10px",
+  },
+  stepFooterSpacer: {
+    width: "1px",
+    height: "1px",
   },
   mainContent: {
     display: "grid",
@@ -1514,5 +3011,130 @@ const styles: Record<string, React.CSSProperties> = {
       "linear-gradient(45deg, color-mix(in srgb, var(--text-2) 15%, transparent) 25%, transparent 25%), linear-gradient(-45deg, color-mix(in srgb, var(--text-2) 15%, transparent) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--text-2) 15%, transparent) 75%), linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--text-2) 15%, transparent) 75%)",
     backgroundSize: "24px 24px",
     backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0px",
+  },
+
+  rulesLayout: {
+    display: "grid",
+    gridTemplateColumns: "280px minmax(0, 1fr)",
+    gap: "12px",
+  },
+  rulesLevelList: {
+    display: "grid",
+    gap: "8px",
+    alignContent: "start",
+  },
+  rulesLevelButton: {
+    borderRadius: "10px",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "10px",
+    display: "grid",
+    gap: "2px",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  rulesLevelButtonActive: {
+    border: "1px solid var(--primary)",
+    background: "color-mix(in srgb, var(--primary) 16%, var(--surface))",
+  },
+  rulesControlPanel: {
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    padding: "10px",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+  },
+  hintsLayout: {
+    display: "grid",
+    gridTemplateColumns: "280px minmax(0, 1fr)",
+    gap: "12px",
+  },
+  hintsPanel: {
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "14px",
+    display: "grid",
+    gap: "8px",
+  },
+  sectionTitlePlain: {
+    margin: "0 0 4px",
+    fontSize: "16px",
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  hintRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 170px",
+    gap: "8px",
+    alignItems: "end",
+  },
+  hintInputWrap: {
+    display: "grid",
+    gap: "4px",
+  },
+  failureInputWrap: {
+    display: "grid",
+    gap: "4px",
+  },
+
+  reviewLayout: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 360px",
+    gap: "12px",
+  },
+  reviewMainPanel: {
+    display: "grid",
+    gap: "10px",
+  },
+  reviewSidePanel: {
+    borderRadius: "14px",
+    border: "1px solid var(--border)",
+    padding: "10px",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+  },
+  reviewLevelCard: {
+    borderRadius: "12px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "12px",
+    display: "grid",
+    gap: "8px",
+  },
+  reviewLevelTitle: {
+    margin: 0,
+    fontSize: "14px",
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  reviewChecklist: {
+    display: "grid",
+    gap: "6px",
+  },
+  reviewCheckItem: {
+    padding: "7px 9px",
+    borderRadius: "8px",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
+  reviewCheckPass: {
+    border: "1px solid color-mix(in srgb, var(--success) 40%, var(--border))",
+    color: "var(--success)",
+    background: "color-mix(in srgb, var(--success) 10%, var(--surface))",
+  },
+  reviewCheckFail: {
+    border: "1px solid color-mix(in srgb, var(--warning) 40%, var(--border))",
+    color: "var(--warning)",
+    background: "color-mix(in srgb, var(--warning) 10%, var(--surface))",
+  },
+  saveActionBar: {
+    borderRadius: "12px",
+    border: "1px solid var(--border)",
+    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    padding: "10px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
   },
 };

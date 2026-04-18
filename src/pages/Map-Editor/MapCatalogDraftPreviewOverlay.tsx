@@ -27,6 +27,8 @@ export type CatalogListingSaveMode = "overwrite" | "newListing";
 export type MapCatalogDraftPreviewOverlayProps = {
   open: boolean;
   onClose: () => void;
+  embedded?: boolean;
+  showBackButton?: boolean;
   persistedMapId?: string | null;
   titleValue: string;
   onTitleChange: (value: string) => void;
@@ -81,6 +83,8 @@ type GallerySlide = { url: string; kind: string; key: string; fileIndex: number 
 export function MapCatalogDraftPreviewOverlay({
   open,
   onClose,
+  embedded = false,
+  showBackButton = true,
   persistedMapId,
   titleValue,
   onTitleChange,
@@ -261,51 +265,59 @@ export function MapCatalogDraftPreviewOverlay({
   const el = (
     <div
       className={styles.page}
-      style={{ position: "fixed", inset: 0, zIndex: 100000, overflow: "auto" }}
+      style={
+        embedded
+          ? { position: "relative", inset: "unset", zIndex: 1, overflow: "visible" }
+          : { position: "fixed", inset: 0, zIndex: 100000, overflow: "auto" }
+      }
       role="dialog"
       aria-modal="true"
       aria-label={t("mapEditorCatalogPreviewTitle")}
     >
-      <div className={styles.bg} aria-hidden />
+      {!embedded && <div className={styles.bg} aria-hidden />}
       <motion.div
         className={styles.content}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.25 }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          <motion.button
-            type="button"
-            onClick={onClose}
-            className={styles.backBtn}
-            whileHover={{ x: -4 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <ArrowLeft size={18} /> {t("mapEditorCatalogPreviewBackToEditor")}
-          </motion.button>
-          <span
+        {(showBackButton || !embedded) && (
+          <div
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              padding: "6px 10px",
-              borderRadius: 8,
-              background: "rgba(59, 130, 246, 0.15)",
-              color: "#1d4ed8",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 16,
             }}
           >
-            {t("mapEditorCatalogPreviewEditBadge")}
-          </span>
-        </div>
+            {showBackButton && (
+              <motion.button
+                type="button"
+                onClick={onClose}
+                className={styles.backBtn}
+                whileHover={{ x: -4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <ArrowLeft size={18} /> {t("mapEditorCatalogPreviewBackToEditor")}
+              </motion.button>
+            )}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                padding: "6px 10px",
+                borderRadius: 8,
+                background: "rgba(59, 130, 246, 0.15)",
+                color: "#1d4ed8",
+              }}
+            >
+              {t("mapEditorCatalogPreviewEditBadge")}
+            </span>
+          </div>
+        )}
 
         {!persistedMapId ? (
           <p
@@ -987,6 +999,10 @@ export function MapCatalogDraftPreviewOverlay({
       </motion.div>
     </div>
   );
+
+  if (embedded) {
+    return el;
+  }
 
   return typeof document !== "undefined" ? createPortal(el, document.body) : null;
 }
