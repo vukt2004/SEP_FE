@@ -5,6 +5,7 @@ import {
   Video,
   ImagePlus,
   Save,
+  Send,
   X,
   Plus,
   ChevronLeft,
@@ -23,10 +24,13 @@ import styles from "@/portals/learner/pages/MapDetailPage.module.css";
 const DEFAULT_GALLERY_MAX = 20;
 
 export type CatalogListingSaveMode = "overwrite" | "newListing";
+type SaveIntent = "draft" | "submit";
 
 export type MapCatalogDraftPreviewOverlayProps = {
   open: boolean;
   onClose: () => void;
+  embedded?: boolean;
+  showBackButton?: boolean;
   persistedMapId?: string | null;
   titleValue: string;
   onTitleChange: (value: string) => void;
@@ -52,7 +56,8 @@ export type MapCatalogDraftPreviewOverlayProps = {
   onGalleryFilesAdd: (files: File[]) => void;
   onGalleryFileRemove: (index: number) => void;
   galleryMaxFiles?: number;
-  onSaveToServer: () => void | Promise<void>;
+  onSaveToServer: (options?: { submitForReview?: boolean }) => void | Promise<void>;
+  allowSubmitForReview?: boolean;
   saving: boolean;
   /** Khi đang sửa map đã có id: chọn ghi đè (PUT) hay map mới (duplicate + PUT) */
   catalogListingSaveMode?: CatalogListingSaveMode;
@@ -81,6 +86,8 @@ type GallerySlide = { url: string; kind: string; key: string; fileIndex: number 
 export function MapCatalogDraftPreviewOverlay({
   open,
   onClose,
+  embedded = false,
+  showBackButton = true,
   persistedMapId,
   titleValue,
   onTitleChange,
@@ -107,6 +114,7 @@ export function MapCatalogDraftPreviewOverlay({
   onGalleryFileRemove,
   galleryMaxFiles = DEFAULT_GALLERY_MAX,
   onSaveToServer,
+  allowSubmitForReview = false,
   saving,
   catalogListingSaveMode = "overwrite",
   onCatalogListingSaveModeChange,
@@ -116,6 +124,7 @@ export function MapCatalogDraftPreviewOverlay({
   const t = useMemo(() => getT(locale), [locale]);
   const navigate = useNavigate();
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [pendingSaveIntent, setPendingSaveIntent] = useState<SaveIntent>("draft");
   const [gallerySlideIndex, setGallerySlideIndex] = useState(0);
   const [heroLoadError, setHeroLoadError] = useState(false);
   const [keyArtLoadError, setKeyArtLoadError] = useState(false);
@@ -240,8 +249,9 @@ export function MapCatalogDraftPreviewOverlay({
     ? ROUTES.GAME_CREATION_RULE_VI
     : ROUTES.GAME_CREATION_RULE_EN;
 
-  const handleOpenSaveConfirmModal = () => {
+  const handleOpenSaveConfirmModal = (intent: SaveIntent) => {
     if (saving) return;
+    setPendingSaveIntent(intent);
     setShowSaveConfirmModal(true);
   };
 
@@ -253,7 +263,7 @@ export function MapCatalogDraftPreviewOverlay({
   const handleConfirmSaveToServer = async () => {
     if (saving) return;
     setShowSaveConfirmModal(false);
-    await onSaveToServer();
+    await onSaveToServer({ submitForReview: pendingSaveIntent === "submit" });
   };
 
   if (!open) return null;
@@ -261,51 +271,59 @@ export function MapCatalogDraftPreviewOverlay({
   const el = (
     <div
       className={styles.page}
-      style={{ position: "fixed", inset: 0, zIndex: 100000, overflow: "auto" }}
+      style={
+        embedded
+          ? { position: "relative", inset: "unset", zIndex: 1, overflow: "visible" }
+          : { position: "fixed", inset: 0, zIndex: 100000, overflow: "auto" }
+      }
       role="dialog"
       aria-modal="true"
       aria-label={t("mapEditorCatalogPreviewTitle")}
     >
-      <div className={styles.bg} aria-hidden />
+      {!embedded && <div className={styles.bg} aria-hidden />}
       <motion.div
         className={styles.content}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.25 }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          <motion.button
-            type="button"
-            onClick={onClose}
-            className={styles.backBtn}
-            whileHover={{ x: -4 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <ArrowLeft size={18} /> {t("mapEditorCatalogPreviewBackToEditor")}
-          </motion.button>
-          <span
+        {(showBackButton || !embedded) && (
+          <div
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              padding: "6px 10px",
-              borderRadius: 8,
-              background: "rgba(59, 130, 246, 0.15)",
-              color: "#1d4ed8",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 16,
             }}
           >
-            {t("mapEditorCatalogPreviewEditBadge")}
-          </span>
-        </div>
+            {showBackButton && (
+              <motion.button
+                type="button"
+                onClick={onClose}
+                className={styles.backBtn}
+                whileHover={{ x: -4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <ArrowLeft size={18} /> {t("mapEditorCatalogPreviewBackToEditor")}
+              </motion.button>
+            )}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                padding: "6px 10px",
+                borderRadius: 8,
+                background: "rgba(59, 130, 246, 0.15)",
+                color: "#1d4ed8",
+              }}
+            >
+              {t("mapEditorCatalogPreviewEditBadge")}
+            </span>
+          </div>
+        )}
 
         {!persistedMapId ? (
           <p
@@ -904,17 +922,28 @@ export function MapCatalogDraftPreviewOverlay({
                 type="button"
                 className={styles.steamFooterPrimary}
                 disabled={saving}
-                onClick={handleOpenSaveConfirmModal}
+                onClick={() => handleOpenSaveConfirmModal("draft")}
               >
                 <Save size={18} />{" "}
                 {saving
                   ? t("mapEditorCatalogPreviewSaving")
-                  : persistedMapId
-                    ? catalogListingSaveMode === "newListing"
-                      ? t("mapEditorCatalogPreviewSaveAsNewListing")
-                      : t("mapEditorCatalogPreviewSaveUpdate")
-                    : t("mapEditorCatalogPreviewSaveCreate")}
+                  : t("mapEditorCatalogPreviewSaveDraft")}
               </button>
+              {allowSubmitForReview ? (
+                <button
+                  type="button"
+                  className={styles.steamFooterSecondary}
+                  disabled={saving}
+                  onClick={() => handleOpenSaveConfirmModal("submit")}
+                  style={{
+                    borderColor: "rgba(22, 101, 52, 0.35)",
+                    color: "#166534",
+                    fontWeight: 700,
+                  }}
+                >
+                  <Send size={16} /> {t("mapEditorCatalogPreviewSaveAndSubmit")}
+                </button>
+              ) : null}
               {persistedMapId ? (
                 <button
                   type="button"
@@ -939,14 +968,22 @@ export function MapCatalogDraftPreviewOverlay({
               <div className={styles.modalOverlay} onClick={handleCloseSaveConfirmModal}>
                 <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
                   <h3 className={styles.modalTitle}>
-                    {locale.startsWith("vi")
-                      ? "Xác nhận lưu và tạo trò chơi"
-                      : "Confirm save and create game"}
+                    {pendingSaveIntent === "submit"
+                      ? locale.startsWith("vi")
+                        ? "Xác nhận lưu và gửi duyệt"
+                        : "Confirm save and submit for review"
+                      : locale.startsWith("vi")
+                        ? "Xác nhận lưu nháp trò chơi"
+                        : "Confirm save game draft"}
                   </h3>
                   <p className={styles.modalMessage}>
-                    {locale.startsWith("vi")
-                      ? "Vui lòng xem quy định tạo game/map trước khi xác nhận lưu."
-                      : "Please review the game/map creation rules before confirming save."}
+                    {pendingSaveIntent === "submit"
+                      ? locale.startsWith("vi")
+                        ? "Game sẽ được lưu và chuyển sang trạng thái chờ duyệt."
+                        : "The game will be saved and moved to pending review status."
+                      : locale.startsWith("vi")
+                        ? "Game sẽ được lưu ở trạng thái nháp."
+                        : "The game will be saved as a draft."}
                   </p>
                   <p className={styles.purchasePolicyNote}>
                     {locale.startsWith("vi") ? "Tham khảo: " : "Reference: "}
@@ -987,6 +1024,10 @@ export function MapCatalogDraftPreviewOverlay({
       </motion.div>
     </div>
   );
+
+  if (embedded) {
+    return el;
+  }
 
   return typeof document !== "undefined" ? createPortal(el, document.body) : null;
 }

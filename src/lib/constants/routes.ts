@@ -10,7 +10,7 @@ export const ROUTES = {
   SELLER_POLICY_VI: "/policy/seller/vi",
   GAME_CREATION_RULE_EN: "/policy/game-creation/en",
   GAME_CREATION_RULE_VI: "/policy/game-creation/vi",
-  MAP_EDITOR: "/map-editor",
+  MAP_EDITOR: "/game-editor",
   GAMEMENU: "/game-menu",
 
   // Learner

@@ -84,7 +84,6 @@ type MapCardProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  onSubmitForReview: (mapId: string) => void;
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
@@ -101,7 +100,6 @@ type MapListProps = {
   getDifficultyLabel: (difficulty: number) => string;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
-  onSubmitForReview: (mapId: string) => void;
   onPublish: (mapId: string) => void;
   onRate: (mapId: string) => void;
   onReport: (mapId: string) => void;
@@ -418,7 +416,6 @@ const MapCard: React.FC<MapCardProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onSubmitForReview,
   onPublish,
   onRate,
   onReport,
@@ -695,12 +692,6 @@ const MapCard: React.FC<MapCardProps> = ({
             </button>
           )}
 
-          {isAuthor && map.mapStatus === "Draft" && (
-            <button onClick={() => onSubmitForReview(map.id)} style={actionBtnStyle("success")}>
-              <Send size={14} /> {t("submitForReview")}
-            </button>
-          )}
-
           {isAuthor && map.mapStatus === "Approved" && (
             <>
               <button onClick={() => onPublish(map.id)} style={actionBtnStyle("success")}>
@@ -741,7 +732,6 @@ export const MapList: React.FC<MapListProps> = ({
   getDifficultyLabel,
   onPreview,
   onEdit,
-  onSubmitForReview,
   onPublish,
   onRate,
   onReport,
@@ -761,7 +751,6 @@ export const MapList: React.FC<MapListProps> = ({
           getDifficultyLabel={getDifficultyLabel}
           onPreview={onPreview}
           onEdit={onEdit}
-          onSubmitForReview={onSubmitForReview}
           onPublish={onPublish}
           onRate={onRate}
           onReport={onReport}
@@ -814,18 +803,6 @@ export const MyMapsPage: React.FC = () => {
     mapTitle: "",
   });
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // Modal state for submit-for-review confirmation
-  const [submitReviewModal, setSubmitReviewModal] = useState<{
-    open: boolean;
-    mapId: string | null;
-    mapTitle: string;
-  }>({
-    open: false,
-    mapId: null,
-    mapTitle: "",
-  });
-  const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
 
   // Modal state for publish confirmation
   const [publishModal, setPublishModal] = useState<{
@@ -924,38 +901,6 @@ export const MyMapsPage: React.FC = () => {
   const handleUpdateMap = (mapId: string) => {
     // Navigate to map editor with edit mode
     navigate(ROUTES.MAP_EDITOR, { state: { mapId, mode: "edit", roleContext: "learner" } });
-  };
-
-  const handleOpenSubmitReviewModal = (mapId: string) => {
-    const map = maps.find((m) => m.id === mapId);
-    setSubmitReviewModal({ open: true, mapId, mapTitle: map?.title ?? "" });
-  };
-
-  const handleCloseSubmitReviewModal = () => {
-    if (submitReviewLoading) return;
-    setSubmitReviewModal({ open: false, mapId: null, mapTitle: "" });
-  };
-
-  const handleConfirmSubmitReview = async () => {
-    if (!submitReviewModal.mapId) return;
-    try {
-      setSubmitReviewLoading(true);
-      setError(null);
-      const response = await learnerMapsApi.submitMapForReview(submitReviewModal.mapId);
-      if (response.data.isSuccess) {
-        handleCloseSubmitReviewModal();
-        fetchMaps();
-      } else {
-        setError(response.data.message || t("failedSubmitReview"));
-        handleCloseSubmitReviewModal();
-      }
-    } catch (err) {
-      setError(t("failedSubmitReview"));
-      console.error("Submit error:", err);
-      handleCloseSubmitReviewModal();
-    } finally {
-      setSubmitReviewLoading(false);
-    }
   };
 
   const handleOpenPublishModal = (mapId: string) => {
@@ -1160,9 +1105,6 @@ export const MyMapsPage: React.FC = () => {
   const sellerPolicyRoute = locale.startsWith("vi")
     ? ROUTES.SELLER_POLICY_VI
     : ROUTES.SELLER_POLICY_EN;
-  const gameCreationRuleRoute = locale.startsWith("vi")
-    ? ROUTES.GAME_CREATION_RULE_VI
-    : ROUTES.GAME_CREATION_RULE_EN;
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
     // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
@@ -1416,7 +1358,6 @@ export const MyMapsPage: React.FC = () => {
               getDifficultyLabel={getDifficultyLabel}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
-              onSubmitForReview={handleOpenSubmitReviewModal}
               onPublish={handleOpenPublishModal}
               onRate={handleOpenRateModal}
               onReport={handleOpenReportModal}
@@ -1891,153 +1832,6 @@ export const MyMapsPage: React.FC = () => {
                 >
                   <Send size={14} />
                   {publishLoading ? t("publishing") : t("publish")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Submit for Review Confirm Modal */}
-        {submitReviewModal.open && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.55)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={handleCloseSubmitReviewModal}
-          >
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "16px",
-                padding: "28px 28px 24px",
-                maxWidth: "460px",
-                width: "90%",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Icon + heading */}
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}
-              >
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    minWidth: "44px",
-                    borderRadius: "12px",
-                    background: "rgba(34,197,94,0.14)",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Send size={20} color="#166534" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
-                    {t("submitForReviewModalTitle")}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
-                    {t("submitForReviewModalSubtitle")}
-                  </div>
-                </div>
-              </div>
-
-              {/* Map name */}
-              {submitReviewModal.mapTitle && (
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    color: "var(--text)",
-                    fontWeight: 600,
-                    marginBottom: "20px",
-                  }}
-                >
-                  {submitReviewModal.mapTitle}
-                </div>
-              )}
-
-              {/* Warning text */}
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "var(--text-2)",
-                  marginBottom: "24px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {t("submitForReviewModalWarning")}{" "}
-                <a
-                  href={gameCreationRuleRoute}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: "var(--primary)",
-                    textDecoration: "underline",
-                    textUnderlineOffset: "2px",
-                    fontWeight: 600,
-                  }}
-                >
-                  {locale.startsWith("vi")
-                    ? "Mở Game Creation Rule"
-                    : "Open game creation rule"}
-                </a>
-              </p>
-
-              {/* Buttons */}
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button
-                  onClick={handleCloseSubmitReviewModal}
-                  disabled={submitReviewLoading}
-                  style={{
-                    padding: "10px 20px",
-                    background: "transparent",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: submitReviewLoading ? "not-allowed" : "pointer",
-                    opacity: submitReviewLoading ? 0.5 : 1,
-                  }}
-                >
-                  {t("cancel")}
-                </button>
-                <button
-                  onClick={handleConfirmSubmitReview}
-                  disabled={submitReviewLoading}
-                  style={{
-                    padding: "10px 20px",
-                    background: "#166534",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: submitReviewLoading ? "not-allowed" : "pointer",
-                    opacity: submitReviewLoading ? 0.6 : 1,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <Send size={14} />
-                  {submitReviewLoading ? t("submitting") : t("submitForReview")}
                 </button>
               </div>
             </div>
