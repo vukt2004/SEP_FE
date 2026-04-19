@@ -6,6 +6,7 @@ import type { GameType } from "../../../shared/types/GameType";
 
 interface EditorCanvasProps {
   store: EditorStore;
+  zoom?: number;
 }
 
 /**
@@ -27,7 +28,7 @@ function mapTypeToGameType(mapType: "platform" | "topdown" | "snake"): GameType 
  * - Fruits and Enemies: Toggle on click (can drag)
  * - Paint and Erase: Standard drag painting
  */
-export function EditorCanvas({ store }: EditorCanvasProps) {
+export function EditorCanvas({ store, zoom = 1 }: EditorCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPainting, setIsPainting] = useState(false);
   const [, forceUpdate] = useState({});
@@ -92,8 +93,9 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    // Convert mouse position from rendered (zoomed) CSS pixels back to canvas pixels.
+    const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
     const mapData = store.getState();
     const gridPos = getGridPosition(mouseX, mouseY, mapData);
@@ -158,7 +160,11 @@ export function EditorCanvas({ store }: EditorCanvasProps) {
   return (
     <canvas
       ref={canvasRef}
-      style={styles.canvas}
+      style={{
+        ...styles.canvas,
+        width: `${mapData.config.width * mapData.config.tileSize * zoom}px`,
+        height: `${mapData.config.height * mapData.config.tileSize * zoom}px`,
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

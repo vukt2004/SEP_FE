@@ -161,6 +161,9 @@ interface MapEditorControlsProps {
   editingMapId?: string;
   editorMode?: "edit" | "view";
   initialSelectedTagNames?: string[];
+  initialSelectedLearnedTagNames?: string[];
+  onSelectedTagNamesChange?: (names: string[]) => void;
+  onSelectedLearnedTagNamesChange?: (names: string[]) => void;
   initialAvatarUrl?: string | null;
   initialHints?: string[];
   /** Multi-level: catalog title for API (map Title); optional single-level uses map name */
@@ -396,6 +399,9 @@ export function MapEditorControls({
   editingMapId,
   editorMode,
   initialSelectedTagNames = [],
+  initialSelectedLearnedTagNames = [],
+  onSelectedTagNamesChange,
+  onSelectedLearnedTagNamesChange,
   initialAvatarUrl = null,
   initialHints = [],
   mapCatalogTitle,
@@ -478,6 +484,8 @@ export function MapEditorControls({
   const [availableMapTags, setAvailableMapTags] = useState<MapTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
+  const tagSelectionTouchedRef = useRef(false);
+  const learnedTagSelectionTouchedRef = useRef(false);
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [savingMapMeta, setSavingMapMeta] = useState(false);
   const [savingLevelContent, setSavingLevelContent] = useState(false);
@@ -632,13 +640,36 @@ export function MapEditorControls({
       return [block.type, translated === key ? block.label : translated] as const;
     }),
   );
+  const availableBlockTypes = useMemo(() => availableBlocks.map((block) => block.type), [
+    availableBlocks,
+  ]);
   const normalizedAllowedBlocks = Array.from(
     new Set(mapData.blockConstraints.allowedBlocks ?? []),
   ).filter((type) => availableBlocks.some((block) => block.type === type));
+  const hasExplicitAllowedSelection = normalizedAllowedBlocks.length > 0;
+  const mandatoryAllowedBlockTypes = useMemo(() => {
+    const baseTypes = ["move_forward", "turn_left", "turn_right"];
+    if (mapData.config.type === "platform") {
+      baseTypes.push("jump");
+    }
+
+    return Array.from(new Set(baseTypes)).filter((type) => availableBlockTypes.includes(type));
+  }, [availableBlockTypes, mapData.config.type]);
+  const mandatoryAllowedBlockSet = useMemo(
+    () => new Set(mandatoryAllowedBlockTypes),
+    [mandatoryAllowedBlockTypes],
+  );
+  const effectiveAllowedBlockTypes = hasExplicitAllowedSelection
+    ? Array.from(new Set([...normalizedAllowedBlocks, ...mandatoryAllowedBlockTypes]))
+    : availableBlockTypes;
+  const effectiveAllowedBlockSet = useMemo(
+    () => new Set(effectiveAllowedBlockTypes),
+    [effectiveAllowedBlockTypes],
+  );
   const blocksAvailableForGameplay =
-    normalizedAllowedBlocks.length === 0
-      ? availableBlocks
-      : availableBlocks.filter((block) => normalizedAllowedBlocks.includes(block.type));
+    effectiveAllowedBlockTypes.length === 0
+      ? []
+      : availableBlocks.filter((block) => effectiveAllowedBlockSet.has(block.type));
   const normalizedRequiredBlocks = Array.from(
     new Map(
       mapData.blockConstraints.requiredBlocks
@@ -879,6 +910,35 @@ export function MapEditorControls({
   }, [showCatalogDraftPreview]);
 
   useEffect(() => {
+    if (!onAllowedBlocksChange) return;
+    if (!hasExplicitAllowedSelection) return;
+
+    const missingMandatory = mandatoryAllowedBlockTypes.filter(
+      (type) => !normalizedAllowedBlocks.includes(type),
+    );
+    if (missingMandatory.length === 0) return;
+
+    const merged = Array.from(new Set([...normalizedAllowedBlocks, ...mandatoryAllowedBlockTypes]));
+    onAllowedBlocksChange(
+      merged.length >= availableBlockTypes.length ? [] : merged,
+    );
+  }, [
+    availableBlockTypes.length,
+    hasExplicitAllowedSelection,
+    mandatoryAllowedBlockTypes,
+    normalizedAllowedBlocks,
+    onAllowedBlocksChange,
+  ]);
+
+  useEffect(() => {
+    tagSelectionTouchedRef.current = false;
+  }, [initialSelectedTagNames]);
+
+  useEffect(() => {
+    learnedTagSelectionTouchedRef.current = false;
+  }, [initialSelectedLearnedTagNames]);
+
+  useEffect(() => {
     if (!availableMapTags.length) {
       return;
     }
@@ -891,13 +951,38 @@ export function MapEditorControls({
     setSelectedTagIds(initialTagIds);
   }, [availableMapTags, initialSelectedTagNames]);
 
+  useEffect(() => {
+    if (!availableMapTags.length) {
+      return;
+    }
+
+    const hiddenLearnedKnowledgeTagNames = new Set([
+      "beginner",
+      "expert",
+      "easy",
+      "medium",
+      "hard",
+    ]);
+    const selectedNameSet = new Set(
+      initialSelectedLearnedTagNames.map((name) => name.toLowerCase()),
+    );
+    const initialLearnedTagIds = availableMapTags
+      .filter((tag) => !hiddenLearnedKnowledgeTagNames.has(tag.name.trim().toLowerCase()))
+      .filter((tag) => selectedNameSet.has(tag.name.toLowerCase()))
+      .map((tag) => tag.id);
+
+    setSelectedLearnedTagIds(initialLearnedTagIds);
+  }, [availableMapTags, initialSelectedLearnedTagNames]);
+
   const toggleTagSelection = (tagId: string) => {
+    tagSelectionTouchedRef.current = true;
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
   };
 
   const toggleLearnedTagSelection = (tagId: string) => {
+    learnedTagSelectionTouchedRef.current = true;
     setSelectedLearnedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
@@ -1018,19 +1103,68 @@ export function MapEditorControls({
     setPortalColorCounts(counts);
   }, [mapData.objects.items]);
 
-  const selectedTagNames = availableMapTags
-    .filter((tag) => selectedTagIds.includes(tag.id))
-    .map((tag) => tag.name);
+  const selectedTagNames = useMemo(
+    () =>
+      availableMapTags
+        .filter((tag) => selectedTagIds.includes(tag.id))
+        .map((tag) => tag.name),
+    [availableMapTags, selectedTagIds],
+  );
 
   const hiddenLearnedKnowledgeTagNames = new Set(["beginner", "expert", "easy", "medium", "hard"]);
 
-  const learnedKnowledgeTags = availableMapTags.filter(
-    (tag) => !hiddenLearnedKnowledgeTagNames.has(tag.name.trim().toLowerCase()),
+  const learnedKnowledgeTags = useMemo(
+    () =>
+      availableMapTags.filter(
+        (tag) => !hiddenLearnedKnowledgeTagNames.has(tag.name.trim().toLowerCase()),
+      ),
+    [availableMapTags],
   );
 
-  const selectedLearnedTagNames = learnedKnowledgeTags
-    .filter((tag) => selectedLearnedTagIds.includes(tag.id))
-    .map((tag) => tag.name);
+  const selectedLearnedTagNames = useMemo(
+    () =>
+      learnedKnowledgeTags
+        .filter((tag) => selectedLearnedTagIds.includes(tag.id))
+        .map((tag) => tag.name),
+    [learnedKnowledgeTags, selectedLearnedTagIds],
+  );
+
+  useEffect(() => {
+    if (!availableMapTags.length) return;
+    // Avoid overwriting parent state with an empty selection before user interaction.
+    if (
+      !tagSelectionTouchedRef.current &&
+      selectedTagIds.length === 0 &&
+      initialSelectedTagNames.length > 0
+    ) {
+      return;
+    }
+    onSelectedTagNamesChange?.(selectedTagNames);
+  }, [
+    availableMapTags.length,
+    initialSelectedTagNames.length,
+    onSelectedTagNamesChange,
+    selectedTagIds.length,
+    selectedTagNames,
+  ]);
+
+  useEffect(() => {
+    if (!availableMapTags.length) return;
+    if (
+      !learnedTagSelectionTouchedRef.current &&
+      selectedLearnedTagIds.length === 0 &&
+      initialSelectedLearnedTagNames.length > 0
+    ) {
+      return;
+    }
+    onSelectedLearnedTagNamesChange?.(selectedLearnedTagNames);
+  }, [
+    availableMapTags.length,
+    initialSelectedLearnedTagNames.length,
+    onSelectedLearnedTagNamesChange,
+    selectedLearnedTagIds.length,
+    selectedLearnedTagNames,
+  ]);
 
   const difficultyLabel = `${mapData.config.difficulty}/5`;
 
@@ -1063,24 +1197,52 @@ export function MapEditorControls({
 
   const handleToggleAllowedBlock = (type: string) => {
     if (!onAllowedBlocksChange) return;
+    if (mandatoryAllowedBlockSet.has(type)) return;
 
-    const exists = normalizedAllowedBlocks.includes(type);
-    const nextAllowed = exists
-      ? normalizedAllowedBlocks.filter((item) => item !== type)
-      : [...normalizedAllowedBlocks, type];
+    const currentAllowed = hasExplicitAllowedSelection
+      ? effectiveAllowedBlockTypes
+      : availableBlockTypes;
+    const exists = currentAllowed.includes(type);
+    const nextWorking = exists
+      ? currentAllowed.filter((item) => item !== type)
+      : [...currentAllowed, type];
+    const nextWithMandatory = Array.from(
+      new Set([...nextWorking, ...mandatoryAllowedBlockTypes]),
+    );
+    const nextAllowed =
+      nextWithMandatory.length >= availableBlockTypes.length ? [] : nextWithMandatory;
     onAllowedBlocksChange(nextAllowed);
 
     if (onRequiredBlocksChange) {
+      const nextAllowedSet = new Set(nextWithMandatory);
       const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
-        nextAllowed.length === 0 ? true : nextAllowed.includes(rule.type),
+        nextAllowedSet.has(rule.type),
       );
       onRequiredBlocksChange(sanitizedRequired);
     }
   };
 
-  const handleUseAllBlocks = () => {
+  const handleSelectAllBlocks = () => {
     if (!onAllowedBlocksChange) return;
+    // Empty selection in storage means all blocks are enabled.
     onAllowedBlocksChange([]);
+  };
+
+  const handleClearToMandatoryBlocks = () => {
+    if (!onAllowedBlocksChange) return;
+    const nextAllowed =
+      mandatoryAllowedBlockTypes.length >= availableBlockTypes.length
+        ? []
+        : mandatoryAllowedBlockTypes;
+    onAllowedBlocksChange(nextAllowed);
+
+    if (onRequiredBlocksChange) {
+      const mandatorySet = new Set(mandatoryAllowedBlockTypes);
+      const sanitizedRequired = normalizedRequiredBlocks.filter((rule) =>
+        mandatorySet.has(rule.type),
+      );
+      onRequiredBlocksChange(sanitizedRequired);
+    }
   };
 
   const updateRequiredBlock = (
@@ -1145,6 +1307,14 @@ export function MapEditorControls({
       );
     }
 
+    const mandatoryTypes = ["move_forward", "turn_left", "turn_right"];
+    if (md.config.type === "platform") {
+      mandatoryTypes.push("jump");
+    }
+    const existingMandatoryTypes = mandatoryTypes.filter((type) =>
+      availableBlockTypes.includes(type),
+    );
+
     if (normAllowed.length > 0) {
       const invalidRequired = normRequired.filter((rule) => !allowedSet.has(rule.type));
       if (invalidRequired.length > 0) {
@@ -1152,6 +1322,16 @@ export function MapEditorControls({
           tt(
             "mapEditorRuleRequiredFromAllowed",
             "Required blocks must be selected from Allowed Blocks.",
+          ),
+        );
+      }
+
+      const missingMandatory = existingMandatoryTypes.filter((type) => !allowedSet.has(type));
+      if (missingMandatory.length > 0) {
+        errors.push(
+          tt(
+            "mapEditorRuleMandatoryMovementRequired",
+            "Move Forward, Turn Left, Turn Right (and Jump for Platform) must remain enabled.",
           ),
         );
       }
@@ -1174,7 +1354,6 @@ export function MapEditorControls({
   };
 
   const toBlockLabel = (type: string) => blockTypeToLabel.get(type) ?? type;
-  const hasExplicitAllowedSelection = normalizedAllowedBlocks.length > 0;
   const allowedSummary =
     normalizedAllowedBlocks.length === 0
       ? tt("mapEditorAllBlocksAllowedSummary", "All blocks allowed")
@@ -1199,6 +1378,9 @@ export function MapEditorControls({
   const hasAllowedRequiredConflict =
     normalizedAllowedBlocks.length > 0 &&
     normalizedRequiredBlocks.some((rule) => !normalizedAllowedBlocks.includes(rule.type));
+  const isMandatoryOnlySelection =
+    effectiveAllowedBlockTypes.length === mandatoryAllowedBlockTypes.length &&
+    mandatoryAllowedBlockTypes.every((type) => effectiveAllowedBlockSet.has(type));
 
   const displayHints =
     onLevelHintsChange && levelHints !== undefined
@@ -1906,7 +2088,7 @@ export function MapEditorControls({
                     <div style={styles.section}>
                       <h3 style={styles.sectionTitle}>
                         <Pencil size={16} />{" "}
-                        {tt("mapEditorLevelMapDetailTitle", "Level (MapDetail)")}
+                        {tt("mapEditorLevelMapDetailTitle", "Level")}
                       </h3>
                       {typeof currentLevelIndex === "number" && onCurrentLevelIndexChange && (
                         <div style={styles.formGroup}>
@@ -1997,9 +2179,6 @@ export function MapEditorControls({
                           {tt("mapEditorAllowedBlocksLabel", "Allowed Blocks:")}
                         </label>
                         <p style={styles.helpText}>
-                          {tt("mapEditorAllowedBlocksHint1", "Leave empty to allow all blocks")}
-                        </p>
-                        <p style={styles.helpText}>
                           {tt(
                             "mapEditorAllowedBlocksHint2",
                             "Only selected blocks will be available to the player",
@@ -2011,22 +2190,41 @@ export function MapEditorControls({
                               "mapEditorAllowedBlocksSelectedCount",
                               "Selected {selected}/{total}",
                             )
-                              .replace("{selected}", String(normalizedAllowedBlocks.length))
+                              .replace("{selected}", String(effectiveAllowedBlockTypes.length))
                               .replace("{total}", String(availableBlocks.length))}
                           </span>
-                          <button
-                            type="button"
-                            onClick={handleUseAllBlocks}
-                            disabled={normalizedAllowedBlocks.length === 0 || !onAllowedBlocksChange}
-                            style={{
-                              ...styles.allowedBlocksUseAllButton,
-                              ...(normalizedAllowedBlocks.length === 0 || !onAllowedBlocksChange
-                                ? styles.allowedBlocksUseAllButtonDisabled
-                                : {}),
-                            }}
-                          >
-                            {tt("mapEditorAllowedBlocksUseAll", "Use all blocks")}
-                          </button>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              onClick={handleSelectAllBlocks}
+                              disabled={
+                                effectiveAllowedBlockTypes.length === availableBlocks.length ||
+                                !onAllowedBlocksChange
+                              }
+                              style={{
+                                ...styles.allowedBlocksUseAllButton,
+                                ...(effectiveAllowedBlockTypes.length === availableBlocks.length ||
+                                !onAllowedBlocksChange
+                                  ? styles.allowedBlocksUseAllButtonDisabled
+                                  : {}),
+                              }}
+                            >
+                              {tt("mapEditorAllowedBlocksSelectAll", "Select all")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleClearToMandatoryBlocks}
+                              disabled={isMandatoryOnlySelection || !onAllowedBlocksChange}
+                              style={{
+                                ...styles.allowedBlocksUseAllButton,
+                                ...(isMandatoryOnlySelection || !onAllowedBlocksChange
+                                  ? styles.allowedBlocksUseAllButtonDisabled
+                                  : {}),
+                              }}
+                            >
+                              {tt("mapEditorAllowedBlocksClearAll", "Deselect all")}
+                            </button>
+                          </div>
                         </div>
 
                         <div style={styles.allowedBlockGroups}>
@@ -2035,9 +2233,8 @@ export function MapEditorControls({
                               <p style={styles.allowedBlockGroupTitle}>{toCategoryLabel(category)}</p>
                               <div style={styles.allowedBlockGrid}>
                                 {blocks.map((block) => {
-                                  const selected =
-                                    hasExplicitAllowedSelection &&
-                                    normalizedAllowedBlocks.includes(block.type);
+                                  const selected = effectiveAllowedBlockSet.has(block.type);
+                                  const mandatory = mandatoryAllowedBlockSet.has(block.type);
                                   const accent =
                                     BLOCK_CATEGORY_ACCENTS[category] ?? BLOCK_CATEGORY_ACCENTS.other;
 
@@ -2056,9 +2253,23 @@ export function MapEditorControls({
                                               background: `color-mix(in srgb, ${accent} 18%, var(--surface))`,
                                             }
                                           : {}),
+                                        ...(mandatory
+                                          ? {
+                                              cursor: "not-allowed",
+                                              boxShadow:
+                                                "inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent)",
+                                            }
+                                          : {}),
                                         ...(!onAllowedBlocksChange ? styles.allowedBlockCellDisabled : {}),
                                       }}
-                                      title={toBlockLabel(block.type)}
+                                      title={
+                                        mandatory
+                                          ? tt(
+                                              "mapEditorAllowedBlockAlwaysEnabled",
+                                              "This block is always enabled for gameplay.",
+                                            )
+                                          : toBlockLabel(block.type)
+                                      }
                                     >
                                       <span style={styles.allowedBlockCellLabel}>
                                         {toBlockLabel(block.type)}
@@ -2070,15 +2281,6 @@ export function MapEditorControls({
                             </div>
                           ))}
                         </div>
-
-                        {normalizedAllowedBlocks.length === 0 && (
-                          <div style={styles.placeholderText}>
-                            {tt(
-                              "mapEditorAllowedBlocksEmpty",
-                              "No selection. All blocks are allowed.",
-                            )}
-                          </div>
-                        )}
                       </div>
 
                       <div style={styles.formGroup}>
@@ -2430,7 +2632,9 @@ export function MapEditorControls({
                                               referrerPolicy="no-referrer"
                                             />
                                           ) : (
-                                            <span style={styles.step1ThumbPlaceholderText}>COVER</span>
+                                            <span style={styles.step1ThumbPlaceholderText}>
+                                              {tt("mapEditorGalleryCoverLabel", "COVER")}
+                                            </span>
                                           )}
                                         </button>
 
@@ -2448,7 +2652,9 @@ export function MapEditorControls({
                                                   style={styles.step1ThumbImage}
                                                 />
                                               ) : (
-                                                <span style={styles.step1ThumbPlaceholderText}>VIDEO</span>
+                                                <span style={styles.step1ThumbPlaceholderText}>
+                                                  {tt("mapEditorGalleryVideoLabel", "VIDEO")}
+                                                </span>
                                               )}
                                             </button>
                                             <button
@@ -2700,16 +2906,6 @@ export function MapEditorControls({
                                             })}
                                           </div>
                                         )}
-                                        <button
-                                          type="button"
-                                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActiveInlineField(null);
-                                          }}
-                                        >
-                                          {tt("mapEditorDone", "Done")}
-                                        </button>
                                       </div>
                                     ) : (
                                       <div style={styles.tagWrap}>
@@ -2770,16 +2966,6 @@ export function MapEditorControls({
                                             })}
                                           </div>
                                         )}
-                                        <button
-                                          type="button"
-                                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActiveInlineField(null);
-                                          }}
-                                        >
-                                          {tt("mapEditorDone", "Done")}
-                                        </button>
                                       </div>
                                     ) : (
                                       <div style={styles.tagWrap}>
@@ -3551,16 +3737,6 @@ export function MapEditorControls({
                             })}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveInlineField(null);
-                          }}
-                        >
-                          {tt("mapEditorDone", "Done")}
-                        </button>
                       </div>
                     ) : (
                       <div style={styles.tagWrap}>
@@ -3626,16 +3802,6 @@ export function MapEditorControls({
                             })}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          style={{ ...styles.cancelButton, marginTop: 10, padding: "6px 12px" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveInlineField(null);
-                          }}
-                        >
-                          {tt("mapEditorDone", "Done")}
-                        </button>
                       </div>
                     ) : (
                       <div style={styles.tagWrap}>

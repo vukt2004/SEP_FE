@@ -20,6 +20,7 @@ import {
 } from "@/lib/auth/subscriptionPlan";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
+import { extractLearnedTags } from "@/lib/maps/learnedTags";
 
 type MapEditorRouteState = {
   mapId?: string;
@@ -592,9 +593,9 @@ const STEP_DEFINITIONS: StepDefinition[] = [
   {
     id: 5,
     titleKey: "mapEditorWizardStep5Title",
-    titleFallback: "Hints and sample solution",
+    titleFallback: "Hints",
     summaryKey: "mapEditorWizardStep5Summary",
-    summaryFallback: "Hint schedule and sample",
+    summaryFallback: "Hint setup",
   },
   {
     id: 6,
@@ -774,6 +775,7 @@ export default function MapEditor() {
   const [loadingMap, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
+  const [editingMapLearnedTagNames, setEditingMapLearnedTagNames] = useState<string[]>([]);
   const [editingMapAvatarUrl, setEditingMapAvatarUrl] = useState<string | null>(null);
   const [draftAvatarFile, setDraftAvatarFile] = useState<File | null>(null);
   const [draftGalleryFiles, setDraftGalleryFiles] = useState<File[]>([]);
@@ -991,20 +993,6 @@ export default function MapEditor() {
       });
     },
     [activeLevelIndex],
-  );
-
-  const updateActiveLevelHintUnlockFailure = useCallback(
-    (hintIndex: number, failures: number) => {
-      updateLevelSlot(activeLevelIndex, (slot) => {
-        const nextSchedule = normalizeHintUnlockFailures(slot.hintUnlockFailures, slot.hints.length);
-        nextSchedule[hintIndex] = Math.max(1, Math.floor(failures || 1));
-        return {
-          ...slot,
-          hintUnlockFailures: nextSchedule,
-        };
-      });
-    },
-    [activeLevelIndex, updateLevelSlot],
   );
 
   const updateLevelObjectiveByIndex = useCallback(
@@ -1240,6 +1228,7 @@ export default function MapEditor() {
   useEffect(() => {
     if (!mapId) {
       setEditingMapTagNames([]);
+      setEditingMapLearnedTagNames([]);
       setEditingMapAvatarUrl(null);
       setDraftAvatarFile(null);
       setDraftGalleryFiles([]);
@@ -1277,6 +1266,7 @@ export default function MapEditor() {
 
         const raw = response.data.data as MapDetail;
         setEditingMapTagNames(Array.isArray(raw.tagNames) ? raw.tagNames : []);
+        setEditingMapLearnedTagNames(extractLearnedTags(raw));
         setEditingMapAvatarUrl(extractMapAvatarUrl(raw));
         setMapCatalogTitle(raw.title ?? "");
         setEditingMapContentVersion(
@@ -1451,6 +1441,30 @@ export default function MapEditor() {
     [levelSlots.length, store],
   );
 
+  const handleSelectedTagNamesChange = useCallback((names: string[]) => {
+    setEditingMapTagNames((prev) => {
+      if (
+        prev.length === names.length &&
+        prev.every((name, index) => name.toLowerCase() === (names[index] ?? "").toLowerCase())
+      ) {
+        return prev;
+      }
+      return [...names];
+    });
+  }, []);
+
+  const handleSelectedLearnedTagNamesChange = useCallback((names: string[]) => {
+    setEditingMapLearnedTagNames((prev) => {
+      if (
+        prev.length === names.length &&
+        prev.every((name, index) => name.toLowerCase() === (names[index] ?? "").toLowerCase())
+      ) {
+        return prev;
+      }
+      return [...names];
+    });
+  }, []);
+
   const handleDescriptionChange = (description: string) => {
     store?.setMapDescription(description);
     setLevelSlots((prev) =>
@@ -1585,9 +1599,8 @@ export default function MapEditor() {
 
     const step4 = hydratedLevelSlots.every((slot) => hasValidBlockRules(slot.mapData));
 
-    const step5 = hydratedLevelSlots.every(
-      (slot) =>
-        slot.hints.some((hint) => hint.trim().length > 0) && slot.sampleSolution.trim().length > 0,
+    const step5 = hydratedLevelSlots.every((slot) =>
+      slot.hints.some((hint) => hint.trim().length > 0),
     );
 
     return {
@@ -1718,6 +1731,9 @@ export default function MapEditor() {
                 loadedMapContentVersion={editingMapContentVersion}
                 editorMode={routeState?.mode}
                 initialSelectedTagNames={editingMapTagNames}
+                initialSelectedLearnedTagNames={editingMapLearnedTagNames}
+                onSelectedTagNamesChange={handleSelectedTagNamesChange}
+                onSelectedLearnedTagNamesChange={handleSelectedLearnedTagNamesChange}
                 initialAvatarUrl={editingMapAvatarUrl}
                 initialHints={activeLevel?.hints ?? [""]}
                 mapCatalogTitle={mapCatalogTitle}
@@ -1955,16 +1971,6 @@ export default function MapEditor() {
                         <div style={{ ...styles.levelActionRow, ...styles.levelActionRowSpan2 }}>
                           <button
                             type="button"
-                            style={styles.smallButton}
-                            onClick={() => {
-                              selectLevel(index);
-                              setCurrentStep(3);
-                            }}
-                          >
-                            {tt("mapEditorWizardDesignMap", "Design map")}
-                          </button>
-                          <button
-                            type="button"
                             style={{ ...styles.smallButton, ...styles.dangerButton }}
                             onClick={() => removeLevel(index)}
                             disabled={hydratedLevelSlots.length <= 1}
@@ -1989,6 +1995,9 @@ export default function MapEditor() {
                   loadedMapContentVersion={editingMapContentVersion}
                   editorMode={routeState?.mode}
                   initialSelectedTagNames={editingMapTagNames}
+                  initialSelectedLearnedTagNames={editingMapLearnedTagNames}
+                  onSelectedTagNamesChange={handleSelectedTagNamesChange}
+                  onSelectedLearnedTagNamesChange={handleSelectedLearnedTagNamesChange}
                   initialAvatarUrl={editingMapAvatarUrl}
                   initialHints={activeLevel?.hints ?? [""]}
                   mapCatalogTitle={mapCatalogTitle}
@@ -2067,16 +2076,7 @@ export default function MapEditor() {
 
                 <div style={styles.canvasContainer}>
                   <div style={styles.canvasGridBackdrop}>
-                    <div
-                      style={{
-                        transform: `scale(${zoom})`,
-                        transformOrigin: "center center",
-                        transition: "transform 0.2s ease",
-                        display: "inline-block",
-                      }}
-                    >
-                      <EditorCanvas store={store} />
-                    </div>
+                    <EditorCanvas store={store} zoom={zoom} />
                   </div>
                 </div>
               </section>
@@ -2089,6 +2089,9 @@ export default function MapEditor() {
                   loadedMapContentVersion={editingMapContentVersion}
                   editorMode={routeState?.mode}
                   initialSelectedTagNames={editingMapTagNames}
+                  initialSelectedLearnedTagNames={editingMapLearnedTagNames}
+                  onSelectedTagNamesChange={handleSelectedTagNamesChange}
+                  onSelectedLearnedTagNamesChange={handleSelectedLearnedTagNamesChange}
                   initialAvatarUrl={editingMapAvatarUrl}
                   initialHints={activeLevel?.hints ?? [""]}
                   mapCatalogTitle={mapCatalogTitle}
@@ -2170,13 +2173,6 @@ export default function MapEditor() {
                           String(index + 1),
                         )}
                       </span>
-                      <strong>
-                        {slot.mapData.config.name ||
-                          tt("mapEditorLevelButton", "Level {n}").replace(
-                            "{n}",
-                            String(index + 1),
-                          )}
-                      </strong>
                     </button>
                   ))}
                 </aside>
@@ -2189,6 +2185,9 @@ export default function MapEditor() {
                     loadedMapContentVersion={editingMapContentVersion}
                     editorMode={routeState?.mode}
                     initialSelectedTagNames={editingMapTagNames}
+                    initialSelectedLearnedTagNames={editingMapLearnedTagNames}
+                    onSelectedTagNamesChange={handleSelectedTagNamesChange}
+                    onSelectedLearnedTagNamesChange={handleSelectedLearnedTagNamesChange}
                     initialAvatarUrl={editingMapAvatarUrl}
                     initialHints={activeLevel?.hints ?? [""]}
                     mapCatalogTitle={mapCatalogTitle}
@@ -2248,7 +2247,7 @@ export default function MapEditor() {
             <div style={styles.stepContentPanel}>
               <div style={styles.stepIntroCard}>
                 <h2 style={styles.stepHeading}>
-                  {tt("mapEditorWizardStep5Heading", "Step 5 - Hints and sample solution")}
+                  {tt("mapEditorWizardStep5Heading", "Step 5 - Hints")}
                 </h2>
               </div>
 
@@ -2270,13 +2269,6 @@ export default function MapEditor() {
                           String(index + 1),
                         )}
                       </span>
-                      <strong>
-                        {slot.mapData.config.name ||
-                          tt("mapEditorLevelButton", "Level {n}").replace(
-                            "{n}",
-                            String(index + 1),
-                          )}
-                      </strong>
                     </button>
                   ))}
                 </aside>
@@ -2311,32 +2303,6 @@ export default function MapEditor() {
                           )}
                         />
                       </div>
-
-                      <div style={styles.failureInputWrap}>
-                        <label style={styles.fieldLabel}>
-                          {tt(
-                            "mapEditorWizardUnlockAfterFailures",
-                            "Unlock after failures",
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={
-                            normalizeHintUnlockFailures(
-                              activeLevel.hintUnlockFailures,
-                              activeLevel.hints.length,
-                            )[hintIndex] ?? hintIndex + 1
-                          }
-                          onChange={(e) =>
-                            updateActiveLevelHintUnlockFailure(
-                              hintIndex,
-                              Math.max(1, Number(e.target.value) || 1),
-                            )
-                          }
-                          style={styles.fieldInput}
-                        />
-                      </div>
                     </div>
                   ))}
 
@@ -2361,43 +2327,6 @@ export default function MapEditor() {
                     )}
                   </div>
 
-                  <label style={styles.fieldLabel}>
-                    {tt("mapEditorWizardSampleSolution", "Sample solution")}
-                  </label>
-                  <textarea
-                    value={activeLevel.sampleSolution}
-                    onChange={(e) =>
-                      updateLevelSlot(activeLevelIndex, (slot) => ({
-                        ...slot,
-                        sampleSolution: e.target.value,
-                      }))
-                    }
-                    style={styles.fieldTextarea}
-                    rows={6}
-                    placeholder={tt(
-                      "mapEditorWizardSampleSolutionPlaceholder",
-                      "Write the sample solution",
-                    )}
-                  />
-
-                  <label style={styles.fieldLabel}>
-                    {tt(
-                      "mapEditorWizardSampleUnlockAfterFailures",
-                      "Unlock sample solution after failures",
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={Math.max(1, activeLevel.sampleSolutionUnlockFailures || 1)}
-                    onChange={(e) =>
-                      updateLevelSlot(activeLevelIndex, (slot) => ({
-                        ...slot,
-                        sampleSolutionUnlockFailures: Math.max(1, Number(e.target.value) || 1),
-                      }))
-                    }
-                    style={styles.fieldInput}
-                  />
                 </section>
               </div>
             </div>
@@ -2430,13 +2359,9 @@ export default function MapEditor() {
                       {
                         label: tt(
                           "mapEditorWizardChecklistHints",
-                          "Hints and unlock schedule",
+                          "Hints",
                         ),
                         pass: slot.hints.some((hint) => hint.trim().length > 0),
-                      },
-                      {
-                        label: tt("mapEditorWizardChecklistSample", "Sample solution"),
-                        pass: slot.sampleSolution.trim().length > 0,
                       },
                     ];
 
@@ -2478,6 +2403,9 @@ export default function MapEditor() {
                     loadedMapContentVersion={editingMapContentVersion}
                     editorMode={routeState?.mode}
                     initialSelectedTagNames={editingMapTagNames}
+                    initialSelectedLearnedTagNames={editingMapLearnedTagNames}
+                    onSelectedTagNamesChange={handleSelectedTagNamesChange}
+                    onSelectedLearnedTagNamesChange={handleSelectedLearnedTagNamesChange}
                     initialAvatarUrl={editingMapAvatarUrl}
                     initialHints={activeLevel?.hints ?? [""]}
                     mapCatalogTitle={mapCatalogTitle}
@@ -2568,8 +2496,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "18px",
     gap: "14px",
     minHeight: "100vh",
-    background:
-      "radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 34%), var(--bg)",
+    background: "var(--bg)",
   },
   header: {
     display: "grid",
@@ -2581,7 +2508,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "14px 16px",
     borderRadius: "16px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     boxShadow: "0 10px 24px color-mix(in srgb, var(--bg) 34%, transparent)",
   },
   headerLeft: {
@@ -2633,7 +2560,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "20px",
     borderRadius: "16px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     boxShadow: "0 10px 24px color-mix(in srgb, var(--bg) 34%, transparent)",
     textAlign: "center",
   },
@@ -2660,7 +2587,7 @@ const styles: Record<string, React.CSSProperties> = {
   stepCard: {
     borderRadius: "12px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     padding: "10px",
     display: "flex",
     flexDirection: "column",
@@ -2703,7 +2630,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "14px 16px",
     borderRadius: "14px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
   },
   stepHeading: {
     margin: 0,
@@ -2725,7 +2652,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "14px",
     borderRadius: "14px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     display: "grid",
     gap: "8px",
   },
@@ -2792,7 +2719,7 @@ const styles: Record<string, React.CSSProperties> = {
   levelCard: {
     borderRadius: "14px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     padding: "12px",
     display: "grid",
     gap: "10px",
@@ -2949,12 +2876,13 @@ const styles: Record<string, React.CSSProperties> = {
     overflowX: "hidden",
   },
   canvasPanel: {
-    minHeight: "calc(100vh - 140px)",
+    height: "calc(100vh - 140px)",
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
     borderRadius: "18px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     boxShadow: "0 12px 28px color-mix(in srgb, var(--bg) 40%, transparent)",
     overflow: "hidden",
   },
@@ -2996,14 +2924,17 @@ const styles: Record<string, React.CSSProperties> = {
   },
   canvasContainer: {
     flex: 1,
+    minHeight: 0,
     padding: "14px",
     overflow: "auto",
   },
   canvasGridBackdrop: {
+    width: "max-content",
+    minWidth: "100%",
     minHeight: "100%",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
     padding: "24px",
     borderRadius: "12px",
     border: "1px solid var(--border)",
@@ -3042,7 +2973,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "14px",
     border: "1px solid var(--border)",
     padding: "10px",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
   },
   hintsLayout: {
     display: "grid",
@@ -3052,7 +2983,7 @@ const styles: Record<string, React.CSSProperties> = {
   hintsPanel: {
     borderRadius: "14px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     padding: "14px",
     display: "grid",
     gap: "8px",
@@ -3065,7 +2996,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   hintRow: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) 170px",
+    gridTemplateColumns: "minmax(0, 1fr)",
     gap: "8px",
     alignItems: "end",
   },
@@ -3091,12 +3022,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "14px",
     border: "1px solid var(--border)",
     padding: "10px",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
   },
   reviewLevelCard: {
     borderRadius: "12px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     padding: "12px",
     display: "grid",
     gap: "8px",
@@ -3130,7 +3061,7 @@ const styles: Record<string, React.CSSProperties> = {
   saveActionBar: {
     borderRadius: "12px",
     border: "1px solid var(--border)",
-    background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+    background: "var(--surface)",
     padding: "10px",
     display: "flex",
     alignItems: "center",

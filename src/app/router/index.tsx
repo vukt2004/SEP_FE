@@ -139,7 +139,7 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: ROUTES.MAP_EDITOR ?? "/map-editor",
+        path: ROUTES.MAP_EDITOR ?? "/game-editor",
         errorElement: <RouteErrorPage />,
         element: (
           <React.Suspense fallback={<AppLoader />}>

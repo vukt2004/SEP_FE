@@ -1532,7 +1532,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorRightTabBlocks: "Blocks",
     mapEditorRightTabObjects: "Objects",
     mapEditorRightTabMap: "Game",
-    mapEditorLevelMapDetailTitle: "Level (Map Detail)",
+    mapEditorLevelMapDetailTitle: "Level",
     mapEditorLevelMapDetailHelp:
       'Per-level settings (time limit, win rule, hints…). Save with "Save level content", not "Map info".',
     mapEditorSaveLevelContent: "Save level content",
@@ -1548,6 +1548,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorSaveMapInfo: "Save game info",
     mapEditorMapNameCatalog: "Game name (catalog)",
     mapEditorTimeLimitSeconds: "Time Limit (seconds)",
+    mapEditorCurrentLevel: "Current Level",
     mapEditorMapTypeMap: "Map Type",
     mapEditorModalMapDetailsTitle: "Map Details",
     mapEditorModalMapDetailsBlurb:
@@ -1666,6 +1667,9 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogDropKeyArtHint: "Drop image for cover",
     mapEditorCatalogSearchLearnedPlaceholder: "Search concepts…",
     mapEditorCatalogThumbAddHint: "Add media",
+    mapEditorGalleryHeroHint: "Drag screenshots or videos here, or click to add gallery media",
+    mapEditorGalleryCoverLabel: "COVER",
+    mapEditorGalleryVideoLabel: "VIDEO",
     mapEditorDeselectHint: "Click again to deselect",
     mapEditorPaintTiles: "Paint tiles",
     mapEditorEraseTiles: "Erase tiles",
@@ -1699,8 +1703,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep3Summary: "Tile editor and conditions",
     mapEditorWizardStep4Title: "Block rules",
     mapEditorWizardStep4Summary: "Allowed, required, and limit",
-    mapEditorWizardStep5Title: "Hints and sample solution",
-    mapEditorWizardStep5Summary: "Hint schedule and sample",
+    mapEditorWizardStep5Title: "Hints",
+    mapEditorWizardStep5Summary: "Hint setup",
     mapEditorWizardStep6Title: "Review and submit",
     mapEditorWizardStep6Summary: "Checklist and save",
     mapEditorWizardStep1Heading: "Step 1 - Game info",
@@ -1730,7 +1734,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep4Heading: "Step 4 - Block rules",
     mapEditorWizardStep4Note:
       "Select each level and configure blocks: allowed, required, and usage limit.",
-    mapEditorWizardStep5Heading: "Step 5 - Hints and sample solution",
+    mapEditorWizardStep5Heading: "Step 5 - Hints",
     mapEditorWizardStep5Note:
       "Each hint unlocks after a number of failures. The sample solution unlocks after N failures.",
     mapEditorWizardHintScheduleTitle: "Hint schedule - Level {n}",
@@ -3286,7 +3290,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorRightTabBlocks: "Khối lệnh",
     mapEditorRightTabObjects: "Đối tượng",
     mapEditorRightTabMap: "Trò chơi",
-    mapEditorLevelMapDetailTitle: "Màn chơi (MapDetail)",
+    mapEditorLevelMapDetailTitle: "Màn chơi",
     mapEditorLevelMapDetailHelp:
       'Cài đặt theo từng màn (giới hạn thời gian, điều kiện thắng, gợi ý…). Lưu bằng "Lưu nội dung màn", không phải "Thông tin bản đồ".',
     mapEditorSaveLevelContent: "Lưu nội dung màn",
@@ -3302,6 +3306,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorSaveMapInfo: "Lưu thông tin trò chơi",
     mapEditorMapNameCatalog: "Tên bản đồ (danh mục)",
     mapEditorTimeLimitSeconds: "Giới hạn thời gian (giây)",
+    mapEditorCurrentLevel: "Màn hiện tại",
     mapEditorMapTypeMap: "Loại bản đồ",
     mapEditorModalMapDetailsTitle: "Chi tiết bản đồ",
     mapEditorModalMapDetailsBlurb:
@@ -3420,6 +3425,9 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogDropKeyArtHint: "Thả ảnh làm bìa",
     mapEditorCatalogSearchLearnedPlaceholder: "Tìm khái niệm…",
     mapEditorCatalogThumbAddHint: "Thêm media",
+    mapEditorGalleryHeroHint: "Kéo ảnh chụp màn hình hoặc video vào đây, hoặc bấm để thêm media thư viện",
+    mapEditorGalleryCoverLabel: "ẢNH BÌA",
+    mapEditorGalleryVideoLabel: "VIDEO",
     mapEditorDeselectHint: "Bấm lại để bỏ chọn",
     mapEditorPaintTiles: "Tô ô gạch",
     mapEditorEraseTiles: "Xóa ô gạch",
@@ -3453,8 +3461,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep3Summary: "Tile editor và điều kiện",
     mapEditorWizardStep4Title: "Quy tắc khối",
     mapEditorWizardStep4Summary: "Được phép, bắt buộc, giới hạn",
-    mapEditorWizardStep5Title: "Gợi ý và lời giải mẫu",
-    mapEditorWizardStep5Summary: "Lịch mở hint và lời giải",
+    mapEditorWizardStep5Title: "Gợi ý",
+    mapEditorWizardStep5Summary: "Thiết lập gợi ý",
     mapEditorWizardStep6Title: "Rà soát và nộp",
     mapEditorWizardStep6Summary: "Checklist và lưu",
     mapEditorWizardStep1Heading: "Bước 1 - Thông tin trò chơi",
@@ -3484,7 +3492,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep4Heading: "Bước 4 - Quy tắc khối",
     mapEditorWizardStep4Note:
       "Chọn từng màn để cấu hình khối: được phép, bắt buộc và giới hạn sử dụng.",
-    mapEditorWizardStep5Heading: "Bước 5 - Gợi ý và lời giải mẫu",
+    mapEditorWizardStep5Heading: "Bước 5 - Gợi ý",
     mapEditorWizardStep5Note:
       "Mỗi gợi ý sẽ mở sau một số lần thất bại. Lời giải mẫu mở sau N lần thất bại.",
     mapEditorWizardHintScheduleTitle: "Lịch mở hint - Màn {n}",
