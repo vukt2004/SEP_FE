@@ -140,6 +140,7 @@ export default function MapDetailPage() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   const [purchaseConfirmOpen, setPurchaseConfirmOpen] = useState(false);
+  const [hasAcceptedPurchasePolicy, setHasAcceptedPurchasePolicy] = useState(false);
   const [purchaseModal, setPurchaseModal] = useState<PurchaseModalState | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [currentMediaLoadError, setCurrentMediaLoadError] = useState(false);
@@ -1351,7 +1352,10 @@ export default function MapDetailPage() {
           {canPurchase ? (
             <motion.button
               type="button"
-              onClick={() => setPurchaseConfirmOpen(true)}
+              onClick={() => {
+                setHasAcceptedPurchasePolicy(false);
+                setPurchaseConfirmOpen(true);
+              }}
               className={styles.steamFooterPrimary}
               disabled={isPurchasing}
               whileHover={{ scale: 1.03 }}
@@ -1609,10 +1613,16 @@ export default function MapDetailPage() {
           <div
             className={styles.modalOverlay}
             onClick={() => {
-              if (!isPurchasing) setPurchaseConfirmOpen(false);
+              if (!isPurchasing) {
+                setPurchaseConfirmOpen(false);
+                setHasAcceptedPurchasePolicy(false);
+              }
             }}
           >
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={`${styles.modal} ${styles.purchaseConfirmModal}`}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h3 className={styles.modalTitle}>
                 {locale.startsWith("vi") ? "Xác nhận mua bản đồ" : "Confirm map purchase"}
               </h3>
@@ -1656,21 +1666,39 @@ export default function MapDetailPage() {
                   {locale.startsWith("vi") ? "Mở chính sách mua game" : "Open buy game policy"}
                 </button>
               </p>
+              <label className={styles.purchasePolicyAgreeRow}>
+                <input
+                  type="checkbox"
+                  className={styles.purchasePolicyCheckbox}
+                  checked={hasAcceptedPurchasePolicy}
+                  disabled={isPurchasing}
+                  onChange={(event) => setHasAcceptedPurchasePolicy(event.target.checked)}
+                />
+                <span className={styles.purchasePolicyAgreeText}>
+                  {locale.startsWith("vi")
+                    ? "Tôi đã đọc và đồng ý với chính sách người mua."
+                    : "I have read and agree to the buyer policy."}
+                </span>
+              </label>
               <div className={styles.modalActions}>
                 <button
                   type="button"
                   className={styles.modalBtn}
                   disabled={isPurchasing}
-                  onClick={() => setPurchaseConfirmOpen(false)}
+                  onClick={() => {
+                    setPurchaseConfirmOpen(false);
+                    setHasAcceptedPurchasePolicy(false);
+                  }}
                 >
                   {t("back")}
                 </button>
                 <button
                   type="button"
                   className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                  disabled={isPurchasing}
+                  disabled={isPurchasing || !hasAcceptedPurchasePolicy}
                   onClick={async () => {
                     setPurchaseConfirmOpen(false);
+                    setHasAcceptedPurchasePolicy(false);
                     await handleBuyMap();
                   }}
                 >

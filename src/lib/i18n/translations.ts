@@ -1515,6 +1515,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorFree: "Free",
     mapEditorTags: "Tags",
     mapEditorLearnedKnowledge: "Learned knowledge",
+    mapEditorLearnedKnowledgeAutoHint: "Auto-selected from blocks configured in Step 4.",
     mapEditorLoadingTags: "Loading tags...",
     mapEditorDone: "Done",
     mapEditorNoTagsSelected: "No tags selected",
@@ -1644,6 +1645,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogTagsClickHint: "Click tags to add or remove.",
     mapEditorCatalogYouWillLearnTitle: "What users will learn through your game",
     mapEditorCatalogLearnedClickHint: "Click concepts players will learn from this game.",
+    mapEditorCatalogLearnedAutoHint:
+      "Auto-selected from blocks configured in Step 4 (read-only).",
     mapEditorCatalogNoTagsFromApi: "No tags loaded — check login or try again.",
     mapEditorCatalogNoLearnedPool: "No “learned knowledge” tags are available from the server.",
     mapEditorCatalogSearchTagsPlaceholder: "Search tags…",
@@ -1740,6 +1743,11 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep4Heading: "Step 4 - Block rules",
     mapEditorWizardStep4Note:
       "Select each level and configure blocks: allowed, required, and usage limit.",
+    mapEditorWizardStep4MandatoryBlocksHintIntro: "Mandatory blocks by level type:",
+    mapEditorWizardStep4MandatoryBlocksHintPlatform:
+      "If level type is Platform, required blocks are: {blocks}",
+    mapEditorWizardStep4MandatoryBlocksHintTopdown:
+      "If level type is Top-down, required blocks are: {blocks}",
     mapEditorWizardStep5Heading: "Step 5 - Hints",
     mapEditorWizardStep5Note:
       "Each hint unlocks after a number of failures. The sample solution unlocks after N failures.",
@@ -3279,6 +3287,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorFree: "Miễn phí",
     mapEditorTags: "Thẻ",
     mapEditorLearnedKnowledge: "Kiến thức học được",
+    mapEditorLearnedKnowledgeAutoHint:
+      "Tự động chọn theo các block đã cấu hình ở Bước 4.",
     mapEditorLoadingTags: "Đang tải thẻ...",
     mapEditorDone: "Xong",
     mapEditorNoTagsSelected: "Chưa chọn thẻ nào",
@@ -3410,6 +3420,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorCatalogTagsClickHint: "Bấm thẻ để chọn hoặc bỏ chọn.",
     mapEditorCatalogYouWillLearnTitle: "Người dùng sẽ học được gì qua trò chơi của bạn",
     mapEditorCatalogLearnedClickHint: "Bấm khái niệm người chơi sẽ học từ trò chơi này.",
+    mapEditorCatalogLearnedAutoHint:
+      "Tự động chọn theo các block đã cấu hình ở Bước 4 (chỉ xem).",
     mapEditorCatalogNoTagsFromApi: "Chưa tải được thẻ — kiểm tra đăng nhập hoặc thử lại.",
     mapEditorCatalogNoLearnedPool: "Không có thẻ “kiến thức học” nào từ máy chủ.",
     mapEditorCatalogSearchTagsPlaceholder: "Tìm thẻ…",
@@ -3504,6 +3516,12 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep4Heading: "Bước 4 - Quy tắc khối",
     mapEditorWizardStep4Note:
       "Chọn từng màn để cấu hình khối: được phép, bắt buộc và giới hạn sử dụng.",
+    mapEditorWizardStep4MandatoryBlocksHintIntro:
+      "Các khối bắt buộc theo loại level:",
+    mapEditorWizardStep4MandatoryBlocksHintPlatform:
+      "Nếu level là Platform, các khối bắt buộc gồm: {blocks}",
+    mapEditorWizardStep4MandatoryBlocksHintTopdown:
+      "Nếu level là Top-down, các khối bắt buộc gồm: {blocks}",
     mapEditorWizardStep5Heading: "Bước 5 - Gợi ý",
     mapEditorWizardStep5Note:
       "Mỗi gợi ý sẽ mở sau một số lần thất bại. Lời giải mẫu mở sau N lần thất bại.",

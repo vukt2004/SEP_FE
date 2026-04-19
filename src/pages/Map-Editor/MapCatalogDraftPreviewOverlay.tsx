@@ -49,6 +49,7 @@ export type MapCatalogDraftPreviewOverlayProps = {
   selectedLearnedTagIds: string[];
   onToggleTag: (tagId: string) => void;
   onToggleLearnedTag: (tagId: string) => void;
+  learnedKnowledgeReadOnly?: boolean;
   avatarPreviewUrl: string | null;
   avatarFile: File | null;
   onAvatarFileChange: (file: File | null) => void;
@@ -106,6 +107,7 @@ export function MapCatalogDraftPreviewOverlay({
   selectedLearnedTagIds,
   onToggleTag,
   onToggleLearnedTag,
+  learnedKnowledgeReadOnly = false,
   avatarPreviewUrl,
   avatarFile,
   onAvatarFileChange,
@@ -830,8 +832,13 @@ export function MapCatalogDraftPreviewOverlay({
                 onChange={(e) => setTagSearchLearned(e.target.value)}
                 placeholder={t("mapEditorCatalogSearchLearnedPlaceholder")}
                 aria-label={t("mapEditorCatalogSearchLearnedPlaceholder")}
+                disabled={learnedKnowledgeReadOnly}
               />
-              <p className={styles.catalogHint}>{t("mapEditorCatalogLearnedClickHint")}</p>
+              <p className={styles.catalogHint}>
+                {learnedKnowledgeReadOnly
+                  ? t("mapEditorCatalogLearnedAutoHint")
+                  : t("mapEditorCatalogLearnedClickHint")}
+              </p>
               <div className={styles.catalogTagsScrollBox}>
                 {loadingMapTags ? (
                   <p className={styles.steamDescEmpty}>{t("mapDetailLoadingTags")}</p>
@@ -850,7 +857,13 @@ export function MapCatalogDraftPreviewOverlay({
                             ? styles.catalogTagButtonActive
                             : ""
                         }`}
-                        onClick={() => onToggleLearnedTag(tag.id)}
+                        onClick={() => {
+                          if (!learnedKnowledgeReadOnly) {
+                            onToggleLearnedTag(tag.id);
+                          }
+                        }}
+                        disabled={learnedKnowledgeReadOnly}
+                        style={learnedKnowledgeReadOnly ? { cursor: "default", opacity: 0.92 } : undefined}
                       >
                         {localizeTagName(tag.name, locale)}
                       </button>
