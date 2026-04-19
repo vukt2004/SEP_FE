@@ -97,6 +97,110 @@ const BLOCK_CATEGORY_ACCENTS: Record<string, string> = {
   other: "#64748b",
 };
 
+const LEARNED_TAGS_BY_CATEGORY: Record<string, string[]> = {
+  movement: [
+    "Algorithm Basics",
+    "Computational Thinking",
+    "Problem Solving",
+    "Pathfinding",
+    "Obstacle Avoidance",
+  ],
+  control: ["Loops", "Conditionals", "Algorithm Design"],
+  logic: ["Logical Thinking", "Conditionals", "Problem Solving"],
+  procedure: ["Functions", "Algorithm Design"],
+  variables: ["Variables"],
+  math: ["Operators", "Algorithm Basics"],
+  array: ["Arrays"],
+  queue: ["Algorithm Design", "Problem Solving"],
+  stack: ["Algorithm Design", "Problem Solving"],
+  other: ["Computational Thinking"],
+};
+
+const LEARNED_TAGS_BY_BLOCK_TYPE: Record<string, string[]> = {
+  repeat: ["Loops"],
+  custom_while: ["Loops"],
+  custom_do_while: ["Loops"],
+  repeat_until: ["Loops"],
+  custom_if: ["Conditionals"],
+  define_procedure: ["Functions"],
+  call_procedure: ["Functions"],
+  move_to_cell: ["Pathfinding"],
+  jump: ["Obstacle Avoidance"],
+  open_door: ["Objects"],
+  close_door: ["Objects"],
+  unlock_door: ["Objects"],
+};
+
+const arraysEqual = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const mandatoryBlockTypesForMapType = (
+  mapType: MapData["config"]["type"],
+  availableTypeSet: Set<string>,
+): string[] => {
+  const base = ["move_forward", "turn_left", "turn_right"];
+  if (mapType === "platform") {
+    base.push("jump");
+  }
+  return base.filter((type) => availableTypeSet.has(type));
+};
+
+const selectedBlockTypesForLearnedKnowledge = (
+  levelMap: MapData,
+  availableTypeSet: Set<string>,
+): string[] => {
+  const mandatory = mandatoryBlockTypesForMapType(levelMap.config.type, availableTypeSet);
+  const normalizedAllowed = Array.from(new Set(levelMap.blockConstraints.allowedBlocks ?? [])).filter(
+    (type) => availableTypeSet.has(type),
+  );
+  const normalizedRequired = Array.from(
+    new Set((levelMap.blockConstraints.requiredBlocks ?? []).map((rule) => rule.type)),
+  ).filter((type) => availableTypeSet.has(type));
+
+  if (normalizedAllowed.length > 0) {
+    return Array.from(new Set([...normalizedAllowed, ...mandatory]));
+  }
+
+  return Array.from(new Set([...normalizedRequired, ...mandatory]));
+};
+
+const inferLearnedTagNamesFromBlocks = (
+  blockTypes: string[],
+  blockCategoryByType: Map<string, string>,
+): string[] => {
+  const learned = new Set<string>();
+
+  for (const type of blockTypes) {
+    const specific = LEARNED_TAGS_BY_BLOCK_TYPE[type] ?? [];
+    for (const tag of specific) {
+      learned.add(tag);
+    }
+
+    const category = blockCategoryByType.get(type) ?? "other";
+    const fromCategory = LEARNED_TAGS_BY_CATEGORY[category] ?? LEARNED_TAGS_BY_CATEGORY.other;
+    for (const tag of fromCategory) {
+      learned.add(tag);
+    }
+
+    if (/(loop|repeat|while)/i.test(type)) learned.add("Loops");
+    if (/(if|condition)/i.test(type)) learned.add("Conditionals");
+    if (/(procedure|function)/i.test(type)) learned.add("Functions");
+    if (/(variable)/i.test(type)) learned.add("Variables");
+    if (/(array)/i.test(type)) learned.add("Arrays");
+    if (/(operator|math)/i.test(type)) learned.add("Operators");
+    if (/(path|cell)/i.test(type)) learned.add("Pathfinding");
+    if (/(jump|obstacle)/i.test(type)) learned.add("Obstacle Avoidance");
+    if (/(collect|fruit|resource)/i.test(type)) learned.add("Resource Collection");
+    if (/(optimi)/i.test(type)) learned.add("Optimization");
+    if (/(pattern)/i.test(type)) learned.add("Pattern Recognition");
+    if (/(pointer)/i.test(type)) learned.add("Pointers");
+    if (/(object|door|box)/i.test(type)) learned.add("Objects");
+    if (/(recursion)/i.test(type)) learned.add("Recursion");
+  }
+
+  return Array.from(learned);
+};
+
 const clampFreeTrialAttemptLimit = (value: number): number => {
   const safe = Number.isFinite(value) ? value : 0;
   return Math.min(MAX_FREE_TRIAL_ATTEMPTS, Math.max(0, Math.floor(safe)));
@@ -491,7 +595,6 @@ export function MapEditorControls({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [selectedLearnedTagIds, setSelectedLearnedTagIds] = useState<string[]>([]);
   const tagSelectionTouchedRef = useRef(false);
-  const learnedTagSelectionTouchedRef = useRef(false);
   const [loadingMapTags, setLoadingMapTags] = useState(false);
   const [savingMapMeta, setSavingMapMeta] = useState(false);
   const [savingLevelContent, setSavingLevelContent] = useState(false);
@@ -941,10 +1044,6 @@ export function MapEditorControls({
   }, [initialSelectedTagNames]);
 
   useEffect(() => {
-    learnedTagSelectionTouchedRef.current = false;
-  }, [initialSelectedLearnedTagNames]);
-
-  useEffect(() => {
     if (!availableMapTags.length) {
       return;
     }
@@ -957,39 +1056,9 @@ export function MapEditorControls({
     setSelectedTagIds(initialTagIds);
   }, [availableMapTags, initialSelectedTagNames]);
 
-  useEffect(() => {
-    if (!availableMapTags.length) {
-      return;
-    }
-
-    const hiddenLearnedKnowledgeTagNames = new Set([
-      "beginner",
-      "expert",
-      "easy",
-      "medium",
-      "hard",
-    ]);
-    const selectedNameSet = new Set(
-      initialSelectedLearnedTagNames.map((name) => name.toLowerCase()),
-    );
-    const initialLearnedTagIds = availableMapTags
-      .filter((tag) => !hiddenLearnedKnowledgeTagNames.has(tag.name.trim().toLowerCase()))
-      .filter((tag) => selectedNameSet.has(tag.name.toLowerCase()))
-      .map((tag) => tag.id);
-
-    setSelectedLearnedTagIds(initialLearnedTagIds);
-  }, [availableMapTags, initialSelectedLearnedTagNames]);
-
   const toggleTagSelection = (tagId: string) => {
     tagSelectionTouchedRef.current = true;
     setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
-    );
-  };
-
-  const toggleLearnedTagSelection = (tagId: string) => {
-    learnedTagSelectionTouchedRef.current = true;
-    setSelectedLearnedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
   };
@@ -1127,6 +1196,73 @@ export function MapEditorControls({
     [availableMapTags],
   );
 
+  const blockCategoryByType = useMemo(
+    () =>
+      new Map(
+        availableBlocks.map((block) => {
+          const raw = typeof block.category === "string" ? block.category.trim() : "";
+          return [block.type, raw.length > 0 ? raw : "other"] as const;
+        }),
+      ),
+    [availableBlocks],
+  );
+
+  const inferredLearnedTagIds = useMemo(() => {
+    const availableTypeSet = new Set(availableBlockTypes);
+    const levelMaps = (() => {
+      if (buildUploadLevels) {
+        try {
+          const levels = buildUploadLevels();
+          if (levels.length > 0) {
+            return levels.map((level) => level.mapData);
+          }
+        } catch {
+          // Fall back to current map data.
+        }
+      }
+      return [mapData];
+    })();
+
+    const selectedBlocks = new Set<string>();
+    for (const levelMap of levelMaps) {
+      const types = selectedBlockTypesForLearnedKnowledge(levelMap, availableTypeSet);
+      for (const type of types) {
+        selectedBlocks.add(type);
+      }
+    }
+
+    const inferredNames = inferLearnedTagNamesFromBlocks(
+      Array.from(selectedBlocks),
+      blockCategoryByType,
+    );
+
+    const learnedTagIdByName = new Map(
+      learnedKnowledgeTags.map((tag) => [tag.name.trim().toLowerCase(), tag.id] as const),
+    );
+    const inferredIds = inferredNames
+      .map((name) => learnedTagIdByName.get(name.trim().toLowerCase()))
+      .filter((id): id is string => Boolean(id));
+
+    if (inferredIds.length > 0) {
+      return Array.from(new Set(inferredIds));
+    }
+
+    return initialSelectedLearnedTagNames
+      .map((name) => learnedTagIdByName.get(name.trim().toLowerCase()))
+      .filter((id): id is string => Boolean(id));
+  }, [
+    availableBlockTypes,
+    blockCategoryByType,
+    buildUploadLevels,
+    initialSelectedLearnedTagNames,
+    learnedKnowledgeTags,
+    mapData,
+  ]);
+
+  useEffect(() => {
+    setSelectedLearnedTagIds((prev) => (arraysEqual(prev, inferredLearnedTagIds) ? prev : inferredLearnedTagIds));
+  }, [inferredLearnedTagIds]);
+
   const selectedLearnedTagNames = useMemo(
     () =>
       learnedKnowledgeTags
@@ -1155,20 +1291,9 @@ export function MapEditorControls({
   ]);
 
   useEffect(() => {
-    if (!availableMapTags.length) return;
-    if (
-      !learnedTagSelectionTouchedRef.current &&
-      selectedLearnedTagIds.length === 0 &&
-      initialSelectedLearnedTagNames.length > 0
-    ) {
-      return;
-    }
     onSelectedLearnedTagNamesChange?.(selectedLearnedTagNames);
   }, [
-    availableMapTags.length,
-    initialSelectedLearnedTagNames.length,
     onSelectedLearnedTagNamesChange,
-    selectedLearnedTagIds.length,
     selectedLearnedTagNames,
   ]);
 
@@ -2979,50 +3104,23 @@ export function MapEditorControls({
                                   <div
                                     style={{
                                       ...styles.inlineField,
-                                      ...(activeInlineField === "learnedTagsCsv" ? styles.inlineFieldActive : {}),
+                                      ...styles.inlineFieldReadOnly,
                                     }}
                                     onMouseEnter={() => setHoveredInlineField("learnedTagsCsv")}
                                     onMouseLeave={() => setHoveredInlineField(null)}
-                                    onClick={() => setActiveInlineField("learnedTagsCsv")}
                                   >
                                     <div style={styles.inlineFieldLabel}>
                                       {tt("mapEditorLearnedKnowledge", "Learned knowledge")}
                                     </div>
-                                    {activeInlineField === "learnedTagsCsv" ? (
-                                      <div>
-                                        {loadingMapTags ? (
-                                          <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
-                                        ) : (
-                                          <div style={styles.tagWrap}>
-                                            {learnedKnowledgeTags.map((tag) => {
-                                              const selected = selectedLearnedTagIds.includes(tag.id);
-                                              return (
-                                                <button
-                                                  key={tag.id}
-                                                  type="button"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleLearnedTagSelection(tag.id);
-                                                  }}
-                                                  style={{
-                                                    ...styles.tagChip,
-                                                    ...(selected ? styles.tagChipSelected : {}),
-                                                  }}
-                                                >
-                                                  {tag.name}
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
+                                    {loadingMapTags ? (
+                                      <p style={styles.helpText}>{tt("mapEditorLoadingTags", "Loading tags...")}</p>
                                     ) : (
                                       <div style={styles.tagWrap}>
                                         {selectedLearnedTagNames.length > 0 ? (
                                           selectedLearnedTagNames.map((name) => (
                                             <span
                                               key={`learned-${name}`}
-                                              style={{ ...styles.tagChip, ...styles.tagChipSelected }}
+                                              style={{ ...styles.tagChip, ...styles.tagChipSelected, ...styles.tagChipReadOnly }}
                                             >
                                               {name}
                                             </span>
@@ -3034,10 +3132,12 @@ export function MapEditorControls({
                                         )}
                                       </div>
                                     )}
-                                    {(hoveredInlineField === "learnedTagsCsv" ||
-                                      activeInlineField === "learnedTagsCsv") && (
-                                      <Pencil size={14} style={styles.inlineEditIcon} />
-                                    )}
+                                    <p style={styles.helpText}>
+                                      {tt(
+                                        "mapEditorLearnedKnowledgeAutoHint",
+                                        "Auto-selected from blocks configured in Step 4.",
+                                      )}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -3813,52 +3913,25 @@ export function MapEditorControls({
                   <div
                     style={{
                       ...styles.inlineField,
-                      ...(activeInlineField === "learnedTagsCsv" ? styles.inlineFieldActive : {}),
+                      ...styles.inlineFieldReadOnly,
                     }}
                     onMouseEnter={() => setHoveredInlineField("learnedTagsCsv")}
                     onMouseLeave={() => setHoveredInlineField(null)}
-                    onClick={() => setActiveInlineField("learnedTagsCsv")}
                   >
                     <div style={styles.inlineFieldLabel}>
                       {tt("mapEditorLearnedKnowledge", "Learned knowledge")}
                     </div>
-                    {activeInlineField === "learnedTagsCsv" ? (
-                      <div>
-                        {loadingMapTags ? (
-                          <p style={styles.helpText}>
-                            {tt("mapEditorLoadingTags", "Loading tags...")}
-                          </p>
-                        ) : (
-                          <div style={styles.tagWrap}>
-                            {learnedKnowledgeTags.map((tag) => {
-                              const selected = selectedLearnedTagIds.includes(tag.id);
-                              return (
-                                <button
-                                  key={tag.id}
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleLearnedTagSelection(tag.id);
-                                  }}
-                                  style={{
-                                    ...styles.tagChip,
-                                    ...(selected ? styles.tagChipSelected : {}),
-                                  }}
-                                >
-                                  {tag.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                    {loadingMapTags ? (
+                      <p style={styles.helpText}>
+                        {tt("mapEditorLoadingTags", "Loading tags...")}
+                      </p>
                     ) : (
                       <div style={styles.tagWrap}>
                         {selectedLearnedTagNames.length > 0 ? (
                           selectedLearnedTagNames.map((name) => (
                             <span
                               key={`learned-${name}`}
-                              style={{ ...styles.tagChip, ...styles.tagChipSelected }}
+                              style={{ ...styles.tagChip, ...styles.tagChipSelected, ...styles.tagChipReadOnly }}
                             >
                               {name}
                             </span>
@@ -3870,10 +3943,12 @@ export function MapEditorControls({
                         )}
                       </div>
                     )}
-                    {(hoveredInlineField === "learnedTagsCsv" ||
-                      activeInlineField === "learnedTagsCsv") && (
-                      <Pencil size={14} style={styles.inlineEditIcon} />
-                    )}
+                    <p style={styles.helpText}>
+                      {tt(
+                        "mapEditorLearnedKnowledgeAutoHint",
+                        "Auto-selected from blocks configured in Step 4.",
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -3939,7 +4014,8 @@ export function MapEditorControls({
           selectedTagIds={selectedTagIds}
           selectedLearnedTagIds={selectedLearnedTagIds}
           onToggleTag={toggleTagSelection}
-          onToggleLearnedTag={toggleLearnedTagSelection}
+          onToggleLearnedTag={() => {}}
+          learnedKnowledgeReadOnly
           avatarPreviewUrl={resolvedAvatarPreviewUrl}
           avatarFile={avatarFile}
           onAvatarFileChange={setAvatarFile}
@@ -4630,6 +4706,9 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.15)",
     transform: "translateY(-1px)",
   },
+  inlineFieldReadOnly: {
+    cursor: "default",
+  },
   inlineFieldLabel: {
     fontSize: "12px",
     fontWeight: 700,
@@ -4705,6 +4784,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid var(--primary)",
     background: "color-mix(in srgb, var(--primary) 18%, var(--surface))",
     color: "var(--primary)",
+  },
+  tagChipReadOnly: {
+    cursor: "default",
   },
   modalTitle: {
     fontSize: "20px",

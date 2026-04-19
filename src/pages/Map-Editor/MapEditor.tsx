@@ -957,7 +957,7 @@ export default function MapEditor() {
       setLevelSlots((prev) => {
         if (prev.length <= 1) return prev;
         const copy = [...prev];
-        if (idx === activeLevelIndex) {
+        if (copy[activeLevelIndex]) {
           copy[activeLevelIndex] = {
             ...copy[activeLevelIndex],
             mapData: structuredClone(s.getState()),
@@ -1667,6 +1667,37 @@ export default function MapEditor() {
 
   const canSubmitForReview = reviewMissingCriteria.length === 0;
 
+  const blockTypeToLabel = useMemo(
+    () =>
+      new Map(
+        blocksConfig.blocks.map((block) => {
+          const key = `block.${block.type}`;
+          const translated = t(key);
+          return [block.type, translated === key ? block.label : translated] as const;
+        }),
+      ),
+    [t],
+  );
+
+  const mandatoryTopdownBlockLabels = useMemo(
+    () =>
+      ["move_forward", "turn_left", "turn_right"]
+        .map((type) => blockTypeToLabel.get(type) ?? type)
+        .filter((label, index, arr) => arr.indexOf(label) === index),
+    [blockTypeToLabel],
+  );
+
+  const mandatoryPlatformBlockLabels = useMemo(
+    () =>
+      ["move_forward", "turn_left", "turn_right", "jump"]
+        .map((type) => blockTypeToLabel.get(type) ?? type)
+        .filter((label, index, arr) => arr.indexOf(label) === index),
+    [blockTypeToLabel],
+  );
+
+  const mandatoryPlatformBlocksText = mandatoryPlatformBlockLabels.join(", ");
+  const mandatoryTopdownBlocksText = mandatoryTopdownBlockLabels.join(", ");
+
   const goNextStep = () => {
     setCurrentStep((prev) => (prev < 6 ? ((prev + 1) as EditorStep) : prev));
   };
@@ -2191,6 +2222,26 @@ export default function MapEditor() {
                 <h2 style={styles.stepHeading}>
                   {tt("mapEditorWizardStep4Heading", "Step 4 - Block rules")}
                 </h2>
+                <p style={styles.stepNote}>
+                  {tt(
+                    "mapEditorWizardStep4MandatoryBlocksHintIntro",
+                    "Mandatory blocks by level type:",
+                  )}
+                </p>
+                <ul style={styles.stepHintList}>
+                  <li>
+                    {tt(
+                      "mapEditorWizardStep4MandatoryBlocksHintPlatform",
+                      "If level type is Platform, required blocks are: {blocks}",
+                    ).replace("{blocks}", mandatoryPlatformBlocksText)}
+                  </li>
+                  <li>
+                    {tt(
+                      "mapEditorWizardStep4MandatoryBlocksHintTopdown",
+                      "If level type is Top-down, required blocks are: {blocks}",
+                    ).replace("{blocks}", mandatoryTopdownBlocksText)}
+                  </li>
+                </ul>
               </div>
 
               <div style={styles.rulesLayout}>
@@ -2684,6 +2735,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     color: "var(--text-2)",
   },
+  stepHintList: {
+    margin: "4px 0 0",
+    paddingLeft: "18px",
+    fontSize: "13px",
+    color: "var(--text-2)",
+    display: "grid",
+    gap: "4px",
+  },
   metadataGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
@@ -2974,8 +3033,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: "100%",
     minHeight: "100%",
     display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "flex-start",
+    alignItems: "center",
+    justifyContent: "center",
     padding: "24px",
     borderRadius: "12px",
     border: "1px solid var(--border)",
