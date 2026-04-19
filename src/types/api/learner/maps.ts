@@ -102,10 +102,12 @@ export interface UploadMapResult {
   message?: string;
 }
 
+export type UploadMapResponseData = string | UploadMapResult | { id: string };
+
 /**
  * API result type for map upload
  */
-export type UploadMapApiResult = ApiResult<UploadMapResult>;
+export type UploadMapApiResult = ApiResult<UploadMapResponseData>;
 export type UploadGameApiResult = UploadMapApiResult;
 
 /**

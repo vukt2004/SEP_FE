@@ -772,7 +772,7 @@ export default function MapEditor() {
   const isCreateMode = !mapId;
   const [zoom, setZoom] = useState(1);
   const [currentStep, setCurrentStep] = useState<EditorStep>(1);
-  const [loadingMap, setLoadingMap] = useState(false);
+  const [, setLoadingMap] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingMapTagNames, setEditingMapTagNames] = useState<string[]>([]);
   const [editingMapLearnedTagNames, setEditingMapLearnedTagNames] = useState<string[]>([]);
@@ -1617,6 +1617,56 @@ export default function MapEditor() {
     hydratedLevelSlots,
   ]);
 
+  const reviewLevelChecks = hydratedLevelSlots.map((slot, index) => ({
+    id: slot.id,
+    levelNumber: index + 1,
+    levelName: slot.mapData.config.name,
+    checks: [
+      {
+        label: tt("mapEditorWizardChecklistLevelName", "Level name"),
+        pass: slot.mapData.config.name.trim().length > 0,
+      },
+      {
+        label: tt("mapEditorWizardChecklistMapDesigned", "Map is designed"),
+        pass: hasConfiguredMap(slot.mapData),
+      },
+      {
+        label: tt("mapEditorWizardChecklistBlockRules", "Block rules are valid"),
+        pass: hasValidBlockRules(slot.mapData),
+      },
+      {
+        label: tt("mapEditorWizardChecklistHints", "Hints"),
+        pass: slot.hints.some((hint) => hint.trim().length > 0),
+      },
+    ],
+  }));
+
+  const reviewMissingCriteria: string[] = [];
+  if (mapCatalogTitle.trim().length === 0) {
+    reviewMissingCriteria.push(
+      locale.startsWith("vi") ? "Thông tin game: Tiêu đề game" : "Game info: Game title",
+    );
+  }
+  if ((mapData?.config.description ?? "").trim().length === 0) {
+    reviewMissingCriteria.push(
+      locale.startsWith("vi") ? "Thông tin game: Mô tả" : "Game info: Description",
+    );
+  }
+
+  for (const level of reviewLevelChecks) {
+    const levelPrefix = tt("mapEditorLevelButton", "Level {n}").replace(
+      "{n}",
+      String(level.levelNumber),
+    );
+    for (const check of level.checks) {
+      if (!check.pass) {
+        reviewMissingCriteria.push(`${levelPrefix}: ${check.label}`);
+      }
+    }
+  }
+
+  const canSubmitForReview = reviewMissingCriteria.length === 0;
+
   const goNextStep = () => {
     setCurrentStep((prev) => (prev < 6 ? ((prev + 1) as EditorStep) : prev));
   };
@@ -1671,19 +1721,7 @@ export default function MapEditor() {
         </div>
         <div style={styles.headerCenter}>
           <h1 style={styles.title}>{tt("mapEditorPageTitle", "Map Editor")}</h1>
-          {mapId && (
-            <p style={styles.subtitle}>
-              {loadingMap
-                ? tt("mapEditorLoadingMap", "Loading map...")
-                : tt("mapEditorEditingMap", "Editing map: {id}").replace("{id}", mapId)}
-            </p>
-          )}
           {loadError && <p style={styles.errorText}>{loadError}</p>}
-          {!loadError && mapData && (
-            <p style={styles.subtitle}>
-              {tt("mapEditorWizardSubtitle", "6-step workflow for the game editor")}
-            </p>
-          )}
         </div>
         <div style={styles.headerRight}>
           <span style={styles.headerRightSpacer} aria-hidden />
@@ -2342,42 +2380,20 @@ export default function MapEditor() {
 
               <div style={styles.reviewLayout}>
                 <section style={styles.reviewMainPanel}>
-                  {hydratedLevelSlots.map((slot, index) => {
-                    const checks = [
-                      {
-                        label: tt("mapEditorWizardChecklistLevelName", "Level name"),
-                        pass: slot.mapData.config.name.trim().length > 0,
-                      },
-                      {
-                        label: tt("mapEditorWizardChecklistMapDesigned", "Map is designed"),
-                        pass: hasConfiguredMap(slot.mapData),
-                      },
-                      {
-                        label: tt("mapEditorWizardChecklistBlockRules", "Block rules are valid"),
-                        pass: hasValidBlockRules(slot.mapData),
-                      },
-                      {
-                        label: tt(
-                          "mapEditorWizardChecklistHints",
-                          "Hints",
-                        ),
-                        pass: slot.hints.some((hint) => hint.trim().length > 0),
-                      },
-                    ];
-
+                  {reviewLevelChecks.map((level) => {
                     return (
-                      <div key={slot.id} style={styles.reviewLevelCard}>
+                      <div key={level.id} style={styles.reviewLevelCard}>
                         <h4 style={styles.reviewLevelTitle}>
                           {tt("mapEditorLevelButton", "Level {n}").replace(
                             "{n}",
-                            String(index + 1),
+                            String(level.levelNumber),
                           )}
-                          : {slot.mapData.config.name || tt("mapEditorUntitledMap", "Untitled")}
+                          : {level.levelName || tt("mapEditorUntitledMap", "Untitled")}
                         </h4>
                         <div style={styles.reviewChecklist}>
-                          {checks.map((check) => (
+                          {level.checks.map((check) => (
                             <div
-                              key={`${slot.id}-${check.label}`}
+                              key={`${level.id}-${check.label}`}
                               style={{
                                 ...styles.reviewCheckItem,
                                 ...(check.pass ? styles.reviewCheckPass : styles.reviewCheckFail),
@@ -2396,6 +2412,27 @@ export default function MapEditor() {
                 </section>
 
                 <aside style={styles.reviewSidePanel}>
+                  {!canSubmitForReview ? (
+                    <section style={styles.reviewMissingPanel}>
+                      <h3 style={styles.reviewMissingTitle}>
+                        {locale.startsWith("vi")
+                          ? "Mục chưa đạt để gửi duyệt"
+                          : "Incomplete criteria before submit"}
+                      </h3>
+                      <p style={styles.reviewMissingDesc}>
+                        {locale.startsWith("vi")
+                          ? "Hoàn thành tất cả tiêu chí sau trước khi bấm Lưu và gửi duyệt."
+                          : "Complete all criteria below before clicking Save and submit for review."}
+                      </p>
+                      <ul style={styles.reviewMissingList}>
+                        {reviewMissingCriteria.map((item, index) => (
+                          <li key={`${item}-${index}`} style={styles.reviewMissingItem}>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ) : null}
                   <MapEditorControls
                     sectionMode="right"
                     editorStore={store}
@@ -2456,6 +2493,8 @@ export default function MapEditor() {
                     initialRightTab="map"
                     registerSaveLevelContent={handleRegisterSaveLevelContent}
                     onSavingLevelContentChange={handleSavingLevelContentChange}
+                    canSubmitForReview={canSubmitForReview}
+                    submitForReviewRequirements={reviewMissingCriteria}
                   />
                 </aside>
               </div>
@@ -2493,10 +2532,12 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     display: "flex",
     flexDirection: "column",
+    alignItems: "center",
     padding: "18px",
     gap: "14px",
     minHeight: "100vh",
     background: "var(--bg)",
+    boxSizing: "border-box",
   },
   header: {
     display: "grid",
@@ -3023,6 +3064,39 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid var(--border)",
     padding: "10px",
     background: "var(--surface)",
+    display: "grid",
+    gap: "10px",
+  },
+  reviewMissingPanel: {
+    borderRadius: "12px",
+    border: "1px solid color-mix(in srgb, var(--warning) 38%, var(--border))",
+    background: "color-mix(in srgb, var(--warning) 10%, var(--surface))",
+    padding: "10px",
+    display: "grid",
+    gap: "6px",
+  },
+  reviewMissingTitle: {
+    margin: 0,
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "var(--warning)",
+  },
+  reviewMissingDesc: {
+    margin: 0,
+    fontSize: "12px",
+    color: "var(--text-2)",
+    lineHeight: 1.45,
+  },
+  reviewMissingList: {
+    margin: 0,
+    paddingLeft: "18px",
+    display: "grid",
+    gap: "4px",
+  },
+  reviewMissingItem: {
+    fontSize: "12px",
+    color: "var(--text)",
+    lineHeight: 1.45,
   },
   reviewLevelCard: {
     borderRadius: "12px",

@@ -205,6 +205,10 @@ interface MapEditorControlsProps {
   /** Optional controlled gallery draft files to persist across step navigation. */
   galleryDraftFiles?: File[];
   onGalleryDraftFilesChange?: (files: File[]) => void;
+  /** Step 6 review gate: only allow submit-for-review when all criteria pass. */
+  canSubmitForReview?: boolean;
+  /** Human-readable missing criteria shown when submit is blocked. */
+  submitForReviewRequirements?: string[];
 }
 
 export type RightPanelTabId = "canvas" | "level" | "rules" | "objects" | "map";
@@ -425,6 +429,8 @@ export function MapEditorControls({
   onAvatarDraftFileChange,
   galleryDraftFiles,
   onGalleryDraftFilesChange,
+  canSubmitForReview = true,
+  submitForReviewRequirements = [],
 }: MapEditorControlsProps) {
   const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
@@ -1643,12 +1649,30 @@ export function MapEditorControls({
     skipConfirm?: boolean;
     catalogSaveMode?: "overwrite" | "newListing";
     redirectAfterSave?: boolean;
+    submitForReview?: boolean;
   }) => {
     const meta = getMapFormMeta?.();
     const titleForApi =
       meta?.title?.trim() ?? mapCatalogTitle?.trim() ?? mapData.config.name?.trim();
     if (!titleForApi) {
       alert(tt("mapEditorPleaseSetMapName", "Please set a map name before saving"));
+      return;
+    }
+
+    if (opts?.submitForReview && !canSubmitForReview) {
+      const topReasons = submitForReviewRequirements.slice(0, 8);
+      const detailText =
+        topReasons.length > 0
+          ? `\n- ${topReasons.join("\n- ")}${
+              submitForReviewRequirements.length > topReasons.length ? "\n..." : ""
+            }`
+          : "";
+      alert(
+        `${tt(
+          "mapEditorSubmitBlockedByChecklist",
+          "Cannot submit for review yet. Complete all Step 6 checklist criteria first.",
+        )}${detailText}`,
+      );
       return;
     }
 
@@ -1866,13 +1890,8 @@ export function MapEditorControls({
         : await mapsApi.uploadMapFromJson(payload);
 
       if (response.data.isSuccess) {
-        const effectiveMapId = !isEditingExistingMap
-          ? response.data.data &&
-            typeof response.data.data === "object" &&
-            "id" in response.data.data
-            ? String((response.data.data as { id: string }).id)
-            : ""
-          : targetMapIdForUpdate!;
+        const uploadedMapId = parseDuplicateNewMapId(response.data.data);
+        const effectiveMapId = isEditingExistingMap ? targetMapIdForUpdate! : uploadedMapId ?? "";
 
         if (isLearner && effectiveMapId && avatarFile) {
           const avatarResponse = await learnerMapsApi.uploadMapAvatar(effectiveMapId, avatarFile);
@@ -1903,14 +1922,41 @@ export function MapEditorControls({
           }
         }
 
-        const mapId =
-          response.data.data && typeof response.data.data === "object" && "id" in response.data.data
-            ? String((response.data.data as { id: string }).id)
-            : "";
+        if (opts?.submitForReview && isLearner) {
+          if (!effectiveMapId) {
+            alert(
+              tt(
+                "mapEditorSubmitReviewMissingMapId",
+                "Saved draft but cannot submit for review because game id was not returned.",
+              ),
+            );
+            return;
+          }
+
+          const submitRes = await learnerMapsApi.submitMapForReview(effectiveMapId);
+          if (!submitRes.data.isSuccess) {
+            alert(
+              tt(
+                "mapEditorSavedButSubmitReviewFailed",
+                "Draft saved but submit for review failed: {message}",
+              ).replace(
+                "{message}",
+                submitRes.data.message || tt("mapEditorUnknownError", "Unknown error"),
+              ),
+            );
+            return;
+          }
+        }
+
         const savedAsNewListing =
           isLearner && opts?.catalogSaveMode === "newListing" && isEditingExistingMap;
         alert(
-          createdVersionMapId
+          opts?.submitForReview && isLearner
+            ? tt(
+                "mapEditorSavedAndSubmittedForReview",
+                "Game saved and submitted for review successfully.",
+              )
+            : createdVersionMapId
             ? tt(
                 "mapEditorVersionDraftCreated",
                 "A new draft version was created from the approved/published map and your changes were saved there.",
@@ -1924,8 +1970,11 @@ export function MapEditorControls({
                 ? tt("mapEditorLevelContentSavedSuccess", "Level content saved successfully!")
                 : tt("mapEditorMapSavedSuccessWithId", "Map saved successfully!{idPart}").replace(
                     "{idPart}",
-                    mapId
-                      ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace("{id}", mapId)
+                  effectiveMapId
+                      ? tt("mapEditorMapSavedIdPart", " Map ID: {id}").replace(
+                          "{id}",
+                          effectiveMapId,
+                        )
                       : "",
                   ),
         );
@@ -3900,13 +3949,15 @@ export function MapEditorControls({
             setPendingGalleryFiles((prev) => prev.filter((_, j) => j !== i))
           }
           galleryMaxFiles={GALLERY_BATCH_MAX}
-          onSaveToServer={() =>
+          onSaveToServer={(saveOptions) =>
             void handleSaveLevelContent({
               skipConfirm: true,
               catalogSaveMode: catalogSaveMode,
               redirectAfterSave: true,
+              submitForReview: Boolean(saveOptions?.submitForReview),
             })
           }
+          allowSubmitForReview={isLearner && canSubmitForReview}
           catalogListingSaveMode={catalogSaveMode}
           onCatalogListingSaveModeChange={setCatalogSaveMode}
           mapContentVersion={loadedMapContentVersion}
