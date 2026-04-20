@@ -114,3 +114,32 @@ export function toComplaintStatusEnumValue(status: ComplaintStatus): number {
   if (status === "InProgress") return 1;
   return 2;
 }
+
+export function resolveComplaintGameId(input: {
+  contextType?: string | null;
+  contextId?: string | null;
+  contextDataJson?: string | null;
+}) {
+  const type = (input.contextType ?? "").trim().toLowerCase();
+  if (type !== "game") return "";
+
+  if (input.contextDataJson) {
+    try {
+      const parsed = JSON.parse(input.contextDataJson) as {
+        GameId?: string | null;
+        gameId?: string | null;
+        MapId?: string | null;
+        mapId?: string | null;
+      };
+      const candidates = [parsed.GameId, parsed.gameId, parsed.MapId, parsed.mapId];
+      const fromPayload = candidates.find(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      );
+      if (fromPayload) return fromPayload.trim();
+    } catch {
+      // Ignore malformed payload and fallback to contextId.
+    }
+  }
+
+  return (input.contextId ?? "").trim();
+}

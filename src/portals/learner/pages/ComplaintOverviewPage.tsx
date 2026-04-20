@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { isAxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
 import { learnerChatApi } from "@/services/api/learner/chat.api";
 import { learnerProfileApi } from "@/services/api/learner/profile.api";
-import type { ComplaintAttachment, ComplaintDetail } from "@/types/api/complaints";
+import {
+  COMPLAINT_STATUS_VALUE_TO_CODE,
+  type ComplaintAttachment,
+  type ComplaintDetail,
+  type ComplaintStatus,
+} from "@/types/api/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
+import { resolveComplaintGameId } from "@/shared/components/complaints/complaint.utils";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Gamepad2 } from "lucide-react";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -21,6 +28,74 @@ function isPreviewableImage(file: ComplaintAttachment) {
   return /\.(png|jpe?g|gif|webp)$/i.test(file.fileName);
 }
 
+function humanizeComplaintStatus(status: ComplaintStatus) {
+  return status.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+
+function getComplaintStatusLabel(t: (key: string) => string, status: ComplaintStatus) {
+  const key = `complaints.status.${status}`;
+  const translated = t(key);
+  return translated === key ? humanizeComplaintStatus(status) : translated;
+}
+
+function mapStatusUpdateErrorMessage(
+  t: (key: string) => string,
+  apiMessage?: string | null,
+  errorCode?: string | null,
+) {
+  const normalized = (apiMessage ?? "").trim().toLowerCase();
+
+  if (errorCode === "ValidationFailed") {
+    if (
+      normalized.includes("chưa được gửi") ||
+      normalized.includes("chưa được sửa") ||
+      normalized.includes("not been submitted") ||
+      normalized.includes("not modified") ||
+      normalized.includes("not updated")
+    ) {
+      return t("complaints.overview.statusUpdate.gameNotUpdated");
+    }
+
+    if (normalized.includes("dữ liệu đầu vào không hợp lệ") || normalized.includes("invalid input")) {
+      return t("complaints.overview.statusUpdate.validationFailed");
+    }
+  }
+
+  return (apiMessage ?? "").trim();
+}
+
+type SellerStatusAction = {
+  id: "startFix" | "submitFix" | "rejectIssue";
+  labelKey: string;
+  toStatus: ComplaintStatus;
+  allowedFrom: ComplaintStatus[];
+  defaultNote: string;
+};
+
+const SELLER_STATUS_ACTIONS: SellerStatusAction[] = [
+  {
+    id: "startFix",
+    labelKey: "complaints.overview.statusAction.startFix",
+    toStatus: "FixInProgress",
+    allowedFrom: ["Open", "SellerPending"],
+    defaultNote: "Seller accepted issue and started fixing",
+  },
+  {
+    id: "submitFix",
+    labelKey: "complaints.overview.statusAction.submitFix",
+    toStatus: "FixSubmitted",
+    allowedFrom: ["FixInProgress"],
+    defaultNote: "Seller submitted fix for verification",
+  },
+  {
+    id: "rejectIssue",
+    labelKey: "complaints.overview.statusAction.rejectIssue",
+    toStatus: "SellerRejected",
+    allowedFrom: ["Open", "SellerPending"],
+    defaultNote: "Seller disputed this complaint",
+  },
+];
+
 export default function ComplaintOverviewPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -30,13 +105,16 @@ export default function ComplaintOverviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [openingChat, setOpeningChat] = useState(false);
+  const [statusNote, setStatusNote] = useState("");
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       setError("");
-      const res = await learnerComplaintsApi.getComplaintById(id);
+      const res = await learnerComplaintsApi.getComplaintAgainstMeById(id);
       if (res.data.isSuccess && res.data.data) {
         setData(res.data.data);
         return;
@@ -52,6 +130,62 @@ export default function ComplaintOverviewPage() {
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
+
+  const availableActions = useMemo(() => {
+    if (!data) return [] as SellerStatusAction[];
+    return SELLER_STATUS_ACTIONS.filter((action) => action.allowedFrom.includes(data.complaintStatus));
+  }, [data]);
+
+  const handleChangeStatus = useCallback(async (action: SellerStatusAction) => {
+    if (!id || !data || statusSubmitting) return;
+    try {
+      setStatusSubmitting(true);
+      setStatusFeedback(null);
+
+      const toStatusCode = COMPLAINT_STATUS_VALUE_TO_CODE[action.toStatus];
+      const normalizedNote = statusNote.trim() || action.defaultNote;
+      const res = await learnerComplaintsApi.changeAgainstMeStatus(id, {
+        toStatus: toStatusCode,
+        note: normalizedNote,
+        issueRefund: false,
+      });
+
+      if (!res.data.isSuccess) {
+        setStatusFeedback({
+          type: "error",
+          message: res.data.message || t("complaints.overview.statusUpdate.failed"),
+        });
+        return;
+      }
+
+      setStatusFeedback({
+        type: "success",
+        message: res.data.message || t("complaints.overview.statusUpdate.success"),
+      });
+      setStatusNote("");
+      await fetchDetail();
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const errorPayload = err.response?.data as
+          | { message?: string; errorCode?: string }
+          | undefined;
+        const messageFromApi =
+          mapStatusUpdateErrorMessage(t, errorPayload?.message, errorPayload?.errorCode) ||
+          err.message;
+        setStatusFeedback({
+          type: "error",
+          message: messageFromApi || t("complaints.overview.statusUpdate.failed"),
+        });
+        return;
+      }
+      setStatusFeedback({
+        type: "error",
+        message: t("complaints.overview.statusUpdate.failed"),
+      });
+    } finally {
+      setStatusSubmitting(false);
+    }
+  }, [data, fetchDetail, id, statusNote, statusSubmitting, t]);
 
   const handleChatWithReporter = async () => {
     console.log("ComplaintOverviewPage: handleChatWithReporter clicked", { userId: data?.userId, openingChat });
@@ -113,6 +247,12 @@ export default function ComplaintOverviewPage() {
   if (error) return <div style={{ color: "var(--danger)" }}>{error}</div>;
   if (!data) return <div>{t("complaints.detail.noComplaint")}</div>;
 
+  const gameDetailId = resolveComplaintGameId({
+    contextType: data.contextType,
+    contextId: data.contextId,
+    contextDataJson: data.contextDataJson,
+  });
+
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", display: "grid", gap: 14 }}>
       <section
@@ -128,7 +268,7 @@ export default function ComplaintOverviewPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => navigate(ROUTES.LEARNER_COMPLAINTS)}
+            onClick={() => navigate(`${ROUTES.LEARNER_COMPLAINTS}?view=againstMe`)}
             style={{
               border: "1px solid var(--border)",
               background: "var(--bg)",
@@ -142,7 +282,33 @@ export default function ComplaintOverviewPage() {
             ← {t("complaints.detail.backToComplaints")}
           </button>
           <ComplaintStatusBadge status={data.complaintStatus} />
-          {data.contextType?.toLowerCase() === "map" && (
+          {gameDetailId ? (
+            <button
+              type="button"
+              onClick={() =>
+                navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", encodeURIComponent(gameDetailId)))
+              }
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text)",
+                borderRadius: 6,
+                padding: "5px 11px",
+                fontSize: 12,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+              title={t("complaints.detail.viewGameDetail")}
+            >
+              <Gamepad2 size={14} />
+              {t("complaints.detail.viewGameDetail")}
+            </button>
+          ) : null}
+          {["map", "game"].includes((data.contextType || "").toLowerCase()) && (
             <button
               type="button"
               onClick={handleChatWithReporter}
@@ -207,6 +373,81 @@ export default function ComplaintOverviewPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section
+        style={{
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          background: "var(--surface)",
+          padding: 14,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ fontSize: 12, color: "var(--text-2)", textTransform: "uppercase" }}>
+          {t("complaints.overview.statusUpdate.title")}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+          {t("complaints.overview.statusUpdate.current")}: {getComplaintStatusLabel(t, data.complaintStatus)}
+        </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          <label style={{ fontSize: 12, color: "var(--text-2)" }}>
+            {t("complaints.overview.statusUpdate.note")}
+          </label>
+          <textarea
+            value={statusNote}
+            onChange={(e) => setStatusNote(e.target.value)}
+            placeholder={t("complaints.overview.statusUpdate.notePlaceholder")}
+            rows={3}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "10px 12px",
+              background: "var(--bg)",
+              color: "var(--text)",
+              resize: "vertical",
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {availableActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => handleChangeStatus(action)}
+              disabled={statusSubmitting}
+              style={{
+                border: "none",
+                borderRadius: 10,
+                padding: "9px 14px",
+                background: action.id === "rejectIssue" ? "#dc2626" : "var(--primary)",
+                color: "white",
+                fontWeight: 700,
+                cursor: statusSubmitting ? "not-allowed" : "pointer",
+                opacity: statusSubmitting ? 0.65 : 1,
+              }}
+            >
+              {statusSubmitting
+                ? t("complaints.overview.statusUpdate.submitting")
+                : t(action.labelKey)}
+            </button>
+          ))}
+
+          {availableActions.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+              {t("complaints.overview.statusAction.noneAvailable")}
+            </div>
+          ) : null}
+        </div>
+
+        {statusFeedback ? (
+          <div style={{ color: statusFeedback.type === "error" ? "var(--danger)" : "#166534", fontSize: 13 }}>
+            {statusFeedback.message}
+          </div>
+        ) : null}
       </section>
 
       <section

@@ -1,18 +1,114 @@
 import { useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { cmsComplaintsApi } from "@/services/api/cms/complaints.api";
 import { cmsUsersApi } from "@/services/api/cms/users.api";
 import { cmsAuthApi } from "@/services/api/cms/auth.api";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { ComplaintTimeline } from "@/shared/components/complaints/ComplaintTimeline";
-import type { ComplaintDetail, ComplaintStatus } from "@/types/api/complaints";
 import {
-  getAllowedStatusTransitions,
-  normalizeComplaintStatus,
-  toComplaintStatusEnumValue,
+  COMPLAINT_STATUS_VALUE_TO_CODE,
+  type ComplaintDetail,
+  type ComplaintStatus,
+} from "@/types/api/complaints";
+import {
   validateMessageContent,
 } from "@/shared/components/complaints/complaint.utils";
 import { CheckCircle2, SendHorizontal, XCircle } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
+
+type CmsStatusAction = {
+  id:
+    | "requestSellerResponse"
+    | "markSellerNoResponse"
+    | "markSellerRejected"
+    | "confirmSellerAccepted"
+    | "confirmSellerSubmittedFix"
+    | "moveToBuyerVerify"
+    | "resolveRefund"
+    | "resolveReject"
+    | "closeTicket";
+  labelKey: string;
+  toStatus: ComplaintStatus;
+  issueRefund: boolean;
+  allowedFrom: ComplaintStatus[];
+  defaultNoteKey: string;
+};
+
+const CMS_STATUS_ACTIONS: CmsStatusAction[] = [
+  {
+    id: "requestSellerResponse",
+    labelKey: "complaints.cmsDetail.action.requestSellerResponse",
+    toStatus: "SellerPending",
+    issueRefund: false,
+    allowedFrom: ["Open"],
+    defaultNoteKey: "complaints.cmsDetail.note.requestSellerResponse",
+  },
+  {
+    id: "markSellerNoResponse",
+    labelKey: "complaints.cmsDetail.action.markSellerNoResponse",
+    toStatus: "SellerNoResponse",
+    issueRefund: false,
+    allowedFrom: ["Open", "SellerPending", "FixInProgress"],
+    defaultNoteKey: "complaints.cmsDetail.note.markSellerNoResponse",
+  },
+  {
+    id: "markSellerRejected",
+    labelKey: "complaints.cmsDetail.action.markSellerRejected",
+    toStatus: "SellerRejected",
+    issueRefund: false,
+    allowedFrom: ["SellerPending"],
+    defaultNoteKey: "complaints.cmsDetail.note.markSellerRejected",
+  },
+  {
+    id: "confirmSellerAccepted",
+    labelKey: "complaints.cmsDetail.action.confirmSellerAccepted",
+    toStatus: "FixInProgress",
+    issueRefund: false,
+    allowedFrom: ["SellerPending"],
+    defaultNoteKey: "complaints.cmsDetail.note.confirmSellerAccepted",
+  },
+  {
+    id: "confirmSellerSubmittedFix",
+    labelKey: "complaints.cmsDetail.action.confirmSellerSubmittedFix",
+    toStatus: "FixSubmitted",
+    issueRefund: false,
+    allowedFrom: ["FixInProgress"],
+    defaultNoteKey: "complaints.cmsDetail.note.confirmSellerSubmittedFix",
+  },
+  {
+    id: "moveToBuyerVerify",
+    labelKey: "complaints.cmsDetail.action.moveToBuyerVerify",
+    toStatus: "Verified",
+    issueRefund: false,
+    allowedFrom: ["FixSubmitted"],
+    defaultNoteKey: "complaints.cmsDetail.note.moveToBuyerVerify",
+  },
+  {
+    id: "resolveRefund",
+    labelKey: "complaints.cmsDetail.action.resolveRefund",
+    toStatus: "ResolvedRefund",
+    issueRefund: true,
+    allowedFrom: ["Verified", "SellerRejected", "SellerNoResponse"],
+    defaultNoteKey: "complaints.cmsDetail.note.resolveRefund",
+  },
+  {
+    id: "resolveReject",
+    labelKey: "complaints.cmsDetail.action.resolveReject",
+    toStatus: "ResolvedReject",
+    issueRefund: false,
+    allowedFrom: ["Verified", "SellerRejected", "SellerNoResponse"],
+    defaultNoteKey: "complaints.cmsDetail.note.resolveReject",
+  },
+  {
+    id: "closeTicket",
+    labelKey: "complaints.cmsDetail.action.closeTicket",
+    toStatus: "Closed",
+    issueRefund: false,
+    allowedFrom: ["ResolvedRefund", "ResolvedReject"],
+    defaultNoteKey: "complaints.cmsDetail.note.closeTicket",
+  },
+];
 
 type ParticipantInfo = {
   name: string;
@@ -43,6 +139,18 @@ function formatMessageTime(iso: string) {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isPreviewableImageAttachment(fileName?: string | null, mimeType?: string | null) {
+  const mime = (mimeType ?? "").toLowerCase();
+  if (mime.startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName ?? "");
 }
 
 function getUid5(value: string) {
@@ -76,6 +184,7 @@ function parseContextDataJson(raw?: string | null) {
 }
 
 export default function ComplaintDetailPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const [data, setData] = useState<ComplaintDetail | null>(null);
@@ -84,13 +193,11 @@ export default function ComplaintDetailPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [statusNote, setStatusNote] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<ComplaintStatus | "">("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [messageContent, setMessageContent] = useState("");
   const [messageError, setMessageError] = useState("");
   const [messageSubmitting, setMessageSubmitting] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const threadRef = useRef<HTMLDivElement | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -113,9 +220,9 @@ export default function ComplaintDetailPage() {
       setError("");
       const res = await cmsComplaintsApi.getComplaintById(id);
       if (res.data.isSuccess && res.data.data) setData(res.data.data);
-      else setError(res.data.message || "Failed to load complaint detail.");
+      else setError(res.data.message || t("complaints.cmsDetail.error.load"));
     } catch {
-      setError("Failed to load complaint detail.");
+      setError(t("complaints.cmsDetail.error.load"));
     } finally {
       setLoading(false);
     }
@@ -134,6 +241,13 @@ export default function ComplaintDetailPage() {
       const senderIds = Array.from(new Set(detail.messages.map((m) => m.senderId).filter(Boolean)));
       const historyActorIds = Array.from(new Set(detail.statusHistories.map((h) => h.changedBy).filter(Boolean)));
       const userIds = Array.from(new Set([detail.userId, ...senderIds, ...historyActorIds].filter(Boolean)));
+      const senderPartyByUserId = new Map<string, string>();
+      detail.messages.forEach((message) => {
+        const party = (message.senderParty ?? "").trim();
+        if (message.senderId && party) {
+          senderPartyByUserId.set(message.senderId, party.toLowerCase());
+        }
+      });
 
       async function resolveUser(userId: string) {
         const byId = await cmsUsersApi.getUserById(userId).catch(() => null);
@@ -158,7 +272,12 @@ export default function ComplaintDetailPage() {
       if (selfProfile?.userId) {
         setCmsSelfId(selfProfile.userId);
         next[selfProfile.userId] = {
-          name: buildDisplayName(selfProfile.firstName, selfProfile.lastName, selfProfile.email, "Support Agent"),
+          name: buildDisplayName(
+            selfProfile.firstName,
+            selfProfile.lastName,
+            selfProfile.email,
+            t("complaints.cmsDetail.supportAgent"),
+          ),
           avatarPath: selfProfile.avatarPath ?? null,
         };
       }
@@ -169,8 +288,30 @@ export default function ComplaintDetailPage() {
         const user = result.value;
         if (!user?.id) return;
         next[user.id] = {
-          name: buildDisplayName(user.firstName, user.lastName, user.email, "User"),
+          name: buildDisplayName(user.firstName, user.lastName, user.email, t("complaints.cmsDetail.user")),
           avatarPath: user.avatarPath ?? null,
+        };
+      });
+
+      // Keep chat labels informative even when some user profiles cannot be resolved.
+      userIds.forEach((userId) => {
+        if (next[userId]) return;
+        const senderParty = senderPartyByUserId.get(userId);
+        const isBuyer =
+          senderParty === "buyer" ||
+          userId === detail.userId ||
+          (detail.buyerUserId ? userId === detail.buyerUserId : false);
+        const isSeller =
+          senderParty === "seller" ||
+          (detail.sellerUserId ? userId === detail.sellerUserId : false);
+        next[userId] = {
+          name:
+            isBuyer
+              ? t("complaints.cmsDetail.customerWithId").replace("{id}", getUid5(userId))
+              : isSeller
+                ? t("complaints.cmsDetail.sellerWithId").replace("{id}", getUid5(userId))
+                : t("complaints.cmsDetail.userWithId").replace("{id}", getUid5(userId)),
+          avatarPath: null,
         };
       });
 
@@ -184,11 +325,6 @@ export default function ComplaintDetailPage() {
   }, [data]);
 
   useEffect(() => {
-    const transitions = getAllowedStatusTransitions(data?.complaintStatus);
-    setSelectedStatus(transitions[0] ?? "");
-  }, [data?.complaintStatus]);
-
-  useEffect(() => {
     return () => {
       if (toastTimerRef.current) {
         window.clearTimeout(toastTimerRef.current);
@@ -196,43 +332,57 @@ export default function ComplaintDetailPage() {
     };
   }, []);
 
-  async function submitStatusChange() {
-    if (!id || !data || !selectedStatus) return;
+  async function submitStatusChange(action: CmsStatusAction) {
+    if (!id || !data) return;
     try {
       setStatusSubmitting(true);
+      setError("");
+      const note = statusNote.trim() || t(action.defaultNoteKey);
       const res = await cmsComplaintsApi.changeStatus(id, {
-        toStatus: toComplaintStatusEnumValue(selectedStatus),
-        note: statusNote || undefined,
+        toStatus: COMPLAINT_STATUS_VALUE_TO_CODE[action.toStatus],
+        note,
+        issueRefund: action.issueRefund,
       });
       if (!res.data.isSuccess) {
-        const msg = res.data.message || "Update status failed.";
+        const msg = res.data.message || t("complaints.cmsDetail.error.updateStatus");
         setError(msg);
         showToast("error", msg);
         return;
       }
       setStatusNote("");
-      showToast("success", `Status updated to ${selectedStatus}.`);
+      const statusText = t(`complaints.status.${action.toStatus}`);
+      showToast(
+        "success",
+        t("complaints.cmsDetail.toast.statusUpdated").replace(
+          "{status}",
+          statusText === `complaints.status.${action.toStatus}` ? action.toStatus : statusText,
+        ),
+      );
       await fetchDetail();
-    } catch {
-      setError("Update status failed.");
-      showToast("error", "Update status failed.");
+    } catch (err) {
+      if (isAxiosError(err)) {
+        const payload = err.response?.data as
+          | { message?: string; errorCode?: string }
+          | undefined;
+        const statusCode = err.response?.status;
+        let msg = payload?.message || t("complaints.cmsDetail.error.updateStatus");
+
+        if (statusCode === 401) msg = t("complaints.cmsDetail.error.unauthorized");
+        else if (statusCode === 403) msg = t("complaints.cmsDetail.error.forbidden");
+        else if (statusCode === 404) msg = t("complaints.cmsDetail.error.notFound");
+        else if (statusCode === 400 && payload?.errorCode === "ValidationFailed") {
+          msg = payload?.message || t("complaints.cmsDetail.error.invalidTransition");
+        }
+
+        setError(msg);
+        showToast("error", msg);
+        return;
+      }
+      setError(t("complaints.cmsDetail.error.updateStatus"));
+      showToast("error", t("complaints.cmsDetail.error.updateStatus"));
     } finally {
       setStatusSubmitting(false);
     }
-  }
-
-  async function onChangeStatus() {
-    if (!id || !data) return;
-    if (!selectedStatus) {
-      setError("Please select a status.");
-      showToast("error", "Please select a status.");
-      return;
-    }
-    if (selectedStatus === "Resolved") {
-      setConfirmOpen(true);
-      return;
-    }
-    await submitStatusChange();
   }
 
   async function onSendMessage() {
@@ -244,26 +394,19 @@ export default function ComplaintDetailPage() {
       setMessageSubmitting(true);
       const res = await cmsComplaintsApi.addMessage(id, { content: messageContent, isInternal });
       if (!res.data.isSuccess) {
-        const msg = res.data.message || "Send message failed.";
+        const msg = res.data.message || t("complaints.cmsDetail.error.sendMessage");
         setMessageError(msg);
         showToast("error", msg);
         return;
       }
-      const statusNow = normalizeComplaintStatus(data?.complaintStatus);
-      if (statusNow === "Open") {
-        await cmsComplaintsApi.changeStatus(id, {
-          toStatus: toComplaintStatusEnumValue("InProgress"),
-          note: "Auto-updated to InProgress after staff reply.",
-        });
-      }
       setMessageContent("");
       setIsInternal(false);
-      showToast("success", "Message sent successfully.");
+      showToast("success", t("complaints.cmsDetail.toast.messageSent"));
       await fetchDetail();
       threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
     } catch {
-      setMessageError("Send message failed.");
-      showToast("error", "Send message failed.");
+      setMessageError(t("complaints.cmsDetail.error.sendMessage"));
+      showToast("error", t("complaints.cmsDetail.error.sendMessage"));
     } finally {
       setMessageSubmitting(false);
     }
@@ -279,12 +422,15 @@ export default function ComplaintDetailPage() {
     threadRef.current.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [orderedMessages.length]);
 
-  if (loading && !data) return <div style={{ padding: 24 }}>Loading detail...</div>;
+  if (loading && !data) return <div style={{ padding: 24 }}>{t("complaints.detail.loading")}</div>;
   if (error) return <div style={{ color: "var(--danger)", padding: 24 }}>{error}</div>;
-  if (!data) return <div style={{ padding: 24 }}>No complaint found.</div>;
-  const currentStatus = normalizeComplaintStatus(data.complaintStatus);
-  const allowedTransitions = getAllowedStatusTransitions(data.complaintStatus);
-  const customerName = participants[data.userId]?.name ?? "Customer";
+  if (!data) return <div style={{ padding: 24 }}>{t("complaints.detail.noComplaint")}</div>;
+  const currentStatus = data.complaintStatus;
+  const availableActions = CMS_STATUS_ACTIONS.filter((action) =>
+    action.allowedFrom.includes(currentStatus),
+  );
+  const customerName =
+    participants[data.userId]?.name ?? t("complaints.cmsDetail.customerWithId").replace("{id}", getUid5(data.userId));
   const contextData = parseContextDataJson(data.contextDataJson);
   const linkedOrderType = (data.contextResolved?.linkedOrder?.paymentTargetType ?? "").trim().toLowerCase();
   const normalizedContextType = ((data.contextType ?? linkedOrderType) || "").trim().toLowerCase();
@@ -312,16 +458,16 @@ export default function ComplaintDetailPage() {
 
   const contextAction = gameContextId
     ? {
-      label: "Reported game",
-      title: "Open reported game in CMS Games",
-      cta: `Open game #${gameContextId.slice(0, 8)}`,
+      label: t("complaints.cmsDetail.reportedGame"),
+      title: t("complaints.cmsDetail.openReportedGameTitle"),
+      cta: t("complaints.cmsDetail.openGameCta").replace("{id}", gameContextId.slice(0, 8)),
       link: `/cms/games?gameId=${encodeURIComponent(gameContextId)}`,
     }
     : packageContextId
       ? {
-        label: "Reported package",
-        title: "Open reported package in CMS Packages",
-        cta: `Open package #${packageContextId.slice(0, 8)}`,
+        label: t("complaints.cmsDetail.reportedPackage"),
+        title: t("complaints.cmsDetail.openReportedPackageTitle"),
+        cta: t("complaints.cmsDetail.openPackageCta").replace("{id}", packageContextId.slice(0, 8)),
         link: `/cms/packages?packageId=${encodeURIComponent(packageContextId)}`,
       }
       : null;
@@ -333,7 +479,7 @@ export default function ComplaintDetailPage() {
     data.contextKey?.trim() ||
     (data.contextId ? `#${data.contextId.slice(0, 8)}` : "");
   const formatHistoryActor = (changedBy: string) => {
-    const actorName = participants[changedBy]?.name ?? "User";
+    const actorName = participants[changedBy]?.name ?? t("complaints.cmsDetail.user");
     return `${actorName} (${getUid5(changedBy)})`;
   };
 
@@ -374,78 +520,10 @@ export default function ComplaintDetailPage() {
               fontSize: 16,
               lineHeight: 1,
             }}
-            aria-label="Close toast"
+            aria-label={t("complaints.closeToast")}
           >
             ×
           </button>
-        </div>
-      ) : null}
-
-      {confirmOpen ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(2,6,23,0.45)",
-            zIndex: 90,
-            display: "grid",
-            placeItems: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              borderRadius: 14,
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.35)",
-              padding: 18,
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>Confirm Status Change</div>
-            <div style={{ color: "var(--text-2)", fontSize: 14 }}>
-              Mark this complaint as <strong style={{ color: "var(--text)" }}>Resolved</strong>? This action is visible in
-              the ticket timeline.
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-              <button
-                type="button"
-                onClick={() => setConfirmOpen(false)}
-                style={{
-                  border: "1px solid var(--border)",
-                  background: "var(--bg)",
-                  color: "var(--text)",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setConfirmOpen(false);
-                  await submitStatusChange();
-                }}
-                style={{
-                  border: "none",
-                  background: "#16a34a",
-                  color: "white",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
         </div>
       ) : null}
 
@@ -485,7 +563,7 @@ export default function ComplaintDetailPage() {
                 marginBottom: 8,
               }}
             >
-              ← Back to complaints
+              ← {t("complaints.detail.backToComplaints")}
             </button>
             <div style={{ minWidth: 0 }}>
               <h2
@@ -498,7 +576,7 @@ export default function ComplaintDetailPage() {
                   wordBreak: "break-word",
                 }}
               >
-                Ticket #{data.id.slice(0, 8)} - {data.subject}
+                {t("complaints.cmsDetail.ticketLabel")} #{data.id.slice(0, 8)} - {data.subject}
               </h2>
             </div>
             <div
@@ -511,29 +589,43 @@ export default function ComplaintDetailPage() {
                 fontSize: 11,
               }}
             >
-              <span>Created {new Date(data.createdAt).toLocaleString()}</span>
+              <span>{t("complaints.detail.created")} {new Date(data.createdAt).toLocaleString()}</span>
               <span style={{ opacity: 0.6 }}>•</span>
-              <span>Category: {data.category}</span>
+              <span>{t("complaints.category")}: {data.category}</span>
               <span style={{ opacity: 0.6 }}>•</span>
-              <span>By: {customerName}</span>
+              <span>{t("complaints.detail.by")}: {customerName}</span>
             </div>
           </div>
 
-          <h3 style={{ margin: "14px 0 8px 0", fontSize: 15 }}>Conversation</h3>
+          <h3 style={{ margin: "14px 0 8px 0", fontSize: 15 }}>{t("complaints.detail.conversation")}</h3>
           <div
             ref={threadRef}
             style={{ maxHeight: 430, overflowY: "auto", paddingRight: 2, borderTop: "1px solid var(--border)" }}
           >
             <div style={{ display: "grid", gap: 0 }}>
               {orderedMessages.length === 0 ? (
-                <div style={{ color: "var(--text-2)", padding: "14px 0" }}>No messages yet.</div>
+                <div style={{ color: "var(--text-2)", padding: "14px 0" }}>{t("complaints.detail.noMessages")}</div>
               ) : (
                 orderedMessages.map((msg) => {
-                  const isUserMessage = msg.senderId === data.userId;
-                  const isCmsMessage = cmsSelfId ? msg.senderId === cmsSelfId : !isUserMessage;
+                  const senderParty = (msg.senderParty ?? "").trim().toLowerCase();
+                  const isBuyerMessage =
+                    senderParty === "buyer" ||
+                    msg.senderId === data.userId ||
+                    (data.buyerUserId ? msg.senderId === data.buyerUserId : false);
+                  const isSellerMessage =
+                    senderParty === "seller" ||
+                    (data.sellerUserId ? msg.senderId === data.sellerUserId : false);
+                  const isCmsMessage = cmsSelfId
+                    ? msg.senderId === cmsSelfId
+                    : !(isBuyerMessage || isSellerMessage);
+                  const fallbackByParty = isBuyerMessage
+                    ? t("complaints.cmsDetail.customerWithId").replace("{id}", getUid5(msg.senderId))
+                    : isSellerMessage
+                      ? t("complaints.cmsDetail.sellerWithId").replace("{id}", getUid5(msg.senderId))
+                      : t("complaints.cmsDetail.userWithId").replace("{id}", getUid5(msg.senderId));
                   const displayName =
                     participants[msg.senderId]?.name ??
-                    (isUserMessage ? customerName : "Support Agent");
+                    (isCmsMessage ? t("complaints.cmsDetail.supportAgent") : fallbackByParty);
                   const avatarPath = participants[msg.senderId]?.avatarPath;
                   const avatarSrc = avatarPath || (isCmsMessage ? PROJECT_LOGO_AVATAR : DEFAULT_AVATAR);
                   const isInternalNote = msg.isInternal;
@@ -614,13 +706,96 @@ export default function ComplaintDetailPage() {
                             }}
                           >
                             <strong style={{ fontSize: 12, lineHeight: 1.2 }}>
-                              {displayName}{isInternalNote ? " (Internal)" : ""}
+                              {displayName}{isInternalNote ? ` (${t("complaints.cmsDetail.internalTag")})` : ""}
                             </strong>
                             <span style={{ whiteSpace: "nowrap", lineHeight: 1.2 }}>{formatMessageTime(msg.createdAt)}</span>
                           </div>
                           <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.45, fontSize: 13 }}>
                             {msg.content}
                           </div>
+                          {msg.attachments?.length ? (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                display: "grid",
+                                gap: 6,
+                                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                              }}
+                            >
+                              {msg.attachments
+                                .slice()
+                                .sort((a, b) => a.sortOrder - b.sortOrder)
+                                .map((attachment) => {
+                                  const isImage = isPreviewableImageAttachment(
+                                    attachment.fileName,
+                                    attachment.mimeType,
+                                  );
+                                  const cardBg = isCmsMessage ? "rgba(255,255,255,0.15)" : "var(--surface)";
+                                  const borderColor = isCmsMessage ? "rgba(255,255,255,0.35)" : "var(--border)";
+
+                                  return (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title={t("complaints.cmsDetail.openAttachment")}
+                                      style={{
+                                        textDecoration: "none",
+                                        color: isCmsMessage ? "#fff" : "var(--text)",
+                                        border: `1px solid ${borderColor}`,
+                                        borderRadius: 10,
+                                        overflow: "hidden",
+                                        background: cardBg,
+                                        display: "grid",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          aspectRatio: "16 / 10",
+                                          background: isCmsMessage ? "rgba(255,255,255,0.08)" : "var(--bg)",
+                                          display: "grid",
+                                          placeItems: "center",
+                                          overflow: "hidden",
+                                        }}
+                                      >
+                                        {isImage ? (
+                                          <img
+                                            src={attachment.url}
+                                            alt={attachment.fileName}
+                                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                          />
+                                        ) : (
+                                          <span style={{ fontSize: 12, opacity: 0.9 }}>
+                                            {t("complaints.cmsDetail.openAttachment")}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ padding: 8, display: "grid", gap: 2 }}>
+                                        <div
+                                          style={{
+                                            fontSize: 12,
+                                            fontWeight: 700,
+                                            wordBreak: "break-word",
+                                            lineHeight: 1.35,
+                                          }}
+                                        >
+                                          {attachment.fileName}
+                                        </div>
+                                        <div
+                                          style={{
+                                            fontSize: 11,
+                                            color: isCmsMessage ? "rgba(255,255,255,0.86)" : "var(--text-2)",
+                                          }}
+                                        >
+                                          {formatFileSize(attachment.sizeBytes)}
+                                        </div>
+                                      </div>
+                                    </a>
+                                  );
+                                })}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -655,7 +830,7 @@ export default function ComplaintDetailPage() {
                 }}
                 rows={1}
                 maxLength={5000}
-                placeholder="Write a reply..."
+                placeholder={t("complaints.detail.replyPlaceholder")}
                 style={{
                   border: "none",
                   borderRadius: 10,
@@ -688,18 +863,20 @@ export default function ComplaintDetailPage() {
                   opacity: !canSendMessage ? 0.55 : 1,
                   flexShrink: 0,
                 }}
-                aria-label={messageSubmitting ? "Sending message" : "Send message"}
-                title="Send (Enter)"
+                aria-label={messageSubmitting ? t("complaints.detail.sending") : t("complaints.detail.send")}
+                title={t("complaints.detail.sendShortcut")}
               >
                 <SendHorizontal size={16} />
               </button>
             </div>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}>
               <input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} />
-              Internal note
+              {t("complaints.cmsDetail.internalNote")}
             </label>
             {messageError ? <div style={{ color: "var(--danger)", fontSize: 12 }}>{messageError}</div> : null}
-            {messageSubmitting ? <div style={{ color: "var(--text-2)", fontSize: 12 }}>Sending...</div> : null}
+            {messageSubmitting ? (
+              <div style={{ color: "var(--text-2)", fontSize: 12 }}>{t("complaints.detail.sending")}</div>
+            ) : null}
           </div>
         </section>
 
@@ -712,13 +889,13 @@ export default function ComplaintDetailPage() {
               background: "var(--surface)",
             }}
           >
-            <div style={{ fontWeight: 700, marginBottom: 10 }}>Ticket Details</div>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>{t("complaints.detail.ticketDetails")}</div>
             <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
-              <div><strong>Customer:</strong> {customerName}</div>
-              <div><strong>Ticket ID:</strong> #{data.id.slice(0, 8)}</div>
-              <div><strong>Category:</strong> {data.category}</div>
+              <div><strong>{t("complaints.detail.customer")}:</strong> {customerName}</div>
+              <div><strong>{t("complaints.table.ticketId")}:</strong> #{data.id.slice(0, 8)}</div>
+              <div><strong>{t("complaints.category")}:</strong> {data.category}</div>
               <div>
-                <strong>Reported about:</strong>
+                <strong>{t("complaints.cmsDetail.reportedAbout")}:</strong>
                 <div
                   style={{
                     marginTop: 6,
@@ -743,8 +920,8 @@ export default function ComplaintDetailPage() {
                   </div>
                 ) : null}
               </div>
-              <div><strong>Issue type:</strong> {issueType}</div>
-              {issueReference ? <div><strong>Reference:</strong> {issueReference}</div> : null}
+              <div><strong>{t("complaints.cmsDetail.issueType")}:</strong> {issueType}</div>
+              {issueReference ? <div><strong>{t("complaints.cmsDetail.reference")}:</strong> {issueReference}</div> : null}
               {contextAction ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <strong>{contextAction.label}:</strong>
@@ -767,17 +944,10 @@ export default function ComplaintDetailPage() {
                   </button>
                 </div>
               ) : null}
-              <div><strong>Created:</strong> {new Date(data.createdAt).toLocaleDateString()}</div>
+              <div><strong>{t("complaints.detail.created")}:</strong> {new Date(data.createdAt).toLocaleDateString()}</div>
+              <div><strong>{t("complaints.table.status")}:</strong> <ComplaintStatusBadge status={currentStatus} /></div>
               <div>
-                <strong>Status:</strong>{" "}
-                {currentStatus ? (
-                  <ComplaintStatusBadge status={currentStatus} />
-                ) : (
-                  <span style={{ color: "var(--text-2)" }}>{data.complaintStatus}</span>
-                )}
-              </div>
-              <div>
-                <strong>Issue details:</strong>
+                <strong>{t("complaints.cmsDetail.issueDetails")}:</strong>
                 <div
                   style={{
                     marginTop: 6,
@@ -791,83 +961,11 @@ export default function ComplaintDetailPage() {
                   {data.description}
                 </div>
               </div>
-              {data.resolvedAt ? <div><strong>Resolved:</strong> {new Date(data.resolvedAt).toLocaleString()}</div> : null}
+              {data.resolvedAt ? (
+                <div><strong>{t("complaints.detail.resolved")}:</strong> {new Date(data.resolvedAt).toLocaleString()}</div>
+              ) : null}
             </div>
           </section>
-
-          {currentStatus !== "Resolved" ? (
-            <section
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 14,
-                padding: 16,
-                background: "var(--surface)",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 10 }}>Status</div>
-              <div style={{ display: "grid", gap: 8 }}>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value as ComplaintStatus)}
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: 10,
-                    padding: "10px 12px",
-                    background: "var(--bg)",
-                    color: "var(--text)",
-                    fontSize: 14,
-                  }}
-                >
-                  <option value="" disabled>
-                    Select status
-                  </option>
-                  {allowedTransitions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                {allowedTransitions.length === 0 ? (
-                  <div style={{ color: "var(--text-2)", fontSize: 13 }}>
-                    This complaint has no further valid transitions in backend workflow.
-                  </div>
-                ) : null}
-                <textarea
-                  placeholder={`Note for ${selectedStatus || "status"} (optional)`}
-                  value={statusNote}
-                  onChange={(e) => setStatusNote(e.target.value)}
-                  rows={3}
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: 10,
-                    padding: 10,
-                    background: "var(--bg)",
-                    color: "var(--text)",
-                    resize: "vertical",
-                  }}
-                />
-                <button
-                  onClick={onChangeStatus}
-                  disabled={statusSubmitting || !selectedStatus || !allowedTransitions.includes(selectedStatus)}
-                  style={{
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "10px 14px",
-                    background: selectedStatus === "Resolved" ? "#16a34a" : "var(--primary)",
-                    color: "white",
-                    fontWeight: 600,
-                    cursor:
-                      statusSubmitting || !selectedStatus || !allowedTransitions.includes(selectedStatus)
-                        ? "not-allowed"
-                        : "pointer",
-                    opacity: statusSubmitting || !selectedStatus || !allowedTransitions.includes(selectedStatus) ? 0.7 : 1,
-                  }}
-                >
-                  {statusSubmitting ? "Updating..." : `Update to ${selectedStatus || "status"}`}
-                </button>
-              </div>
-            </section>
-          ) : null}
 
           <section
             style={{
@@ -877,7 +975,71 @@ export default function ComplaintDetailPage() {
               background: "var(--surface)",
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: 10 }}>Timeline</h3>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>{t("complaints.cmsDetail.statusActions")}</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <textarea
+                placeholder={t("complaints.cmsDetail.actionNotePlaceholder")}
+                value={statusNote}
+                onChange={(e) => setStatusNote(e.target.value)}
+                rows={3}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: 10,
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  resize: "vertical",
+                }}
+              />
+
+              {availableActions.length === 0 ? (
+                <div style={{ color: "var(--text-2)", fontSize: 13 }}>
+                  {t("complaints.cmsDetail.noValidActions")}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {availableActions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      onClick={() => void submitStatusChange(action)}
+                      disabled={statusSubmitting}
+                      style={{
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "10px 14px",
+                        background:
+                          action.toStatus === "ResolvedRefund"
+                            ? "#16a34a"
+                            : action.toStatus === "ResolvedReject" || action.toStatus === "SellerNoResponse"
+                              ? "#dc2626"
+                              : "var(--primary)",
+                        color: "white",
+                        fontWeight: 600,
+                        cursor: statusSubmitting ? "not-allowed" : "pointer",
+                        opacity: statusSubmitting ? 0.7 : 1,
+                        textAlign: "left",
+                      }}
+                    >
+                      {statusSubmitting
+                        ? t("complaints.cmsDetail.actionUpdating")
+                        : `${t(action.labelKey)} -> ${t(`complaints.status.${action.toStatus}`)}${action.issueRefund ? ` (${t("complaints.cmsDetail.actionIssueRefundTag")})` : ""}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              padding: 16,
+              background: "var(--surface)",
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 10 }}>{t("complaints.detail.timeline")}</h3>
             <ComplaintTimeline histories={data.statusHistories} formatChangedBy={formatHistoryActor} />
           </section>
         </div>

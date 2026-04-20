@@ -57,11 +57,12 @@ export type CreateComplaintResponse = {
 export type CreateComplaintResult = ApiResult<CreateComplaintResponse>;
 
 export type LearnerComplaintListQuery = {
-  status?: ComplaintStatus;
+  status?: ComplaintStatus | number;
   pageNumber?: number;
   pageSize?: number;
   dateFrom?: string;
   dateTo?: string;
+  keyword?: string;
 };
 
 export type AddLearnerComplaintMessageRequest = {
@@ -70,6 +71,37 @@ export type AddLearnerComplaintMessageRequest = {
 };
 
 export type AddLearnerComplaintMessageResult = ApiResult<string>;
+
+export type LearnerAgainstMeChangeStatusRequest = {
+  toStatus: ComplaintStatus | number;
+  note?: string;
+  issueRefund?: boolean;
+};
+
+export type LearnerAgainstMeChangeStatusResponse = {
+  complaintId: string;
+  subject: string;
+  category: string;
+  categoryKey: string;
+  fromStatus: ComplaintStatus | null;
+  toStatus: ComplaintStatus;
+  currentStatus: ComplaintStatus;
+  changedAt: string;
+  note: string | null;
+  issueRefund: boolean;
+  refundProcessed: boolean;
+  refundedPaymentRecordId: string | null;
+  refundAmount: number | null;
+  resolvedAt: string | null;
+  contextType: string | null;
+  contextId: string | null;
+  contextKey: string | null;
+  contextDataJson: string | null;
+  occurredAt: string | null;
+  contextResolved: ComplaintContextResolved | null;
+};
+
+export type LearnerAgainstMeChangeStatusResult = ApiResult<LearnerAgainstMeChangeStatusResponse>;
 
 export type LearnerComplaintListResult = ComplaintListResult;
 export type LearnerComplaintDetailResult = ComplaintDetailResult;
