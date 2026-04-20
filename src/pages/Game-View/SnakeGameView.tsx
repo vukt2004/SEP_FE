@@ -278,6 +278,7 @@ export default function SnakeGameView() {
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const executorRef = useRef<StepExecutor | null>(null);
+  const handleResetRef = useRef<(() => void) | null>(null);
 
   const levelRef = useRef<LevelDefinition | null>(null);
   const initialObjectsRef = useRef<NonNullable<LevelDefinition["objects"]>>([]);
@@ -1860,7 +1861,7 @@ export default function SnakeGameView() {
     }
 
     if (!executor.hasNext()) {
-      handleReset();
+      handleResetRef.current?.();
       window.alert(t("runOutOfBlocks"));
       return;
     }
@@ -1872,10 +1873,10 @@ export default function SnakeGameView() {
 
     if (!executor.hasNext()) {
       setIsExecutorRunning(false);
-      handleReset();
+      handleResetRef.current?.();
       window.alert(t("runOutOfBlocks"));
     }
-  }, [executeResultOnEngine, handleReset, handleStartLevel, isLevelStarted, t]);
+  }, [executeResultOnEngine, handleStartLevel, isLevelStarted, t]);
 
   const handleStopProgram = useCallback(() => {
     executorRef.current?.stop();
@@ -1926,6 +1927,10 @@ export default function SnakeGameView() {
     syncSnakeBodyCollision,
     t,
   ]);
+
+  useEffect(() => {
+    handleResetRef.current = handleReset;
+  }, [handleReset]);
 
   const handlePlayAgain = useCallback(() => {
     setResultsDockVisible(false);
