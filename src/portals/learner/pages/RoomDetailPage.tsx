@@ -347,7 +347,7 @@ export default function RoomDetailPage() {
       if (!conversation) {
         if (!isHost) return null;
         const createRes = await learnerChatApi.createTemporaryGroupConversation(roomChatName);
-        conversation = createRes.data.data ?? null;
+        conversation = createRes.data.data ?? undefined;
       }
 
       if (!conversation?.id) return null;
@@ -439,7 +439,13 @@ export default function RoomDetailPage() {
   };
 
   const handleStartGame = async () => {
-    if (!roomId || actioning) return;
+    if (!roomId || actioning || !room) return;
+    const selectedMapId = room.selectedMapId;
+    const roomCode = room.roomCode;
+    if (!selectedMapId) {
+      window.alert("Bạn cần chọn trò chơi trước khi bắt đầu.");
+      return;
+    }
     const blockedReasons = getStartBlockedReasons();
     if (blockedReasons.length > 0) {
       window.alert(blockedReasons.join("\n"));
@@ -451,7 +457,7 @@ export default function RoomDetailPage() {
       if (res.data?.isSuccess) {
         leftViaButton.current = true;
         learnerMapsApi
-          .getMapById(room.selectedMapId!)
+          .getMapById(selectedMapId)
           .then((resMap) => {
             const map = resMap.data?.data;
             const hint = getFirstLevelPlayHint(map);
@@ -462,12 +468,12 @@ export default function RoomDetailPage() {
                   ? ROUTES.SNAKE
                   : ROUTES.GAME;
             navigate(targetRoute, {
-              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, map, room?.roomCode),
+              state: lobbyPlayNavigationState(selectedMapId, roomId, map, roomCode),
             });
           })
           .catch(() => {
             navigate(ROUTES.GAME, {
-              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, null, room?.roomCode),
+              state: lobbyPlayNavigationState(selectedMapId, roomId, null, roomCode),
             });
           });
       } else {
@@ -643,13 +649,15 @@ export default function RoomDetailPage() {
       (p) => String(p.playerId).toLowerCase() === String(currentUserId).toLowerCase() && p.isReady,
     );
   const allReady = room && room.players.length > 0 && room.players.every((p) => p.isReady);
-  const canStart =
-    room?.status === "Waiting" &&
-    room.currentPlayerCount >= 2 &&
-    room.selectedMapId &&
-    allReady &&
-    isHost &&
-    !(room.selectedMapId && lockedMapIds.has(room.selectedMapId));
+  const canStart = Boolean(
+    room &&
+      room.status === "Waiting" &&
+      room.currentPlayerCount >= 2 &&
+      room.selectedMapId &&
+      allReady &&
+      isHost &&
+      !lockedMapIds.has(room.selectedMapId),
+  );
   const getStartBlockedReasons = useCallback((): string[] => {
     if (!room) return [t("couldNotStartGame")];
     const reasons: string[] = [];
@@ -664,9 +672,9 @@ export default function RoomDetailPage() {
     return reasons;
   }, [allReady, isHost, lockedMapIds, room, t]);
   const selectedGameLabel =
-    room.selectedGameTitle?.trim() ||
+    room?.selectedGameTitle?.trim() ||
     selectedMapDetail?.title?.trim() ||
-    (room.selectedMapId ? `${room.selectedMapId.slice(0, 8)}…` : null);
+    (room?.selectedMapId ? `${room.selectedMapId.slice(0, 8)}…` : null);
   const selectedMapPreviewUrl =
     selectedMapDetail?.avatarUrl?.trim() ||
     selectedMapDetail?.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
