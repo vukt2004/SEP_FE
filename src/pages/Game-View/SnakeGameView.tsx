@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useBlocker, useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
-import { ArrowLeft, Eraser, Flag, Pause, Play, RotateCcw, Send, SkipForward } from "lucide-react";
+import { ArrowLeft, Eraser, Pause, Play, RotateCcw, Send, SkipForward } from "lucide-react";
 import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
 import { LevelType, createGameConfig } from "@/modules/engine/core/GameConfig";
 import type { LevelBlockConstraints, LevelDefinition } from "@/modules/map-system/types";
@@ -43,6 +43,7 @@ import { GameResultsModal } from "./GameResultsModal";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
 import { RunDecisionModal } from "./RunDecisionModal";
+import RoomChatWidget from "./RoomChatWidget";
 
 const BACK_NAV_BLOCKED_ROUTE = "/game-session-expired";
 
@@ -61,6 +62,7 @@ type SnakeGameLocationState = {
   levelFile?: string;
   mapUrl?: string;
   multiplayerRoomId?: string;
+  multiplayerRoomCode?: string;
   roleContext?: string;
   returnTo?: string;
 };
@@ -265,6 +267,7 @@ export default function SnakeGameView() {
   const levelFile = routeState?.levelFile;
   const mapUrl = routeState?.mapUrl;
   const multiplayerRoomId = routeState?.multiplayerRoomId;
+  const multiplayerRoomCode = routeState?.multiplayerRoomCode;
   const roleContext = routeState?.roleContext;
   const returnTo = routeState?.returnTo;
   const isCmsPreview = roleContext === "cms";
@@ -638,17 +641,6 @@ export default function SnakeGameView() {
     setStatusText(t("snake.statusWinReadySubmit"));
   };
 
-  const handleEndMultiplayerGame = useCallback(async () => {
-    if (!multiplayerRoomId) return;
-    try {
-      await learnerLobbyApi.endGame(multiplayerRoomId);
-      await leaveLobbyRoom(multiplayerRoomId);
-      navigateWithoutPrompt(ROUTES.LEARNER_LEARN);
-    } catch {
-      window.alert("Could not end game.");
-    }
-  }, [multiplayerRoomId, navigateWithoutPrompt]);
-
   useEffect(() => {
     if (!levelId && !isCmsPreview) {
       navigateWithoutPrompt(ROUTES.LEARNER_LEARN, { replace: true });
@@ -660,17 +652,28 @@ export default function SnakeGameView() {
   useEffect(() => {
     if (!multiplayerRoomId) return;
     let unsubEnd: (() => void) | undefined;
+    let unsubLeft: (() => void) | undefined;
     void gameLobbyHub.connect().then(() => {
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
         void leaveLobbyRoom(multiplayerRoomId).then(() =>
           navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
         );
       });
+      unsubLeft = gameLobbyHub.on("PlayerLeftRoom", (payload: unknown) => {
+        const data = payload as
+          | { roomId?: string; RoomId?: string; playerName?: string; PlayerName?: string }
+          | undefined;
+        const leftRoomId = String(data?.roomId ?? data?.RoomId ?? "").toLowerCase();
+        if (!leftRoomId || leftRoomId !== multiplayerRoomId.toLowerCase()) return;
+        const playerName = String(data?.playerName ?? data?.PlayerName ?? "").trim() || "A player";
+        setStatusText(t("playerLeftRoomNotice").replace("{name}", playerName));
+      });
     });
     return () => {
       unsubEnd?.();
+      unsubLeft?.();
     };
-  }, [multiplayerRoomId, navigateWithoutPrompt]);
+  }, [multiplayerRoomId, navigateWithoutPrompt, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -764,17 +767,18 @@ export default function SnakeGameView() {
 
       const program = generateAST(workspaceRef.current);
       const astSpec = JSON.stringify(program);
-      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
       if (!options?.skipConfirm) {
-        if (!isProgramChecked) {
-          const precheckOk = await runAutoSubmitPrecheck(astSpec);
-          if (!precheckOk) {
-            setStatusText(t("gameSubmitAutoCheckFailed"));
-            return;
-          }
-        }
-        void handleSubmitRun({ skipConfirm: true });
+        setShowSubmitConfirmModal(true);
         return;
+      }
+
+      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+      if (!isProgramChecked) {
+        const precheckOk = await runAutoSubmitPrecheck(astSpec);
+        if (!precheckOk) {
+          setStatusText(t("gameSubmitAutoCheckFailed"));
+          return;
+        }
       }
 
       const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
@@ -844,9 +848,11 @@ export default function SnakeGameView() {
                 levelDetails: r.levelDetails ?? [],
               }));
               navigateWithoutPrompt(ROUTES.LEARNER_ROOM_RESULT, {
+                replace: true,
                 state: {
                   ranking,
                   roomId: multiplayerRoomId,
+                  multiplayerRoomCode,
                   levelId,
                   nextMapDetailId: nextCampaignLevelId,
                   nextRoute:
@@ -1854,7 +1860,8 @@ export default function SnakeGameView() {
     }
 
     if (!executor.hasNext()) {
-      setStatusText(t("snake.statusNoMoreSteps"));
+      handleReset();
+      window.alert(t("runOutOfBlocks"));
       return;
     }
 
@@ -1865,16 +1872,10 @@ export default function SnakeGameView() {
 
     if (!executor.hasNext()) {
       setIsExecutorRunning(false);
-      if (
-        !snakeFailedRef.current &&
-        !resultShownRef.current &&
-        !engine.hasWon() &&
-        engine.getState() !== EngineState.Failed
-      ) {
-        setShowExecutionIncompleteModal(true);
-      }
+      handleReset();
+      window.alert(t("runOutOfBlocks"));
     }
-  }, [executeResultOnEngine, handleStartLevel, isLevelStarted, t]);
+  }, [executeResultOnEngine, handleReset, handleStartLevel, isLevelStarted, t]);
 
   const handleStopProgram = useCallback(() => {
     executorRef.current?.stop();
@@ -2036,11 +2037,6 @@ export default function SnakeGameView() {
             <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
           </button>
 
-          {multiplayerRoomId && (
-            <button onClick={handleEndMultiplayerGame} style={controlButtonStyle("warning", false)}>
-              <Flag size={15} /> {t("endGame")}
-            </button>
-          )}
 
           <button
             onClick={handleRunProgram}
@@ -2609,6 +2605,7 @@ export default function SnakeGameView() {
         onPrimary={handleConfirmLeave}
         onSecondary={handleCancelLeave}
       />
+      {multiplayerRoomId ? <RoomChatWidget roomCode={multiplayerRoomCode} /> : null}
     </div>
   );
 }

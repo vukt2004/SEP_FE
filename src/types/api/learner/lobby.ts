@@ -80,6 +80,7 @@ export interface LobbyRoomDetailResponse {
 export interface SetRoomGameRequest {
   gameId?: string;
   mapId?: string;
+  maxPlayers?: number;
 }
 
 export type SetRoomMapRequest = SetRoomGameRequest;

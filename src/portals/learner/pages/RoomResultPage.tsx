@@ -7,6 +7,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
+import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import type { PlayerRankingDto } from "@/types/api/learner/lobby";
 import styles from "./RoomResultPage.module.css";
 
@@ -18,6 +19,7 @@ export default function RoomResultPage() {
   const state = location.state as {
     ranking?: PlayerRankingDto[];
     roomId?: string;
+    multiplayerRoomCode?: string;
     levelId?: string;
     nextMapDetailId?: string | null;
     nextRoute?: string;
@@ -25,6 +27,7 @@ export default function RoomResultPage() {
   const ranking = state?.ranking;
   const roomId = state?.roomId?.trim() || "";
   const levelId = state?.levelId?.trim() || "";
+  const multiplayerRoomCode = state?.multiplayerRoomCode?.trim() || "";
   const nextMapDetailId = state?.nextMapDetailId?.trim() || "";
   const nextRoute = state?.nextRoute || ROUTES.GAME;
   const hasNextLevel = Boolean(levelId && nextMapDetailId);
@@ -61,9 +64,24 @@ export default function RoomResultPage() {
         levelId,
         mapDetailId: nextMapDetailId,
         multiplayerRoomId: roomId,
+        multiplayerRoomCode,
       },
     });
-  }, [levelId, navigate, nextMapDetailId, nextRoute, roomId]);
+  }, [levelId, multiplayerRoomCode, navigate, nextMapDetailId, nextRoute, roomId]);
+
+  const goBackToRoom = useCallback(async () => {
+    if (!roomId) return;
+    leftViaAction.current = true;
+    // Ensure room returns to waiting state so host can configure/start next match.
+    await learnerLobbyApi.endGame(roomId).catch(() => {});
+    navigate(ROUTES.LEARNER_ROOM_DETAIL(roomId), {
+      replace: true,
+      state: {
+        roomId,
+        roomCode: multiplayerRoomCode,
+      },
+    });
+  }, [multiplayerRoomCode, navigate, roomId]);
 
   // Khi rời trang (Back, đóng tab, chuyển route) mà chưa gọi leaveAndNavigate — gửi leave.
   useEffect(() => {
@@ -93,8 +111,13 @@ export default function RoomResultPage() {
   useEffect(() => {
     if (!roomId) return;
     let unsubRanking: (() => void) | undefined;
-    void gameLobbyHub.connect().then(() => {
+    let unsubReconnect: (() => void) | undefined;
+    const joinRoomGroup = () => {
       void gameLobbyHub.joinRoom(roomId, null).catch(() => {});
+    };
+    void gameLobbyHub.connect().then(() => {
+      joinRoomGroup();
+      unsubReconnect = gameLobbyHub.onReconnected(joinRoomGroup);
       unsubRanking = gameLobbyHub.on("RankingUpdated", (payload: unknown) => {
         const data = payload as
           | { roomId?: string; RoomId?: string; ranking?: PlayerRankingDto[]; Ranking?: PlayerRankingDto[] }
@@ -108,10 +131,11 @@ export default function RoomResultPage() {
     });
     return () => {
       unsubRanking?.();
+      unsubReconnect?.();
     };
   }, [roomId]);
 
-  if (!liveRanking || !Array.isArray(liveRanking) || liveRanking.length === 0) {
+  if (!roomId) {
     navigate(ROUTES.LEARNER_LEARN, { replace: true });
     return null;
   }
@@ -136,8 +160,11 @@ export default function RoomResultPage() {
           </div>
           <p className={styles.subtitle}>{t("rankingSubtitle")}</p>
         </header>
-        <ol className={styles.rankingList}>
-          {rankingNormalized.map((r) => {
+        {rankingNormalized.length === 0 ? (
+          <div className={styles.subtitle}>Waiting for players to submit... (Realtime)</div>
+        ) : (
+          <ol className={styles.rankingList}>
+            {rankingNormalized.map((r) => {
             const hasLevelDetails = (r.levelDetails?.length ?? 0) > 0;
             const expanded = expandedPlayers[r.playerId] === true;
             return (
@@ -183,21 +210,27 @@ export default function RoomResultPage() {
                 ) : null}
               </li>
             );
-          })}
-        </ol>
-        <button
-          type="button"
-          className={styles.primaryBtn}
-          onClick={() => {
-            if (hasNextLevel) {
-              goNextLevel();
-              return;
-            }
-            void leaveAndNavigate(ROUTES.LEARNER_LEARN);
-          }}
-        >
-          {hasNextLevel ? "Play next level" : t("backToBrowse")}
-        </button>
+            })}
+          </ol>
+        )}
+        <div className={styles.actionsRow}>
+          <button type="button" className={styles.secondaryBtn} onClick={() => void goBackToRoom()}>
+            Quay lại phòng
+          </button>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={() => {
+              if (hasNextLevel) {
+                goNextLevel();
+                return;
+              }
+              void leaveAndNavigate(ROUTES.LEARNER_LEARN);
+            }}
+          >
+            {hasNextLevel ? "Play next level" : t("backToBrowse")}
+          </button>
+        </div>
       </div>
     </div>
   );

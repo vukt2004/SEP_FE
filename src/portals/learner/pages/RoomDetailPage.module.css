@@ -1,7 +1,7 @@
 .page {
   position: relative;
-  min-height: 100vh;
-  padding: 24px 16px;
+  min-height: 100%;
+  padding: 0;
 }
 
 .bg {
@@ -15,7 +15,8 @@
 .container {
   position: relative;
   z-index: 1;
-  max-width: 480px;
+  max-width: 920px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -116,9 +117,17 @@
 
 .mapHintWrap {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.mapHintTopRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .mapLinkBtn {
@@ -141,11 +150,77 @@
   color: var(--text-2);
 }
 
+.mapHintPreviewBtn {
+  width: 132px;
+  height: 74px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 0;
+  cursor: pointer;
+}
+
+.mapHintPreviewBtn:hover {
+  border-color: var(--primary);
+}
+
+.mapHintPreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mapHintPreviewFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+
 .hostActions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 16px;
+}
+
+.maxPlayersField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.maxPlayersField select {
+  min-width: 60px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.maxPlayersMetaField {
+  margin-left: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.maxPlayersMetaField select {
+  min-width: 52px;
+  height: 28px;
 }
 
 .hostBtn {
@@ -160,6 +235,30 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.hostBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hostBtnSecondary:hover:not(:disabled) {
+  border-color: var(--text-2);
+  color: var(--text);
+}
+
+.hostBtnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .hostBtn:hover:not(:disabled) {
@@ -379,6 +478,7 @@
 .meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 14px;
   color: var(--text-2);
@@ -389,6 +489,21 @@
   font-variant-numeric: tabular-nums;
   color: var(--text);
   transition: color 0.2s ease;
+}
+
+.playerCountBtn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.playerCountBtn:hover {
+  color: var(--primary);
+}
+
+.maxPlayersInlineEditor {
+  display: inline-flex;
 }
 
 .players {
@@ -441,10 +556,38 @@
   flex-shrink: 0;
 }
 
+.kickBtn {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, #ff4d4f 45%, var(--border));
+  background: color-mix(in srgb, #ff4d4f 12%, transparent);
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kickBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.secondaryActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.secondaryActionsSingle {
+  grid-template-columns: 1fr;
 }
 
 .readyBtn,
@@ -498,3 +641,104 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.chatIframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: var(--surface);
+}
+
+.chatStateText {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.chatDock {
+  position: fixed;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.chatBubbleBtn {
+  height: 44px;
+  min-width: 128px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 20%, var(--surface-2));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.32);
+  cursor: pointer;
+}
+
+.chatBubbleBtn:hover {
+  background: color-mix(in srgb, var(--primary) 28%, var(--surface-2));
+}
+
+.chatPanel {
+  width: min(430px, calc(100vw - 24px));
+  height: min(620px, 72vh);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 24px 44px rgba(2, 6, 23, 0.42);
+}
+
+.chatPanelHeader {
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 0 12px;
+  background: color-mix(in srgb, var(--surface) 90%, var(--surface-2));
+}
+
+.chatPanelTitle {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chatPanelClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.chatPanelClose:hover {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface-2) 85%, transparent);
+}
+
+.chatPanelBody {
+  height: calc(100% - 42px);
+  background: var(--surface);
+}
+

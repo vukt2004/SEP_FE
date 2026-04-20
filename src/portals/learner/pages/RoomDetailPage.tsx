@@ -14,10 +14,12 @@ import {
   Lock,
   Unlock,
   ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
+import { learnerChatApi } from "@/services/api/learner/chat.api";
 import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
@@ -27,11 +29,17 @@ import styles from "./RoomDetailPage.module.css";
 import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
 
-function lobbyPlayNavigationState(mapId: string, roomIdForState: string, mapPayload: unknown) {
+function lobbyPlayNavigationState(
+  mapId: string,
+  roomIdForState: string,
+  mapPayload: unknown,
+  roomCodeForState?: string | null,
+) {
   const hint = getFirstLevelPlayHint(mapPayload);
   return {
     levelId: mapId,
     multiplayerRoomId: roomIdForState,
+    multiplayerRoomCode: roomCodeForState ?? undefined,
     ...(hint.mapDetailId ? { mapDetailId: hint.mapDetailId } : {}),
   };
 }
@@ -150,6 +158,15 @@ function getInitialRoomFromState(state: unknown): LobbyRoomDetailResponse | null
 export default function RoomDetailPage() {
   const { roomId: roomIdParam } = useParams<{ roomId: string }>();
   const location = useLocation();
+  const locationState = (location.state ?? null) as
+    | {
+        roomId?: string;
+        roomCode?: string;
+        selectedMapIdFromBrowse?: string;
+        selectedMapTitleFromBrowse?: string;
+        applyMapSelectionFromBrowse?: boolean;
+      }
+    | null;
   const navigate = useNavigate();
   const { t } = useTranslation();
   const initialFromState = getInitialRoomFromState(location.state);
@@ -166,16 +183,30 @@ export default function RoomDetailPage() {
   const [selectedMapDetail, setSelectedMapDetail] = useState<ApiMap | null>(null);
   const [selectedMapDetailLoading, setSelectedMapDetailLoading] = useState(false);
   const [mapDetailOpen, setMapDetailOpen] = useState(false);
+  const [roomChatOpen, setRoomChatOpen] = useState(false);
+  const [roomChatConversationId, setRoomChatConversationId] = useState<string | null>(null);
+  const [roomChatLoading, setRoomChatLoading] = useState(false);
+  const [showMaxPlayersEditor, setShowMaxPlayersEditor] = useState(false);
   const leftViaButton = useRef(false);
   const mountedAt = useRef<number>(0);
   mountedAt.current = mountedAt.current || Date.now();
   const roomCodeRef = useRef<string | undefined>(room?.roomCode);
   const selectedMapDetailRef = useRef<ApiMap | null>(null);
+  const appliedBrowseMapRef = useRef<string | null>(null);
   roomCodeRef.current = room?.roomCode;
   selectedMapDetailRef.current = selectedMapDetail;
 
   /** ID dùng cho API/SignalR: ưu tiên room.roomId (từ state hoặc GET) để tránh URL param bị sai (nhiều segment). */
   const roomId = room?.roomId ?? roomIdParam ?? "";
+  const normalizedCurrentUserId = String(currentUserId ?? "").toLowerCase();
+  const isHost = Boolean(
+    room &&
+      normalizedCurrentUserId &&
+      (String(room.hostId ?? "").toLowerCase() === normalizedCurrentUserId ||
+        room.players.some(
+          (p) => String(p.playerId).toLowerCase() === normalizedCurrentUserId && p.isHost,
+        )),
+  );
 
   const fetchRoom = useCallback(async () => {
     if (!roomId) return;
@@ -196,8 +227,8 @@ export default function RoomDetailPage() {
 
   useEffect(() => {
     fetchRoom();
-    const interval = setInterval(fetchRoom, 15000);
-    return () => clearInterval(interval);
+    // Room detail now relies on SignalR RoomUpdated events for realtime sync.
+    // Keep a single initial fetch to hydrate state.
   }, [fetchRoom]);
 
   // SignalR: join room group ngay khi có roomId (không chờ roomCode — realtime số người)
@@ -249,12 +280,12 @@ export default function RoomDetailPage() {
                       ? ROUTES.SNAKE
                       : ROUTES.GAME;
                 navigate(targetRoute, {
-                  state: lobbyPlayNavigationState(mapId, roomIdForState, map),
+                  state: lobbyPlayNavigationState(mapId, roomIdForState, map, roomCodeRef.current),
                 });
               })
               .catch(() => {
                 navigate(ROUTES.GAME, {
-                  state: lobbyPlayNavigationState(mapId, roomIdForState, null),
+                  state: lobbyPlayNavigationState(mapId, roomIdForState, null, roomCodeRef.current),
                 });
               });
           }
@@ -295,6 +326,62 @@ export default function RoomDetailPage() {
       .catch(() => {});
   }, []);
 
+  const ensureTemporaryRoomConversation = useCallback(async (): Promise<string | null> => {
+    if (!room?.roomCode) return null;
+    const roomCode = room.roomCode.trim();
+    if (!roomCode) return null;
+    const roomChatName = `Lobby ${roomCode}`;
+
+    try {
+      setRoomChatLoading(true);
+      const convRes = await learnerChatApi.getConversations({
+        pageNumber: 1,
+        pageSize: 100,
+        searchTerm: roomCode,
+      });
+      const conversations = convRes.data.data?.items ?? [];
+      let conversation = conversations.find(
+        (c) => c.roomType === 1 && (c.name ?? "").trim().toLowerCase() === roomChatName.toLowerCase(),
+      );
+
+      if (!conversation) {
+        if (!isHost) return null;
+        const createRes = await learnerChatApi.createTemporaryGroupConversation(roomChatName);
+        conversation = createRes.data.data ?? null;
+      }
+
+      if (!conversation?.id) return null;
+      if (isHost && room.players.length > 0) {
+        const existingMemberIds = new Set(
+          (conversation.members ?? []).map((m) => String(m.userId).toLowerCase()),
+        );
+        const missingPlayerIds = room.players
+          .map((p) => p.playerId)
+          .filter((pid) => !existingMemberIds.has(String(pid).toLowerCase()));
+
+        if (missingPlayerIds.length > 0) {
+          await Promise.allSettled(
+            missingPlayerIds.map((playerId) =>
+              learnerChatApi.addMemberToConversation(conversation!.id, playerId),
+            ),
+          );
+        }
+      }
+      setRoomChatConversationId(conversation.id);
+      return conversation.id;
+    } catch {
+      // Best-effort helper; chat remains optional.
+      return null;
+    } finally {
+      setRoomChatLoading(false);
+    }
+  }, [isHost, room?.roomCode, room?.players]);
+
+  useEffect(() => {
+    if (!roomChatOpen) return;
+    void ensureTemporaryRoomConversation();
+  }, [ensureTemporaryRoomConversation, roomChatOpen]);
+
   const handleLeave = async () => {
     if (!roomId || actioning) return;
     setActioning(true);
@@ -325,6 +412,32 @@ export default function RoomDetailPage() {
     }
   };
 
+  const handleKickPlayer = async (playerId: string) => {
+    if (!roomId || actioning || !isHost || !currentUserId) return;
+    if (playerId.toLowerCase() === currentUserId.toLowerCase()) return;
+    const ok = window.confirm("Bạn có chắc muốn mời người chơi này ra khỏi phòng?");
+    if (!ok) return;
+    setActioning(true);
+    try {
+      await gameLobbyHub.kickPlayer(roomId, playerId);
+    } catch {
+      window.alert("Không thể kick người chơi lúc này.");
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const handleOpenRoomChat = async () => {
+    if (roomChatOpen) {
+      setRoomChatOpen(false);
+      return;
+    }
+    setRoomChatOpen(true);
+    if (!roomChatConversationId) {
+      await ensureTemporaryRoomConversation();
+    }
+  };
+
   const handleStartGame = async () => {
     if (!roomId || actioning) return;
     const blockedReasons = getStartBlockedReasons();
@@ -349,12 +462,12 @@ export default function RoomDetailPage() {
                   ? ROUTES.SNAKE
                   : ROUTES.GAME;
             navigate(targetRoute, {
-              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, map),
+              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, map, room?.roomCode),
             });
           })
           .catch(() => {
             navigate(ROUTES.GAME, {
-              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, null),
+              state: lobbyPlayNavigationState(room.selectedMapId!, roomId, null, room?.roomCode),
             });
           });
       } else {
@@ -393,6 +506,71 @@ export default function RoomDetailPage() {
       setMapModalOpen(false);
     }
   };
+
+  const handleUpdateMaxPlayers = async (nextMaxPlayers: number) => {
+    if (!roomId || actioning || !room || !isHost) return;
+    if (nextMaxPlayers === room.maxPlayers) return;
+    setActioning(true);
+    try {
+      const res = await learnerLobbyApi.setRoomMap(roomId, {
+        maxPlayers: nextMaxPlayers,
+        mapId: room.selectedMapId ?? undefined,
+      });
+      if (res.data?.isSuccess && res.data?.data) {
+        setRoom((prev) => normalizeDetail(res.data.data as unknown as Record<string, unknown>, prev));
+        setShowMaxPlayersEditor(false);
+      } else {
+        window.alert(res.data?.message ?? "Could not update max players.");
+      }
+    } catch {
+      window.alert("Could not update max players.");
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const openMapBrowseToPick = useCallback(() => {
+    if (!roomId) return;
+    navigate(ROUTES.LEARNER_MAPS_BROWSE, {
+      state: {
+        lobbyPickMode: true,
+        lobbyPickForRoom: true,
+        lobbyPickReturnTo: ROUTES.LEARNER_ROOM_DETAIL(roomId),
+        roomId,
+        roomCode: room?.roomCode ?? "",
+      },
+    });
+  }, [navigate, room?.roomCode, roomId]);
+
+  useEffect(() => {
+    if (!isHost || !roomId) return;
+    if (locationState?.applyMapSelectionFromBrowse !== true) return;
+    const selectedMapIdFromBrowse = locationState?.selectedMapIdFromBrowse?.trim();
+    const selectedRoomId = locationState?.roomId?.trim();
+    if (!selectedMapIdFromBrowse || !selectedRoomId) return;
+    if (selectedRoomId.toLowerCase() !== roomId.toLowerCase()) return;
+    const marker = `${roomId}:${selectedMapIdFromBrowse}`;
+    if (appliedBrowseMapRef.current === marker) return;
+    appliedBrowseMapRef.current = marker;
+    void handleSetMap(selectedMapIdFromBrowse);
+    navigate(ROUTES.LEARNER_ROOM_DETAIL(roomId), {
+      replace: true,
+      state: {
+        roomId,
+        roomCode: room?.roomCode ?? locationState?.roomCode ?? "",
+      },
+    });
+  }, [
+    handleSetMap,
+    isHost,
+    locationState?.applyMapSelectionFromBrowse,
+    locationState?.roomCode,
+    locationState?.roomId,
+    locationState?.selectedMapIdFromBrowse,
+    navigate,
+    room?.roomCode,
+    roomId,
+  ]);
 
   const handleToggleLock = async () => {
     if (!roomId || actioning || !room) return;
@@ -458,10 +636,6 @@ export default function RoomDetailPage() {
     void loadSelectedMapDetail(mapId);
   }, [loadSelectedMapDetail, room?.selectedMapId]);
 
-  const isHost =
-    room &&
-    currentUserId &&
-    String(room.hostId).toLowerCase() === String(currentUserId).toLowerCase();
   const currentUserReady =
     room &&
     currentUserId &&
@@ -499,6 +673,11 @@ export default function RoomDetailPage() {
     selectedMapDetail?.gallery?.[0]?.url?.trim() ||
     "";
 
+  useEffect(() => {
+    if (!(isHost && room?.status === "Waiting")) {
+      setShowMaxPlayersEditor(false);
+    }
+  }, [isHost, room?.status]);
   if (!roomId) {
     navigate(ROUTES.LEARNER_LEARN);
     return null;
@@ -566,35 +745,92 @@ export default function RoomDetailPage() {
           </div>
           <div className={styles.meta} aria-live="polite" title={t("playersInRoomLive")}>
             <Users size={18} aria-hidden />
-            <span className={styles.playerCountLive}>
-              {room.players.length > 0 ? room.players.length : room.currentPlayerCount}/{room.maxPlayers}
-            </span>
+            {isHost && room.status === "Waiting" ? (
+              <button
+                type="button"
+                className={`${styles.playerCountLive} ${styles.playerCountBtn}`}
+                onClick={() => setShowMaxPlayersEditor((v) => !v)}
+                title={t("maxPlayers")}
+              >
+                {room.players.length > 0 ? room.players.length : room.currentPlayerCount}/{room.maxPlayers}
+              </button>
+            ) : (
+              <span className={styles.playerCountLive}>
+                {room.players.length > 0 ? room.players.length : room.currentPlayerCount}/{room.maxPlayers}
+              </span>
+            )}
             <span aria-hidden> · </span>
             {room.status}
+            {isHost && room.status === "Waiting" && showMaxPlayersEditor ? (
+              <div className={styles.maxPlayersInlineEditor}>
+                <label className={`${styles.maxPlayersField} ${styles.maxPlayersMetaField}`}>
+                  <span>{t("maxPlayers")}</span>
+                  <select
+                    value={room.maxPlayers}
+                    onChange={(e) => void handleUpdateMaxPlayers(Number(e.target.value))}
+                    disabled={actioning}
+                  >
+                    {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
           </div>
         </header>
 
         {room.selectedMapId && (
           <div className={styles.mapHintWrap}>
-            <p className={styles.mapHint}>
-              {t("mapSelected")}:{" "}
-              <button
-                type="button"
-                className={styles.mapLinkBtn}
-                onMouseEnter={() => {
-                  void loadSelectedMapDetail(room.selectedMapId!);
-                }}
-                onFocus={() => {
-                  void loadSelectedMapDetail(room.selectedMapId!);
-                }}
-                onClick={() => {
-                  void loadSelectedMapDetail(room.selectedMapId!).then(() => setMapDetailOpen(true));
-                }}
-                title="Xem chi tiết game"
-              >
-                {selectedGameLabel}
-              </button>
-            </p>
+            <div className={styles.mapHintTopRow}>
+              <p className={styles.mapHint}>
+                {t("mapSelected")}:{" "}
+                <button
+                  type="button"
+                  className={styles.mapLinkBtn}
+                  onMouseEnter={() => {
+                    void loadSelectedMapDetail(room.selectedMapId!);
+                  }}
+                  onFocus={() => {
+                    void loadSelectedMapDetail(room.selectedMapId!);
+                  }}
+                  onClick={() => {
+                    void loadSelectedMapDetail(room.selectedMapId!).then(() => setMapDetailOpen(true));
+                  }}
+                  title="Xem chi tiết game"
+                >
+                  {selectedGameLabel}
+                </button>
+              </p>
+            </div>
+            <button
+              type="button"
+              className={styles.mapHintPreviewBtn}
+              onMouseEnter={() => {
+                void loadSelectedMapDetail(room.selectedMapId!);
+              }}
+              onFocus={() => {
+                void loadSelectedMapDetail(room.selectedMapId!);
+              }}
+              onClick={() => {
+                void loadSelectedMapDetail(room.selectedMapId!).then(() => setMapDetailOpen(true));
+              }}
+              title="Xem chi tiết game"
+            >
+              {selectedMapPreviewUrl ? (
+                <img
+                  src={selectedMapPreviewUrl}
+                  alt={selectedMapDetail?.title || selectedGameLabel || "Game preview"}
+                  className={styles.mapHintPreviewImg}
+                />
+              ) : (
+                <div className={styles.mapHintPreviewFallback}>
+                  <MapIcon size={16} />
+                </div>
+              )}
+            </button>
             {selectedMapDetailLoading ? (
               <span className={styles.mapHintLoading}>Loading detail…</span>
             ) : null}
@@ -605,7 +841,7 @@ export default function RoomDetailPage() {
             <button
               type="button"
               className={styles.hostBtn}
-              onClick={() => setMapModalOpen(true)}
+              onClick={openMapBrowseToPick}
               disabled={actioning}
             >
               <MapIcon size={16} />
@@ -613,7 +849,7 @@ export default function RoomDetailPage() {
             </button>
             <button
               type="button"
-              className={styles.hostBtn}
+              className={styles.hostBtnSecondary}
               onClick={handleToggleLock}
               disabled={actioning}
               title={room.isLocked ? t("unlockRoom") : t("lockRoom")}
@@ -630,39 +866,31 @@ export default function RoomDetailPage() {
             {room.players.map((p) => (
               <li key={p.playerId} className={styles.playerItem}>
                 <span className={styles.playerId}>
-                  {p.playerId === currentUserId
+                  {String(p.playerId).toLowerCase() === normalizedCurrentUserId
                     ? `${t("you")} (${(p.playerName?.trim() || p.playerId.slice(0, 8)).trim()})`
                     : (p.playerName?.trim() || p.playerId.slice(0, 8) + "…")}
                 </span>
                 {p.isHost && <span className={styles.hostBadge}>{t("host")}</span>}
                 {p.isReady && <Check size={16} className={styles.readyIcon} aria-hidden />}
+                {isHost &&
+                normalizedCurrentUserId &&
+                p.playerId.toLowerCase() !== normalizedCurrentUserId &&
+                !p.isHost ? (
+                  <button
+                    type="button"
+                    className={styles.kickBtn}
+                    disabled={actioning}
+                    onClick={() => void handleKickPlayer(p.playerId)}
+                  >
+                    Kick
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
         </section>
 
         <section className={styles.actions}>
-          <button
-            type="button"
-            className={styles.readyBtn}
-            onClick={handleToggleReady}
-            disabled={actioning || room.status !== "Waiting"}
-            title={
-              room.status === "Waiting"
-                ? currentUserReady
-                  ? t("cancelReady")
-                  : t("toggleReady")
-                : undefined
-            }
-          >
-            {actioning ? (
-              <Loader2 size={18} className={styles.spinner} aria-hidden />
-            ) : currentUserReady ? (
-              t("cancelReady")
-            ) : (
-              t("toggleReady")
-            )}
-          </button>
           {isHost && room.status === "Waiting" && (
             <button
               type="button"
@@ -675,15 +903,63 @@ export default function RoomDetailPage() {
               {t("startGame")}
             </button>
           )}
-          <button
-            type="button"
-            className={styles.leaveBtn}
-            onClick={handleLeave}
-            disabled={actioning}
-          >
-            <LogOut size={18} aria-hidden />
-            {t("leaveRoom")}
-          </button>
+          {!isHost && (
+            <button
+              type="button"
+              className={styles.startBtn}
+              onClick={handleToggleReady}
+              disabled={actioning || room.status !== "Waiting"}
+              title={
+                room.status === "Waiting"
+                  ? currentUserReady
+                    ? t("cancelReady")
+                    : t("toggleReady")
+                  : undefined
+              }
+            >
+              {actioning ? (
+                <Loader2 size={18} className={styles.spinner} aria-hidden />
+              ) : currentUserReady ? (
+                t("cancelReady")
+              ) : (
+                t("toggleReady")
+              )}
+            </button>
+          )}
+          <div className={`${styles.secondaryActions} ${!isHost ? styles.secondaryActionsSingle : ""}`}>
+            {isHost && (
+              <button
+                type="button"
+                className={styles.readyBtn}
+                onClick={handleToggleReady}
+                disabled={actioning || room.status !== "Waiting"}
+                title={
+                  room.status === "Waiting"
+                    ? currentUserReady
+                      ? t("cancelReady")
+                      : t("toggleReady")
+                    : undefined
+                }
+              >
+                {actioning ? (
+                  <Loader2 size={18} className={styles.spinner} aria-hidden />
+                ) : currentUserReady ? (
+                  t("cancelReady")
+                ) : (
+                  t("toggleReady")
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.leaveBtn}
+              onClick={handleLeave}
+              disabled={actioning}
+            >
+              <LogOut size={18} aria-hidden />
+              {t("leaveRoom")}
+            </button>
+          </div>
         </section>
       </div>
 
@@ -767,20 +1043,12 @@ export default function RoomDetailPage() {
               <div className={styles.detailGrid}>
                 <span>Difficulty</span>
                 <strong>{selectedMapDetail?.difficulty ?? "—"}</strong>
-                <span>Type</span>
-                <strong>{selectedMapDetail?.type ?? "—"}</strong>
                 <span>Price</span>
                 <strong>
                   {selectedMapDetail?.price != null
                     ? selectedMapDetail.price > 0
                       ? `${selectedMapDetail.price.toLocaleString()} OC`
                       : "Free"
-                    : "—"}
-                </strong>
-                <span>Time limit</span>
-                <strong>
-                  {selectedMapDetail?.timeLimitMs != null
-                    ? `${Math.max(1, Math.round(selectedMapDetail.timeLimitMs / 60000))} min`
                     : "—"}
                 </strong>
                 <span>Creator</span>
@@ -804,6 +1072,41 @@ export default function RoomDetailPage() {
           </div>
         </div>
       )}
+
+      <div className={styles.chatDock}>
+        {roomChatOpen ? (
+          <div className={styles.chatPanel}>
+            <div className={styles.chatPanelHeader}>
+              <div className={styles.chatPanelTitle}>Chat phòng</div>
+              <button
+                type="button"
+                className={styles.chatPanelClose}
+                onClick={() => setRoomChatOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.chatPanelBody}>
+              {roomChatLoading ? (
+                <div className={styles.chatStateText}>Đang tải cuộc trò chuyện...</div>
+              ) : roomChatConversationId ? (
+                <iframe
+                  title="Room chat"
+                  className={styles.chatIframe}
+                  src={`${ROUTES.LEARNER_CHAT_CONVERSATION(roomChatConversationId)}?embed=1`}
+                />
+              ) : (
+                <div className={styles.chatStateText}>Không thể mở chat phòng lúc này.</div>
+              )}
+            </div>
+          </div>
+        ) : null}
+        <button type="button" className={styles.chatBubbleBtn} onClick={() => void handleOpenRoomChat()}>
+          <MessageCircle size={18} />
+          Chat phòng
+        </button>
+      </div>
     </div>
   );
 }

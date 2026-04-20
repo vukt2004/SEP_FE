@@ -223,6 +223,12 @@ class GameLobbyHubClient {
     await this.connection.invoke("SetRoomLocked", roomId, isLocked);
   }
 
+  /** Kick player from room (host only) */
+  async kickPlayer(roomId: string, playerId: string): Promise<void> {
+    if (this.connection?.state !== signalR.HubConnectionState.Connected) return;
+    await this.connection.invoke("KickPlayer", roomId, playerId);
+  }
+
   /** Submit solution (when room is Playing) */
   async submitSolution(
     roomId: string,

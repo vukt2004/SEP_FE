@@ -29,7 +29,8 @@ import { AudioControls } from "./AudioControls";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
 import { RunDecisionModal } from "./RunDecisionModal";
-import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send, Flag } from "lucide-react";
+import RoomChatWidget from "./RoomChatWidget";
+import { ArrowLeft, Play, Pause, RotateCcw, SkipForward, Eraser, Send } from "lucide-react";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
@@ -128,6 +129,7 @@ export default function GameView() {
     levelId?: string;
     levelFile?: string;
     multiplayerRoomId?: string;
+    multiplayerRoomCode?: string;
     mapDetailId?: string;
     roleContext?: "cms" | "learner";
     returnTo?: string;
@@ -135,6 +137,7 @@ export default function GameView() {
   const levelId = locationState?.levelId;
   const levelFile = locationState?.levelFile;
   const multiplayerRoomId = locationState?.multiplayerRoomId;
+  const multiplayerRoomCode = locationState?.multiplayerRoomCode;
   const mapDetailIdFromState = locationState?.mapDetailId;
   const roleContext = locationState?.roleContext;
   const returnTo = locationState?.returnTo;
@@ -633,7 +636,7 @@ export default function GameView() {
   // Generate program from Blockly and run it
   const handleRunProgram = () => {
     if (!workspaceRef.current || !engineRef.current) {
-      alert("Game not ready yet!");
+      alert(t("gameNotReadyYet"));
       return;
     }
 
@@ -749,7 +752,7 @@ export default function GameView() {
       console.log("Blocks in workspace after generation:", blocksAfterGeneration);
 
       if (program.length === 0) {
-        alert("No blocks in workspace! Add some blocks first.");
+        alert(t("noBlocksInWorkspace"));
         return;
       }
 
@@ -1019,12 +1022,94 @@ export default function GameView() {
   };
 
   const handleStepExecution = () => {
-    const executor = executorRef.current;
     const engine = engineRef.current;
+    let executor = executorRef.current;
 
-    if (!executor || !engine) {
-      alert("Run Program first, then use Step Execution.");
+    if (!engine || !workspaceRef.current) {
+      alert(t("gameNotReadyYet"));
       return;
+    }
+
+    if (!isLevelStarted) {
+      try {
+        resetGameTimerForLevelStart();
+        engine.start();
+        setIsLevelStarted(true);
+        setShowMissionModal(false);
+      } catch (err) {
+        console.error("Failed to start level before step execution:", err);
+        setShowMissionModal(true);
+        return;
+      }
+    }
+
+    if (!executor) {
+      try {
+        const program: BlockProgram = generateAST(workspaceRef.current);
+        if (program.length === 0) {
+          alert(t("noBlocksInWorkspace"));
+          return;
+        }
+
+        const conditionChecker = (condition: ConditionType): boolean => {
+          switch (condition) {
+            case "pathAhead":
+              return !engine.isWallAhead() && !engine.isObstacleAhead();
+            case "wallAhead":
+              return engine.isWallAhead();
+            case "obstacleAhead":
+              return engine.isObstacleAhead();
+            case "wallLeft":
+              return engine.isWallLeft();
+            case "wallRight":
+              return engine.isWallRight();
+            case "goalReached":
+              return engine.hasWon();
+            case "enemyAhead":
+              return engine.isEnemyAhead();
+            case "trapAhead":
+              return engine.isTrapAhead();
+            case "bodyAhead":
+              return false;
+            case "fruitCollected":
+              if (fruitCollectedPulseRef.current) {
+                fruitCollectedPulseRef.current = false;
+                return true;
+              }
+              return false;
+            default:
+              return false;
+          }
+        };
+
+        const numberResolver = (sensorType: "boxHardnessAhead"): number => {
+          if (sensorType === "boxHardnessAhead") return engine.getBoxHardnessAhead();
+          return 0;
+        };
+
+        const positionResolver: PositionResolver = {
+          getStartCell: () => engine.getStartCell(),
+          getGoalCell: () => engine.getGoalCell(),
+          getCurrentCell: () => engine.getCurrentCell(),
+          getNeighbors: (cell: string) => engine.getNeighbors(cell),
+          getCharacterAtCurrentCell: () => engine.getCharacterAtCurrentCell(),
+          hasCharacterAtCurrentCell: () => engine.hasCharacterAtCurrentCell(),
+        };
+
+        executor = new StepExecutor(program, conditionChecker, numberResolver, positionResolver);
+        executor.setWarningCallback((message) => showWarningToast(message));
+        executor.setStateChangeCallback(() => {
+          const ctx = executor!.getExecutionContext();
+          setExecVariables({ ...ctx.variables });
+          setLastRemoved(ctx.lastRemoved);
+          setLiveSteps(engine.getStepCount());
+        });
+        executorRef.current = executor;
+      } catch (err) {
+        console.error("Failed to prepare step execution:", err);
+        alert(t("errorPreparingStepExecution"));
+        return;
+      }
     }
 
     if (executor.hasNext()) {
@@ -1032,9 +1117,16 @@ export default function GameView() {
       if (result) {
         engine.executeCommand(result.command);
         setLiveSteps(engine.getStepCount());
+        if (!executor.hasNext()) {
+          setIsExecutorRunning(false);
+          handleReset();
+          window.alert(t("runOutOfBlocks"));
+        }
       }
     } else {
       setIsExecutorRunning(false);
+      handleReset();
+      window.alert(t("runOutOfBlocks"));
     }
   };
 
@@ -1115,17 +1207,28 @@ export default function GameView() {
   useEffect(() => {
     if (!multiplayerRoomId) return;
     let unsubEnd: (() => void) | undefined;
+    let unsubLeft: (() => void) | undefined;
     gameLobbyHub.connect().then(() => {
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
         void leaveLobbyRoom(multiplayerRoomId).then(() =>
           navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
         );
       });
+      unsubLeft = gameLobbyHub.on("PlayerLeftRoom", (payload: unknown) => {
+        const data = payload as
+          | { roomId?: string; RoomId?: string; playerName?: string; PlayerName?: string }
+          | undefined;
+        const leftRoomId = String(data?.roomId ?? data?.RoomId ?? "").toLowerCase();
+        if (!leftRoomId || leftRoomId !== multiplayerRoomId.toLowerCase()) return;
+        const playerName = String(data?.playerName ?? data?.PlayerName ?? "").trim() || "A player";
+        showWarningToast(t("playerLeftRoomNotice").replace("{name}", playerName));
+      });
     });
     return () => {
       unsubEnd?.();
+      unsubLeft?.();
     };
-  }, [multiplayerRoomId, navigateWithoutPrompt]);
+  }, [multiplayerRoomId, navigateWithoutPrompt, showWarningToast, t]);
 
   useEffect(() => {
     const limit = mapConfig?.timeLimitSeconds;
@@ -1188,17 +1291,18 @@ export default function GameView() {
 
     const program = generateAST(workspaceRef.current);
     const astSpec = JSON.stringify(program);
-    const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
     if (!options?.skipConfirm) {
-      if (!isProgramChecked) {
-        const precheckOk = await runAutoSubmitPrecheck(astSpec);
-        if (!precheckOk) {
-          showWarningToast(t("gameSubmitAutoCheckFailed"));
-          return;
-        }
-      }
-      void handleSubmitRun({ skipConfirm: true });
+      setShowSubmitConfirmModal(true);
       return;
+    }
+
+    const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+    if (!isProgramChecked) {
+      const precheckOk = await runAutoSubmitPrecheck(astSpec);
+      if (!precheckOk) {
+        showWarningToast(t("gameSubmitAutoCheckFailed"));
+        return;
+      }
     }
 
     const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
@@ -1268,9 +1372,11 @@ export default function GameView() {
               levelDetails: r.levelDetails ?? [],
             }));
             navigateWithoutPrompt(ROUTES.LEARNER_ROOM_RESULT, {
+              replace: true,
               state: {
                 ranking,
                 roomId: multiplayerRoomId,
+                multiplayerRoomCode,
                 levelId,
                 nextMapDetailId: nextCampaignLevelId,
                 nextRoute:
@@ -1381,17 +1487,6 @@ export default function GameView() {
     setIsLevelStarted(true);
     showWarningToast(t("gameWinSubmitHint"));
   }, [showWarningToast, t]);
-
-  const handleEndMultiplayerGame = async () => {
-    if (!multiplayerRoomId) return;
-    try {
-      await learnerLobbyApi.endGame(multiplayerRoomId);
-      await leaveLobbyRoom(multiplayerRoomId);
-      navigateWithoutPrompt(ROUTES.LEARNER_LEARN);
-    } catch {
-      window.alert("Could not end game.");
-    }
-  };
 
   useEffect(() => {
     const updateLayout = () => setIsCompactLayout(window.innerWidth < 1280);
@@ -1603,16 +1698,6 @@ export default function GameView() {
             <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
           </button>
 
-          {multiplayerRoomId && (
-            <button
-              onClick={handleEndMultiplayerGame}
-              style={controlButtonStyle("warning", false, hoveredControl === "end")}
-              onMouseEnter={() => setHoveredControl("end")}
-              onMouseLeave={() => setHoveredControl(null)}
-            >
-              <Flag size={15} /> {t("endGame")}
-            </button>
-          )}
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
@@ -2320,6 +2405,7 @@ export default function GameView() {
         onPrimary={handleConfirmLeave}
         onSecondary={handleCancelLeave}
       />
+      {multiplayerRoomId ? <RoomChatWidget roomCode={multiplayerRoomCode} /> : null}
     </div>
   );
 }

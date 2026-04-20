@@ -72,7 +72,10 @@ export const learnerLobbyApi = {
   /** POST /api/learner/lobby/rooms/:roomId/game – set room game (host, body: { gameId }) */
   setRoomMap(roomId: string, request: SetRoomGameRequest) {
     const gameId = request.gameId ?? request.mapId;
-    return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/game`, { gameId });
+    const body: { gameId?: string | null; maxPlayers?: number } = {};
+    if (gameId !== undefined) body.gameId = gameId;
+    if (typeof request.maxPlayers === "number") body.maxPlayers = request.maxPlayers;
+    return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/game`, body);
   },
 
   /** POST /api/learner/lobby/rooms/:roomId/submit – submit solution when room is Playing */
