@@ -33,6 +33,7 @@ export default function RoomResultPage() {
   const hasNextLevel = Boolean(levelId && nextMapDetailId);
   const [expandedPlayers, setExpandedPlayers] = useState<Record<string, boolean>>({});
   const [liveRanking, setLiveRanking] = useState<PlayerRankingDto[]>(ranking ?? []);
+  const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
 
   const leftViaAction = useRef(false);
   const mountedAt = useRef(0);
@@ -44,6 +45,17 @@ export default function RoomResultPage() {
 
   useEffect(() => {
     setLiveRanking(ranking ?? []);
+  }, [ranking]);
+
+  useEffect(() => {
+    const seeded = Object.fromEntries(
+      (ranking ?? [])
+        .filter((row) => row.playerName && row.playerName.trim())
+        .map((row) => [row.playerId.toLowerCase(), row.playerName!.trim()]),
+    );
+    if (Object.keys(seeded).length > 0) {
+      setPlayerNames((prev) => ({ ...prev, ...seeded }));
+    }
   }, [ranking]);
 
   const leaveAndNavigate = useCallback(
@@ -112,12 +124,30 @@ export default function RoomResultPage() {
     if (!roomId) return;
     let unsubRanking: (() => void) | undefined;
     let unsubReconnect: (() => void) | undefined;
-    const joinRoomGroup = () => {
-      void gameLobbyHub.joinRoom(roomId, null).catch(() => {});
+    const loadRoomPlayers = async () => {
+      try {
+        const res = await learnerLobbyApi.getRoom(roomId);
+        const players = res.data?.data?.players ?? [];
+        if (!Array.isArray(players) || players.length === 0) return;
+        const nameMap = Object.fromEntries(
+          players
+            .filter((p) => p.playerName && p.playerName.trim())
+            .map((p) => [String(p.playerId).toLowerCase(), p.playerName!.trim()]),
+        );
+        if (Object.keys(nameMap).length > 0) {
+          setPlayerNames((prev) => ({ ...prev, ...nameMap }));
+        }
+      } catch {
+        // Best effort for display names.
+      }
     };
+    void loadRoomPlayers();
     void gameLobbyHub.connect().then(() => {
-      joinRoomGroup();
-      unsubReconnect = gameLobbyHub.onReconnected(joinRoomGroup);
+      // RankingUpdated is now broadcast to per-user hub groups, so this page
+      // does not need to re-join room while room is in Playing state.
+      unsubReconnect = gameLobbyHub.onReconnected(() => {
+        void loadRoomPlayers();
+      });
       unsubRanking = gameLobbyHub.on("RankingUpdated", (payload: unknown) => {
         const data = payload as
           | { roomId?: string; RoomId?: string; ranking?: PlayerRankingDto[]; Ranking?: PlayerRankingDto[] }
@@ -127,6 +157,14 @@ export default function RoomResultPage() {
         const nextRanking = data?.ranking ?? data?.Ranking;
         if (!Array.isArray(nextRanking)) return;
         setLiveRanking(nextRanking);
+        const rankingNames = Object.fromEntries(
+          nextRanking
+            .filter((row) => row.playerName && row.playerName.trim())
+            .map((row) => [row.playerId.toLowerCase(), row.playerName!.trim()]),
+        );
+        if (Object.keys(rankingNames).length > 0) {
+          setPlayerNames((prev) => ({ ...prev, ...rankingNames }));
+        }
       });
     });
     return () => {
@@ -179,7 +217,11 @@ export default function RoomResultPage() {
                   disabled={!hasLevelDetails}
                 >
                   <span className={styles.rank}>#{r.rank}</span>
-                  <span className={styles.playerId}>{r.playerId.slice(0, 8)}…</span>
+                  <span className={styles.playerId}>
+                    {playerNames[r.playerId.toLowerCase()] ||
+                      r.playerName?.trim() ||
+                      `${r.playerId.slice(0, 8)}…`}
+                  </span>
                   <span className={styles.score}>{r.score} pts</span>
                   <span className={styles.status}>{r.status}</span>
                   {hasLevelDetails ? (

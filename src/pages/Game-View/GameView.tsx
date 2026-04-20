@@ -1202,13 +1202,20 @@ export default function GameView() {
     },
   };
 
-  // Multiplayer: only listen GameEnded.
+  // Multiplayer: hub room group (PlayerLeftRoom, GameEnded) + re-join after reconnect.
   // Leaderboard navigation is handled by submit response of the submitter only.
   useEffect(() => {
     if (!multiplayerRoomId) return;
     let unsubEnd: (() => void) | undefined;
     let unsubLeft: (() => void) | undefined;
-    gameLobbyHub.connect().then(() => {
+    let unsubReconnect: (() => void) | undefined;
+    void gameLobbyHub.connect().then(() => {
+      const ensureHubRoomMembership = () => {
+        void gameLobbyHub.joinRoom(multiplayerRoomId, multiplayerRoomCode ?? null);
+      };
+      ensureHubRoomMembership();
+      unsubReconnect = gameLobbyHub.onReconnected(ensureHubRoomMembership);
+
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
         void leaveLobbyRoom(multiplayerRoomId).then(() =>
           navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
@@ -1227,8 +1234,9 @@ export default function GameView() {
     return () => {
       unsubEnd?.();
       unsubLeft?.();
+      unsubReconnect?.();
     };
-  }, [multiplayerRoomId, navigateWithoutPrompt, showWarningToast, t]);
+  }, [multiplayerRoomId, multiplayerRoomCode, navigateWithoutPrompt, showWarningToast, t]);
 
   useEffect(() => {
     const limit = mapConfig?.timeLimitSeconds;
@@ -1366,6 +1374,7 @@ export default function GameView() {
           if (res.data?.data?.rankingIfAllSubmitted?.length) {
             const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
               playerId: r.playerId,
+              playerName: r.playerName ?? null,
               score: r.score,
               rank: r.rank,
               status: r.status,
@@ -2405,7 +2414,7 @@ export default function GameView() {
         onPrimary={handleConfirmLeave}
         onSecondary={handleCancelLeave}
       />
-      {multiplayerRoomId ? <RoomChatWidget roomCode={multiplayerRoomCode} /> : null}
+      {multiplayerRoomId ? <RoomChatWidget roomId={multiplayerRoomId} roomCode={multiplayerRoomCode} /> : null}
     </div>
   );
 }

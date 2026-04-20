@@ -104,6 +104,7 @@ export interface LobbySubmitSolutionRequest {
 /** One row in ranking after all submitted */
 export interface PlayerRankingDto {
   playerId: string;
+  playerName?: string | null;
   score: number;
   rank: number;
   status: string;

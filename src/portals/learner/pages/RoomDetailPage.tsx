@@ -19,12 +19,12 @@ import {
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
-import { learnerChatApi } from "@/services/api/learner/chat.api";
 import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import type { LobbyRoomDetailResponse, LobbyPlayerDto } from "@/types/api/learner/lobby";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
+import type { RoomChatMessagePayload } from "@/lib/realtime/gameLobbyHub";
 import styles from "./RoomDetailPage.module.css";
 import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
@@ -123,6 +123,22 @@ function normalizeDetail(
   };
 }
 
+function normalizeRoomChatMessage(payload: unknown): RoomChatMessagePayload | null {
+  if (!payload || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  const id = String(p.id ?? p.Id ?? "");
+  const roomId = String(p.roomId ?? p.RoomId ?? "");
+  if (!id || !roomId) return null;
+  return {
+    id,
+    roomId,
+    senderId: String(p.senderId ?? p.SenderId ?? ""),
+    senderName: String(p.senderName ?? p.SenderName ?? ""),
+    content: String(p.content ?? p.Content ?? ""),
+    createdAt: String(p.createdAt ?? p.CreatedAt ?? new Date().toISOString()),
+  };
+}
+
 /** Initial room from location.state (sau khi create/join) */
 function getInitialRoomFromState(state: unknown): LobbyRoomDetailResponse | null {
   if (!state || typeof state !== "object") return null;
@@ -184,8 +200,13 @@ export default function RoomDetailPage() {
   const [selectedMapDetailLoading, setSelectedMapDetailLoading] = useState(false);
   const [mapDetailOpen, setMapDetailOpen] = useState(false);
   const [roomChatOpen, setRoomChatOpen] = useState(false);
-  const [roomChatConversationId, setRoomChatConversationId] = useState<string | null>(null);
   const [roomChatLoading, setRoomChatLoading] = useState(false);
+  const [roomChatMessages, setRoomChatMessages] = useState<RoomChatMessagePayload[]>([]);
+  const [roomChatInput, setRoomChatInput] = useState("");
+  const [roomChatSending, setRoomChatSending] = useState(false);
+  const [roomChatUnread, setRoomChatUnread] = useState(0);
+  const [roomChatNotice, setRoomChatNotice] = useState<string | null>(null);
+  const roomChatNoticeTimeoutRef = useRef<number | null>(null);
   const [showMaxPlayersEditor, setShowMaxPlayersEditor] = useState(false);
   const leftViaButton = useRef(false);
   const mountedAt = useRef<number>(0);
@@ -326,61 +347,104 @@ export default function RoomDetailPage() {
       .catch(() => {});
   }, []);
 
-  const ensureTemporaryRoomConversation = useCallback(async (): Promise<string | null> => {
-    if (!room?.roomCode) return null;
-    const roomCode = room.roomCode.trim();
-    if (!roomCode) return null;
-    const roomChatName = `Lobby ${roomCode}`;
-
-    try {
-      setRoomChatLoading(true);
-      const convRes = await learnerChatApi.getConversations({
-        pageNumber: 1,
-        pageSize: 100,
-        searchTerm: roomCode,
-      });
-      const conversations = convRes.data.data?.items ?? [];
-      let conversation = conversations.find(
-        (c) => c.roomType === 1 && (c.name ?? "").trim().toLowerCase() === roomChatName.toLowerCase(),
-      );
-
-      if (!conversation) {
-        if (!isHost) return null;
-        const createRes = await learnerChatApi.createTemporaryGroupConversation(roomChatName);
-        conversation = createRes.data.data ?? undefined;
+  useEffect(() => {
+    if (!roomId) return;
+    let unsubRoomChat: (() => void) | undefined;
+    let pollTimer: number | undefined;
+    let latestMessageId = "";
+    const loadMessages = async () => {
+      try {
+        if (roomChatOpen) setRoomChatLoading(true);
+        await gameLobbyHub.connect();
+        const rawMessages = await gameLobbyHub.getRoomChatMessages(roomId, 100);
+        const normalized = rawMessages
+          .map((msg) => normalizeRoomChatMessage(msg))
+          .filter((msg): msg is RoomChatMessagePayload => Boolean(msg));
+        if (normalized.length > 0) latestMessageId = normalized[normalized.length - 1].id;
+        setRoomChatMessages(normalized);
+      } catch {
+        if (roomChatOpen) setRoomChatMessages([]);
+      } finally {
+        if (roomChatOpen) setRoomChatLoading(false);
       }
-
-      if (!conversation?.id) return null;
-      if (isHost && room.players.length > 0) {
-        const existingMemberIds = new Set(
-          (conversation.members ?? []).map((m) => String(m.userId).toLowerCase()),
-        );
-        const missingPlayerIds = room.players
-          .map((p) => p.playerId)
-          .filter((pid) => !existingMemberIds.has(String(pid).toLowerCase()));
-
-        if (missingPlayerIds.length > 0) {
-          await Promise.allSettled(
-            missingPlayerIds.map((playerId) =>
-              learnerChatApi.addMemberToConversation(conversation!.id, playerId),
-            ),
-          );
+    };
+    void loadMessages();
+    pollTimer = window.setInterval(() => {
+      void gameLobbyHub
+        .getRoomChatMessages(roomId, 100)
+        .then((rawMessages) => {
+          const normalized = rawMessages
+            .map((msg) => normalizeRoomChatMessage(msg))
+            .filter((msg): msg is RoomChatMessagePayload => Boolean(msg));
+          if (normalized.length === 0) return;
+          const newest = normalized[normalized.length - 1];
+          if (!newest?.id || newest.id === latestMessageId) return;
+          const prevLatest = latestMessageId;
+          latestMessageId = newest.id;
+          setRoomChatMessages(normalized);
+          if (!roomChatOpen) {
+            const newIncoming = normalized.filter((m) => {
+              if (!prevLatest) return false;
+              if (m.id === prevLatest) return false;
+              const isSelf =
+                String(m.senderId ?? "").toLowerCase() === String(currentUserId ?? "").toLowerCase();
+              return !isSelf;
+            });
+            if (newIncoming.length > 0) {
+              setRoomChatUnread((prev) => prev + newIncoming.length);
+              const lastSender = newIncoming[newIncoming.length - 1]?.senderName || "Một người chơi";
+              setRoomChatNotice(`${lastSender} vừa gửi tin nhắn`);
+              if (roomChatNoticeTimeoutRef.current != null) {
+                window.clearTimeout(roomChatNoticeTimeoutRef.current);
+              }
+              roomChatNoticeTimeoutRef.current = window.setTimeout(() => {
+                setRoomChatNotice(null);
+                roomChatNoticeTimeoutRef.current = null;
+              }, 2500);
+            }
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+    unsubRoomChat = gameLobbyHub.on("RoomChatMessage", (payload: unknown) => {
+      const message = normalizeRoomChatMessage(payload);
+      const msgRoomId = String(message?.roomId ?? "").toLowerCase();
+      if (!msgRoomId || msgRoomId !== roomId.toLowerCase()) return;
+      latestMessageId = message!.id;
+      setRoomChatMessages((prev) => [...prev, message!].slice(-200));
+      const isSelf =
+        String(message?.senderId ?? "").toLowerCase() === String(currentUserId ?? "").toLowerCase();
+      if (!roomChatOpen && !isSelf) {
+        setRoomChatUnread((prev) => prev + 1);
+        setRoomChatNotice(`${message?.senderName || "Một người chơi"} vừa gửi tin nhắn`);
+        if (roomChatNoticeTimeoutRef.current != null) {
+          window.clearTimeout(roomChatNoticeTimeoutRef.current);
         }
+        roomChatNoticeTimeoutRef.current = window.setTimeout(() => {
+          setRoomChatNotice(null);
+          roomChatNoticeTimeoutRef.current = null;
+        }, 2500);
       }
-      setRoomChatConversationId(conversation.id);
-      return conversation.id;
-    } catch {
-      // Best-effort helper; chat remains optional.
-      return null;
-    } finally {
-      setRoomChatLoading(false);
-    }
-  }, [isHost, room?.roomCode, room?.players]);
+    });
+    return () => {
+      unsubRoomChat?.();
+      if (pollTimer != null) window.clearInterval(pollTimer);
+    };
+  }, [currentUserId, roomChatOpen, roomId]);
 
   useEffect(() => {
     if (!roomChatOpen) return;
-    void ensureTemporaryRoomConversation();
-  }, [ensureTemporaryRoomConversation, roomChatOpen]);
+    setRoomChatUnread(0);
+    setRoomChatNotice(null);
+  }, [roomChatOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (roomChatNoticeTimeoutRef.current != null) {
+        window.clearTimeout(roomChatNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleLeave = async () => {
     if (!roomId || actioning) return;
@@ -427,14 +491,25 @@ export default function RoomDetailPage() {
     }
   };
 
-  const handleOpenRoomChat = async () => {
+  const handleOpenRoomChat = () => {
     if (roomChatOpen) {
       setRoomChatOpen(false);
       return;
     }
     setRoomChatOpen(true);
-    if (!roomChatConversationId) {
-      await ensureTemporaryRoomConversation();
+  };
+
+  const handleSendRoomChat = async () => {
+    const content = roomChatInput.trim();
+    if (!roomId || !content || roomChatSending) return;
+    setRoomChatSending(true);
+    try {
+      await gameLobbyHub.sendRoomChatMessage(roomId, content);
+      setRoomChatInput("");
+    } catch {
+      window.alert("Không thể gửi tin nhắn lúc này.");
+    } finally {
+      setRoomChatSending(false);
     }
   };
 
@@ -537,6 +612,8 @@ export default function RoomDetailPage() {
 
   const openMapBrowseToPick = useCallback(() => {
     if (!roomId) return;
+    // Intentional temporary navigation to map browsing: keep membership/host role.
+    leftViaButton.current = true;
     navigate(ROUTES.LEARNER_MAPS_BROWSE, {
       state: {
         lobbyPickMode: true,
@@ -1082,6 +1159,9 @@ export default function RoomDetailPage() {
       )}
 
       <div className={styles.chatDock}>
+        {roomChatNotice && !roomChatOpen ? (
+          <div className={styles.chatNoticeToast}>{roomChatNotice}</div>
+        ) : null}
         {roomChatOpen ? (
           <div className={styles.chatPanel}>
             <div className={styles.chatPanelHeader}>
@@ -1096,23 +1176,76 @@ export default function RoomDetailPage() {
               </button>
             </div>
             <div className={styles.chatPanelBody}>
-              {roomChatLoading ? (
-                <div className={styles.chatStateText}>Đang tải cuộc trò chuyện...</div>
-              ) : roomChatConversationId ? (
-                <iframe
-                  title="Room chat"
-                  className={styles.chatIframe}
-                  src={`${ROUTES.LEARNER_CHAT_CONVERSATION(roomChatConversationId)}?embed=1`}
+              {roomChatLoading ? <div className={styles.chatStateText}>Đang tải chat phòng...</div> : null}
+              {!roomChatLoading && roomChatMessages.length === 0 ? (
+                <div className={styles.chatStateText}>Chưa có tin nhắn nào.</div>
+              ) : null}
+              {!roomChatLoading && roomChatMessages.length > 0 ? (
+                <div className={styles.chatMessages}>
+                  {roomChatMessages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`${styles.chatMsgRow} ${
+                        String(m.senderId).toLowerCase() === normalizedCurrentUserId
+                          ? styles.chatMsgRowSelf
+                          : ""
+                      }`}
+                    >
+                      <div
+                        className={`${styles.chatMsgBubble} ${
+                          String(m.senderId).toLowerCase() === normalizedCurrentUserId
+                            ? styles.chatMsgBubbleSelf
+                            : ""
+                        }`}
+                      >
+                        <div className={styles.chatMessageMeta}>
+                          <span className={styles.chatSender}>{m.senderName}</span>
+                          <span className={styles.chatTime}>
+                            {new Date(m.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <div className={styles.chatContent}>{m.content}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className={styles.chatComposer}>
+                <input
+                  value={roomChatInput}
+                  onChange={(e) => setRoomChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleSendRoomChat();
+                    }
+                  }}
+                  placeholder="Nhập tin nhắn..."
+                  className={styles.chatInput}
                 />
-              ) : (
-                <div className={styles.chatStateText}>Không thể mở chat phòng lúc này.</div>
-              )}
+                <button
+                  type="button"
+                  className={styles.chatSendBtn}
+                  disabled={roomChatSending || roomChatInput.trim().length === 0}
+                  onClick={() => void handleSendRoomChat()}
+                >
+                  Gửi
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
         <button type="button" className={styles.chatBubbleBtn} onClick={() => void handleOpenRoomChat()}>
           <MessageCircle size={18} />
           Chat phòng
+          {roomChatUnread > 0 ? (
+            <span className={styles.chatUnreadBadge}>
+              {roomChatUnread > 99 ? "99+" : String(roomChatUnread)}
+            </span>
+          ) : null}
         </button>
       </div>
     </div>

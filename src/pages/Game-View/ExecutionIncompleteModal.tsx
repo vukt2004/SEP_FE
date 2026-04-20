@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 interface ExecutionIncompleteModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ export const ExecutionIncompleteModal: React.FC<ExecutionIncompleteModalProps> =
   isOpen,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -37,9 +39,9 @@ export const ExecutionIncompleteModal: React.FC<ExecutionIncompleteModalProps> =
           color: "var(--text)",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: "20px" }}>Not Reached the Goal</h3>
+        <h3 style={{ margin: 0, fontSize: "20px" }}>{t("executionIncompleteTitle")}</h3>
         <p style={{ margin: "10px 0 18px", fontSize: "14px", color: "var(--text-2)" }}>
-          You have run out of blocks, but the character has not reached the goal. Press OK to reset the game and try again.
+          {t("executionIncompleteDesc")}
         </p>
         <button
           type="button"
@@ -55,7 +57,7 @@ export const ExecutionIncompleteModal: React.FC<ExecutionIncompleteModalProps> =
             cursor: "pointer",
           }}
         >
-          OK
+          {t("ok")}
         </button>
       </div>
     </div>
