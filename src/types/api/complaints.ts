@@ -1,6 +1,51 @@
 import type { ApiResult } from "./common";
 
-export type ComplaintStatus = "Open" | "InProgress" | "Resolved";
+export const COMPLAINT_STATUSES = [
+  "Open",
+  "InProgress",
+  "Resolved",
+  "SellerPending",
+  "FixInProgress",
+  "FixSubmitted",
+  "Verified",
+  "SellerRejected",
+  "SellerNoResponse",
+  "ResolvedRefund",
+  "ResolvedReject",
+  "Closed",
+] as const;
+
+export type ComplaintStatus = (typeof COMPLAINT_STATUSES)[number];
+
+export const COMPLAINT_STATUS_CODE_TO_VALUE: Record<number, ComplaintStatus> = {
+  0: "Open",
+  1: "InProgress",
+  2: "Resolved",
+  3: "SellerPending",
+  4: "FixInProgress",
+  5: "FixSubmitted",
+  6: "Verified",
+  7: "SellerRejected",
+  8: "SellerNoResponse",
+  9: "ResolvedRefund",
+  10: "ResolvedReject",
+  11: "Closed",
+};
+
+export const COMPLAINT_STATUS_VALUE_TO_CODE: Record<ComplaintStatus, number> = {
+  Open: 0,
+  InProgress: 1,
+  Resolved: 2,
+  SellerPending: 3,
+  FixInProgress: 4,
+  FixSubmitted: 5,
+  Verified: 6,
+  SellerRejected: 7,
+  SellerNoResponse: 8,
+  ResolvedRefund: 9,
+  ResolvedReject: 10,
+  Closed: 11,
+};
 
 export type ComplaintAttachment = {
   id: string;
@@ -36,6 +81,8 @@ export type ComplaintContextResolved = {
 export type ComplaintItem = {
   id: string;
   userId: string;
+  buyerUserId?: string;
+  sellerUserId?: string;
   subject: string;
   category: string;
   categoryKey: string;
@@ -49,11 +96,17 @@ export type ComplaintItem = {
   contextResolved: ComplaintContextResolved | null;
   createdAt: string;
   resolvedAt: string | null;
+  refundProcessed?: boolean;
+  refundedPaymentRecordId?: string | null;
+  refundAmount?: number | null;
+  refundedAt?: string | null;
+  refundReason?: string | null;
 };
 
 export type ComplaintMessage = {
   id: string;
   senderId: string;
+  senderParty?: string | null;
   content: string;
   isInternal: boolean;
   createdAt: string;
@@ -74,6 +127,8 @@ export type PaginationData<T> = {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
   items: T[];
 };
 

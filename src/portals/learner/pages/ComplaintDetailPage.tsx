@@ -6,9 +6,12 @@ import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { ComplaintMessageList } from "@/shared/components/complaints/ComplaintMessageList";
 import { ComplaintTimeline } from "@/shared/components/complaints/ComplaintTimeline";
-import type { ComplaintAttachment, ComplaintDetail } from "@/types/api/complaints";
-import { validateMessageContent } from "@/shared/components/complaints/complaint.utils";
-import { SendHorizontal, MessageCircle } from "lucide-react";
+import type { ComplaintAttachment, ComplaintDetail, ComplaintStatus } from "@/types/api/complaints";
+import {
+  resolveComplaintGameId,
+  validateMessageContent,
+} from "@/shared/components/complaints/complaint.utils";
+import { SendHorizontal, MessageCircle, Gamepad2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { useThemeStore } from "@/stores/theme.store";
 import { ROUTES } from "@/lib/constants/routes";
@@ -41,6 +44,16 @@ function formatDurationBetween(
   return `${days} ${t("complaints.detail.duration.day")}`;
 }
 
+const MESSAGE_LOCKED_STATUSES: ComplaintStatus[] = [
+  "Resolved",
+  "Verified",
+  "ResolvedRefund",
+  "ResolvedReject",
+  "SellerRejected",
+  "SellerNoResponse",
+  "Closed",
+];
+
 export default function ComplaintDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -64,13 +77,13 @@ export default function ComplaintDetailPage() {
       setError("");
       const res = await learnerComplaintsApi.getComplaintById(id);
       if (res.data.isSuccess && res.data.data) setData(res.data.data);
-      else setError(res.data.message || "Failed to load complaint detail.");
+      else setError(res.data.message || t("complaints.detail.errorLoad"));
     } catch {
-      setError("Failed to load complaint detail.");
+      setError(t("complaints.detail.errorLoad"));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     void fetchDetail();
@@ -92,7 +105,7 @@ export default function ComplaintDetailPage() {
       setSending(true);
       const res = await learnerComplaintsApi.addMessage(id, { content });
       if (!res.data.isSuccess) {
-        setComposerError(res.data.message || "Send message failed.");
+        setComposerError(res.data.message || t("complaints.detail.sendFailed"));
         return;
       }
       setContent("");
@@ -102,36 +115,32 @@ export default function ComplaintDetailPage() {
         composerRef.current?.focus();
       });
     } catch {
-      setComposerError("Send message failed.");
+      setComposerError(t("complaints.detail.sendFailed"));
     } finally {
       setSending(false);
     }
   }
 
   const handleChatWithReporter = async () => {
-    console.log("ComplaintDetailPage: handleChatWithReporter clicked", { contextId: data?.contextId, openingChat });
     if (!data || !data.contextId) return;
     try {
       setOpeningChat(true);
       // Get map owner info
       const mapRes = await learnerMapsApi.getMapById(data.contextId, false);
       if (!mapRes.data.isSuccess || !mapRes.data.data) {
-        alert(t("complaints.detail.cannotFindMapOwner") || "Cannot find map owner information.");
+        alert(t("complaints.detail.cannotFindMapOwner"));
         return;
       }
       const mapOwnerId = mapRes.data.data.createdByUserId;
       if (!mapOwnerId) {
-        alert(t("complaints.detail.mapOwnerNotFound") || "Map owner not found.");
+        alert(t("complaints.detail.mapOwnerNotFound"));
         return;
       }
       // Create or get conversation with map owner
       const response = await learnerChatApi.getOrCreatePrivateConversation(mapOwnerId);
       const conversationId = response.data.data?.id;
       if (!response.data.isSuccess || !conversationId) {
-        alert(
-          response.data.message ||
-            (t("complaints.detail.cannotOpenChat") || "Unable to open chat with map owner."),
-        );
+        alert(response.data.message || t("complaints.detail.cannotOpenChat"));
         return;
       }
       const ownerName =
@@ -143,7 +152,7 @@ export default function ComplaintDetailPage() {
       navigate(`${ROUTES.LEARNER_CHAT_CONVERSATION(conversationId)}?${params.toString()}`);
     } catch (err) {
       console.error(err);
-      alert(t("complaints.detail.errorOpeningChat") || "Error opening chat.");
+      alert(t("complaints.detail.errorOpeningChat"));
     } finally {
       setOpeningChat(false);
     }
@@ -165,7 +174,7 @@ export default function ComplaintDetailPage() {
     return <div>{t("complaints.detail.noComplaint")}</div>;
   }
 
-  const isResolved = data.complaintStatus === "Resolved";
+  const isResolved = MESSAGE_LOCKED_STATUSES.includes(data.complaintStatus);
   const visibleMessages = [...data.messages]
     .filter((m) => !m.isInternal)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -209,6 +218,11 @@ export default function ComplaintDetailPage() {
   const orderedHistories = [...data.statusHistories].sort(
     (a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime(),
   );
+  const gameDetailId = resolveComplaintGameId({
+    contextType: data.contextType,
+    contextId: data.contextId,
+    contextDataJson: data.contextDataJson,
+  });
 
   const isDark = theme === "dark";
 
@@ -299,7 +313,33 @@ export default function ComplaintDetailPage() {
             </h2>
           </div>
           <ComplaintStatusBadge status={data.complaintStatus} />
-          {data.contextType?.toLowerCase() === "map" && (
+          {gameDetailId ? (
+            <button
+              type="button"
+              onClick={() =>
+                navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", encodeURIComponent(gameDetailId)))
+              }
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--bg)",
+                color: "var(--text)",
+                borderRadius: 6,
+                padding: "5px 11px",
+                fontSize: 12,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+              title={t("complaints.detail.viewGameDetail")}
+            >
+              <Gamepad2 size={14} />
+              {t("complaints.detail.viewGameDetail")}
+            </button>
+          ) : null}
+          {["map", "game"].includes((data.contextType || "").toLowerCase()) && (
             <button
               type="button"
               onClick={handleChatWithReporter}
@@ -319,10 +359,10 @@ export default function ComplaintDetailPage() {
                 flexShrink: 0,
                 whiteSpace: "nowrap",
               }}
-              title={t("complaints.detail.chatWithMapOwner") || "Chat with map owner"}
+              title={t("complaints.detail.chatWithMapOwner")}
             >
               <MessageCircle size={14} />
-              {openingChat ? t("complaints.detail.openingChat") || "Opening..." : t("complaints.detail.contactMapOwner") || "Contact owner"}
+              {openingChat ? t("complaints.detail.openingChat") : t("complaints.detail.contactMapOwner")}
             </button>
           )}
         </div>
@@ -548,7 +588,7 @@ export default function ComplaintDetailPage() {
                     aria-label={
                       sending ? t("complaints.detail.sending") : t("complaints.detail.send")
                     }
-                    title="Send (Enter)"
+                    title={t("complaints.detail.sendShortcut")}
                   >
                     <SendHorizontal size={16} />
                   </button>

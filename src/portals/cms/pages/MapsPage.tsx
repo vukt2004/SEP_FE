@@ -22,7 +22,7 @@ import type {
   MapStatusFilter,
 } from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
-import { Eye, Check, CheckCircle, X, Plus, Search, Play } from "lucide-react";
+import { Eye, Check, CheckCircle, X, Plus, Search, Play, Lock, LockOpen } from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
 import { useTranslation } from "@/lib/i18n/translations";
 import {
@@ -145,8 +145,11 @@ const buildMapsQueryParams = (
     pageNumber,
     pageSize,
     search: normalizedSearch || undefined,
+    // Send both keys during the map->game contract migration.
+    gameStatus: resolvedStatus,
     mapStatus: resolvedStatus,
-    publishedOnly: false,
+    // Omit publishedOnly so backend can return all statuses unless explicitly requested.
+    publishedOnly: undefined,
     difficulty: resolvedDifficulty,
     sortBy: mapSortToApiValue[sortBy],
     sortAscending: sortOrder === "asc",
@@ -366,6 +369,7 @@ export const MapsPage: React.FC = () => {
   const [filterDifficulty, setFilterDifficulty] = useState<number | "">("");
   const [sortBy, setSortBy] = useState<MapsPageSortBy>("createdAt");
   const [sortOrder, setSortOrder] = useState<MapSortOrder>("desc");
+  const [viewMode, setViewMode] = useState<"all" | "locked">("all");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -382,22 +386,31 @@ export const MapsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await cmsMapsApi.getMaps(
-        buildMapsQueryParams(
-          currentPage,
-          pageSize,
-          debouncedSearchTerm,
-          filterStatus,
-          filterDifficulty,
-          sortBy,
-          sortOrder,
-        ),
-      );
+      const response =
+        viewMode === "locked"
+          ? await cmsMapsApi.getLockedMaps({
+              pageNumber: currentPage,
+              pageSize,
+            })
+          : await cmsMapsApi.getMaps(
+              buildMapsQueryParams(
+                currentPage,
+                pageSize,
+                debouncedSearchTerm,
+                filterStatus,
+                filterDifficulty,
+                sortBy,
+                sortOrder,
+              ),
+            );
 
       const paginationData = response.data.data;
       if (paginationData) {
         setMaps(paginationData.items);
-        setTotalPages(paginationData.totalPages);
+        setTotalPages(Math.max(1, paginationData.totalPages || 1));
+      } else {
+        setMaps([]);
+        setTotalPages(1);
       }
     } catch (err) {
       setError("Failed to load games");
@@ -413,6 +426,7 @@ export const MapsPage: React.FC = () => {
     filterDifficulty,
     sortBy,
     sortOrder,
+    viewMode,
   ]);
 
   useEffect(() => {
@@ -511,6 +525,67 @@ export const MapsPage: React.FC = () => {
         returnTo: ROUTES.CMS_MAPS,
       },
     });
+  };
+
+  const handleLockMap = async (mapId: string, mapTitle: string) => {
+    const note = window.prompt(
+      t("cmsMaps.lockNotePrompt").replace("{title}", mapTitle),
+      "",
+    );
+    if (note === null) return;
+
+    try {
+      setActionLoading(true);
+      const response = await cmsMapsApi.lockMap(mapId, note || undefined);
+      if (!response.data.isSuccess) {
+        alert(response.data.message || t("cmsMaps.lockFailed"));
+        return;
+      }
+      alert(response.data.message || t("cmsMaps.lockSuccess"));
+
+      if (selectedMap?.id === mapId) {
+        const detail = await cmsMapsApi.getMapById(mapId).catch(() => null);
+        if (detail?.data?.data) {
+          setSelectedMap(detail.data.data);
+        }
+      }
+
+      await fetchMaps();
+    } catch (err) {
+      alert(t("cmsMaps.lockFailed"));
+      console.error("Lock game error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnlockMap = async (mapId: string) => {
+    const confirmed = window.confirm(t("cmsMaps.confirmUnlock"));
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+      const response = await cmsMapsApi.unlockMap(mapId, true);
+      if (!response.data.isSuccess) {
+        alert(response.data.message || t("cmsMaps.unlockFailed"));
+        return;
+      }
+      alert(response.data.message || t("cmsMaps.unlockSuccess"));
+
+      if (selectedMap?.id === mapId) {
+        const detail = await cmsMapsApi.getMapById(mapId).catch(() => null);
+        if (detail?.data?.data) {
+          setSelectedMap(detail.data.data);
+        }
+      }
+
+      await fetchMaps();
+    } catch (err) {
+      alert(t("cmsMaps.unlockFailed"));
+      console.error("Unlock game error:", err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -754,6 +829,60 @@ export const MapsPage: React.FC = () => {
           alignItems: "center",
         }}
       >
+        <div
+          style={{
+            display: "inline-flex",
+            gap: "6px",
+            padding: "4px",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            background: "var(--surface)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("all");
+              setCurrentPage(1);
+            }}
+            style={{
+              padding: "6px 10px",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              background: viewMode === "all" ? "var(--primary)" : "transparent",
+              color: viewMode === "all" ? "white" : "var(--text)",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            {t("cmsMaps.allGames")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("locked");
+              setCurrentPage(1);
+              setSearchTerm("");
+              setDebouncedSearchTerm("");
+              setFilterStatus("");
+              setFilterDifficulty("");
+            }}
+            style={{
+              padding: "6px 10px",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              background: viewMode === "locked" ? "var(--primary)" : "transparent",
+              color: viewMode === "locked" ? "white" : "var(--text)",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            {t("cmsMaps.lockedGames")}
+          </button>
+        </div>
+
         {/* Search */}
         <div style={{ position: "relative", flex: "1", minWidth: "200px", maxWidth: "320px" }}>
           <Search
@@ -772,6 +901,7 @@ export const MapsPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
             placeholder="Search games..."
+            disabled={viewMode === "locked"}
             style={{
               width: "100%",
               padding: "8px 12px 8px 32px",
@@ -781,6 +911,8 @@ export const MapsPage: React.FC = () => {
               color: "var(--text)",
               fontSize: "14px",
               boxSizing: "border-box",
+              cursor: viewMode === "locked" ? "not-allowed" : "text",
+              opacity: viewMode === "locked" ? 0.7 : 1,
             }}
           />
         </div>
@@ -793,6 +925,7 @@ export const MapsPage: React.FC = () => {
               () => setFilterStatus(e.target.value === "" ? "" : (e.target.value as MapStatusEnum)),
             ])
           }
+          disabled={viewMode === "locked"}
           style={{
             padding: "8px 12px",
             background: "var(--surface)",
@@ -800,7 +933,8 @@ export const MapsPage: React.FC = () => {
             borderRadius: "8px",
             color: "var(--text)",
             fontSize: "14px",
-            cursor: "pointer",
+            cursor: viewMode === "locked" ? "not-allowed" : "pointer",
+            opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
           <option value="">All Statuses</option>
@@ -819,6 +953,7 @@ export const MapsPage: React.FC = () => {
               () => setFilterDifficulty(e.target.value === "" ? "" : Number(e.target.value)),
             ])
           }
+          disabled={viewMode === "locked"}
           style={{
             padding: "8px 12px",
             background: "var(--surface)",
@@ -826,7 +961,8 @@ export const MapsPage: React.FC = () => {
             borderRadius: "8px",
             color: "var(--text)",
             fontSize: "14px",
-            cursor: "pointer",
+            cursor: viewMode === "locked" ? "not-allowed" : "pointer",
+            opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
           <option value="">All Difficulties</option>
@@ -843,6 +979,7 @@ export const MapsPage: React.FC = () => {
           onChange={(e) =>
             setSortBy(e.target.value as "title" | "createdAt" | "difficulty" | "price")
           }
+          disabled={viewMode === "locked"}
           style={{
             padding: "8px 12px",
             background: "var(--surface)",
@@ -850,7 +987,8 @@ export const MapsPage: React.FC = () => {
             borderRadius: "8px",
             color: "var(--text)",
             fontSize: "14px",
-            cursor: "pointer",
+            cursor: viewMode === "locked" ? "not-allowed" : "pointer",
+            opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
           <option value="createdAt">Sort: Created</option>
@@ -862,6 +1000,7 @@ export const MapsPage: React.FC = () => {
         {/* Sort Order */}
         <button
           onClick={() => setSortOrder((o) => (o === "asc" ? "desc" : "asc"))}
+          disabled={viewMode === "locked"}
           style={{
             padding: "8px 14px",
             background: "var(--surface)",
@@ -869,8 +1008,9 @@ export const MapsPage: React.FC = () => {
             borderRadius: "8px",
             color: "var(--text)",
             fontSize: "14px",
-            cursor: "pointer",
+            cursor: viewMode === "locked" ? "not-allowed" : "pointer",
             fontWeight: "500",
+            opacity: viewMode === "locked" ? 0.7 : 1,
           }}
           title={sortOrder === "asc" ? "Ascending" : "Descending"}
         >
@@ -878,7 +1018,7 @@ export const MapsPage: React.FC = () => {
         </button>
 
         {/* Clear Filters */}
-        {(searchTerm || filterStatus !== "" || filterDifficulty !== "") && (
+        {viewMode !== "locked" && (searchTerm || filterStatus !== "" || filterDifficulty !== "") && (
           <button
             onClick={() =>
               handleFilterChange([
@@ -1053,7 +1193,21 @@ export const MapsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {maps.map((map) => (
+              {maps.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    style={{
+                      padding: "24px",
+                      textAlign: "center",
+                      color: "var(--text-2)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {viewMode === "locked" ? t("cmsMaps.noLockedGames") : "No games found"}
+                  </td>
+                </tr>
+              ) : maps.map((map) => (
                 <tr
                   key={map.id}
                   style={{
@@ -1318,6 +1472,45 @@ export const MapsPage: React.FC = () => {
                           <CheckCircle size={16} />
                         </button>
                       )}
+
+                      {/* Lock / Unlock */}
+                      {(viewMode === "locked" || (map.mapStatus === "Published" && !map.isPublished)) ? (
+                        <button
+                          onClick={() => handleUnlockMap(map.id)}
+                          disabled={actionLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            color: "var(--success)",
+                            cursor: actionLoading ? "not-allowed" : "pointer",
+                            fontSize: "12px",
+                            transition: "all 0.2s ease",
+                          }}
+                          title={t("cmsMaps.unlockGame")}
+                        >
+                          <LockOpen size={16} />
+                        </button>
+                      ) : map.mapStatus === "Published" ? (
+                        <button
+                          onClick={() => handleLockMap(map.id, map.title)}
+                          disabled={actionLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "1px solid var(--border)",
+                            borderRadius: "6px",
+                            color: "var(--danger)",
+                            cursor: actionLoading ? "not-allowed" : "pointer",
+                            fontSize: "12px",
+                            transition: "all 0.2s ease",
+                          }}
+                          title={t("cmsMaps.lockGame")}
+                        >
+                          <Lock size={16} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -1865,8 +2058,52 @@ export const MapsPage: React.FC = () => {
               )}
             </div>
 
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+              {(viewMode === "locked" || (selectedMap.mapStatus === "Published" && !selectedMap.isPublished)) && (
+                <button
+                  type="button"
+                  onClick={() => handleUnlockMap(selectedMap.id)}
+                  title={t("cmsMaps.unlockGame")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 16px",
+                    background: "var(--success)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                  }}
+                >
+                  <LockOpen size={16} /> {t("cmsMaps.unlockGame")}
+                </button>
+              )}
+              {selectedMap.mapStatus === "Published" && !(viewMode === "locked" || !selectedMap.isPublished) && (
+                <button
+                  type="button"
+                  onClick={() => handleLockMap(selectedMap.id, selectedMap.title)}
+                  title={t("cmsMaps.lockGame")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 16px",
+                    background: "var(--danger)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Lock size={16} /> {t("cmsMaps.lockGame")}
+                </button>
+              )}
             {selectedMap.mapStatus !== "Draft" && (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button
                   type="button"
                   onClick={() => handlePlayMap(selectedMap.id, selectedMap.type ?? "Topdown")}
@@ -1887,8 +2124,8 @@ export const MapsPage: React.FC = () => {
                 >
                   <Play size={16} /> {t("cmsMaps.playGame")}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
             );
           })()

@@ -14,6 +14,7 @@ export type CmsComplaintListQuery = {
 export type CmsChangeComplaintStatusRequest = {
   toStatus: ComplaintStatus | number;
   note?: string;
+  issueRefund?: boolean;
 };
 
 export type CmsChangeComplaintStatusResult = ApiResult<string>;

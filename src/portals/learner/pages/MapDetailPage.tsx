@@ -476,7 +476,7 @@ export default function MapDetailPage() {
       if (response.data.isSuccess) {
         setPurchaseModal({
           kind: "success",
-          message: response.data.message || t("gamePurchasedWithOrbitCoin"),
+          message: locale.startsWith("vi") ? "Thanh toán thành công" : "Payment successful",
         });
         const ownershipResponse = await learnerMapsApi.checkMapOwnership(map.id);
         if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
@@ -1724,12 +1724,30 @@ export default function MapDetailPage() {
                 }`}
               >
                 {purchaseModal.kind === "success"
-                  ? "Purchase successful"
+                  ? locale.startsWith("vi")
+                    ? "Thanh toán thành công"
+                    : "Payment successful"
                   : purchaseModal.kind === "insufficient"
                     ? "Insufficient balance"
                     : "Purchase failed"}
               </h3>
-              <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              {purchaseModal.kind !== "success" ? (
+                <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              ) : null}
+              {purchaseModal.kind === "success" ? (
+                <p className={styles.modalMessage}>
+                  <button
+                    type="button"
+                    className={styles.purchasePolicyLink}
+                    onClick={() => {
+                      setPurchaseModal(null);
+                      navigate(ROUTES.LEARNER_WALLET);
+                    }}
+                  >
+                    {locale.startsWith("vi") ? "Xem lịch sử giao dịch" : "View transaction history"}
+                  </button>
+                </p>
+              ) : null}
               <div className={styles.modalActions}>
                 <button
                   type="button"
@@ -1738,18 +1756,6 @@ export default function MapDetailPage() {
                 >
                   {t("back")}
                 </button>
-                {purchaseModal.kind === "success" && (
-                  <button
-                    type="button"
-                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                    onClick={() => {
-                      setPurchaseModal(null);
-                      handleStartMap();
-                    }}
-                  >
-                    {t("play")}
-                  </button>
-                )}
                 {purchaseModal.kind !== "success" && (
                   <>
                     {purchaseModal.kind === "insufficient" ? (
