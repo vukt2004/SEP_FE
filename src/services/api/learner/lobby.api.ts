@@ -77,6 +77,12 @@ export const learnerLobbyApi = {
 
   /** POST /api/learner/lobby/rooms/:roomId/submit – submit solution when room is Playing */
   submitSolution(roomId: string, request: LobbySubmitSolutionRequest) {
-    return learnerAxios.post<SubmitGameResult>(`${BASE}/rooms/${roomId}/submit`, request);
+    const detailId = request.gameDetailId ?? request.mapDetailId;
+    const payload: LobbySubmitSolutionRequest = {
+      ...request,
+      gameDetailId: detailId,
+      mapDetailId: detailId,
+    };
+    return learnerAxios.post<SubmitGameResult>(`${BASE}/rooms/${roomId}/submit`, payload);
   },
 };

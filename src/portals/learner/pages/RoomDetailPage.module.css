@@ -114,6 +114,33 @@
   margin: 0 0 12px;
 }
 
+.mapHintWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mapLinkBtn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mapLinkBtn:hover {
+  color: color-mix(in srgb, var(--primary) 85%, white);
+}
+
+.mapHintLoading {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
 .hostActions {
   display: flex;
   gap: 10px;
@@ -220,6 +247,107 @@
 .modalBody {
   padding: 16px;
   overflow-y: auto;
+}
+
+.detailTitle {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.detailHero {
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.detailHeroImg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.detailHeroFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.detailDesc {
+  margin: 0 0 14px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detailDescMuted {
+  margin: 0 0 14px;
+  color: var(--text-2);
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.detailTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.detailTag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--primary) 10%);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.detailGrid strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.detailActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.detailOpenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.detailOpenBtn:hover {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .mapList {

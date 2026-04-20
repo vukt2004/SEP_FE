@@ -25,10 +25,28 @@ function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
     roomId: String(item.roomId ?? item.RoomId ?? ""),
     roomCode: String(item.roomCode ?? item.RoomCode ?? ""),
     hostId: String(item.hostId ?? item.HostId ?? ""),
+    hostName:
+      item.hostName != null
+        ? String(item.hostName)
+        : item.HostName != null
+          ? String(item.HostName)
+          : null,
     currentPlayerCount: Number(item.currentPlayerCount ?? item.CurrentPlayerCount ?? 0),
     maxPlayers: Number(item.maxPlayers ?? item.MaxPlayers ?? 8),
     status: normalizeStatus(item.status ?? item.Status),
     isLocked: Boolean(item.isLocked ?? item.IsLocked),
+    selectedGameId:
+      item.selectedGameId != null
+        ? String(item.selectedGameId)
+        : item.SelectedGameId != null
+          ? String(item.SelectedGameId)
+          : null,
+    selectedGameTitle:
+      item.selectedGameTitle != null
+        ? String(item.selectedGameTitle)
+        : item.SelectedGameTitle != null
+          ? String(item.SelectedGameTitle)
+          : null,
     selectedMapId:
       item.selectedMapId != null
         ? String(item.selectedMapId)
@@ -311,20 +329,38 @@ export default function ModeSelectPage() {
             <ul className={styles.roomsList}>
               {waitingRooms.map((room) => (
                 <li key={room.roomId} className={styles.roomItem}>
-                  <span className={styles.roomCode}>{room.roomCode}</span>
-                  <span className={styles.roomMeta}>
-                    {room.currentPlayerCount}/{room.maxPlayers}
-                  </span>
                   <button
                     type="button"
-                    className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}
+                    className={styles.roomCardBtn}
                     onClick={() => handleJoinRoom(room.roomId)}
                     disabled={joiningId !== null}
+                    title={joiningId === room.roomId ? "Joining..." : "Click to join room"}
                   >
+                    <div className={styles.roomMain}>
+                      <div className={styles.roomTop}>
+                        <span className={styles.roomCode}>{room.roomCode}</span>
+                        <span className={styles.roomStatus}>{room.status}</span>
+                      </div>
+                      <div className={styles.roomMetaGrid}>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Players:</strong> {room.currentPlayerCount}/{room.maxPlayers}
+                        </span>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Host:</strong>{" "}
+                          {room.hostName?.trim() || `${room.hostId.slice(0, 8)}...`}
+                        </span>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Game:</strong> {room.selectedGameTitle?.trim() || "Chưa chọn game"}
+                        </span>
+                      </div>
+                    </div>
                     {joiningId === room.roomId ? (
-                      <Loader2 size={16} className={styles.spinner} aria-hidden />
+                      <span className={styles.roomJoinState}>
+                        <Loader2 size={16} className={styles.spinner} aria-hidden />
+                        Joining...
+                      </span>
                     ) : (
-                      t("joinRoomAction")
+                      <span className={styles.roomJoinHint}>{t("joinRoomAction")} →</span>
                     )}
                   </button>
                 </li>

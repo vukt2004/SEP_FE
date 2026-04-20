@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useBlocker, useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
 import { EngineState, GameEngine } from "../../modules/engine/core/GameEngine";
 import type {
@@ -40,6 +40,8 @@ import { AlertToast } from "@/shared/components/AlertToast";
 import { useTranslation } from "@/lib/i18n/translations";
 import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import { markCampaignLevelCompleted, markCampaignLevelStarted } from "@/lib/game/campaignProgress";
+
+const BACK_NAV_BLOCKED_ROUTE = "/game-session-expired";
 
 /**
  * PlatformGameView - Platformer game view with block editor and gravity physics.
@@ -108,6 +110,9 @@ export default function PlatformGameView() {
   const [revealedHints, setRevealedHints] = useState(0);
   const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(true);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
+  const allowRouteLeaveRef = useRef(false);
+  const navigationBlocker = useBlocker(() => isLevelStarted && !allowRouteLeaveRef.current);
   const [showWinDecisionModal, setShowWinDecisionModal] = useState(false);
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [pendingSubmitIsWin] = useState(false);
@@ -148,6 +153,17 @@ export default function PlatformGameView() {
     levelId != null
       ? ROUTES.LEARNER_MAP_DETAIL.replace(":id", levelId)
       : ROUTES.LEARNER_MAPS_BROWSE;
+  const navigateWithoutPrompt = useCallback(
+    (to: string | number, options?: { replace?: boolean; state?: unknown }) => {
+      allowRouteLeaveRef.current = true;
+      if (typeof to === "number") {
+        navigate(to);
+        return;
+      }
+      navigate(to, options);
+    },
+    [navigate],
+  );
 
   const playMapDetailIdRef = useRef<string | null>(null);
   const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
@@ -190,7 +206,7 @@ export default function PlatformGameView() {
           ? ROUTES.SNAKE
           : ROUTES.GAME;
 
-    navigate(nextRoute, {
+    navigateWithoutPrompt(nextRoute, {
       replace: true,
       state: {
         levelId,
@@ -205,17 +221,17 @@ export default function PlatformGameView() {
     nextCampaignLevelId,
     campaignLevels,
     multiplayerRoomId,
-    navigate,
+    navigateWithoutPrompt,
     roleContext,
     returnTo,
   ]);
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
-      void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+      void leaveLobbyRoom(multiplayerRoomId).then(() => navigateWithoutPrompt(ROUTES.LEARNER_LEARN));
       return;
     }
-    navigate(
+    navigateWithoutPrompt(
       isCmsPreview
         ? returnTo || ROUTES.CMS_MAPS
         : campaignLevels.length <= 1
@@ -228,15 +244,49 @@ export default function PlatformGameView() {
     levelSelectPath,
     mapDetailPath,
     multiplayerRoomId,
-    navigate,
+    navigateWithoutPrompt,
     returnTo,
   ]);
+
+  const handleBackRequest = useCallback(() => {
+    setShowLeaveConfirmModal(true);
+  }, []);
+
+  const handleConfirmLeave = useCallback(() => {
+    allowRouteLeaveRef.current = true;
+    setShowLeaveConfirmModal(false);
+    if (navigationBlocker.state === "blocked") {
+      navigationBlocker.proceed();
+      return;
+    }
+    handleBackToMapFlow();
+  }, [handleBackToMapFlow, navigationBlocker]);
+
+  const handleCancelLeave = useCallback(() => {
+    setShowLeaveConfirmModal(false);
+    if (navigationBlocker.state === "blocked") {
+      navigationBlocker.reset();
+    }
+  }, [navigationBlocker]);
+
+  useEffect(() => {
+    if (navigationBlocker.state === "blocked") {
+      setShowLeaveConfirmModal(true);
+    }
+  }, [navigationBlocker.state]);
 
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   /** Mirrors timer for time-limit effect (ref alone does not trigger re-renders). */
   const [elapsedDisplay, setElapsedDisplay] = useState(0);
   const timeLimitTriggeredRef = useRef(false);
+  const playLockKey = useCallback(
+    (mapDetailId: string | null | undefined) =>
+      levelId && mapDetailId
+        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${mapDetailId}`
+        : null,
+    [levelId, multiplayerRoomId],
+  );
 
   const showWarningToast = useCallback((message: string) => {
     setWarningToast(message);
@@ -271,6 +321,12 @@ export default function PlatformGameView() {
   useEffect(() => {
     engineRef.current?.setDoorKeyHintVisible(showDoorKeyHints);
   }, [showDoorKeyHints]);
+
+  useEffect(() => {
+    if (!levelId && !isCmsPreview) {
+      navigateWithoutPrompt(ROUTES.LEARNER_LEARN, { replace: true });
+    }
+  }, [isCmsPreview, levelId, navigateWithoutPrompt]);
 
   useEffect(() => {
     let isMounted = true;
@@ -349,7 +405,7 @@ export default function PlatformGameView() {
           : await loadLevelFromMockData(levelFile || "level-platform-01");
 
         if (levelId && levelResult.mapConfig?.type === "topdown") {
-          navigate(ROUTES.GAME, {
+          navigateWithoutPrompt(ROUTES.GAME, {
             replace: true,
             state: {
               levelId,
@@ -363,7 +419,7 @@ export default function PlatformGameView() {
         }
 
         if (levelId && levelResult.mapConfig?.type === "snake") {
-          navigate(ROUTES.SNAKE, {
+          navigateWithoutPrompt(ROUTES.SNAKE, {
             replace: true,
             state: {
               levelId,
@@ -379,6 +435,11 @@ export default function PlatformGameView() {
         playMapDetailIdRef.current = levelResult.mapDetailId;
         setCampaignLevels(levelResult.levels ?? []);
         setActiveMapDetailId(levelResult.mapDetailId);
+        const levelLockKey = playLockKey(levelResult.mapDetailId);
+        if (levelLockKey && localStorage.getItem(levelLockKey) === "1") {
+          navigateWithoutPrompt(BACK_NAV_BLOCKED_ROUTE, { replace: true });
+          return;
+        }
         if (levelId && levelResult.mapDetailId) {
           markCampaignLevelStarted(levelId, levelResult.mapDetailId);
         }
@@ -509,7 +570,8 @@ export default function PlatformGameView() {
     roleContext,
     showWarningToast,
     showResultPopup,
-    navigate,
+    playLockKey,
+    navigateWithoutPrompt,
     t,
   ]);
 
@@ -1026,34 +1088,22 @@ export default function PlatformGameView() {
     };
   }, [canvasRenderSize, zoomMode]);
 
-  // Multiplayer: listen RankingUpdated, GameEnded
+  // Multiplayer: only listen GameEnded.
+  // Leaderboard navigation is handled by submit response of the submitter only.
   useEffect(() => {
     if (!multiplayerRoomId) return;
-    let unsubRank: (() => void) | undefined;
     let unsubEnd: (() => void) | undefined;
     gameLobbyHub.connect().then(() => {
-      unsubRank = gameLobbyHub.on("RankingUpdated", (ranking: unknown) => {
-        const arr = Array.isArray(ranking) ? ranking : [];
-        if (arr.length === 0 || !multiplayerRoomId) return;
-        const normalized = arr.map((r: Record<string, unknown>) => ({
-          playerId: String(r.playerId ?? r.PlayerId ?? ""),
-          score: Number(r.score ?? r.Score ?? 0),
-          rank: Number(r.rank ?? r.Rank ?? 0),
-          status: String(r.status ?? r.Status ?? ""),
-        }));
-        navigate(ROUTES.LEARNER_ROOM_RESULT, {
-          state: { ranking: normalized, roomId: multiplayerRoomId },
-        });
-      });
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
-        void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+        void leaveLobbyRoom(multiplayerRoomId).then(() =>
+          navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
+        );
       });
     });
     return () => {
-      unsubRank?.();
       unsubEnd?.();
     };
-  }, [multiplayerRoomId, navigate]);
+  }, [multiplayerRoomId, navigateWithoutPrompt]);
 
   /** When map has timeLimitSeconds: force game over and auto-submit (same as lose + submit flow). */
   useEffect(() => {
@@ -1177,6 +1227,8 @@ export default function PlatformGameView() {
           });
 
           if (res.data?.isSuccess) {
+            const levelLockKey = playLockKey(activeMapDetailId);
+            if (levelLockKey) localStorage.setItem(levelLockKey, "1");
             setSubmitted(true);
             setGameResult(snapshot);
             setSubmissionFeedback({
@@ -1193,9 +1245,27 @@ export default function PlatformGameView() {
                 score: r.score,
                 rank: r.rank,
                 status: r.status,
+                levelDetails: r.levelDetails ?? [],
               }));
-              navigate(ROUTES.LEARNER_ROOM_RESULT, {
-                state: { ranking, roomId: multiplayerRoomId },
+              navigateWithoutPrompt(ROUTES.LEARNER_ROOM_RESULT, {
+                state: {
+                  ranking,
+                  roomId: multiplayerRoomId,
+                  levelId,
+                  nextMapDetailId: nextCampaignLevelId,
+                  nextRoute:
+                    nextCampaignLevelId &&
+                    (campaignLevels.find((l) => l.id === nextCampaignLevelId)?.type ?? "")
+                      .trim()
+                      .toLowerCase() === "platform"
+                      ? ROUTES.PLATFORM
+                      : nextCampaignLevelId &&
+                          (campaignLevels.find((l) => l.id === nextCampaignLevelId)?.type ?? "")
+                            .trim()
+                            .toLowerCase() === "snake"
+                        ? ROUTES.SNAKE
+                        : ROUTES.GAME,
+                },
               });
               return;
             }
@@ -1222,6 +1292,8 @@ export default function PlatformGameView() {
           });
 
           if (validateRes.isSuccess && validateRes.data?.submissionId) {
+            const levelLockKey = playLockKey(activeMapDetailId);
+            if (levelLockKey) localStorage.setItem(levelLockKey, "1");
             setSubmitted(true);
             setGameResult(snapshot);
             setSubmissionFeedback({
@@ -1262,7 +1334,7 @@ export default function PlatformGameView() {
       blocksUsed,
       levelId,
       multiplayerRoomId,
-      navigate,
+      navigateWithoutPrompt,
       runAutoSubmitPrecheck,
       submitLoading,
       submitted,
@@ -1308,11 +1380,11 @@ export default function PlatformGameView() {
     try {
       await learnerLobbyApi.endGame(multiplayerRoomId);
       await leaveLobbyRoom(multiplayerRoomId);
-      navigate(ROUTES.LEARNER_LEARN);
+      navigateWithoutPrompt(ROUTES.LEARNER_LEARN);
     } catch {
       window.alert("Could not end game.");
     }
-  }, [multiplayerRoomId, navigate]);
+  }, [multiplayerRoomId, navigateWithoutPrompt]);
 
   const controlButtonStyle = (
     variant: "neutral" | "primary" | "danger" | "warning",
@@ -1460,7 +1532,7 @@ export default function PlatformGameView() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
           <button
             onClick={() => {
-              handleBackToMapFlow();
+              handleBackRequest();
             }}
             style={controlButtonStyle("neutral", false, hoveredControl === "back")}
             onMouseEnter={() => setHoveredControl("back")}
@@ -2141,15 +2213,13 @@ export default function PlatformGameView() {
           blockLimit={blockConstraints?.blockLimit ?? null}
           multiplayerFooterNote={multiplayerRoomId && submitted ? t("multiplayerWaitOthers") : null}
           onNextLevel={
-            gameResult.isWin && nextCampaignLevelId && !multiplayerRoomId
-              ? handleNextCampaignLevel
-              : undefined
+            gameResult.isWin && nextCampaignLevelId ? handleNextCampaignLevel : undefined
           }
           nextLevelLabel="Next level"
           onReset={() => {
             handlePlayAgainFromResults();
           }}
-          onBackToMenu={handleBackToMapFlow}
+          onBackToMenu={handleBackRequest}
           onMinimize={handleMinimizeResults}
           onClose={handleCloseResults}
           resultPopupEnabled={showResultPopup}
@@ -2193,6 +2263,19 @@ export default function PlatformGameView() {
           {t("gameResultPopupRestore")}
         </button>
       ) : null}
+      <RunDecisionModal
+        isOpen={showLeaveConfirmModal}
+        title={multiplayerRoomId ? "Rời phòng?" : "Rời màn chơi?"}
+        description={
+          multiplayerRoomId
+            ? "Quay lại sẽ rời khỏi phòng và mất tiến độ hiện tại.\nBạn có chắc chắn muốn rời phòng không?"
+            : "Quay lại sẽ mất tiến độ hiện tại.\nBạn có chắc chắn muốn thoát không?"
+        }
+        primaryLabel={multiplayerRoomId ? "Rời phòng" : "Thoát"}
+        secondaryLabel="Ở lại"
+        onPrimary={handleConfirmLeave}
+        onSecondary={handleCancelLeave}
+      />
     </div>
   );
 }

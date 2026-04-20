@@ -11,11 +11,13 @@ export interface LobbyRoomListItem {
   roomId: string;
   roomCode: string;
   hostId: string;
+  hostName?: string | null;
   currentPlayerCount: number;
   maxPlayers: number;
   status: RoomStatus;
   isLocked: boolean;
   selectedGameId?: string | null;
+  selectedGameTitle?: string | null;
   selectedMapId: string | null;
 }
 
@@ -53,6 +55,7 @@ export interface JoinLobbyRoomResponse {
 /** Player in room detail */
 export interface LobbyPlayerDto {
   playerId: string;
+  playerName?: string | null;
   isReady: boolean;
   isHost: boolean;
 }
@@ -62,10 +65,12 @@ export interface LobbyRoomDetailResponse {
   roomId: string;
   roomCode: string;
   hostId: string;
+  hostName?: string | null;
   currentPlayerCount: number;
   maxPlayers: number;
   status: RoomStatus;
   isLocked: boolean;
+  selectedGameTitle?: string | null;
   selectedGameId?: string | null;
   selectedMapId: string | null;
   players: LobbyPlayerDto[];
@@ -101,6 +106,17 @@ export interface PlayerRankingDto {
   score: number;
   rank: number;
   status: string;
+  levelDetails?: PlayerLevelScoreDetailDto[];
+}
+
+export interface PlayerLevelScoreDetailDto {
+  mapDetailId?: string | null;
+  levelIndex: number;
+  score: number;
+  status: string;
+  stepsUsed?: number | null;
+  blocksUsed?: number | null;
+  timeSeconds?: number | null;
 }
 
 /** Response after submitting solution */

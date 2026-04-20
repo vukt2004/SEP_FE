@@ -340,13 +340,53 @@
 }
 
 .roomItem {
+  list-style: none;
+}
+
+.roomCardBtn {
+  width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   background: color-mix(in srgb, var(--surface) 95%, var(--surface-2));
   border: 1px solid var(--border);
   border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.roomCardBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface-2));
+  transform: translateY(-1px);
+}
+
+.roomCardBtn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.roomCardBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.roomMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.roomTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .roomCode {
@@ -354,19 +394,70 @@
   font-size: 16px;
   letter-spacing: 0.05em;
   color: var(--primary);
-  min-width: 80px;
 }
 
-.roomMeta {
-  font-size: 14px;
+.roomStatus {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.roomMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.roomMetaLine {
+  font-size: 13px;
   color: var(--text-2);
-  flex: 1;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.btnSm {
-  height: 36px;
-  padding: 0 16px;
-  font-size: 14px;
+.roomMetaLine strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.roomJoinHint {
+  align-self: center;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.roomJoinState {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .roomCardBtn {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .roomJoinHint,
+  .roomJoinState {
+    align-self: flex-end;
+  }
 }
 
 /* Create room modal */
