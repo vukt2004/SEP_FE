@@ -53,6 +53,8 @@ export interface MapPlayHistoryItem {
   id: string;
   gameId?: string;
   mapId: string;
+  gameDetailId?: string | null;
+  mapDetailId?: string | null;
   gameTitle?: string | null;
   mapTitle?: string | null;
   playMode: PlayModeLabel;

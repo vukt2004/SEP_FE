@@ -63,8 +63,10 @@ export interface CreatePrivateConversationRequest {
 export interface GetChatConversationsParams {
   pageNumber?: number;
   pageSize?: number;
+  searchTerm?: string;
   PageNumber?: number;
   PageSize?: number;
+  SearchTerm?: string;
 }
 
 export interface GetChatMessagesParams {

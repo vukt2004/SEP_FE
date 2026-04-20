@@ -340,13 +340,53 @@
 }
 
 .roomItem {
+  list-style: none;
+}
+
+.roomCardBtn {
+  width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   background: color-mix(in srgb, var(--surface) 95%, var(--surface-2));
   border: 1px solid var(--border);
   border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.roomCardBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface-2));
+  transform: translateY(-1px);
+}
+
+.roomCardBtn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.roomCardBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.roomMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.roomTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .roomCode {
@@ -354,19 +394,70 @@
   font-size: 16px;
   letter-spacing: 0.05em;
   color: var(--primary);
-  min-width: 80px;
 }
 
-.roomMeta {
-  font-size: 14px;
+.roomStatus {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.roomMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.roomMetaLine {
+  font-size: 13px;
   color: var(--text-2);
-  flex: 1;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.btnSm {
-  height: 36px;
-  padding: 0 16px;
-  font-size: 14px;
+.roomMetaLine strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.roomJoinHint {
+  align-self: center;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.roomJoinState {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .roomCardBtn {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .roomJoinHint,
+  .roomJoinState {
+    align-self: flex-end;
+  }
 }
 
 /* Create room modal */
@@ -396,7 +487,7 @@
   max-height: min(90vh, 900px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .modalMapPick .modalBody {
@@ -404,6 +495,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .mapPickerScroll {
@@ -455,6 +547,272 @@
   color: var(--text);
 }
 
+.maxPlayersHint {
+  margin: -2px 0 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.selectedMapBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.selectedMapWrap {
+  position: relative;
+}
+
+.selectedMapMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.selectedMapThumb {
+  width: 64px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 85%, black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selectedMapThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.selectedMapThumb span {
+  font-size: 10px;
+  color: var(--text-2);
+  opacity: 0.75;
+}
+
+.selectedMapMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.selectedMapText {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectedMapSubtext {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selectedMapHoverCard {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  width: min(560px, 92vw);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 94%, #0b1220);
+  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.34);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  z-index: 60;
+}
+
+.selectedMapWrap:hover .selectedMapHoverCard {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.hoverHero {
+  width: 100%;
+  height: 180px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  margin-bottom: 10px;
+}
+
+.hoverHero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hoverHeroFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.hoverTitle {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hoverDesc {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hoverMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 10px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.hoverMetaGrid strong {
+  color: var(--text);
+}
+
+.hoverTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hoverTag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--primary) 10%);
+}
+
+.mapSearchBar {
+  display: flex;
+  align-items: center;
+}
+
+.openBrowseBtn {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-2));
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 12px;
+  cursor: pointer;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.openBrowseBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-2));
+}
+
+.lockRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lockOption {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.lockOptionActive {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-2));
+  color: var(--primary);
+}
+
+.mapSearchInput {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.mapSearchInput:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+
+.mapTypeTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mapTypeTab {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mapTypeTab:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  color: var(--text);
+}
+
+.mapTypeTabActive {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface-2));
+  color: var(--primary);
+}
+
 .slots {
   display: flex;
   gap: 10px;
@@ -501,4 +859,47 @@
   gap: 12px;
   padding: 16px 20px;
   border-top: 1px solid var(--border);
+  position: relative;
+  z-index: 10;
+}
+
+.modalCancelBtn,
+.modalCreateBtn {
+  min-width: 120px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.modalCancelBtn {
+  color: var(--text);
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--border));
+}
+
+.modalCancelBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--surface-2) 70%, var(--border));
+}
+
+.modalCreateBtn {
+  color: #0b1220;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.modalCreateBtn:hover:not(:disabled) {
+  background: var(--accent-hover, color-mix(in srgb, var(--accent) 90%, black));
+}
+
+.modalCancelBtn:disabled,
+.modalCreateBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

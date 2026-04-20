@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
-import type { ComplaintItem, ComplaintStatus } from "@/types/api/complaints";
+import {
+  COMPLAINT_STATUSES,
+  COMPLAINT_STATUS_CODE_TO_VALUE,
+  type ComplaintItem,
+  type ComplaintStatus,
+} from "@/types/api/complaints";
 import type {
   ComplaintCategoryConfigItem,
   CreateComplaintRequest,
@@ -29,6 +34,7 @@ import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
 
 const pageSize = 10;
+type ComplaintListView = "created" | "againstMe";
 
 const DEFAULT_COMPLAINT_CATEGORIES = [
   {
@@ -60,6 +66,51 @@ const CATEGORY_CONTEXT_REQUIREMENTS: Record<string, string[]> = {
   RewardBalanceIssue: ["xpTransactionId", "orbitCoinTransactionId", "submissionId", "mapId"],
   TrialIssue: ["mapId", "playHistoryId"],
 };
+
+function isComplaintStatus(value: string): value is ComplaintStatus {
+  return COMPLAINT_STATUSES.includes(value as ComplaintStatus);
+}
+
+function parseComplaintStatusFilter(value: string | null): ComplaintStatus | "" {
+  if (!value) return "";
+  const normalized = value.trim();
+  if (!normalized) return "";
+
+  if (/^\d+$/.test(normalized)) {
+    const parsed = Number(normalized);
+    return COMPLAINT_STATUS_CODE_TO_VALUE[parsed] ?? "";
+  }
+
+  return isComplaintStatus(normalized) ? normalized : "";
+}
+
+function humanizeComplaintStatus(status: ComplaintStatus) {
+  return status.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+
+function getComplaintStatusLabel(t: (key: string) => string, status: ComplaintStatus) {
+  const key = `complaints.status.${status}`;
+  const translated = t(key);
+  return translated === key ? humanizeComplaintStatus(status) : translated;
+}
+
+const PENDING_COMPLAINT_STATUSES: ComplaintStatus[] = [
+  "Open",
+  "InProgress",
+  "SellerPending",
+  "FixInProgress",
+  "FixSubmitted",
+];
+
+const SOLVED_COMPLAINT_STATUSES: ComplaintStatus[] = [
+  "Resolved",
+  "Verified",
+  "ResolvedRefund",
+  "ResolvedReject",
+  "SellerRejected",
+  "SellerNoResponse",
+  "Closed",
+];
 
 function normalizeCategoryOptions(items: ComplaintCategoryConfigItem[] | null | undefined) {
   if (!items) return [] as ComplaintCategoryConfigItem[];
@@ -201,9 +252,11 @@ export default function ComplaintsPage() {
   const location = useLocation();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState<ComplaintItem[]>([]);
+  const [createdItems, setCreatedItems] = useState<ComplaintItem[]>([]);
+  const [receivedItems, setReceivedItems] = useState<ComplaintItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [createdError, setCreatedError] = useState("");
+  const [receivedError, setReceivedError] = useState("");
   const [retryToken, setRetryToken] = useState(0);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -243,11 +296,26 @@ export default function ComplaintsPage() {
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const pageNumber = Number(searchParams.get("pageNumber") || "1");
-  const status = (searchParams.get("status") as ComplaintStatus | null) ?? "";
+  const listView: ComplaintListView = searchParams.get("view") === "againstMe" ? "againstMe" : "created";
+  const statusRaw = searchParams.get("status") ?? "";
+  const status = parseComplaintStatusFilter(statusRaw);
+  const statusQueryForApi = useMemo(() => {
+    const normalized = statusRaw.trim();
+    if (!normalized) return undefined;
+    if (/^\d+$/.test(normalized)) return Number(normalized);
+    return isComplaintStatus(normalized) ? normalized : undefined;
+  }, [statusRaw]);
   const keyword = searchParams.get("keyword") ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
   const isCreateRoute = location.pathname.endsWith("/complaints/new");
+  const activeError = listView === "againstMe" ? receivedError : createdError;
+  const activeItems = listView === "againstMe" ? receivedItems : createdItems;
+
+  const statusOptions = useMemo(
+    () => COMPLAINT_STATUSES.map((value) => ({ value, label: getComplaintStatusLabel(t, value) })),
+    [t],
+  );
 
   const updateQuery = useCallback(
     (key: string, value: string) => {
@@ -255,6 +323,18 @@ export default function ComplaintsPage() {
         p.set("pageNumber", "1");
         if (value) p.set(key, value);
         else p.delete(key);
+        return p;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const updateView = useCallback(
+    (nextView: ComplaintListView) => {
+      setSearchParams((p) => {
+        p.set("pageNumber", "1");
+        if (nextView === "againstMe") p.set("view", "againstMe");
+        else p.delete("view");
         return p;
       });
     },
@@ -379,33 +459,81 @@ export default function ComplaintsPage() {
 
   useEffect(() => {
     let mounted = true;
+
+    const requestParams = {
+      status: statusQueryForApi,
+      pageSize: 100,
+      dateFrom: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+      dateTo: dateTo ? new Date(`${dateTo}T23:59:59`).toISOString() : undefined,
+      keyword: keyword || undefined,
+    };
+
+    async function loadAllPages(
+      loader: (params: {
+        status?: ComplaintStatus | number;
+        pageNumber?: number;
+        pageSize?: number;
+        dateFrom?: string;
+        dateTo?: string;
+        keyword?: string;
+      }) => Promise<{ data: { isSuccess: boolean; message?: string | null; data?: { items: ComplaintItem[]; totalPages: number } } }>,
+    ) {
+      const first = await loader({ ...requestParams, pageNumber: 1 });
+      if (!first.data.isSuccess || !first.data.data) {
+        throw new Error(first.data.message || t("complaints.failedLoad"));
+      }
+
+      let all = [...first.data.data.items];
+      const totalPages = first.data.data.totalPages || 1;
+      if (totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, idx) =>
+            loader({ ...requestParams, pageNumber: idx + 2 }),
+          ),
+        );
+
+        rest.forEach((response) => {
+          if (response.data.isSuccess && response.data.data) {
+            all = all.concat(response.data.data.items);
+          }
+        });
+      }
+
+      return all;
+    }
+
     async function run() {
       try {
         setLoading(true);
-        setError("");
-        const first = await learnerComplaintsApi.getComplaints({ pageNumber: 1, pageSize: 100 });
+        setCreatedError("");
+        setReceivedError("");
+
+        const [createdResult, receivedResult] = await Promise.allSettled([
+          loadAllPages(learnerComplaintsApi.getComplaints),
+          loadAllPages(learnerComplaintsApi.getComplaintsAgainstMe),
+        ]);
+
         if (!mounted) return;
-        if (!first.data.isSuccess || !first.data.data) {
-          setError(first.data.message || t("complaints.failedLoad"));
-          return;
+
+        if (createdResult.status === "fulfilled") {
+          setCreatedItems(createdResult.value);
+        } else {
+          setCreatedItems([]);
+          setCreatedError(createdResult.reason?.message || t("complaints.failedLoad"));
         }
-        let all = [...first.data.data.items];
-        const pages = first.data.data.totalPages || 1;
-        if (pages > 1) {
-          const rest = await Promise.all(
-            Array.from({ length: pages - 1 }, (_, idx) =>
-              learnerComplaintsApi.getComplaints({ pageNumber: idx + 2, pageSize: 100 }),
-            ),
-          );
-          rest.forEach((res) => {
-            if (res.data.isSuccess && res.data.data) all = all.concat(res.data.data.items);
-          });
+
+        if (receivedResult.status === "fulfilled") {
+          setReceivedItems(receivedResult.value);
+        } else {
+          setReceivedItems([]);
+          setReceivedError(receivedResult.reason?.message || t("complaints.failedLoad"));
         }
-        if (!mounted) return;
-        setItems(all);
       } catch {
         if (!mounted) return;
-        setError(t("complaints.failedLoad"));
+        setCreatedError(t("complaints.failedLoad"));
+        setReceivedError(t("complaints.failedLoad"));
+        setCreatedItems([]);
+        setReceivedItems([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -414,11 +542,11 @@ export default function ComplaintsPage() {
     return () => {
       mounted = false;
     };
-  }, [retryToken, t]);
+  }, [dateFrom, dateTo, keyword, retryToken, statusQueryForApi, t]);
 
   const filteredItems = useMemo(() => {
     const keywordNorm = normalizeText(keyword);
-    return items.filter((item) => {
+    return activeItems.filter((item) => {
       if (status && item.complaintStatus !== status) return false;
       if (dateFrom && new Date(item.createdAt) < new Date(dateFrom)) return false;
       if (dateTo && new Date(item.createdAt) > new Date(`${dateTo}T23:59:59`)) return false;
@@ -438,17 +566,14 @@ export default function ComplaintsPage() {
       }
       return true;
     });
-  }, [dateFrom, dateTo, items, keyword, status]);
+  }, [activeItems, dateFrom, dateTo, keyword, status]);
 
   const pendingCount = useMemo(
-    () =>
-      filteredItems.filter(
-        (x) => x.complaintStatus === "Open" || x.complaintStatus === "InProgress",
-      ).length,
+    () => filteredItems.filter((x) => PENDING_COMPLAINT_STATUSES.includes(x.complaintStatus)).length,
     [filteredItems],
   );
   const solvedCount = useMemo(
-    () => filteredItems.filter((x) => x.complaintStatus === "Resolved").length,
+    () => filteredItems.filter((x) => SOLVED_COMPLAINT_STATUSES.includes(x.complaintStatus)).length,
     [filteredItems],
   );
   const totalItems = filteredItems.length;
@@ -485,8 +610,8 @@ export default function ComplaintsPage() {
     [pageNumber, sortedItems],
   );
   const empty = useMemo(
-    () => !loading && !error && pagedItems.length === 0,
-    [error, loading, pagedItems.length],
+    () => !loading && !activeError && pagedItems.length === 0,
+    [activeError, loading, pagedItems.length],
   );
   const activeCategory = useMemo(
     () => categoryOptions.find((item) => item.categoryKey === createForm.categoryKey) ?? null,
@@ -646,6 +771,9 @@ export default function ComplaintsPage() {
   }
 
   function getComplaintRoute(item: ComplaintItem) {
+    if (listView === "againstMe") {
+      return ROUTES.LEARNER_COMPLAINT_OVERVIEW(item.id);
+    }
     return ROUTES.LEARNER_COMPLAINT_DETAIL(item.id);
   }
 
@@ -889,7 +1017,59 @@ export default function ComplaintsPage() {
         <AlertToast type="error" message={createError} onClose={() => setCreateError("")} />
       ) : null}
 
-      {!isCreateRoute ? <h1 style={{ margin: 0 }}>{t("complaints.mySupportTickets")}</h1> : null}
+      {!isCreateRoute && listView !== "againstMe" ? (
+        <h1 style={{ margin: 0 }}>
+          {t("complaints.mySupportTickets")}
+        </h1>
+      ) : null}
+
+      {!isCreateRoute ? (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 4,
+            borderRadius: 12,
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            width: "fit-content",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => updateView("created")}
+            style={{
+              minWidth: 132,
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 12px",
+              background: listView === "created" ? "var(--surface)" : "transparent",
+              color: listView === "created" ? "var(--text)" : "var(--text-2)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {t("complaints.tab.created")}
+          </button>
+          <button
+            type="button"
+            onClick={() => updateView("againstMe")}
+            style={{
+              minWidth: 132,
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 12px",
+              background: listView === "againstMe" ? "var(--surface)" : "transparent",
+              color: listView === "againstMe" ? "var(--text)" : "var(--text-2)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {t("complaints.tab.againstMe")}
+          </button>
+        </div>
+      ) : null}
 
       {!isCreateRoute ? (
         <div
@@ -1843,9 +2023,9 @@ export default function ComplaintsPage() {
         </div>
       )}
 
-      {error ? (
+      {activeError ? (
         <div style={{ color: "var(--danger)" }}>
-          {error} <button onClick={() => setRetryToken((x) => x + 1)}>{t("retry")}</button>
+          {activeError} <button onClick={() => setRetryToken((x) => x + 1)}>{t("retry")}</button>
         </div>
       ) : null}
 
@@ -1870,7 +2050,9 @@ export default function ComplaintsPage() {
             >
               <div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>
-                  {t("complaints.supportTickets")}
+                  {listView === "againstMe"
+                    ? t("complaints.supportTicketsAgainstMe")
+                    : t("complaints.supportTickets")}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -1887,8 +2069,12 @@ export default function ComplaintsPage() {
                 >
                   {[
                     { label: t("complaints.filter.all"), value: "" },
-                    { label: t("complaints.filter.solved"), value: "Resolved" },
-                    { label: t("complaints.filter.pending"), value: "Open" },
+                    { label: getComplaintStatusLabel(t, "Open"), value: "Open" },
+                    {
+                      label: getComplaintStatusLabel(t, "InProgress"),
+                      value: "InProgress",
+                    },
+                    { label: getComplaintStatusLabel(t, "Resolved"), value: "Resolved" },
                   ].map((s) => (
                     <button
                       key={s.label}
@@ -1968,6 +2154,23 @@ export default function ComplaintsPage() {
                   marginTop: 10,
                 }}
               >
+                <select
+                  value={status}
+                  onChange={(e) => updateQuery("status", e.target.value)}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    background: "var(--bg)",
+                  }}
+                >
+                  <option value="">{t("complaints.filter.allStatuses")}</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="date"
                   value={dateFrom}

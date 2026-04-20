@@ -95,32 +95,28 @@ export default function MapLevelSelectPage() {
   const levelStates = useMemo(() => {
     if (!campaignLevels.length) return [];
 
-    // Map of levelId -> completion status from API
-    const completedLevels = new Set(
-      playHistory.filter((h) => h.isCompleted).map((h) => h.submissionId || h.id),
-    );
-
-    // Determine which level IDs have been attempted/completed
-    const completedBySubmission = new Map<string, boolean>();
+    const completedByLevelId = new Set<string>();
     const attemptedLevelIds = new Set<string>();
 
     for (const historyItem of playHistory) {
-      attemptedLevelIds.add(historyItem.id);
+      const levelRefId = historyItem.mapDetailId ?? historyItem.gameDetailId;
+      if (!levelRefId) continue;
+      attemptedLevelIds.add(levelRefId);
       if (historyItem.isCompleted) {
-        completedBySubmission.set(historyItem.id, true);
+        completedByLevelId.add(levelRefId);
       }
     }
 
     // Build states for all levels based on sequential unlock logic
     return campaignLevels.map((level, index) => {
-      const isCompleted = completedBySubmission.has(level.id) || completedLevels.has(level.id);
+      const isCompleted = completedByLevelId.has(level.id);
       const isAttempted = attemptedLevelIds.has(level.id);
 
       // Level is unlocked if:
       // 1. It's the first level, OR
       // 2. Previous level is completed
       const isUnlocked =
-        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+        index === 0 || (index > 0 && completedByLevelId.has(campaignLevels[index - 1].id));
 
       const isLocked = !isUnlocked;
 

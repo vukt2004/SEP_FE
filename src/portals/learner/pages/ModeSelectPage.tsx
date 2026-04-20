@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UserCircle2, Users, Map, Plus, LogIn, Loader2, X } from "lucide-react";
 import styles from "../components/ModeSelectPage.module.css";
 import { ROUTES } from "@/lib/constants/routes";
@@ -8,8 +8,7 @@ import { learnerLobbyApi } from "@/services/api/learner/lobby.api";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { gameLobbyHub } from "@/lib/realtime/gameLobbyHub";
 import type { LobbyRoomListItem } from "@/types/api/learner/lobby";
-import type { Map as ApiMap } from "@/types/api/learner/maps";
-import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
+import type { MapDetail } from "@/types/api/learner/maps";
 
 /** BE JSON thường serialize enum thành số (0=Waiting, …) — không dùng ?? vì 0 là falsy nhưng hợp lệ. */
 function normalizeStatus(raw: unknown): LobbyRoomListItem["status"] {
@@ -25,10 +24,28 @@ function normalizeRoom(item: Record<string, unknown>): LobbyRoomListItem {
     roomId: String(item.roomId ?? item.RoomId ?? ""),
     roomCode: String(item.roomCode ?? item.RoomCode ?? ""),
     hostId: String(item.hostId ?? item.HostId ?? ""),
+    hostName:
+      item.hostName != null
+        ? String(item.hostName)
+        : item.HostName != null
+          ? String(item.HostName)
+          : null,
     currentPlayerCount: Number(item.currentPlayerCount ?? item.CurrentPlayerCount ?? 0),
     maxPlayers: Number(item.maxPlayers ?? item.MaxPlayers ?? 8),
     status: normalizeStatus(item.status ?? item.Status),
     isLocked: Boolean(item.isLocked ?? item.IsLocked),
+    selectedGameId:
+      item.selectedGameId != null
+        ? String(item.selectedGameId)
+        : item.SelectedGameId != null
+          ? String(item.SelectedGameId)
+          : null,
+    selectedGameTitle:
+      item.selectedGameTitle != null
+        ? String(item.selectedGameTitle)
+        : item.SelectedGameTitle != null
+          ? String(item.SelectedGameTitle)
+          : null,
     selectedMapId:
       item.selectedMapId != null
         ? String(item.selectedMapId)
@@ -42,6 +59,7 @@ const MAX_PLAYER_OPTIONS = [2, 4, 6, 8] as const;
 
 export default function ModeSelectPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const [rooms, setRooms] = useState<LobbyRoomListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +67,67 @@ export default function ModeSelectPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createMaxPlayers, setCreateMaxPlayers] = useState(4);
   const [createMapId, setCreateMapId] = useState<string | null>(null);
-  const [maps, setMaps] = useState<ApiMap[]>([]);
-  const [mapsLoading, setMapsLoading] = useState(false);
+  const [createMapTitle, setCreateMapTitle] = useState<string>("");
+  const [selectedMapDetail, setSelectedMapDetail] = useState<MapDetail | null>(null);
+  const [selectedMapDetailLoading, setSelectedMapDetailLoading] = useState(false);
+  const [createLocked, setCreateLocked] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    const state = (location.state ?? null) as
+      | {
+          openCreateModal?: boolean;
+          selectedMapId?: string | null;
+          selectedMapTitle?: string;
+          maxPlayers?: number;
+        }
+      | null;
+    if (!state) return;
+    if (state.selectedMapId !== undefined) setCreateMapId(state.selectedMapId);
+    if (state.selectedMapTitle !== undefined) setCreateMapTitle(state.selectedMapTitle ?? "");
+    if (typeof state.maxPlayers === "number") setCreateMaxPlayers(state.maxPlayers);
+    if (state.openCreateModal) setCreateModalOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    const mapId = createMapId?.trim();
+    if (!mapId) {
+      setSelectedMapDetail(null);
+      setSelectedMapDetailLoading(false);
+      return;
+    }
+
+    let alive = true;
+    setSelectedMapDetailLoading(true);
+    learnerMapsApi
+      .getMapById(mapId)
+      .then((res) => {
+        if (!alive) return;
+        if (res.data?.isSuccess && res.data?.data) {
+          setSelectedMapDetail(res.data.data);
+          if (!createMapTitle.trim()) setCreateMapTitle(res.data.data.title ?? "");
+        } else {
+          setSelectedMapDetail(null);
+        }
+      })
+      .catch(() => {
+        if (alive) setSelectedMapDetail(null);
+      })
+      .finally(() => {
+        if (alive) setSelectedMapDetailLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [createMapId, createMapTitle]);
+
+  const selectedMapPreviewUrl =
+    selectedMapDetail?.avatarUrl?.trim() ||
+    selectedMapDetail?.gallery?.find((item) => item.kind !== "Video")?.url?.trim() ||
+    selectedMapDetail?.gallery?.[0]?.url?.trim() ||
+    "";
 
   const fetchRooms = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -98,36 +174,11 @@ export default function ModeSelectPage() {
     fetchRooms();
   }, [fetchRooms]);
 
-  /** Polling nhẹ khi tab đang mở — bù trường hợp SignalR miss hoặc REST join/leave không kịp. */
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      if (document.visibilityState === "visible") void fetchRooms({ silent: true });
-    }, 12_000);
-    return () => window.clearInterval(id);
-  }, [fetchRooms]);
-
-  /** Khi quay lại tab: cập nhật số người trong phòng ngay */
-  useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState === "visible") void fetchRooms({ silent: true });
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [fetchRooms]);
-
-  // Load maps when create modal opens
-  useEffect(() => {
-    if (!createModalOpen) return;
-    setMapsLoading(true);
-    learnerMapsApi
-      .getMaps({ pageSize: 50, publishedOnly: true })
-      .then((res) => {
-        if (res.data?.data?.items) setMaps(res.data.data.items);
-      })
-      .finally(() => setMapsLoading(false));
-  }, [createModalOpen]);
-
   const handleCreateRoom = async () => {
+    if (!createMapId) {
+      window.alert("Bạn cần chọn trò chơi trước khi tạo phòng.");
+      return;
+    }
     setCreating(true);
     try {
       const res = await learnerLobbyApi.createRoom({
@@ -146,6 +197,14 @@ export default function ModeSelectPage() {
             ? String((payload as Record<string, unknown>).RoomId)
             : null;
       if (res.data?.isSuccess && roomId) {
+        if (createLocked) {
+          try {
+            await gameLobbyHub.connect();
+            await gameLobbyHub.setRoomLocked(roomId, true);
+          } catch {
+            // best effort; room detail can still toggle lock.
+          }
+        }
         setCreateModalOpen(false);
         const roomCode =
           (payload as Record<string, unknown>).roomCode ??
@@ -161,7 +220,7 @@ export default function ModeSelectPage() {
             currentPlayerCount: 1,
             maxPlayers: typeof maxPlayers === "number" ? maxPlayers : 8,
             status: "Waiting",
-            isLocked: false,
+            isLocked: createLocked,
             selectedMapId: createMapId,
             players: [],
           },
@@ -281,10 +340,18 @@ export default function ModeSelectPage() {
               <button
                 type="button"
                 className={`${styles.btn} ${styles.btnAccent}`}
-                onClick={() => setCreateModalOpen(true)}
+                onClick={() =>
+                  navigate(ROUTES.LEARNER_MAPS_BROWSE, {
+                    state: {
+                      lobbyPickMode: true,
+                      lobbyPickReturnTo: ROUTES.LEARNER_LEARN,
+                      lobbyCreateMaxPlayers: createMaxPlayers,
+                    },
+                  })
+                }
               >
                 <Plus size={18} aria-hidden />
-                {t("createRoom")}
+                {t("chooseGame")}
               </button>
               <button
                 type="button"
@@ -311,20 +378,38 @@ export default function ModeSelectPage() {
             <ul className={styles.roomsList}>
               {waitingRooms.map((room) => (
                 <li key={room.roomId} className={styles.roomItem}>
-                  <span className={styles.roomCode}>{room.roomCode}</span>
-                  <span className={styles.roomMeta}>
-                    {room.currentPlayerCount}/{room.maxPlayers}
-                  </span>
                   <button
                     type="button"
-                    className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSm}`}
+                    className={styles.roomCardBtn}
                     onClick={() => handleJoinRoom(room.roomId)}
                     disabled={joiningId !== null}
+                    title={joiningId === room.roomId ? "Joining..." : "Click to join room"}
                   >
+                    <div className={styles.roomMain}>
+                      <div className={styles.roomTop}>
+                        <span className={styles.roomCode}>{room.roomCode}</span>
+                        <span className={styles.roomStatus}>{room.status}</span>
+                      </div>
+                      <div className={styles.roomMetaGrid}>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Players:</strong> {room.currentPlayerCount}/{room.maxPlayers}
+                        </span>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Host:</strong>{" "}
+                          {room.hostName?.trim() || `${room.hostId.slice(0, 8)}...`}
+                        </span>
+                        <span className={styles.roomMetaLine}>
+                          <strong>Game:</strong> {room.selectedGameTitle?.trim() || "Chưa chọn game"}
+                        </span>
+                      </div>
+                    </div>
                     {joiningId === room.roomId ? (
-                      <Loader2 size={16} className={styles.spinner} aria-hidden />
+                      <span className={styles.roomJoinState}>
+                        <Loader2 size={16} className={styles.spinner} aria-hidden />
+                        Joining...
+                      </span>
                     ) : (
-                      t("joinRoomAction")
+                      <span className={styles.roomJoinHint}>{t("joinRoomAction")} →</span>
                     )}
                   </button>
                 </li>
@@ -353,6 +438,82 @@ export default function ModeSelectPage() {
               </button>
             </div>
             <div className={styles.modalBody}>
+              <label className={styles.modalLabel}>Game đã chọn</label>
+              <div className={styles.selectedMapWrap}>
+                <div className={styles.selectedMapBox}>
+                  <div className={styles.selectedMapMain}>
+                    <div className={styles.selectedMapThumb}>
+                      {selectedMapPreviewUrl ? (
+                        <img src={selectedMapPreviewUrl} alt={selectedMapDetail?.title || "Selected map"} />
+                      ) : (
+                        <span>NO IMAGE</span>
+                      )}
+                    </div>
+                    <div className={styles.selectedMapMeta}>
+                      <span className={styles.selectedMapText}>
+                        {createMapTitle?.trim() ||
+                          (createMapId ? `Map ${createMapId.slice(0, 8)}...` : "Chưa chọn")}
+                      </span>
+                      <span className={styles.selectedMapSubtext}>
+                        {selectedMapDetailLoading
+                          ? "Đang tải thông tin..."
+                          : selectedMapDetail
+                            ? `Độ khó: ${selectedMapDetail.difficulty}/5`
+                            : "Hover để xem chi tiết game"}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.openBrowseBtn}
+                    onClick={() =>
+                      navigate(ROUTES.LEARNER_MAPS_BROWSE, {
+                        state: {
+                          lobbyPickMode: true,
+                          lobbyPickReturnTo: ROUTES.LEARNER_LEARN,
+                          lobbyCreateMaxPlayers: createMaxPlayers,
+                        },
+                      })
+                    }
+                    disabled={creating}
+                  >
+                    Đổi game
+                  </button>
+                </div>
+                {selectedMapDetail ? (
+                  <div className={styles.selectedMapHoverCard}>
+                    <div className={styles.hoverHero}>
+                      {selectedMapPreviewUrl ? (
+                        <img src={selectedMapPreviewUrl} alt={selectedMapDetail.title} />
+                      ) : (
+                        <div className={styles.hoverHeroFallback}>No preview</div>
+                      )}
+                    </div>
+                    <h4 className={styles.hoverTitle}>{selectedMapDetail.title}</h4>
+                    <p className={styles.hoverDesc}>
+                      {selectedMapDetail.description?.trim() || "Không có mô tả cho trò chơi này."}
+                    </p>
+                    <div className={styles.hoverMetaGrid}>
+                      <span>
+                        <strong>Độ khó:</strong> {selectedMapDetail.difficulty}/5
+                      </span>
+                      <span>
+                        <strong>Giá:</strong>{" "}
+                        {selectedMapDetail.price > 0 ? `${selectedMapDetail.price.toLocaleString()} xu` : "Miễn phí"}
+                      </span>
+                    </div>
+                    {selectedMapDetail.tagNames?.length ? (
+                      <div className={styles.hoverTags}>
+                        {selectedMapDetail.tagNames.slice(0, 8).map((tag) => (
+                          <span key={tag} className={styles.hoverTag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
               <label className={styles.modalLabel}>{t("maxPlayers")}</label>
               <div className={styles.slots}>
                 {MAX_PLAYER_OPTIONS.map((n) => (
@@ -366,23 +527,33 @@ export default function ModeSelectPage() {
                   </button>
                 ))}
               </div>
-              <label className={styles.modalLabel}>{t("selectMap")}</label>
-              <div className={styles.mapPickerScroll}>
-                <LobbyMapPickerGrid
-                  maps={maps}
-                  loading={mapsLoading}
-                  selectedMapId={createMapId}
-                  onSelectMap={(id) => setCreateMapId(id)}
-                  allowNoMap
-                  noMapLabel={t("noMap")}
+              <p className={styles.maxPlayersHint}>
+                {`Chọn ${createMaxPlayers} nghĩa là phòng tối đa ${createMaxPlayers} người; vẫn có thể bắt đầu khi có từ 2 người (ví dụ 3/${createMaxPlayers}).`}
+              </p>
+              <label className={styles.modalLabel}>Trạng thái phòng</label>
+              <div className={styles.lockRow}>
+                <button
+                  type="button"
+                  className={`${styles.lockOption} ${!createLocked ? styles.lockOptionActive : ""}`}
+                  onClick={() => setCreateLocked(false)}
                   disabled={creating}
-                />
+                >
+                  Public
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.lockOption} ${createLocked ? styles.lockOptionActive : ""}`}
+                  onClick={() => setCreateLocked(true)}
+                  disabled={creating}
+                >
+                  Private
+                </button>
               </div>
             </div>
             <div className={styles.modalFooter}>
               <button
                 type="button"
-                className={styles.btnGhost}
+                className={styles.modalCancelBtn}
                 onClick={() => !creating && setCreateModalOpen(false)}
                 disabled={creating}
               >
@@ -390,7 +561,7 @@ export default function ModeSelectPage() {
               </button>
               <button
                 type="button"
-                className={styles.btnAccent}
+                className={styles.modalCreateBtn}
                 onClick={handleCreateRoom}
                 disabled={creating}
               >

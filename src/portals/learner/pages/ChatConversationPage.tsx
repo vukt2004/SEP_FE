@@ -645,16 +645,24 @@ export default function ChatConversationPage() {
         setError(null);
       }
       try {
-        const res = await learnerChatApi.getConversationMessages(conversationId, {
-          pageNumber: 1,
-          pageSize: MESSAGES_PAGE_SIZE,
-          ...(beforeMessageId ? { beforeMessageId } : {}),
-        });
-        if (!res.data.isSuccess || !Array.isArray(res.data.data?.items)) {
-          if (!silent) setError(res.data.message ?? text.cannotLoadMessages);
+        if (!hubConnection || hubConnection.state !== "Connected") {
+          if (!silent) setError(text.cannotLoadMessages);
           return;
         }
-        const sorted = [...res.data.data.items].sort(
+
+        const items = await hubConnection.invoke<ChatMessage[]>(
+          "GetConversationMessages",
+          conversationId,
+          MESSAGES_PAGE_SIZE,
+          beforeMessageId ?? null,
+        );
+
+        if (!Array.isArray(items)) {
+          if (!silent) setError(text.cannotLoadMessages);
+          return;
+        }
+
+        const sorted = [...items].sort(
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
         if (beforeMessageId) {
@@ -675,7 +683,7 @@ export default function ChatConversationPage() {
         setLoadingMore(false);
       }
     },
-    [conversationId, loadConversations, text.cannotLoadMessages, text.loadMessagesError],
+    [conversationId, hubConnection, loadConversations, text.cannotLoadMessages, text.loadMessagesError],
   );
 
   useEffect(() => {
@@ -693,15 +701,15 @@ export default function ChatConversationPage() {
 
   // ── SignalR ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const token = tokenStorage.getLearnerToken();
-    if (!token) return;
+    if (!tokenStorage.getLearnerToken()) return;
 
     let base = (import.meta.env.VITE_API_BASE_URL as string) || "";
     if (base.endsWith("/")) base = base.slice(0, -1);
 
     const connection = new HubConnectionBuilder()
       .withUrl(`${base}/hubs/chat`, {
-        accessTokenFactory: () => token,
+        // Always read latest token to avoid reconnect loops with stale token.
+        accessTokenFactory: () => tokenStorage.getLearnerToken() ?? "",
         transport: HttpTransportType.WebSockets | HttpTransportType.LongPolling,
       })
       .configureLogging(LogLevel.Warning)
@@ -907,17 +915,37 @@ export default function ChatConversationPage() {
     if (!conversationId || sending || (!content && !attachedImage)) return;
     setSending(true);
     try {
-      const res = await learnerChatApi.sendConversationMessage(conversationId, {
-        content,
-        messageType: attachedImage ? 1 : 0,
-        imageFile: attachedImage,
-        replyToMessageId: replyTo?.id ?? null,
-      });
-      if (!res.data.isSuccess || !res.data.data) {
-        alert(res.data.message ?? text.cannotSendMessage);
+      let created: ChatMessage | null = null;
+
+      if (!attachedImage && hubConnection?.state === "Connected") {
+        // Text messages go through SignalR hub method.
+        const sent = await hubConnection.invoke<ChatMessage | null>(
+          "SendMessage",
+          conversationId,
+          content,
+          replyTo?.id ?? null,
+        );
+        created = sent ?? null;
+      } else {
+        // Keep REST fallback for image uploads.
+        const res = await learnerChatApi.sendConversationMessage(conversationId, {
+          content,
+          messageType: attachedImage ? 1 : 0,
+          imageFile: attachedImage,
+          replyToMessageId: replyTo?.id ?? null,
+        });
+        if (!res.data.isSuccess || !res.data.data) {
+          alert(res.data.message ?? text.cannotSendMessage);
+          return;
+        }
+        created = res.data.data;
+      }
+
+      if (!created) {
+        alert(text.cannotSendMessage);
         return;
       }
-      const created = res.data.data;
+
       setMessages((prev) => {
         if (prev.some((m) => m.id.toLowerCase() === created.id.toLowerCase())) return prev;
         return [...prev, created];

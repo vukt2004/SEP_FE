@@ -184,7 +184,7 @@ export default function MapDetailPage() {
       setError(null);
 
       const [mapResponse, ownershipResponse, historyResponse] = await Promise.all([
-        learnerMapsApi.getMapById(id, true),
+        learnerMapsApi.getMapInfo(id),
         learnerMapsApi.checkMapOwnership(id),
         learnerGameplayApi.getMyPlayHistory({ mapId: id, pageSize: 100 }),
       ]);
@@ -476,7 +476,7 @@ export default function MapDetailPage() {
       if (response.data.isSuccess) {
         setPurchaseModal({
           kind: "success",
-          message: response.data.message || t("gamePurchasedWithOrbitCoin"),
+          message: locale.startsWith("vi") ? "Thanh toán thành công" : "Payment successful",
         });
         const ownershipResponse = await learnerMapsApi.checkMapOwnership(map.id);
         if (ownershipResponse.data.isSuccess && ownershipResponse.data.data) {
@@ -815,21 +815,23 @@ export default function MapDetailPage() {
   const campaignLevelStates = useMemo(() => {
     if (!campaignLevels.length) return [];
 
-    const completedBySubmission = new Map<string, boolean>();
+    const completedByLevelId = new Set<string>();
     const attemptedLevelIds = new Set<string>();
 
     for (const historyItem of playHistory) {
-      attemptedLevelIds.add(historyItem.id);
+      const levelRefId = historyItem.mapDetailId ?? historyItem.gameDetailId;
+      if (!levelRefId) continue;
+      attemptedLevelIds.add(levelRefId);
       if (historyItem.isCompleted) {
-        completedBySubmission.set(historyItem.id, true);
+        completedByLevelId.add(levelRefId);
       }
     }
 
     return campaignLevels.map((level, index) => {
-      const isCompleted = completedBySubmission.has(level.id);
+      const isCompleted = completedByLevelId.has(level.id);
       const isAttempted = attemptedLevelIds.has(level.id);
       const isUnlocked =
-        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+        index === 0 || (index > 0 && completedByLevelId.has(campaignLevels[index - 1].id));
       const isLocked = !isUnlocked;
       const isCurrent = isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
 
@@ -1488,7 +1490,8 @@ export default function MapDetailPage() {
                   const reviewer =
                     item.isAuthor && map.createdByUserName?.trim()
                       ? map.createdByUserName.trim()
-                      : `${locale.startsWith("vi") ? "Người chơi" : "Player"} ${item.userId.slice(0, 8)}`;
+                      : item.reviewerName?.trim() ||
+                        (locale.startsWith("vi") ? "Người chơi ẩn danh" : "Anonymous player");
 
                   return (
                     <article key={item.id} className={styles.ratingItem}>
@@ -1724,12 +1727,30 @@ export default function MapDetailPage() {
                 }`}
               >
                 {purchaseModal.kind === "success"
-                  ? "Purchase successful"
+                  ? locale.startsWith("vi")
+                    ? "Thanh toán thành công"
+                    : "Payment successful"
                   : purchaseModal.kind === "insufficient"
                     ? "Insufficient balance"
                     : "Purchase failed"}
               </h3>
-              <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              {purchaseModal.kind !== "success" ? (
+                <p className={styles.modalMessage}>{purchaseModal.message}</p>
+              ) : null}
+              {purchaseModal.kind === "success" ? (
+                <p className={styles.modalMessage}>
+                  <button
+                    type="button"
+                    className={styles.purchasePolicyLink}
+                    onClick={() => {
+                      setPurchaseModal(null);
+                      navigate(ROUTES.LEARNER_WALLET);
+                    }}
+                  >
+                    {locale.startsWith("vi") ? "Xem lịch sử giao dịch" : "View transaction history"}
+                  </button>
+                </p>
+              ) : null}
               <div className={styles.modalActions}>
                 <button
                   type="button"
@@ -1738,18 +1759,6 @@ export default function MapDetailPage() {
                 >
                   {t("back")}
                 </button>
-                {purchaseModal.kind === "success" && (
-                  <button
-                    type="button"
-                    className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                    onClick={() => {
-                      setPurchaseModal(null);
-                      handleStartMap();
-                    }}
-                  >
-                    {t("play")}
-                  </button>
-                )}
                 {purchaseModal.kind !== "success" && (
                   <>
                     {purchaseModal.kind === "insufficient" ? (

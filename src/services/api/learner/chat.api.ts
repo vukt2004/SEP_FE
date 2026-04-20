@@ -1,5 +1,7 @@
 import { learnerAxios } from "@/services/http/axios.learner";
 import type {
+  ChatConversation,
+  ChatConversationMember,
   ConversationMessagesResult,
   ConversationsListResult,
   CreatePrivateConversationRequest,
@@ -33,6 +35,20 @@ export const learnerChatApi = {
     return learnerAxios.post<PrivateConversationResult>(
       "/api/learner/chat/conversations/private",
       body,
+    );
+  },
+
+  createTemporaryGroupConversation(name: string) {
+    return learnerAxios.post<ApiResult<ChatConversation>>(
+      "/api/learner/chat/conversations/temporary-group",
+      { name },
+    );
+  },
+
+  addMemberToConversation(conversationId: string, userId: string) {
+    return learnerAxios.post<ApiResult<ChatConversationMember>>(
+      `/api/learner/chat/conversations/${conversationId}/members`,
+      { userId },
     );
   },
 

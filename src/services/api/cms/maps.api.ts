@@ -66,6 +66,17 @@ export const cmsMapsApi = {
   },
 
   /**
+   * Get paginated list of locked games.
+   * GET /api/cms/games/locked
+   */
+  getLockedMaps(params?: Pick<GetMapsParams, "pageNumber" | "pageSize">) {
+    return cmsAxios.get<GamesListResult>("/api/cms/games/locked", { params }).then((response) => {
+      normalizeGameContractDeep(response.data?.data);
+      return response;
+    });
+  },
+
+  /**
    * Get detailed map information by ID
     * GET /api/cms/games/{id}
    *
@@ -122,6 +133,26 @@ export const cmsMapsApi = {
    */
   publishMap(id: string) {
     return cmsAxios.post<ApiResult>(`/api/cms/games/${id}/publish`);
+  },
+
+  /**
+   * Lock a game from learner catalog visibility.
+   * POST /api/cms/games/{id}/lock
+   */
+  lockMap(id: string, note?: string) {
+    return cmsAxios.post<ApiResult>(`/api/cms/games/${id}/lock`, null, {
+      params: { note: note?.trim() || undefined },
+    });
+  },
+
+  /**
+   * Unlock a game and optionally republish if status is Published.
+   * POST /api/cms/games/{id}/unlock
+   */
+  unlockMap(id: string, republishIfPublishedStatus = true) {
+    return cmsAxios.post<ApiResult>(`/api/cms/games/${id}/unlock`, null, {
+      params: { republishIfPublishedStatus },
+    });
   },
 
   /**

@@ -74,15 +74,28 @@
   gap: 10px;
 }
 
+.rankingItemWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .rankingItem {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rankingItem:disabled {
+  cursor: default;
 }
 
 .rank {
@@ -107,6 +120,51 @@
   color: var(--text-2);
 }
 
+.expandIcon {
+  color: var(--text-2);
+  transition: transform 0.2s ease;
+}
+
+.expandIconOpen {
+  transform: rotate(180deg);
+}
+
+.levelDetailsPanel {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--surface-2));
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.levelDetailRow {
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 6px;
+}
+
+.levelDetailRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.levelTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.levelMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
 .primaryBtn {
   width: 100%;
   padding: 14px 20px;
@@ -121,4 +179,27 @@
 
 .primaryBtn:hover {
   opacity: 0.95;
+}
+
+.actionsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.secondaryBtn {
+  width: 100%;
+  padding: 13px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
 }

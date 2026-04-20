@@ -1,7 +1,7 @@
 // src/portals/learner/pages/MapsPage.tsx
 // Game library + progression UI for 2D puzzle learning platform
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Clock,
@@ -234,6 +234,19 @@ export default function MapsPage() {
 function MapsContent() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const lobbyPickState = (location.state ?? null) as
+    | {
+        lobbyPickMode?: boolean;
+        lobbyPickReturnTo?: string;
+        lobbyCreateMaxPlayers?: number;
+        lobbyPickForRoom?: boolean;
+        roomId?: string;
+        roomCode?: string;
+      }
+    | null;
+  const lobbyPickMode = lobbyPickState?.lobbyPickMode === true;
+  const lobbyPickReturnTo = lobbyPickState?.lobbyPickReturnTo || ROUTES.LEARNER_LEARN;
   const [maps, setMaps] = useState<ApiMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -524,6 +537,35 @@ function MapsContent() {
     setMechanismConceptPicker("all");
   };
 
+  const handleMapPrimaryAction = (mapId: string, mapTitle?: string) => {
+    if (lobbyPickMode) {
+      if (lobbyPickState?.lobbyPickForRoom) {
+        navigate(lobbyPickReturnTo, {
+          replace: true,
+          state: {
+            roomId: lobbyPickState.roomId ?? "",
+            roomCode: lobbyPickState.roomCode ?? "",
+            selectedMapIdFromBrowse: mapId,
+            selectedMapTitleFromBrowse: mapTitle ?? "",
+            applyMapSelectionFromBrowse: true,
+          },
+        });
+        return;
+      }
+      navigate(lobbyPickReturnTo, {
+        replace: true,
+        state: {
+          openCreateModal: true,
+          selectedMapId: mapId,
+          selectedMapTitle: mapTitle ?? "",
+          maxPlayers: lobbyPickState?.lobbyCreateMaxPlayers ?? 4,
+        },
+      });
+      return;
+    }
+    navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
+  };
+
   return (
     <div className={styles.section}>
       <div className={styles.steamGrid}>
@@ -764,7 +806,7 @@ function MapsContent() {
                       status={status}
                       progressPercent={progressPercent}
                       size="large"
-                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onPlay={() => handleMapPrimaryAction(map.id, map.title)}
                       onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                       showContinue
                     />
@@ -799,7 +841,7 @@ function MapsContent() {
                       progressPercent={progressPercent}
                       size="large"
                       badge="recommended"
-                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onPlay={() => handleMapPrimaryAction(map.id, map.title)}
                       onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                     />
                   );
@@ -833,7 +875,7 @@ function MapsContent() {
                       progressPercent={progressPercent}
                       size="medium"
                       badge="start_here"
-                      onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                      onPlay={() => handleMapPrimaryAction(map.id, map.title)}
                       onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                     />
                   );
@@ -873,7 +915,7 @@ function MapsContent() {
                         status={status}
                         progressPercent={progressPercent}
                         size="default"
-                        onPlay={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
+                        onPlay={() => handleMapPrimaryAction(map.id, map.title)}
                         onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}
                       />
                     );

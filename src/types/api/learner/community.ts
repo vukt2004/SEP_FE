@@ -25,8 +25,7 @@ export interface ReportMapParams {
  */
 export interface GameRatingItem {
   id: string;
-  userId: string;
-  gameId: string;
+  reviewerName?: string | null;
   rating: number;
   comment?: string | null;
   createdAt: string;

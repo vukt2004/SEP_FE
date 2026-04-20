@@ -5,6 +5,8 @@ import type {
   ComplaintCategoryConfigListResult,
   CreateComplaintRequest,
   CreateComplaintResult,
+  LearnerAgainstMeChangeStatusRequest,
+  LearnerAgainstMeChangeStatusResult,
   LearnerComplaintDetailResult,
   LearnerComplaintListQuery,
   LearnerComplaintListResult,
@@ -47,8 +49,24 @@ export const learnerComplaintsApi = {
   getComplaints(params: LearnerComplaintListQuery) {
     return learnerAxios.get<LearnerComplaintListResult>("/api/learner/complaints", { params });
   },
+  getComplaintsAgainstMe(params: LearnerComplaintListQuery) {
+    return learnerAxios.get<LearnerComplaintListResult>("/api/learner/complaints/against-me", {
+      params,
+    });
+  },
   getComplaintById(complaintId: string) {
     return learnerAxios.get<LearnerComplaintDetailResult>(`/api/learner/complaints/${complaintId}`);
+  },
+  getComplaintAgainstMeById(complaintId: string) {
+    return learnerAxios.get<LearnerComplaintDetailResult>(
+      `/api/learner/complaints/against-me/${complaintId}`,
+    );
+  },
+  changeAgainstMeStatus(complaintId: string, body: LearnerAgainstMeChangeStatusRequest) {
+    return learnerAxios.post<LearnerAgainstMeChangeStatusResult>(
+      `/api/learner/complaints/against-me/${complaintId}/status`,
+      body,
+    );
   },
   addMessage(complaintId: string, body: AddLearnerComplaintMessageRequest) {
     const formData = new FormData();
