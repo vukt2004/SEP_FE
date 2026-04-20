@@ -13,6 +13,8 @@ export type LobbyMapPickerGridProps = {
   allowNoMap?: boolean;
   noMapLabel?: string;
   disabled?: boolean;
+  disabledMapIds?: Set<string>;
+  disabledReason?: string;
 };
 
 function difficultyClassFromTier(d: number): string {
@@ -35,6 +37,8 @@ export function LobbyMapPickerGrid({
   allowNoMap,
   noMapLabel,
   disabled,
+  disabledMapIds,
+  disabledReason,
 }: LobbyMapPickerGridProps) {
   const { t } = useTranslation();
 
@@ -64,6 +68,7 @@ export function LobbyMapPickerGrid({
       )}
       <div className={styles.grid}>
         {maps.map((m) => {
+          const isMapDisabled = disabledMapIds?.has(m.id) === true;
           const isPlatform = m.type === "Platform";
           const previewUrl =
             m.avatarUrl?.trim() ||
@@ -77,7 +82,8 @@ export function LobbyMapPickerGrid({
               className={styles.card}
               data-selected={selectedMapId === m.id}
               onClick={() => onSelectMap(m.id)}
-              disabled={disabled}
+              disabled={disabled || isMapDisabled}
+              title={isMapDisabled ? disabledReason : undefined}
             >
               <div className={styles.thumb}>
                 {previewUrl ? (
@@ -108,6 +114,9 @@ export function LobbyMapPickerGrid({
                   </span>
                   <span>⏱ {formatMinutes(m.timeLimitMs, t("minutes"))}</span>
                 </div>
+                {isMapDisabled ? (
+                  <p className={styles.desc}>{disabledReason ?? t("mapLocked")}</p>
+                ) : null}
               </div>
             </button>
           );

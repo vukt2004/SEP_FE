@@ -6,6 +6,8 @@ export default function LearnerLayout() {
   const location = useLocation();
   // Chat pages get a special full-height layout with no extra padding
   const isChatPage = location.pathname.startsWith("/app/chat");
+  const isEmbeddedChat =
+    isChatPage && new URLSearchParams(location.search).get("embed") === "1";
 
   return (
     <div
@@ -18,7 +20,7 @@ export default function LearnerLayout() {
         overflow: "hidden",
       }}
     >
-      <LearnerHeader />
+      {!isEmbeddedChat ? <LearnerHeader /> : null}
       <main
         style={{
           flex: 1,

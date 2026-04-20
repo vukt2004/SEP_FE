@@ -11,11 +11,13 @@ export type LobbyRoomListPayload = Array<{
   roomId: string;
   roomCode: string;
   hostId: string;
+  hostName?: string | null;
   currentPlayerCount: number;
   maxPlayers: number;
   status: string;
   isLocked: boolean;
   selectedGameId?: string | null;
+  selectedGameTitle?: string | null;
   selectedMapId: string | null;
 }>;
 
@@ -29,7 +31,7 @@ export type RoomDtoPayload = {
   isLocked: boolean;
   selectedGameId?: string | null;
   selectedMapId: string | null;
-  players: Array<{ playerId: string; isReady: boolean; isHost: boolean }>;
+  players: Array<{ playerId: string; playerName?: string | null; isReady: boolean; isHost: boolean }>;
 };
 
 export type GameStartedPayload = {
@@ -219,6 +221,12 @@ class GameLobbyHubClient {
   async setRoomLocked(roomId: string, isLocked: boolean): Promise<void> {
     if (this.connection?.state !== signalR.HubConnectionState.Connected) return;
     await this.connection.invoke("SetRoomLocked", roomId, isLocked);
+  }
+
+  /** Kick player from room (host only) */
+  async kickPlayer(roomId: string, playerId: string): Promise<void> {
+    if (this.connection?.state !== signalR.HubConnectionState.Connected) return;
+    await this.connection.invoke("KickPlayer", roomId, playerId);
   }
 
   /** Submit solution (when room is Playing) */

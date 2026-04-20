@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useBlocker, useLocation, useNavigate } from "react-router-dom";
 import * as Blockly from "blockly";
-import { ArrowLeft, Eraser, Flag, Pause, Play, RotateCcw, Send, SkipForward } from "lucide-react";
+import { ArrowLeft, Eraser, Pause, Play, RotateCcw, Send, SkipForward } from "lucide-react";
 import { EngineState, GameEngine } from "@/modules/engine/core/GameEngine";
 import { LevelType, createGameConfig } from "@/modules/engine/core/GameConfig";
 import type { LevelBlockConstraints, LevelDefinition } from "@/modules/map-system/types";
@@ -43,6 +43,9 @@ import { GameResultsModal } from "./GameResultsModal";
 import { HintModal, type GameplayHint } from "./HintModal";
 import { StatusDetailsModal } from "./StatusDetailsModal";
 import { RunDecisionModal } from "./RunDecisionModal";
+import RoomChatWidget from "./RoomChatWidget";
+
+const BACK_NAV_BLOCKED_ROUTE = "/game-session-expired";
 
 interface CellPoint {
   row: number;
@@ -59,6 +62,7 @@ type SnakeGameLocationState = {
   levelFile?: string;
   mapUrl?: string;
   multiplayerRoomId?: string;
+  multiplayerRoomCode?: string;
   roleContext?: string;
   returnTo?: string;
 };
@@ -263,6 +267,7 @@ export default function SnakeGameView() {
   const levelFile = routeState?.levelFile;
   const mapUrl = routeState?.mapUrl;
   const multiplayerRoomId = routeState?.multiplayerRoomId;
+  const multiplayerRoomCode = routeState?.multiplayerRoomCode;
   const roleContext = routeState?.roleContext;
   const returnTo = routeState?.returnTo;
   const isCmsPreview = roleContext === "cms";
@@ -319,6 +324,9 @@ export default function SnakeGameView() {
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
   const [showTrapFailedModal, setShowTrapFailedModal] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
+  const allowRouteLeaveRef = useRef(false);
+  const navigationBlocker = useBlocker(() => isLevelStarted && !allowRouteLeaveRef.current);
   const [snakeFailureReason, setSnakeFailureReason] = useState<SnakeFailureReason>("trap");
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [resultsDockVisible, setResultsDockVisible] = useState(false);
@@ -353,12 +361,30 @@ export default function SnakeGameView() {
   const [, setLastSubmissionId] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const playLockKey = useCallback(
+    (activeDetailId: string | null | undefined) =>
+      levelId && activeDetailId
+        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${activeDetailId}`
+        : null,
+    [levelId, multiplayerRoomId],
+  );
   const [showResultPopup, setShowResultPopup] = useState(true);
   const [showWinDecisionModal, setShowWinDecisionModal] = useState(false);
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
   const [showClearBlocksConfirmModal, setShowClearBlocksConfirmModal] = useState(false);
   const [pendingSubmitIsWin] = useState(false);
   const showResultPopupRef = useRef(true);
+  const navigateWithoutPrompt = useCallback(
+    (to: string | number, options?: { replace?: boolean; state?: unknown }) => {
+      allowRouteLeaveRef.current = true;
+      if (typeof to === "number") {
+        navigate(to);
+        return;
+      }
+      navigate(to, options);
+    },
+    [navigate],
+  );
 
   const nextCampaignLevelId = useMemo(() => {
     if (!campaignLevels.length || !activeMapDetailId) return null;
@@ -514,7 +540,7 @@ export default function SnakeGameView() {
           ? ROUTES.SNAKE
           : ROUTES.GAME;
 
-    navigate(nextRoute, {
+    navigateWithoutPrompt(nextRoute, {
       replace: true,
       state: {
         levelId,
@@ -528,7 +554,7 @@ export default function SnakeGameView() {
     campaignLevels,
     levelId,
     multiplayerRoomId,
-    navigate,
+    navigateWithoutPrompt,
     nextCampaignLevelId,
     roleContext,
     returnTo,
@@ -536,15 +562,42 @@ export default function SnakeGameView() {
 
   const handleBackToMapFlow = useCallback(() => {
     if (multiplayerRoomId) {
-      void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+      void leaveLobbyRoom(multiplayerRoomId).then(() => navigateWithoutPrompt(ROUTES.LEARNER_LEARN));
       return;
     }
     if (isCmsPreview) {
-      navigate(returnTo || ROUTES.CMS_MAPS);
+      navigateWithoutPrompt(returnTo || ROUTES.CMS_MAPS);
       return;
     }
-    navigate(-1);
-  }, [isCmsPreview, multiplayerRoomId, navigate, returnTo]);
+    navigateWithoutPrompt(-1);
+  }, [isCmsPreview, multiplayerRoomId, navigateWithoutPrompt, returnTo]);
+
+  const handleBackRequest = useCallback(() => {
+    setShowLeaveConfirmModal(true);
+  }, []);
+
+  const handleConfirmLeave = useCallback(() => {
+    allowRouteLeaveRef.current = true;
+    setShowLeaveConfirmModal(false);
+    if (navigationBlocker.state === "blocked") {
+      navigationBlocker.proceed();
+      return;
+    }
+    handleBackToMapFlow();
+  }, [handleBackToMapFlow, navigationBlocker]);
+
+  const handleCancelLeave = useCallback(() => {
+    setShowLeaveConfirmModal(false);
+    if (navigationBlocker.state === "blocked") {
+      navigationBlocker.reset();
+    }
+  }, [navigationBlocker]);
+
+  useEffect(() => {
+    if (navigationBlocker.state === "blocked") {
+      setShowLeaveConfirmModal(true);
+    }
+  }, [navigationBlocker.state]);
 
   const handleMinimizeResults = useCallback(() => {
     setShowResultsModal(false);
@@ -588,44 +641,39 @@ export default function SnakeGameView() {
     setStatusText(t("snake.statusWinReadySubmit"));
   };
 
-  const handleEndMultiplayerGame = useCallback(async () => {
-    if (!multiplayerRoomId) return;
-    try {
-      await learnerLobbyApi.endGame(multiplayerRoomId);
-      await leaveLobbyRoom(multiplayerRoomId);
-      navigate(ROUTES.LEARNER_LEARN);
-    } catch {
-      window.alert("Could not end game.");
+  useEffect(() => {
+    if (!levelId && !isCmsPreview) {
+      navigateWithoutPrompt(ROUTES.LEARNER_LEARN, { replace: true });
     }
-  }, [multiplayerRoomId, navigate]);
+  }, [isCmsPreview, levelId, navigateWithoutPrompt]);
 
+  // Multiplayer: only listen GameEnded.
+  // Leaderboard navigation is handled by submit response of the submitter only.
   useEffect(() => {
     if (!multiplayerRoomId) return;
-    let unsubRank: (() => void) | undefined;
     let unsubEnd: (() => void) | undefined;
+    let unsubLeft: (() => void) | undefined;
     void gameLobbyHub.connect().then(() => {
-      unsubRank = gameLobbyHub.on("RankingUpdated", (ranking: unknown) => {
-        const arr = Array.isArray(ranking) ? ranking : [];
-        if (arr.length === 0 || !multiplayerRoomId) return;
-        const normalized = arr.map((r: Record<string, unknown>) => ({
-          playerId: String(r.playerId ?? r.PlayerId ?? ""),
-          score: Number(r.score ?? r.Score ?? 0),
-          rank: Number(r.rank ?? r.Rank ?? 0),
-          status: String(r.status ?? r.Status ?? ""),
-        }));
-        navigate(ROUTES.LEARNER_ROOM_RESULT, {
-          state: { ranking: normalized, roomId: multiplayerRoomId },
-        });
-      });
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
-        void leaveLobbyRoom(multiplayerRoomId).then(() => navigate(ROUTES.LEARNER_LEARN));
+        void leaveLobbyRoom(multiplayerRoomId).then(() =>
+          navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
+        );
+      });
+      unsubLeft = gameLobbyHub.on("PlayerLeftRoom", (payload: unknown) => {
+        const data = payload as
+          | { roomId?: string; RoomId?: string; playerName?: string; PlayerName?: string }
+          | undefined;
+        const leftRoomId = String(data?.roomId ?? data?.RoomId ?? "").toLowerCase();
+        if (!leftRoomId || leftRoomId !== multiplayerRoomId.toLowerCase()) return;
+        const playerName = String(data?.playerName ?? data?.PlayerName ?? "").trim() || "A player";
+        setStatusText(t("playerLeftRoomNotice").replace("{name}", playerName));
       });
     });
     return () => {
-      unsubRank?.();
       unsubEnd?.();
+      unsubLeft?.();
     };
-  }, [multiplayerRoomId, navigate]);
+  }, [multiplayerRoomId, navigateWithoutPrompt, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -719,17 +767,18 @@ export default function SnakeGameView() {
 
       const program = generateAST(workspaceRef.current);
       const astSpec = JSON.stringify(program);
-      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
       if (!options?.skipConfirm) {
-        if (!isProgramChecked) {
-          const precheckOk = await runAutoSubmitPrecheck(astSpec);
-          if (!precheckOk) {
-            setStatusText(t("gameSubmitAutoCheckFailed"));
-            return;
-          }
-        }
-        void handleSubmitRun({ skipConfirm: true });
+        setShowSubmitConfirmModal(true);
         return;
+      }
+
+      const isProgramChecked = astSpec === lastEvaluatedAstSpecRef.current;
+      if (!isProgramChecked) {
+        const precheckOk = await runAutoSubmitPrecheck(astSpec);
+        if (!precheckOk) {
+          setStatusText(t("gameSubmitAutoCheckFailed"));
+          return;
+        }
       }
 
       const isProgramCheckedAfterAuto = astSpec === lastEvaluatedAstSpecRef.current;
@@ -778,6 +827,8 @@ export default function SnakeGameView() {
           });
 
           if (res.data?.isSuccess) {
+            const levelLockKey = playLockKey(activeMapDetailId);
+            if (levelLockKey) localStorage.setItem(levelLockKey, "1");
             setSubmitted(true);
             setGameResult(snapshot);
             setSubmissionFeedback({
@@ -794,9 +845,29 @@ export default function SnakeGameView() {
                 score: r.score,
                 rank: r.rank,
                 status: r.status,
+                levelDetails: r.levelDetails ?? [],
               }));
-              navigate(ROUTES.LEARNER_ROOM_RESULT, {
-                state: { ranking, roomId: multiplayerRoomId },
+              navigateWithoutPrompt(ROUTES.LEARNER_ROOM_RESULT, {
+                replace: true,
+                state: {
+                  ranking,
+                  roomId: multiplayerRoomId,
+                  multiplayerRoomCode,
+                  levelId,
+                  nextMapDetailId: nextCampaignLevelId,
+                  nextRoute:
+                    nextCampaignLevelId &&
+                    (campaignLevels.find((l) => l.id === nextCampaignLevelId)?.type ?? "")
+                      .trim()
+                      .toLowerCase() === "platform"
+                      ? ROUTES.PLATFORM
+                      : nextCampaignLevelId &&
+                          (campaignLevels.find((l) => l.id === nextCampaignLevelId)?.type ?? "")
+                            .trim()
+                            .toLowerCase() === "snake"
+                        ? ROUTES.SNAKE
+                        : ROUTES.GAME,
+                },
               });
               return;
             }
@@ -823,6 +894,8 @@ export default function SnakeGameView() {
           });
 
           if (validateRes.isSuccess && validateRes.data?.submissionId) {
+            const levelLockKey = playLockKey(activeMapDetailId);
+            if (levelLockKey) localStorage.setItem(levelLockKey, "1");
             setLastSubmissionId(validateRes.data.submissionId);
             setSubmitted(true);
             setGameResult(snapshot);
@@ -859,7 +932,15 @@ export default function SnakeGameView() {
         setSubmitLoading(false);
       }
     },
-    [activeMapDetailId, levelId, multiplayerRoomId, navigate, submitLoading, submitted, t],
+    [
+      activeMapDetailId,
+      levelId,
+      multiplayerRoomId,
+      navigateWithoutPrompt,
+      submitLoading,
+      submitted,
+      t,
+    ],
   );
 
   async function runAutoSubmitPrecheck(targetAstSpec: string): Promise<boolean> {
@@ -1386,6 +1467,11 @@ export default function SnakeGameView() {
         setMapConfig(loaded.mapConfig ?? null);
         setCampaignLevels(loaded.levels ?? []);
         setActiveMapDetailId(activeMapDetailIdNext);
+        const levelLockKey = playLockKey(activeMapDetailIdNext);
+        if (levelLockKey && localStorage.getItem(levelLockKey) === "1") {
+          navigateWithoutPrompt(BACK_NAV_BLOCKED_ROUTE, { replace: true });
+          return;
+        }
         if (levelId && activeMapDetailIdNext) {
           markCampaignLevelStarted(levelId, activeMapDetailIdNext);
         }
@@ -1514,6 +1600,7 @@ export default function SnakeGameView() {
     mapDetailId,
     mapUrl,
     restoreDefaultPlayerSprite,
+    playLockKey,
     syncSnakeBodyCollision,
     t,
     triggerSnakeFailure,
@@ -1773,7 +1860,8 @@ export default function SnakeGameView() {
     }
 
     if (!executor.hasNext()) {
-      setStatusText(t("snake.statusNoMoreSteps"));
+      handleReset();
+      window.alert(t("runOutOfBlocks"));
       return;
     }
 
@@ -1784,16 +1872,10 @@ export default function SnakeGameView() {
 
     if (!executor.hasNext()) {
       setIsExecutorRunning(false);
-      if (
-        !snakeFailedRef.current &&
-        !resultShownRef.current &&
-        !engine.hasWon() &&
-        engine.getState() !== EngineState.Failed
-      ) {
-        setShowExecutionIncompleteModal(true);
-      }
+      handleReset();
+      window.alert(t("runOutOfBlocks"));
     }
-  }, [executeResultOnEngine, handleStartLevel, isLevelStarted, t]);
+  }, [executeResultOnEngine, handleReset, handleStartLevel, isLevelStarted, t]);
 
   const handleStopProgram = useCallback(() => {
     executorRef.current?.stop();
@@ -1938,7 +2020,7 @@ export default function SnakeGameView() {
         }}
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-          <button onClick={handleBackToMapFlow} style={controlButtonStyle("neutral", false)}>
+          <button onClick={handleBackRequest} style={controlButtonStyle("neutral", false)}>
             <ArrowLeft size={15} /> {multiplayerRoomId ? t("leave") : t("backToMaps")}
           </button>
 
@@ -1955,11 +2037,6 @@ export default function SnakeGameView() {
             <Send size={15} /> {submitted ? t("submitted") : t("submitSolution")}
           </button>
 
-          {multiplayerRoomId && (
-            <button onClick={handleEndMultiplayerGame} style={controlButtonStyle("warning", false)}>
-              <Flag size={15} /> {t("endGame")}
-            </button>
-          )}
 
           <button
             onClick={handleRunProgram}
@@ -2484,7 +2561,7 @@ export default function SnakeGameView() {
             setShowResultsModal(false);
             handlePlayAgain();
           }}
-          onBackToMenu={handleBackToMapFlow}
+          onBackToMenu={handleBackRequest}
         />
       )}
 
@@ -2515,6 +2592,20 @@ export default function SnakeGameView() {
           {t("gameResultPopupRestore")}
         </button>
       ) : null}
+      <RunDecisionModal
+        isOpen={showLeaveConfirmModal}
+        title={multiplayerRoomId ? "Rời phòng?" : "Rời màn chơi?"}
+        description={
+          multiplayerRoomId
+            ? "Quay lại sẽ rời khỏi phòng và mất tiến độ hiện tại.\nBạn có chắc chắn muốn rời phòng không?"
+            : "Quay lại sẽ mất tiến độ hiện tại.\nBạn có chắc chắn muốn thoát không?"
+        }
+        primaryLabel={multiplayerRoomId ? "Rời phòng" : "Thoát"}
+        secondaryLabel="Ở lại"
+        onPrimary={handleConfirmLeave}
+        onSecondary={handleCancelLeave}
+      />
+      {multiplayerRoomId ? <RoomChatWidget roomCode={multiplayerRoomCode} /> : null}
     </div>
   );
 }

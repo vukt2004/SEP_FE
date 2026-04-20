@@ -184,7 +184,7 @@ export default function MapDetailPage() {
       setError(null);
 
       const [mapResponse, ownershipResponse, historyResponse] = await Promise.all([
-        learnerMapsApi.getMapById(id, true),
+        learnerMapsApi.getMapInfo(id),
         learnerMapsApi.checkMapOwnership(id),
         learnerGameplayApi.getMyPlayHistory({ mapId: id, pageSize: 100 }),
       ]);
@@ -815,21 +815,23 @@ export default function MapDetailPage() {
   const campaignLevelStates = useMemo(() => {
     if (!campaignLevels.length) return [];
 
-    const completedBySubmission = new Map<string, boolean>();
+    const completedByLevelId = new Set<string>();
     const attemptedLevelIds = new Set<string>();
 
     for (const historyItem of playHistory) {
-      attemptedLevelIds.add(historyItem.id);
+      const levelRefId = historyItem.mapDetailId ?? historyItem.gameDetailId;
+      if (!levelRefId) continue;
+      attemptedLevelIds.add(levelRefId);
       if (historyItem.isCompleted) {
-        completedBySubmission.set(historyItem.id, true);
+        completedByLevelId.add(levelRefId);
       }
     }
 
     return campaignLevels.map((level, index) => {
-      const isCompleted = completedBySubmission.has(level.id);
+      const isCompleted = completedByLevelId.has(level.id);
       const isAttempted = attemptedLevelIds.has(level.id);
       const isUnlocked =
-        index === 0 || (index > 0 && completedBySubmission.has(campaignLevels[index - 1].id));
+        index === 0 || (index > 0 && completedByLevelId.has(campaignLevels[index - 1].id));
       const isLocked = !isUnlocked;
       const isCurrent = isUnlocked && (!isCompleted || (isAttempted && !isCompleted));
 
@@ -1488,7 +1490,8 @@ export default function MapDetailPage() {
                   const reviewer =
                     item.isAuthor && map.createdByUserName?.trim()
                       ? map.createdByUserName.trim()
-                      : `${locale.startsWith("vi") ? "Người chơi" : "Player"} ${item.userId.slice(0, 8)}`;
+                      : item.reviewerName?.trim() ||
+                        (locale.startsWith("vi") ? "Người chơi ẩn danh" : "Anonymous player");
 
                   return (
                     <article key={item.id} className={styles.ratingItem}>
