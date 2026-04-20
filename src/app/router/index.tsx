@@ -24,6 +24,9 @@ const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 const GameView = React.lazy(() => import("../../pages/Game-View/GameView"));
 const SnakeGameView = React.lazy(() => import("../../pages/Game-View/SnakeGameView"));
 const PlatformGameView = React.lazy(() => import("../../pages/Game-View/PlatformGameView"));
+const GameSessionExpiredPage = React.lazy(
+  () => import("../../pages/Game-View/GameSessionExpiredPage"),
+);
 const BuyerPolicyENPage = React.lazy(() => import("../../pages/policy/BuyerPolicyEN"));
 const BuyerPolicyVIPage = React.lazy(() => import("../../pages/policy/BuyerPolicyVI"));
 const SellerPolicyENPage = React.lazy(() => import("../../pages/policy/SellerPolicyEN"));
@@ -81,6 +84,15 @@ const routes: RouteObject[] = [
         element: (
           <React.Suspense fallback={<AppLoader />}>
             <PlatformGameView />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.GAME_SESSION_EXPIRED,
+        errorElement: <RouteErrorPage />,
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <GameSessionExpiredPage />
           </React.Suspense>
         ),
       },

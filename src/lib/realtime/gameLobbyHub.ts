@@ -60,6 +60,15 @@ export type SubmissionResultPayload = {
   message?: string;
 };
 
+export type RoomChatMessagePayload = {
+  id: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  createdAt: string;
+};
+
 type Handler = (...args: unknown[]) => void;
 
 class GameLobbyHubClient {
@@ -111,9 +120,11 @@ class GameLobbyHubClient {
       "GameEnded",
       "RankingUpdated",
       "KickedFromRoom",
+      "PlayerLeftRoom",
       "Error",
       "AlreadyInRoom",
       "SubmissionResult",
+      "RoomChatMessage",
     ] as const;
 
     for (const event of events) {
@@ -244,6 +255,18 @@ class GameLobbyHubClient {
       bytecodeSpec ?? null,
       language ?? null,
     );
+  }
+
+  async getRoomChatMessages(roomId: string, take = 50): Promise<RoomChatMessagePayload[]> {
+    if (this.connection?.state !== signalR.HubConnectionState.Connected) return [];
+    const payload = await this.connection.invoke<unknown[]>("GetRoomChatMessages", roomId, take);
+    if (!Array.isArray(payload)) return [];
+    return payload as RoomChatMessagePayload[];
+  }
+
+  async sendRoomChatMessage(roomId: string, content: string): Promise<void> {
+    if (this.connection?.state !== signalR.HubConnectionState.Connected) return;
+    await this.connection.invoke("SendRoomChatMessage", roomId, content);
   }
 }
 

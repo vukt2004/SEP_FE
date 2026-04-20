@@ -4,6 +4,7 @@ export const ROUTES = {
   GAME: "/game",
   SNAKE: "/snake",
   PLATFORM: "/platform",
+  GAME_SESSION_EXPIRED: "/game-session-expired",
   BUYER_POLICY_EN: "/policy/buyer/en",
   BUYER_POLICY_VI: "/policy/buyer/vi",
   SELLER_POLICY_EN: "/policy/seller/en",

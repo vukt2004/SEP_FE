@@ -1123,6 +1123,17 @@ export const translations: Record<LocaleId, Record<string, string>> = {
       "Your run is submitted. Please wait until all other players finish — results will appear automatically.",
     gameTimeUpToast: "Time's up — submitting your result automatically.",
     backToBrowse: "Back to browse",
+    executionIncompleteTitle: "Not Reached the Goal",
+    executionIncompleteDesc:
+      "You have run out of blocks, but the character has not reached the goal. Press OK to reset the game and try again.",
+    ok: "OK",
+    gameSessionExpiredTitle: "This game session has expired",
+    gameSessionExpiredDesc:
+      "You returned to an old run that was already submitted or finished, so replay is blocked to avoid overwriting results.",
+    gameSessionExpiredTip:
+      "Go back to the room/game list and start a new run to continue.",
+    gameSessionExpiredGoMultiplayer: "Go to Multiplayer",
+    gameSessionExpiredFindOtherGame: "Find another game",
 
     goalSelectTitle: "Choose your learning goal",
     goalSelectSubtitle: "Select one goal to start your path. You can change it later.",
@@ -3005,6 +3016,17 @@ export const translations: Record<LocaleId, Record<string, string>> = {
       "Bạn đã hoàn thành và đã gửi kết quả. Vui lòng chờ các người chơi khác — bảng xếp hạng sẽ hiện khi mọi người xong.",
     gameTimeUpToast: "Hết giờ — hệ thống tự gửi kết quả của bạn.",
     backToBrowse: "Quay lại chọn chế độ",
+    executionIncompleteTitle: "Chưa đạt mục tiêu",
+    executionIncompleteDesc:
+      "Bạn đã dùng hết khối lệnh nhưng nhân vật chưa tới đích. Nhấn OK để đặt lại màn chơi và thử lại.",
+    ok: "OK",
+    gameSessionExpiredTitle: "Phiên chơi đã hết hiệu lực",
+    gameSessionExpiredDesc:
+      "Bạn đã quay lại một lượt chơi cũ đã nộp hoặc đã kết thúc, nên hệ thống chặn chơi lại để tránh ghi đè kết quả.",
+    gameSessionExpiredTip:
+      "Hãy quay về danh sách phòng/game và bắt đầu một lượt chơi mới để tiếp tục.",
+    gameSessionExpiredGoMultiplayer: "Về trang chọn chế độ",
+    gameSessionExpiredFindOtherGame: "Tìm game khác",
 
     goalSelectTitle: "Chọn mục tiêu học tập",
     goalSelectSubtitle: "Chọn một mục tiêu để bắt đầu lộ trình. Bạn có thể đổi sau.",

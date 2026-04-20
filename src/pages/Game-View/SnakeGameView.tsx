@@ -359,6 +359,8 @@ export default function SnakeGameView() {
     message: string | null;
   } | null>(null);
   const [xpToast, setXpToast] = useState<string>("");
+  const [warningToast, setWarningToast] = useState<string | null>(null);
+  const warningToastTimeoutRef = useRef<number | null>(null);
   const [, setLastSubmissionId] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -386,6 +388,25 @@ export default function SnakeGameView() {
     },
     [navigate],
   );
+
+  const showWarningToast = useCallback((message: string) => {
+    setWarningToast(message);
+    if (warningToastTimeoutRef.current !== null) {
+      window.clearTimeout(warningToastTimeoutRef.current);
+    }
+    warningToastTimeoutRef.current = window.setTimeout(() => {
+      setWarningToast(null);
+      warningToastTimeoutRef.current = null;
+    }, 3500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (warningToastTimeoutRef.current !== null) {
+        window.clearTimeout(warningToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const nextCampaignLevelId = useMemo(() => {
     if (!campaignLevels.length || !activeMapDetailId) return null;
@@ -648,13 +669,20 @@ export default function SnakeGameView() {
     }
   }, [isCmsPreview, levelId, navigateWithoutPrompt]);
 
-  // Multiplayer: only listen GameEnded.
+  // Multiplayer: hub room group (PlayerLeftRoom, GameEnded) + re-join after reconnect.
   // Leaderboard navigation is handled by submit response of the submitter only.
   useEffect(() => {
     if (!multiplayerRoomId) return;
     let unsubEnd: (() => void) | undefined;
     let unsubLeft: (() => void) | undefined;
+    let unsubReconnect: (() => void) | undefined;
     void gameLobbyHub.connect().then(() => {
+      const ensureHubRoomMembership = () => {
+        void gameLobbyHub.joinRoom(multiplayerRoomId, multiplayerRoomCode ?? null);
+      };
+      ensureHubRoomMembership();
+      unsubReconnect = gameLobbyHub.onReconnected(ensureHubRoomMembership);
+
       unsubEnd = gameLobbyHub.on("GameEnded", () => {
         void leaveLobbyRoom(multiplayerRoomId).then(() =>
           navigateWithoutPrompt(ROUTES.LEARNER_LEARN),
@@ -667,14 +695,15 @@ export default function SnakeGameView() {
         const leftRoomId = String(data?.roomId ?? data?.RoomId ?? "").toLowerCase();
         if (!leftRoomId || leftRoomId !== multiplayerRoomId.toLowerCase()) return;
         const playerName = String(data?.playerName ?? data?.PlayerName ?? "").trim() || "A player";
-        setStatusText(t("playerLeftRoomNotice").replace("{name}", playerName));
+        showWarningToast(t("playerLeftRoomNotice").replace("{name}", playerName));
       });
     });
     return () => {
       unsubEnd?.();
       unsubLeft?.();
+      unsubReconnect?.();
     };
-  }, [multiplayerRoomId, navigateWithoutPrompt, t]);
+  }, [multiplayerRoomId, multiplayerRoomCode, navigateWithoutPrompt, showWarningToast, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -843,6 +872,7 @@ export default function SnakeGameView() {
             if (res.data?.data?.rankingIfAllSubmitted?.length) {
               const ranking = res.data.data.rankingIfAllSubmitted.map((r) => ({
                 playerId: r.playerId,
+                playerName: r.playerName ?? null,
                 score: r.score,
                 rank: r.rank,
                 status: r.status,
@@ -1984,6 +2014,29 @@ export default function SnakeGameView() {
       {xpToast ? (
         <AlertToast type="success" message={xpToast} onClose={() => setXpToast("")} />
       ) : null}
+      {warningToast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "16px",
+            right: "16px",
+            zIndex: 1000,
+            maxWidth: "420px",
+            padding: "12px 14px",
+            borderRadius: "12px",
+            background: "color-mix(in srgb, var(--warning) 88%, black 12%)",
+            color: "#ffffff",
+            border: "1px solid color-mix(in srgb, var(--warning) 80%, black 20%)",
+            boxShadow: "0 12px 24px rgba(15, 23, 42, 0.24)",
+            fontSize: "13px",
+            fontWeight: 700,
+          }}
+        >
+          {warningToast}
+        </div>
+      ) : null}
 
       {multiplayerRoomId && submitted && !showResultsModal && (
         <div
@@ -2610,7 +2663,7 @@ export default function SnakeGameView() {
         onPrimary={handleConfirmLeave}
         onSecondary={handleCancelLeave}
       />
-      {multiplayerRoomId ? <RoomChatWidget roomCode={multiplayerRoomCode} /> : null}
+      {multiplayerRoomId ? <RoomChatWidget roomId={multiplayerRoomId} roomCode={multiplayerRoomCode} /> : null}
     </div>
   );
 }

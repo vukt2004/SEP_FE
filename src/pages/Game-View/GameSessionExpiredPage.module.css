@@ -1,0 +1,82 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--warning) 20%, transparent), transparent 40%),
+    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--danger) 14%, transparent), transparent 35%),
+    var(--bg);
+}
+
+.card {
+  width: min(640px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 88%, black 12%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  padding: 28px;
+}
+
+.iconWrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--warning) 24%, transparent);
+  color: color-mix(in srgb, var(--warning) 76%, white 24%);
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  color: var(--text);
+}
+
+.desc {
+  margin: 10px 0 0;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+.tips {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--border) 70%, var(--warning) 30%);
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface) 92%, black 8%);
+  font-size: 0.95rem;
+}
+
+.actions {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn {
+  background: color-mix(in srgb, var(--primary) 86%, black 14%);
+  color: white;
+}
+
+.secondaryBtn {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border-color: var(--border);
+  color: var(--text);
+}
+
