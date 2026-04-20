@@ -46,7 +46,7 @@ export default function FinaleSection() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                <NavLink to="/login">
+                <NavLink to="/app/my-path">
                   <PrimaryButton>
                     {t("startTheMission")}
                     <ArrowRight size={18} />
