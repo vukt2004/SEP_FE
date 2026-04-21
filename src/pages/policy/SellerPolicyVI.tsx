@@ -15,8 +15,8 @@ type PolicySection = {
 const highlights = [
   {
     title: "Chia doanh thu",
-    value: "70% Creator",
-    description: "Doanh thu giao dịch hợp lệ chia 70% cho creator và 30% cho nền tảng.",
+    value: "90% Creator",
+    description: "Doanh thu giao dịch hợp lệ chia 90% cho creator và 10% cho nền tảng.",
   },
   {
     title: "Thời gian duyệt",

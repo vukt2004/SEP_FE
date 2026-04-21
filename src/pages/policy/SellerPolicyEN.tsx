@@ -15,8 +15,8 @@ type PolicySection = {
 const highlights = [
   {
     title: "Revenue Split",
-    value: "70% Creator",
-    description: "Valid sales are split 70% to creator and 30% to platform.",
+    value: "90% Creator",
+    description: "Valid sales are split 90% to creator and 10% to platform.",
   },
   {
     title: "Moderation Time",

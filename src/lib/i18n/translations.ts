@@ -744,6 +744,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     "complaints.attachments.rules": "PNG, JPG, GIF, WEBP - max 5MB each (up to 5 files)",
     "complaints.attachments.remove": "Remove",
     "complaints.attachments.preview": "Preview",
+    "complaints.attachments.required": "Please attach at least 1 file.",
     "complaints.attachments.notice":
       "File names are included in ticket details for support review.",
     "complaints.attachments.invalidFiles":
@@ -2637,6 +2638,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     "complaints.attachments.rules": "PNG, JPG, GIF, WEBP - tối đa 5MB/tệp (tối đa 5 tệp)",
     "complaints.attachments.remove": "Xóa",
     "complaints.attachments.preview": "Xem trước",
+    "complaints.attachments.required": "Vui lòng đính kèm ít nhất 1 tệp.",
     "complaints.attachments.notice":
       "Tên tệp sẽ được đính kèm trong nội dung phiếu để tiện tra cứu.",
     "complaints.attachments.invalidFiles":
