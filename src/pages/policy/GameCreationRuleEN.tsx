@@ -8,7 +8,7 @@ const highlights = [
   {
     title: "Evaluation Criteria",
     value: "7 Groups",
-    description: "This policy defines 7 core rule groups for game and map creation.",
+    description: "This policy defines 7 core rule groups for game creation.",
   },
   {
     title: "Primary Focus",
@@ -32,8 +32,8 @@ const ruleSections: RuleSection[] = [
     id: "1",
     title: "Validity",
     bullets: [
-      "Map has a start point (Start) and an end point (Goal).",
-      "Map is solvable.",
+      "Game has a start point (Start) and an end point (Goal).",
+      "Game is solvable.",
       "No soft lock.",
       "No invalid route that makes the destination unreachable.",
       "Objects such as door, key, and switch must function correctly.",
@@ -81,7 +81,7 @@ const ruleSections: RuleSection[] = [
     id: "6",
     title: "Content Safety",
     bullets: [
-      "Map name is appropriate.",
+      "Game name is appropriate.",
       "Description does not violate policy.",
       "No offensive content.",
     ],
@@ -90,9 +90,9 @@ const ruleSections: RuleSection[] = [
     id: "7",
     title: "Metadata",
     bullets: [
-      "Map has a title.",
-      "Map has a description.",
-      "Map has relevant tags.",
+      "Game has a title.",
+      "Game has a description.",
+      "Game has relevant tags.",
     ],
   },
 ];
@@ -109,10 +109,10 @@ export default function GameCreationRuleENPage() {
             className="mt-4 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl"
             style={{ fontFamily: "Merriweather, Georgia, serif" }}
           >
-            Game And Map Creation Guidelines
+            Game Creation Guidelines
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[#3b4a68] sm:text-base">
-            These rules are used to validate game and map quality before publishing, ensuring
+            These rules are used to validate game quality before publishing, ensuring
             completion feasibility, fairness, technical stability, and player experience.
           </p>
           <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-[#5f6f8f]">

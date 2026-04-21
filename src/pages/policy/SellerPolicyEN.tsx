@@ -56,7 +56,7 @@ const policySections: PolicySection[] = [
         bullets: [
           "User may need to upgrade account role or package to creator level.",
           "Creator profile setup may be required before publishing.",
-          "After activation, creator can create, submit for review, and sell games or maps.",
+          "After activation, creator can create, submit for review, and sell games.",
         ],
       },
       {
@@ -121,7 +121,7 @@ const policySections: PolicySection[] = [
         id: "2.2",
         title: "Minimum Content Quality",
         bullets: [
-          "Submitted game or map must be solvable.",
+          "Submitted game must be solvable.",
           "Content must not contain critical issues such as soft locks, crashes, or broken logic.",
           "Core structure must exist, including Start, Goal, and a coherent gameplay flow.",
           "Non-compliant content may be rejected or removed.",

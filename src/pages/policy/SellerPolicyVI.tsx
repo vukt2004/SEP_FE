@@ -56,7 +56,7 @@ const policySections: PolicySection[] = [
         bullets: [
           "Người dùng có thể cần nâng cấp role hoặc gói creator để mở quyền.",
           "Có thể cần hoàn tất hồ sơ creator trước khi hoạt động.",
-          "Sau khi kích hoạt, creator có thể tạo, gửi duyệt và bán game hoặc map.",
+          "Sau khi kích hoạt, creator có thể tạo, gửi duyệt và bán game.",
         ],
       },
       {
@@ -121,7 +121,7 @@ const policySections: PolicySection[] = [
         id: "2.2",
         title: "Yêu cầu về chất lượng nội dung",
         bullets: [
-          "Game hoặc map phải có thể hoàn thành (solvable).",
+          "Game phải có đáp án (phải có lời giải).",
           "Không có lỗi nghiêm trọng như soft lock, crash, hoặc lỗi logic.",
           "Phải có các thành phần cơ bản gồm Start, Goal, và luồng gameplay hợp lý.",
           "Nội dung không đạt tiêu chí có thể bị từ chối hoặc gỡ bỏ.",

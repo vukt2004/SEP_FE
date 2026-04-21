@@ -8,7 +8,7 @@ const highlights = [
   {
     title: "Tiêu chí đánh giá",
     value: "7 nhóm",
-    description: "Bộ quy định gồm 7 nhóm tiêu chí cốt lõi cho game hoặc map.",
+    description: "Bộ quy định gồm 7 nhóm tiêu chí cốt lõi cho game.",
   },
   {
     title: "Trọng tâm",
@@ -32,8 +32,8 @@ const ruleSections: RuleSection[] = [
     id: "1",
     title: "Tính hợp lệ",
     bullets: [
-      "Map có điểm bắt đầu (Start) và điểm kết thúc (Goal).",
-      "Map có thể hoàn thành được (solvable).",
+      "Game có điểm bắt đầu (Start) và điểm kết thúc (Goal).",
+      "Game có thể hoàn thành được (solvable).",
       "Không bị kẹt (soft lock).",
       "Không có đường đi sai hoặc không thể tới đích.",
       "Các object như door, key, switch hoạt động đúng.",
@@ -81,7 +81,7 @@ const ruleSections: RuleSection[] = [
     id: "6",
     title: "An toàn nội dung",
     bullets: [
-      "Tên map phù hợp.",
+      "Tên game phù hợp.",
       "Mô tả không vi phạm.",
       "Không chứa nội dung phản cảm.",
     ],
@@ -90,7 +90,7 @@ const ruleSections: RuleSection[] = [
     id: "7",
     title: "Thông tin mô tả",
     bullets: [
-      "Có tên map.",
+      "Có tên game.",
       "Có mô tả (description).",
       "Có tag phù hợp.",
     ],
@@ -109,10 +109,10 @@ export default function GameCreationRuleVIPage() {
             className="mt-4 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl"
             style={{ fontFamily: "Merriweather, Georgia, serif" }}
           >
-            Quy Định Tạo Game Và Map
+            Quy Định Tạo Game
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-[#3b4a68] sm:text-base">
-            Bộ quy định này dùng để kiểm tra chất lượng game hoặc map trước khi đưa lên nền tảng,
+            Bộ quy định này dùng để kiểm tra chất lượng game trước khi đưa lên nền tảng,
             giúp đảm bảo tính hoàn thành, tính công bằng, độ ổn định kỹ thuật và trải nghiệm người
             chơi.
           </p>

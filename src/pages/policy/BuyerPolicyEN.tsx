@@ -44,8 +44,8 @@ const policySections: PolicySection[] = [
         id: "1.1",
         title: "Usage Rights After Purchase",
         paragraphs: [
-          "When a user purchases a game or map on the platform, they are granted lifetime access rights.",
-          "This access only covers playing the game or map on the platform and viewing related content when available.",
+          "When a user purchases a game on the platform, they are granted lifetime access rights.",
+          "This access only covers playing the game on the platform and viewing related content when available.",
           "These rights are personal and cannot be transferred to another person.",
         ],
       },
@@ -53,7 +53,7 @@ const policySections: PolicySection[] = [
         id: "1.2",
         title: "Limits of Ownership",
         paragraphs: [
-          "Purchasing a game or map does not transfer ownership of the original content.",
+          "Purchasing a game does not transfer ownership of the original content.",
         ],
         bullets: [
           "Downloading, copying, or extracting source code, assets, or game data is prohibited.",
@@ -65,7 +65,7 @@ const policySections: PolicySection[] = [
         id: "1.3",
         title: "Platform Rights",
         bullets: [
-          "Store, distribute, and display game or map content to users.",
+          "Store, distribute, and display game content to users.",
           "Modify, hide, or remove content when necessary, including policy violations and technical issues.",
           "Use content for operations and product improvement.",
         ],
@@ -190,7 +190,7 @@ const policySections: PolicySection[] = [
         title: "Purchase Preconditions",
         bullets: [
           "User must be logged in with a valid account.",
-          "Game or map must be purchasable (published or active).",
+          "Game must be purchasable (published or active).",
           "User must not already own the content.",
           "Account must have enough Orbit Coin balance.",
           "If any condition fails, the transaction is rejected.",
@@ -203,7 +203,7 @@ const policySections: PolicySection[] = [
           "System re-validates transaction details, including price, content, and balance.",
           "Orbit Coin is deducted from the user account.",
           "Transaction log is recorded.",
-          "Access rights to the purchased game or map are granted.",
+          "Access rights to the purchased game are granted.",
         ],
         bullets: [
           "The process is atomic: either all steps succeed or no changes are applied.",
@@ -300,7 +300,7 @@ const policySections: PolicySection[] = [
         id: "4.4",
         title: "Non-Refundable Cases",
         bullets: [
-          "User already completed the game or map.",
+          "User already completed the game.",
           "User played for an excessive duration indicating abuse.",
           "Subjective reasons such as not liking the content.",
           "Complaints that difficulty is high while matching clear description.",

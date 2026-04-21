@@ -21,7 +21,7 @@ const highlights = [
   {
     title: "Đơn vị thanh toán",
     value: "Orbit Coin",
-    description: "Toàn bộ giao dịch mua game hoặc map sử dụng Orbit Coin.",
+    description: "Toàn bộ giao dịch mua game sử dụng Orbit Coin.",
   },
   {
     title: "Hạn gửi hoàn tiền",
@@ -44,8 +44,8 @@ const policySections: PolicySection[] = [
         id: "1.1",
         title: "Quyền sử dụng sau khi mua",
         paragraphs: [
-          "Khi người dùng mua game hoặc map trên nền tảng, người dùng được cấp quyền truy cập và sử dụng không giới hạn thời gian.",
-          "Quyền này bao gồm việc chơi game hoặc map trên nền tảng và truy cập nội dung liên quan nếu có.",
+          "Khi người dùng mua game trên nền tảng, người dùng được cấp quyền truy cập và sử dụng không giới hạn thời gian.",
+          "Quyền này bao gồm việc chơi game trên nền tảng và truy cập nội dung liên quan nếu có.",
           "Quyền sử dụng gắn với tài khoản người mua và không được chuyển nhượng cho người khác.",
         ],
       },
@@ -53,7 +53,7 @@ const policySections: PolicySection[] = [
         id: "1.2",
         title: "Giới hạn quyền sở hữu",
         paragraphs: [
-          "Việc mua game hoặc map không đồng nghĩa với việc sở hữu nội dung gốc.",
+          "Việc mua game không đồng nghĩa với việc sở hữu nội dung gốc.",
         ],
         bullets: [
           "Không được tải xuống, sao chép hoặc trích xuất source code, asset, hoặc dữ liệu game.",
@@ -65,7 +65,7 @@ const policySections: PolicySection[] = [
         id: "1.3",
         title: "Quyền của nền tảng",
         bullets: [
-          "Lưu trữ, phân phối và hiển thị game hoặc map đến người dùng.",
+          "Lưu trữ, phân phối và hiển thị game đến người dùng.",
           "Chỉnh sửa, ẩn hoặc gỡ bỏ nội dung khi cần thiết, bao gồm vi phạm policy hoặc lỗi kỹ thuật.",
           "Sử dụng nội dung cho mục đích vận hành và cải thiện sản phẩm.",
         ],
@@ -107,7 +107,7 @@ const policySections: PolicySection[] = [
         id: "2.1",
         title: "Đơn vị tiền tệ sử dụng (Orbit Coin)",
         bullets: [
-          "Nền tảng dùng Orbit Coin làm đơn vị thanh toán duy nhất cho giao dịch mua game hoặc map.",
+          "Nền tảng dùng Orbit Coin làm đơn vị thanh toán duy nhất cho giao dịch mua game.",
           "Người dùng cần nạp tiền để chuyển đổi thành Orbit Coin trước khi mua.",
           "Orbit Coin chỉ có giá trị sử dụng trong nền tảng.",
         ],
@@ -135,7 +135,7 @@ const policySections: PolicySection[] = [
         title: "Hiển thị giá",
         bullets: [
           "Tất cả giá được hiển thị rõ ràng bằng Orbit Coin trước khi mua.",
-          "Thông tin hiển thị bao gồm giá game hoặc map và số dư hiện tại của người dùng khi có.",
+          "Thông tin hiển thị bao gồm giá game và số dư hiện tại của người dùng khi có.",
           "Không có chi phí ẩn ngoài số coin đã hiển thị.",
         ],
       },
@@ -144,7 +144,7 @@ const policySections: PolicySection[] = [
         title: "Chính sách số dư (Wallet Policy)",
         paragraphs: [
           "2.5.1. Sử dụng Orbit Coin",
-          "Orbit Coin được sử dụng để mua game hoặc map trên nền tảng và nhận doanh thu từ việc bán nội dung đối với Creator.",
+          "Orbit Coin được sử dụng để mua game trên nền tảng và nhận doanh thu từ việc bán nội dung đối với Creator.",
           "2.5.2. Quy đổi Orbit Coin sang tiền mặt",
           "Người dùng có thể yêu cầu quy đổi Orbit Coin thành tiền mặt (cash-out) nếu đủ điều kiện. Việc quy đổi chỉ áp dụng cho số dư hợp lệ và phải thông qua các phương thức do nền tảng hỗ trợ.",
           "2.5.3. Điều kiện rút tiền (Cash-out Conditions)",
@@ -165,7 +165,7 @@ const policySections: PolicySection[] = [
         id: "2.6",
         title: "Thay đổi giá",
         bullets: [
-          "Giá game hoặc map có thể thay đổi theo thời gian.",
+          "Giá game có thể thay đổi theo thời gian.",
           "Giá tại thời điểm người dùng xác nhận mua là giá cuối cùng cho giao dịch đó.",
           "Thay đổi giá về sau không ảnh hưởng giao dịch đã hoàn tất.",
         ],
@@ -190,7 +190,7 @@ const policySections: PolicySection[] = [
         title: "Điều kiện thực hiện giao dịch",
         bullets: [
           "Người dùng phải đăng nhập hợp lệ.",
-          "Game hoặc map phải ở trạng thái có thể mua (published hoặc active).",
+          "Game phải ở trạng thái có thể mua (published hoặc active).",
           "Người dùng chưa sở hữu nội dung đó trước đó.",
           "Tài khoản có đủ số dư Orbit Coin.",
           "Nếu bất kỳ điều kiện nào không thỏa mãn, giao dịch sẽ không được thực hiện.",
@@ -203,7 +203,7 @@ const policySections: PolicySection[] = [
           "Hệ thống xác nhận lại thông tin giao dịch gồm giá, nội dung và số dư.",
           "Thực hiện trừ Orbit Coin từ tài khoản người dùng.",
           "Ghi nhận giao dịch vào transaction log.",
-          "Cấp quyền truy cập game hoặc map cho người dùng.",
+          "Cấp quyền truy cập game cho người dùng.",
         ],
         bullets: [
           "Toàn bộ quy trình được thiết kế theo nguyên tắc atomic: hoặc tất cả bước thành công, hoặc không có thay đổi nào được ghi nhận.",
@@ -300,7 +300,7 @@ const policySections: PolicySection[] = [
         id: "4.4",
         title: "Các trường hợp không được hoàn tiền",
         bullets: [
-          "Người dùng đã hoàn thành game hoặc map.",
+          "Người dùng đã hoàn thành game.",
           "Người dùng đã chơi trong thời gian dài theo dấu hiệu abuse.",
           "Lý do chủ quan như không thích nội dung.",
           "Lý do quá khó nhưng nội dung đã mô tả đúng.",
@@ -361,7 +361,7 @@ const policySections: PolicySection[] = [
         id: "5.3",
         title: "Mua trùng nội dung",
         bullets: [
-          "Người dùng không thể mua lại game hoặc map đã sở hữu.",
+          "Người dùng không thể mua lại game đã sở hữu.",
           "Hệ thống tự động chặn giao dịch trùng hoặc hiển thị cảnh báo rõ ràng trước khi thanh toán.",
         ],
       },
