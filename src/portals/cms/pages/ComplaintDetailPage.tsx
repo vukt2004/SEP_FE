@@ -194,6 +194,7 @@ export default function ComplaintDetailPage() {
   const [error, setError] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [pendingStatusAction, setPendingStatusAction] = useState<CmsStatusAction | null>(null);
   const [messageContent, setMessageContent] = useState("");
   const [messageError, setMessageError] = useState("");
   const [messageSubmitting, setMessageSubmitting] = useState(false);
@@ -410,6 +411,27 @@ export default function ComplaintDetailPage() {
     } finally {
       setMessageSubmitting(false);
     }
+  }
+
+  function getStatusActionLabel(action: CmsStatusAction) {
+    return `${t(action.labelKey)} -> ${t(`complaints.status.${action.toStatus}`)}`;
+  }
+
+  function openStatusChangeConfirm(action: CmsStatusAction) {
+    if (statusSubmitting) return;
+    setPendingStatusAction(action);
+  }
+
+  function closeStatusChangeConfirm() {
+    if (statusSubmitting) return;
+    setPendingStatusAction(null);
+  }
+
+  async function confirmStatusChange() {
+    if (!pendingStatusAction) return;
+    const action = pendingStatusAction;
+    await submitStatusChange(action);
+    setPendingStatusAction(null);
   }
 
   const orderedMessages = data
@@ -1002,7 +1024,7 @@ export default function ComplaintDetailPage() {
                     <button
                       key={action.id}
                       type="button"
-                      onClick={() => void submitStatusChange(action)}
+                      onClick={() => openStatusChangeConfirm(action)}
                       disabled={statusSubmitting}
                       style={{
                         border: "none",
@@ -1023,13 +1045,130 @@ export default function ComplaintDetailPage() {
                     >
                       {statusSubmitting
                         ? t("complaints.cmsDetail.actionUpdating")
-                        : `${t(action.labelKey)} -> ${t(`complaints.status.${action.toStatus}`)}`}
+                        : getStatusActionLabel(action)}
                     </button>
                   ))}
                 </div>
               )}
             </div>
           </section>
+
+          {pendingStatusAction ? (
+            <div
+              onClick={closeStatusChangeConfirm}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(2, 6, 23, 0.6)",
+                display: "grid",
+                placeItems: "center",
+                zIndex: 1300,
+                padding: 16,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "min(560px, 100%)",
+                  borderRadius: 14,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  padding: 16,
+                  display: "grid",
+                  gap: 12,
+                  boxShadow: "0 22px 60px rgba(2, 6, 23, 0.35)",
+                }}
+              >
+                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
+                  {t("complaints.cmsDetail.confirmStatusTitle")}
+                </div>
+                <div style={{ color: "var(--text-2)", fontSize: 14 }}>
+                  {t("complaints.cmsDetail.confirmStatusDescription")}
+                </div>
+                <div
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    background: "var(--bg)",
+                    color: "var(--text)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {getStatusActionLabel(pendingStatusAction)}
+                </div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
+                    {t("complaints.cmsDetail.confirmStatusNoteLabel")}
+                  </div>
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      background: "var(--bg)",
+                      color: "var(--text)",
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {statusNote.trim() ||
+                      t("complaints.cmsDetail.confirmStatusDefaultNote").replace(
+                        "{note}",
+                        t(pendingStatusAction.defaultNoteKey),
+                      )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    marginTop: 2,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={closeStatusChangeConfirm}
+                    disabled={statusSubmitting}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 10,
+                      background: "var(--surface)",
+                      color: "var(--text-2)",
+                      padding: "9px 14px",
+                      fontWeight: 600,
+                      cursor: statusSubmitting ? "not-allowed" : "pointer",
+                      opacity: statusSubmitting ? 0.7 : 1,
+                    }}
+                  >
+                    {t("complaints.cmsDetail.confirmStatusCancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void confirmStatusChange()}
+                    disabled={statusSubmitting}
+                    style={{
+                      border: "none",
+                      borderRadius: 10,
+                      background: "var(--primary)",
+                      color: "white",
+                      padding: "9px 14px",
+                      fontWeight: 700,
+                      cursor: statusSubmitting ? "not-allowed" : "pointer",
+                      opacity: statusSubmitting ? 0.8 : 1,
+                    }}
+                  >
+                    {statusSubmitting
+                      ? t("complaints.cmsDetail.actionUpdating")
+                      : t("complaints.cmsDetail.confirmStatusSubmit")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <section
             style={{

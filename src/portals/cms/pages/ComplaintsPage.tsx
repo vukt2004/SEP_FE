@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cmsComplaintsApi } from "@/services/api/cms/complaints.api";
 import { cmsUsersApi } from "@/services/api/cms/users.api";
-import type { ComplaintStatus } from "@/types/api/complaints";
+import { COMPLAINT_STATUSES, type ComplaintStatus } from "@/types/api/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { Search, SlidersHorizontal, Ticket, Hourglass, CheckCircle2, ChevronsUpDown } from "lucide-react";
 
 const pageSize = 10;
 const DEFAULT_AVATAR = "/brand/avatar-fallback.png";
+const SOLVED_FILTER_VALUE = "__solved";
+const PENDING_FILTER_VALUE = "__pending";
+const SOLVED_STATUSES: ComplaintStatus[] = ["Resolved", "ResolvedRefund", "ResolvedReject", "Closed"];
+const SOLVED_STATUS_SET = new Set<ComplaintStatus>(SOLVED_STATUSES);
+const PENDING_STATUSES = COMPLAINT_STATUSES.filter((status) => !SOLVED_STATUS_SET.has(status));
+const PENDING_STATUS_SET = new Set<ComplaintStatus>(PENDING_STATUSES);
 
 type UserPreview = {
   name: string;
@@ -54,7 +60,11 @@ export default function ComplaintsPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const pageNumber = Number(searchParams.get("pageNumber") || "1");
-  const status = (searchParams.get("status") as ComplaintStatus | null) ?? "";
+  const rawStatus = searchParams.get("status") ?? "";
+  const status =
+    rawStatus === SOLVED_FILTER_VALUE || rawStatus === PENDING_FILTER_VALUE
+      ? rawStatus
+      : ((rawStatus as ComplaintStatus | "") ?? "");
   const keyword = searchParams.get("keyword") ?? "";
   const userName = searchParams.get("userName") ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
@@ -163,7 +173,16 @@ export default function ComplaintsPage() {
     const keywordNorm = normalizeText(keyword);
     const userNameNorm = normalizeText(userName);
     return items.filter((item) => {
-      if (status && item.complaintStatus !== status) return false;
+      if (status === SOLVED_FILTER_VALUE && !SOLVED_STATUS_SET.has(item.complaintStatus)) return false;
+      if (status === PENDING_FILTER_VALUE && !PENDING_STATUS_SET.has(item.complaintStatus)) return false;
+      if (
+        status &&
+        status !== SOLVED_FILTER_VALUE &&
+        status !== PENDING_FILTER_VALUE &&
+        item.complaintStatus !== status
+      ) {
+        return false;
+      }
       if (dateFrom && new Date(item.createdAt) < new Date(dateFrom)) return false;
       if (dateTo && new Date(item.createdAt) > new Date(`${dateTo}T23:59:59`)) return false;
       if (keywordNorm) {
@@ -178,17 +197,17 @@ export default function ComplaintsPage() {
     });
   }, [dateFrom, dateTo, items, keyword, status, userMap, userName]);
   const pendingCount = useMemo(
-    () => filteredItems.filter((x) => x.complaintStatus === "Open" || x.complaintStatus === "InProgress").length,
+    () => filteredItems.filter((x) => PENDING_STATUS_SET.has(x.complaintStatus)).length,
     [filteredItems],
   );
   const solvedCount = useMemo(
-    () => filteredItems.filter((x) => x.complaintStatus === "Resolved").length,
+    () => filteredItems.filter((x) => SOLVED_STATUS_SET.has(x.complaintStatus)).length,
     [filteredItems],
   );
   const totalItems = filteredItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const sortedItems = useMemo(() => {
-    const list = [...items];
+    const list = [...filteredItems];
     list.sort((a, b) => {
       let va = "";
       let vb = "";
@@ -225,23 +244,33 @@ export default function ComplaintsPage() {
   );
 
   useEffect(() => {
+    const nextUserName = userNameFilter.trim();
+    if (nextUserName === userName) return;
+
     const timeout = window.setTimeout(() => {
       setSearchParams((p) => {
-        p.set("pageNumber", "1");
-        if (userNameFilter.trim()) p.set("userName", userNameFilter.trim());
-        else p.delete("userName");
-        return p;
+        const next = new URLSearchParams(p);
+        next.set("pageNumber", "1");
+        if (nextUserName) next.set("userName", nextUserName);
+        else next.delete("userName");
+        return next;
       });
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [setSearchParams, userNameFilter]);
+  }, [setSearchParams, userName, userNameFilter]);
 
   function updateQuery(key: string, value: string) {
     setSearchParams((p) => {
-      p.set("pageNumber", "1");
-      if (value) p.set(key, value);
-      else p.delete(key);
-      return p;
+      const next = new URLSearchParams(p);
+      const currentValue = p.get(key) ?? "";
+      if (value) next.set(key, value);
+      else next.delete(key);
+
+      const nextValue = next.get(key) ?? "";
+      if (nextValue === currentValue) return p;
+
+      next.set("pageNumber", "1");
+      return next;
     });
   }
 
@@ -256,8 +285,9 @@ export default function ComplaintsPage() {
 
   function goToPage(nextPage: number) {
     setSearchParams((p) => {
-      p.set("pageNumber", String(Math.min(Math.max(1, nextPage), totalPages)));
-      return p;
+      const next = new URLSearchParams(p);
+      next.set("pageNumber", String(Math.min(Math.max(1, nextPage), totalPages)));
+      return next;
     });
   }
 
@@ -330,8 +360,8 @@ export default function ComplaintsPage() {
               >
                 {[
                   { label: "All", value: "" },
-                  { label: "Solved", value: "Resolved" },
-                  { label: "Pending", value: "Open" },
+                  { label: "Solved", value: SOLVED_FILTER_VALUE },
+                  { label: "Pending", value: PENDING_FILTER_VALUE },
                 ].map((s) => (
                   <button
                     key={s.label}
