@@ -73,6 +73,23 @@ function mapStatusAllowsEdit(status: MapStatusEnum): boolean {
   return status !== "PendingReview";
 }
 
+function getVietnamNowDateTimeLocal() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
 type MapCardProps = {
   map: Map;
   isAuthor: boolean;
@@ -705,9 +722,11 @@ const MapCard: React.FC<MapCardProps> = ({
               <button onClick={() => onRate(map.id)} style={actionBtnStyle("warning")}>
                 <Star size={14} /> {t("rate")}
               </button>
-              <button onClick={() => onReport(map.id)} style={actionBtnStyle("danger")}>
-                <Flag size={14} /> {t("report")}
-              </button>
+              {map.price > 0 && (
+                <button onClick={() => onReport(map.id)} style={actionBtnStyle("danger")}>
+                  <Flag size={14} /> {t("report")}
+                </button>
+              )}
             </>
           )}
 
@@ -782,15 +801,6 @@ export const MyMapsPage: React.FC = () => {
   const [rating, setRating] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [ratingLoading, setRatingLoading] = useState(false);
-
-  // Modal state for reporting
-  const [reportModal, setReportModal] = useState<{ open: boolean; mapId: string | null }>({
-    open: false,
-    mapId: null,
-  });
-  const [reportReason, setReportReason] = useState("");
-  const [reportDetails, setReportDetails] = useState("");
-  const [reportLoading, setReportLoading] = useState(false);
 
   // Modal state for delete confirmation
   const [deleteModal, setDeleteModal] = useState<{
@@ -1011,45 +1021,24 @@ export const MyMapsPage: React.FC = () => {
     }
   };
 
-  const handleOpenReportModal = (mapId: string) => {
-    setReportModal({ open: true, mapId });
-    setReportReason("");
-    setReportDetails("");
-  };
+  const handleOpenReportComplaint = (mapId: string) => {
+    const selectedMap = maps.find((map) => map.id === mapId);
+    const params = new URLSearchParams({
+      prefill: `map-owned-gameplay-${mapId}-${Date.now()}`,
+      openCreate: "1",
+      categoryKey: "AccessIssue",
+      gameName: selectedMap?.title ?? "",
+      mapId,
+      occurredAt: getVietnamNowDateTimeLocal(),
+      subject: locale.startsWith("vi")
+        ? "Map đã mua bị lỗi khi chơi"
+        : "Purchased map has gameplay issue",
+      description: locale.startsWith("vi")
+        ? "Tôi đã mua map này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
+        : "I purchased this map and encountered an issue during gameplay. Please help investigate.",
+    });
 
-  const handleCloseReportModal = () => {
-    setReportModal({ open: false, mapId: null });
-    setReportReason("");
-    setReportDetails("");
-  };
-
-  const handleSubmitReport = async () => {
-    if (!reportModal.mapId || !reportReason) {
-      setError(t("pleaseProvideReason"));
-      return;
-    }
-
-    try {
-      setReportLoading(true);
-      setError(null);
-
-      const response = await learnerCommunityApi.reportMap(reportModal.mapId, {
-        reason: reportReason,
-        details: reportDetails || undefined,
-      });
-
-      if (response.data.isSuccess) {
-        alert("Report submitted successfully!");
-        handleCloseReportModal();
-      } else {
-        setError(response.data.message || t("failedSubmitReport"));
-      }
-    } catch (err) {
-      setError(t("failedSubmitReport"));
-      console.error("Report error:", err);
-    } finally {
-      setReportLoading(false);
-    }
+    navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
   };
 
   const handleFilterChange = (updaters: Array<() => void>) => {
@@ -1360,7 +1349,7 @@ export const MyMapsPage: React.FC = () => {
               onEdit={handleUpdateMap}
               onPublish={handleOpenPublishModal}
               onRate={handleOpenRateModal}
-              onReport={handleOpenReportModal}
+              onReport={handleOpenReportComplaint}
               onDelete={handleOpenDeleteModal}
             />
 
@@ -1557,141 +1546,6 @@ export const MyMapsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Report Modal */}
-        {reportModal.open && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={handleCloseReportModal}
-          >
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "12px",
-                padding: "24px",
-                maxWidth: "500px",
-                width: "90%",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
-                Report This Map
-              </h2>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Reason *
-                </label>
-                <select
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: "var(--text)",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <option value="">Select a reason...</option>
-                  <option value="inappropriate">Inappropriate Content</option>
-                  <option value="spam">Spam or Misleading</option>
-                  <option value="broken">Broken or Unplayable</option>
-                  <option value="copyright">Copyright Violation</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Additional Details (optional)
-                </label>
-                <textarea
-                  value={reportDetails}
-                  onChange={(e) => setReportDetails(e.target.value)}
-                  placeholder={t("reportGamePlaceholder")}
-                  style={{
-                    width: "100%",
-                    minHeight: "100px",
-                    padding: "12px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: "var(--text)",
-                    fontSize: "14px",
-                    resize: "vertical",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button
-                  onClick={handleCloseReportModal}
-                  disabled={reportLoading}
-                  style={{
-                    padding: "10px 20px",
-                    background: "transparent",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    cursor: reportLoading ? "not-allowed" : "pointer",
-                    opacity: reportLoading ? 0.5 : 1,
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitReport}
-                  disabled={reportLoading || !reportReason}
-                  style={{
-                    padding: "10px 20px",
-                    background: "var(--danger)",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    cursor: reportLoading || !reportReason ? "not-allowed" : "pointer",
-                    opacity: reportLoading || !reportReason ? 0.5 : 1,
-                  }}
-                >
-                  {reportLoading ? t("submitting") : t("submitReport")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         {/* Publish Confirm Modal */}
         {publishModal.open && (
           <div
