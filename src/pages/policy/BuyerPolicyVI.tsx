@@ -428,7 +428,6 @@ export default function BuyerPolicyVIPage() {
           </p>
           <h1
             className="mt-4 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl"
-            style={{ fontFamily: "Merriweather, Georgia, serif" }}
           >
             Chính Sách Người Mua và Bảo Vệ Giao Dịch
           </h1>
@@ -453,7 +452,6 @@ export default function BuyerPolicyVIPage() {
               </p>
               <p
                 className="mt-2 text-xl font-extrabold text-[#0f172a]"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {item.value}
               </p>
@@ -470,7 +468,6 @@ export default function BuyerPolicyVIPage() {
             >
               <h2
                 className="text-2xl font-bold text-[#0b2c4a] sm:text-3xl"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {section.id}. {section.title}
               </h2>

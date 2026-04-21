@@ -637,7 +637,6 @@ export default function SellerPolicyVIPage() {
           </p>
           <h1
             className="mt-4 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl"
-            style={{ fontFamily: "Merriweather, Georgia, serif" }}
           >
             Chính Sách Người Bán và Quản Trị Creator
           </h1>
@@ -661,7 +660,6 @@ export default function SellerPolicyVIPage() {
               </p>
               <p
                 className="mt-2 text-xl font-extrabold text-[#0f172a]"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {item.value}
               </p>
@@ -678,7 +676,6 @@ export default function SellerPolicyVIPage() {
             >
               <h2
                 className="text-2xl font-bold text-[#0b2c4a] sm:text-3xl"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {section.id}. {section.title}
               </h2>

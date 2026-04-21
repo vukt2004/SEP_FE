@@ -7,8 +7,8 @@ type RuleSection = {
 const highlights = [
   {
     title: "Evaluation Criteria",
-    value: "7 Groups",
-    description: "This policy defines 7 core rule groups for game creation.",
+    value: "8 Groups",
+    description: "This policy defines 8 core rule groups for game creation.",
   },
   {
     title: "Primary Focus",
@@ -93,6 +93,22 @@ const ruleSections: RuleSection[] = [
       "Game has a title.",
       "Game has a description.",
       "Game has relevant tags.",
+    ],
+  },
+  {
+    id: "8",
+    title: "Game Status Flow and Public Visibility",
+    bullets: [
+      "Draft: game is newly created or being edited; only the creator can see it, and it is not public.",
+      "Pending: creator submits game for review; public visibility is locked while admin/moderator reviews.",
+      "Needs Revision: game requires additional fixes from moderation feedback and stays non-public until resubmitted.",
+      "Approved: game has passed moderation and is eligible for publish/public release.",
+      "Published: game is public on the marketplace and can be discovered or purchased by eligible players.",
+      "Rejected: game does not pass current review and must be fixed before a new Pending submission.",
+      "Unpublished/Hidden: game was previously public but is temporarily hidden or removed due to major updates, severe issues, or policy enforcement.",
+      "Typical flow: Draft -> Pending -> (Needs Revision -> Pending)* -> Approved -> Published.",
+      "When game becomes public: only after it reaches Approved and is published via the system workflow.",
+      "After publishing, major gameplay updates may move the game back to Pending for re-review before becoming public again.",
     ],
   },
 ];

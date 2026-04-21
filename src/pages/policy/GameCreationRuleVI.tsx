@@ -7,8 +7,8 @@ type RuleSection = {
 const highlights = [
   {
     title: "Tiêu chí đánh giá",
-    value: "7 nhóm",
-    description: "Bộ quy định gồm 7 nhóm tiêu chí cốt lõi cho game.",
+    value: "8 nhóm",
+    description: "Bộ quy định gồm 8 nhóm tiêu chí cốt lõi cho game.",
   },
   {
     title: "Trọng tâm",
@@ -95,6 +95,22 @@ const ruleSections: RuleSection[] = [
       "Có tag phù hợp.",
     ],
   },
+  {
+    id: "8",
+    title: "Luồng trạng thái game và thời điểm public",
+    bullets: [
+      "Draft: game vừa được tạo hoặc đang chỉnh sửa, chỉ creator nhìn thấy, chưa xuất hiện public.",
+      "Pending: creator gửi game để duyệt, hệ thống khóa trạng thái công khai và chờ admin/moderator kiểm tra.",
+      "Needs Revision: game cần chỉnh sửa thêm theo phản hồi kiểm duyệt, không public cho đến khi gửi duyệt lại.",
+      "Approved: game đã đạt tiêu chí duyệt, đủ điều kiện để publish/public.",
+      "Published: game đã được public trên marketplace và người chơi đủ điều kiện có thể thấy hoặc mua.",
+      "Rejected: game không đạt yêu cầu ở lần duyệt hiện tại, phải chỉnh sửa rồi gửi lại từ Pending.",
+      "Unpublished/Hidden: game từng public nhưng bị ẩn tạm thời hoặc gỡ khỏi public do cập nhật lớn, lỗi nghiêm trọng, hoặc xử lý vi phạm.",
+      "Luồng điển hình: Draft -> Pending -> (Needs Revision -> Pending)* -> Approved -> Published.",
+      "Khi nào game được public: chỉ sau khi đạt Approved và có thao tác publish theo quy trình hệ thống.",
+      "Sau khi đã public, nếu creator cập nhật nội dung lớn thì game có thể quay lại Pending để duyệt lại trước khi public tiếp.",
+    ],
+  },
 ];
 
 export default function GameCreationRuleVIPage() {
@@ -107,7 +123,6 @@ export default function GameCreationRuleVIPage() {
           </p>
           <h1
             className="mt-4 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl"
-            style={{ fontFamily: "Merriweather, Georgia, serif" }}
           >
             Quy Định Tạo Game
           </h1>
@@ -132,7 +147,6 @@ export default function GameCreationRuleVIPage() {
               </p>
               <p
                 className="mt-2 text-xl font-extrabold text-[#0f172a]"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {item.value}
               </p>
@@ -149,7 +163,6 @@ export default function GameCreationRuleVIPage() {
             >
               <h2
                 className="text-2xl font-bold text-[#0b2c4a] sm:text-3xl"
-                style={{ fontFamily: "Merriweather, Georgia, serif" }}
               >
                 {section.id}. {section.title}
               </h2>
