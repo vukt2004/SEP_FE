@@ -588,8 +588,7 @@ export const MapsPage: React.FC = () => {
     }
   };
 
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitReview = async (mode: "approve" | "reject") => {
     if (!selectedMapForAction) return;
 
     const unevaluatedCriteria = MAP_REVIEW_CRITERIA.filter(
@@ -610,12 +609,20 @@ export const MapsPage: React.FC = () => {
     try {
       setActionLoading(true);
 
-      if (failedCriteria.length === 0) {
+      if (mode === "approve") {
+        if (failedCriteria.length > 0) {
+          setReviewValidationError(t("cmsReview.validationAllCriteria"));
+          return;
+        }
         await cmsMapsApi.approveMap(selectedMapForAction.id, {
           reviewNote: trimmedOtherReason || undefined,
         });
         alert(t("cmsReview.approveSuccess"));
       } else {
+        if (failedCriteria.length === 0) {
+          setReviewValidationError(t("cmsReview.validationAllCriteria"));
+          return;
+        }
         const failedCriteriaSummary = failedCriteria
           .map((criterion, index) => {
             const sectionTitle = t(criterion.sectionTitleKey);
@@ -660,6 +667,11 @@ export const MapsPage: React.FC = () => {
   const reviewedCriteriaCount = MAP_REVIEW_CRITERIA.filter(
     (criterion) => reviewDecisions[criterion.key] !== null,
   ).length;
+  const failedCriteriaCount = MAP_REVIEW_CRITERIA.filter(
+    (criterion) => reviewDecisions[criterion.key] === "fail",
+  ).length;
+  const canApproveReview = reviewedCriteriaCount === MAP_REVIEW_CRITERIA.length && failedCriteriaCount === 0;
+  const canRejectReview = reviewedCriteriaCount === MAP_REVIEW_CRITERIA.length && failedCriteriaCount > 0;
 
   const handleFilterChange = (updaters: Array<() => void>) => {
     updaters.forEach((fn) => fn());
@@ -1111,29 +1123,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  TYPE
-                </th>
-                <th
-                  style={{
-                    padding: "16px",
-                    textAlign: "left",
-                    fontWeight: "600",
-                    fontSize: "13px",
-                    color: "var(--text-2)",
-                  }}
-                >
                   DIFFICULTY
-                </th>
-                <th
-                  style={{
-                    padding: "16px",
-                    textAlign: "left",
-                    fontWeight: "600",
-                    fontSize: "13px",
-                    color: "var(--text-2)",
-                  }}
-                >
-                  TIME LIMIT
                 </th>
                 <th
                   style={{
@@ -1196,7 +1186,7 @@ export const MapsPage: React.FC = () => {
               {maps.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={8}
                     style={{
                       padding: "24px",
                       textAlign: "center",
@@ -1284,21 +1274,6 @@ export const MapsPage: React.FC = () => {
                   <td style={{ padding: "16px" }}>
                     <span
                       style={{
-                        display: "inline-block",
-                        padding: "4px 12px",
-                        borderRadius: "6px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        backgroundColor: map.type === "Platform" ? "#dbeafe" : "#fef3c7",
-                        color: map.type === "Platform" ? "#1e40af" : "#92400e",
-                      }}
-                    >
-                      {map.type}
-                    </span>
-                  </td>
-                  <td style={{ padding: "16px" }}>
-                    <span
-                      style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "6px",
@@ -1320,9 +1295,6 @@ export const MapsPage: React.FC = () => {
                       ></span>
                       {getDifficultyLabel(map.difficulty)}
                     </span>
-                  </td>
-                  <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "14px" }}>
-                    {formatTime(map.timeLimitMs)}
                   </td>
                   <td style={{ padding: "16px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -2141,7 +2113,18 @@ export const MapsPage: React.FC = () => {
       >
         {selectedMapForAction && (
           <form
-            onSubmit={handleSubmitReview}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canApproveReview) {
+                void handleSubmitReview("approve");
+                return;
+              }
+              if (canRejectReview) {
+                void handleSubmitReview("reject");
+                return;
+              }
+              setReviewValidationError(t("cmsReview.validationAllCriteria"));
+            }}
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
           >
             <div>
@@ -2337,22 +2320,42 @@ export const MapsPage: React.FC = () => {
               >
                 {t("cancel")}
               </button>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                style={{
-                  padding: "10px 20px",
-                  background: actionLoading ? "var(--surface-2)" : "var(--primary)",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: actionLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                {actionLoading ? t("cmsReview.submitting") : t("cmsReview.submit")}
-              </button>
+              {canApproveReview && (
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: actionLoading ? "var(--surface-2)" : "var(--success)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {actionLoading ? t("cmsReview.submitting") : t("approved")}
+                </button>
+              )}
+              {canRejectReview && (
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  style={{
+                    padding: "10px 20px",
+                    background: actionLoading ? "var(--surface-2)" : "var(--danger)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: actionLoading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {actionLoading ? t("cmsReview.submitting") : t("rejected")}
+                </button>
+              )}
             </div>
           </form>
         )}
