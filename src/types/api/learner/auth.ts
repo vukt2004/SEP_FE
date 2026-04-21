@@ -31,7 +31,7 @@ export type LearnerRegisterForm = {
   lastName: string;
   phoneNumber: string;
   gender?: GenderEnum;
-  dateOfBirth?: string; // "YYYY-MM-DD"
+  dateOfBirth?: string; // ISO datetime string
   studentCode?: string;
 };
 

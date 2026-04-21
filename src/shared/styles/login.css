@@ -211,6 +211,23 @@ body.auth-no-scroll {
   margin-bottom: 24px;
 }
 
+.auth-field {
+  margin-top: 16px;
+}
+
+.auth-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.auth-field-required {
+  color: #ef4444;
+}
+
 .login-input {
   width: 100%;
   padding: 12px 14px;
@@ -221,6 +238,10 @@ body.auth-no-scroll {
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   color: var(--text);
+}
+
+.auth-field .login-input {
+  margin-top: 8px;
 }
 
 [data-theme="light"] .login-input {
