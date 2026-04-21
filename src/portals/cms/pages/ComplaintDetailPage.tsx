@@ -1023,7 +1023,7 @@ export default function ComplaintDetailPage() {
                     >
                       {statusSubmitting
                         ? t("complaints.cmsDetail.actionUpdating")
-                        : `${t(action.labelKey)} -> ${t(`complaints.status.${action.toStatus}`)}${action.issueRefund ? ` (${t("complaints.cmsDetail.actionIssueRefundTag")})` : ""}`}
+                        : `${t(action.labelKey)} -> ${t(`complaints.status.${action.toStatus}`)}`}
                     </button>
                   ))}
                 </div>

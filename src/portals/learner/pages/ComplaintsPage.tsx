@@ -669,7 +669,8 @@ export default function ComplaintsPage() {
     return hasAnyRequiredContextValue;
   }, [allowManualContextInput, hasAnyRequiredContextValue, requiredAnyContextFields.length]);
 
-  const submitReady = detailsStepDone && descriptionStepDone && contextStepDone;
+  const attachmentsStepDone = attachments.length > 0;
+  const submitReady = detailsStepDone && descriptionStepDone && contextStepDone && attachmentsStepDone;
   const hasSelectedCategory = createForm.categoryKey.trim().length > 0;
   const createButtonDisabled =
     creating ||
@@ -705,12 +706,17 @@ export default function ComplaintsPage() {
       missing.push(...requiredAnyContextFields.map((field) => getContextLabel(t, field)));
     }
 
+    if (!attachmentsStepDone) {
+      missing.push(t("complaints.attachments.title"));
+    }
+
     return missing;
   }, [
     contextStepDone,
     createForm.categoryKey,
     createForm.description,
     createForm.subject,
+    attachmentsStepDone,
     requiredAnyContextFields,
     t,
   ]);
@@ -804,6 +810,10 @@ export default function ComplaintsPage() {
     setFieldErrors(errors);
     setCreateError("");
     setCreateSuccess("");
+    if (attachments.length === 0) {
+      setAttachmentError(t("complaints.attachments.required"));
+      return;
+    }
     if (Object.keys(errors).length > 0) return;
     try {
       setCreating(true);
@@ -1638,7 +1648,7 @@ export default function ComplaintsPage() {
                         color: "var(--text-2)",
                       }}
                     >
-                      {t("complaints.context.title")} ({t("optional")})
+                      {t("complaints.context.title")}
                     </div>
                     {requiredAnyContextFields.length > 0 ? (
                       allowManualContextInput ? (
@@ -1938,9 +1948,15 @@ export default function ComplaintsPage() {
                           </div>
                           <button
                             type="button"
-                            onClick={() =>
-                              setAttachments((prev) => prev.filter((_, i) => i !== idx))
-                            }
+                            onClick={() => {
+                              setAttachments((prev) => {
+                                const next = prev.filter((_, i) => i !== idx);
+                                if (next.length === 0) {
+                                  setAttachmentError(t("complaints.attachments.required"));
+                                }
+                                return next;
+                              });
+                            }}
                             style={{
                               border: "1px solid var(--border)",
                               borderRadius: 8,
@@ -1964,7 +1980,7 @@ export default function ComplaintsPage() {
                       minHeight: 20,
                     }}
                   >
-                    {attachmentError || t("complaints.attachments.notice")}
+                    {attachmentError || t("complaints.attachments.required")}
                   </div>
                 </div>
 
