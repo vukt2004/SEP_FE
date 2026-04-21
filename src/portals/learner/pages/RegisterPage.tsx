@@ -23,7 +23,7 @@ import { getT } from "@/lib/i18n/translations";
 import { Sun, Moon, ArrowLeft } from "lucide-react";
 
 import { learnerAuthApi } from "@/services/api/learner/auth.api";
-import type { LearnerRegisterForm } from "@/types/api/learner/auth";
+import type { GenderEnum, LearnerRegisterForm } from "@/types/api/learner/auth";
 import { setVerifyContact } from "@/services/api/learner/verifyContact";
 
 type RegisterValues = {
@@ -33,13 +33,31 @@ type RegisterValues = {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  gender: GenderEnum | "";
+  dateOfBirth: string;
   studentCode?: string;
 };
 
 type FieldErrors = Partial<Record<FieldKey, MessageCode>>;
 type ExtraErrors = Partial<
-  Record<"confirmPassword" | "firstName" | "lastName" | "phoneNumber", string>
+  Record<"confirmPassword" | "firstName" | "lastName" | "phoneNumber" | "gender" | "dateOfBirth", string>
 >;
+
+function normalizeDateOfBirth(dateOfBirth: string) {
+  return `${dateOfBirth}T00:00:00`;
+}
+
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isRequiredFieldMessage(code: MessageCode) {
+  return code === "VALID_REQUIRED_EMAIL" || code === "VALID_REQUIRED_PASSWORD";
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -58,6 +76,8 @@ export default function RegisterPage() {
     firstName: "",
     lastName: "",
     phoneNumber: "",
+    gender: "",
+    dateOfBirth: "",
     studentCode: "",
   });
 
@@ -75,6 +95,7 @@ export default function RegisterPage() {
 
   const emailRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
+  const maxDateOfBirth = getTodayDateInputValue();
 
   useEffect(() => {
     if (!confetti) return;
@@ -160,12 +181,14 @@ export default function RegisterPage() {
 
   function validateExtra(v: RegisterValues): ExtraErrors {
     const e: ExtraErrors = {};
-    if (!v.firstName.trim()) e.firstName = "First name is required";
-    if (!v.lastName.trim()) e.lastName = "Last name is required";
-    if (!v.phoneNumber.trim()) e.phoneNumber = "Phone number is required";
-    if (!v.confirmPassword) e.confirmPassword = "Confirm password is required";
+    const requiredMessage = locale === "vi" ? "Trường này là bắt buộc" : "This field is required";
+    const mismatchMessage = locale === "vi" ? "Mật khẩu xác nhận không khớp" : "Passwords do not match";
+    if (!v.firstName.trim()) e.firstName = requiredMessage;
+    if (!v.lastName.trim()) e.lastName = requiredMessage;
+    if (!v.phoneNumber.trim()) e.phoneNumber = requiredMessage;
+    if (!v.confirmPassword) e.confirmPassword = requiredMessage;
     if (v.confirmPassword && v.confirmPassword !== v.password) {
-      e.confirmPassword = "Passwords do not match";
+      e.confirmPassword = mismatchMessage;
     }
     return e;
   }
@@ -198,6 +221,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
+      const gender = values.gender === "" ? undefined : values.gender;
       const payload: LearnerRegisterForm = {
         email: values.email,
         password: values.password,
@@ -205,6 +229,8 @@ export default function RegisterPage() {
         firstName: values.firstName,
         lastName: values.lastName,
         phoneNumber: values.phoneNumber,
+        gender,
+        dateOfBirth: values.dateOfBirth ? normalizeDateOfBirth(values.dateOfBirth) : undefined,
         studentCode: values.studentCode?.trim() || undefined,
       };
 
@@ -247,7 +273,7 @@ export default function RegisterPage() {
           email: "Email",
           password: "Mật khẩu",
           confirmPassword: "Nhập lại mật khẩu",
-          studentCode: "Mã sinh viên (không bắt buộc)",
+          studentCode: "Mã học viên (không bắt buộc)",
           creating: "Đang tạo...",
           create: "Tạo tài khoản",
           haveAccount: "Đã có tài khoản?",
@@ -255,19 +281,37 @@ export default function RegisterPage() {
         }
       : {
           title: "Learner Register",
-          subtitle: "Create your student account and start learning.",
+          subtitle: "Create your learner account and start learning.",
           firstName: "First name",
           lastName: "Last name",
           phone: "Phone number",
           email: "Email",
           password: "Password",
           confirmPassword: "Confirm password",
-          studentCode: "Student code (optional)",
+          studentCode: "Learner code (optional)",
           creating: "Creating...",
           create: "Create account",
           haveAccount: "Already have an account?",
           login: "Login",
         };
+  const genderFieldLabel = locale === "vi" ? "Gi\u1edbi t\u00ednh" : "Gender";
+  const dateOfBirthFieldLabel = locale === "vi" ? "Ng\u00e0y sinh" : "Date of birth";
+  const selectGenderLabel = locale === "vi" ? "Ch\u1ecdn gi\u1edbi t\u00ednh" : "Select gender";
+  const genderOptions: Array<{ value: GenderEnum; label: string }> = [
+    { value: 0, label: locale === "vi" ? "Nữ" : "Female" },
+    { value: 1, label: locale === "vi" ? "Nam" : "Male" },
+    { value: 2, label: locale === "vi" ? "Khác" : "Other" },
+  ];
+
+  const requiredMessage = locale === "vi" ? "Trường này là bắt buộc" : "This field is required";
+  const getFieldErrorText = (code: MessageCode) =>
+    isRequiredFieldMessage(code) ? requiredMessage : buildMessage(code).text;
+  const renderFieldLabel = (label: string, required = false) => (
+    <div className="auth-field-label">
+      <span>{label}</span>
+      {required ? <span className="auth-field-required">*</span> : null}
+    </div>
+  );
 
   return (
     <div className="login-page" style={pageStyle}>
@@ -349,112 +393,183 @@ export default function RegisterPage() {
               </div>
             ) : null}
 
-            <input
-              className="login-input"
-              placeholder={copy.firstName}
-              value={values.firstName}
-              onChange={(e) => setField("firstName", e.target.value)}
-              aria-invalid={Boolean(extraErrors.firstName)}
-              disabled={isSubmitting}
-            />
-            {extraErrors.firstName ? (
-              <div role="alert" className="auth-error">
-                {extraErrors.firstName}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(copy.firstName, true)}
+              <input
+                className="login-input"
+                placeholder={copy.firstName}
+                value={values.firstName}
+                onChange={(e) => setField("firstName", e.target.value)}
+                aria-invalid={Boolean(extraErrors.firstName)}
+                disabled={isSubmitting}
+              />
+              {extraErrors.firstName ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.firstName}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              className="login-input"
-              placeholder={copy.lastName}
-              value={values.lastName}
-              onChange={(e) => setField("lastName", e.target.value)}
-              aria-invalid={Boolean(extraErrors.lastName)}
-              disabled={isSubmitting}
-            />
-            {extraErrors.lastName ? (
-              <div role="alert" className="auth-error">
-                {extraErrors.lastName}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(copy.lastName, true)}
+              <input
+                className="login-input"
+                placeholder={copy.lastName}
+                value={values.lastName}
+                onChange={(e) => setField("lastName", e.target.value)}
+                aria-invalid={Boolean(extraErrors.lastName)}
+                disabled={isSubmitting}
+              />
+              {extraErrors.lastName ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.lastName}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              className="login-input"
-              placeholder={copy.phone}
-              value={values.phoneNumber}
-              onChange={(e) => setField("phoneNumber", e.target.value)}
-              aria-invalid={Boolean(extraErrors.phoneNumber)}
-              disabled={isSubmitting}
-            />
-            {extraErrors.phoneNumber ? (
-              <div role="alert" className="auth-error">
-                {extraErrors.phoneNumber}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(copy.phone, true)}
+              <input
+                className="login-input"
+                placeholder={copy.phone}
+                value={values.phoneNumber}
+                onChange={(e) => setField("phoneNumber", e.target.value)}
+                aria-invalid={Boolean(extraErrors.phoneNumber)}
+                disabled={isSubmitting}
+              />
+              {extraErrors.phoneNumber ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.phoneNumber}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              ref={emailRef}
-              className="login-input"
-              placeholder={copy.email}
-              value={values.email}
-              onChange={(e) => setField("email", e.target.value)}
-              onFocus={() => setFocusedField("email")}
-              onBlur={() => setFocusedField(null)}
-              autoComplete="email"
-              aria-invalid={Boolean(fieldErrors.email)}
-              disabled={isSubmitting}
-            />
-            {fieldErrors.email ? (
-              <div role="alert" className="auth-error">
-                {buildMessage(fieldErrors.email).text}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(genderFieldLabel)}
+              <select
+                className="login-input"
+                value={values.gender === "" ? "" : String(values.gender)}
+                onChange={(e) =>
+                  setField(
+                    "gender",
+                    e.target.value === "" ? "" : (Number(e.target.value) as GenderEnum),
+                  )
+                }
+                aria-invalid={Boolean(extraErrors.gender)}
+                disabled={isSubmitting}
+                aria-label={genderFieldLabel}
+                title={genderFieldLabel}
+              >
+                <option value="">{selectGenderLabel}</option>
+                {genderOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {extraErrors.gender ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.gender}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              ref={passRef}
-              className="login-input"
-              type="password"
-              placeholder={copy.password}
-              value={values.password}
-              onChange={(e) => setField("password", e.target.value)}
-              onFocus={() => setFocusedField("password")}
-              onBlur={() => {
-                setFocusedField(null);
-                setCapsLockOn(false);
-              }}
-              onKeyUp={(e) => setCapsLockOn(e.getModifierState?.("CapsLock") ?? false)}
-              autoComplete="new-password"
-              aria-invalid={Boolean(fieldErrors.password)}
-              disabled={isSubmitting}
-            />
-            {fieldErrors.password ? (
-              <div role="alert" className="auth-error">
-                {buildMessage(fieldErrors.password).text}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(dateOfBirthFieldLabel)}
+              <input
+                className="login-input"
+                type="date"
+                value={values.dateOfBirth}
+                onChange={(e) => setField("dateOfBirth", e.target.value)}
+                aria-invalid={Boolean(extraErrors.dateOfBirth)}
+                disabled={isSubmitting}
+                max={maxDateOfBirth}
+                aria-label={dateOfBirthFieldLabel}
+                title={dateOfBirthFieldLabel}
+              />
+              {extraErrors.dateOfBirth ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.dateOfBirth}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              className="login-input"
-              type="password"
-              placeholder={copy.confirmPassword}
-              value={values.confirmPassword}
-              onChange={(e) => setField("confirmPassword", e.target.value)}
-              autoComplete="new-password"
-              aria-invalid={Boolean(extraErrors.confirmPassword)}
-              disabled={isSubmitting}
-            />
-            {extraErrors.confirmPassword ? (
-              <div role="alert" className="auth-error">
-                {extraErrors.confirmPassword}
-              </div>
-            ) : null}
+            <div className="auth-field">
+              {renderFieldLabel(copy.email, true)}
+              <input
+                ref={emailRef}
+                className="login-input"
+                placeholder={copy.email}
+                value={values.email}
+                onChange={(e) => setField("email", e.target.value)}
+                onFocus={() => setFocusedField("email")}
+                onBlur={() => setFocusedField(null)}
+                autoComplete="email"
+                aria-invalid={Boolean(fieldErrors.email)}
+                disabled={isSubmitting}
+              />
+              {fieldErrors.email ? (
+                <div role="alert" className="auth-error">
+                  {getFieldErrorText(fieldErrors.email)}
+                </div>
+              ) : null}
+            </div>
 
-            <input
-              className="login-input"
-              placeholder={copy.studentCode}
-              value={values.studentCode ?? ""}
-              onChange={(e) => setField("studentCode", e.target.value)}
-              disabled={isSubmitting}
-            />
+            <div className="auth-field">
+              {renderFieldLabel(copy.password, true)}
+              <input
+                ref={passRef}
+                className="login-input"
+                type="password"
+                placeholder={copy.password}
+                value={values.password}
+                onChange={(e) => setField("password", e.target.value)}
+                onFocus={() => setFocusedField("password")}
+                onBlur={() => {
+                  setFocusedField(null);
+                  setCapsLockOn(false);
+                }}
+                onKeyUp={(e) => setCapsLockOn(e.getModifierState?.("CapsLock") ?? false)}
+                autoComplete="new-password"
+                aria-invalid={Boolean(fieldErrors.password)}
+                disabled={isSubmitting}
+              />
+              {fieldErrors.password ? (
+                <div role="alert" className="auth-error">
+                  {getFieldErrorText(fieldErrors.password)}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="auth-field">
+              {renderFieldLabel(copy.confirmPassword, true)}
+              <input
+                className="login-input"
+                type="password"
+                placeholder={copy.confirmPassword}
+                value={values.confirmPassword}
+                onChange={(e) => setField("confirmPassword", e.target.value)}
+                autoComplete="new-password"
+                aria-invalid={Boolean(extraErrors.confirmPassword)}
+                disabled={isSubmitting}
+              />
+              {extraErrors.confirmPassword ? (
+                <div role="alert" className="auth-error">
+                  {extraErrors.confirmPassword}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="auth-field">
+              {renderFieldLabel(copy.studentCode)}
+              <input
+                className="login-input"
+                placeholder={copy.studentCode}
+                value={values.studentCode ?? ""}
+                onChange={(e) => setField("studentCode", e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
 
             <button
               type="submit"
