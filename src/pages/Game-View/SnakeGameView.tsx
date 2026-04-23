@@ -1238,7 +1238,12 @@ export default function SnakeGameView() {
       const before = engine.getPlayer();
       const beforeCell = { col: before.x, row: before.y };
 
-      // Treat current head cell as temporary support for this step so upward moves can climb.
+      // Mark the current head cell as temporary solid support so the engine's
+      // built-in gravity (which runs inside executeCommand) treats body cells as
+      // ground. This is required for ALL directions, including "up": when the head
+      // climbs one tile up, the body segment that fills the vacated cell is not yet
+      // recorded in snakeSegmentsRef at the moment applyGravity runs — so we must
+      // pre-mark the old head position as solid so the engine sees it as a floor.
       syncSnakeBodyCollision(isMovementType);
 
       if (result.command.type === "moveForward") {
@@ -1274,6 +1279,53 @@ export default function SnakeGameView() {
 
       // Keep collision grid in sync with the latest snake body state.
       syncSnakeBodyCollision(false);
+
+      // ── Whole-snake tail-grounding gravity (upward moves only) ──────────────
+      // After an upward move the engine's internal gravity stops the head because
+      // the old head cell was pre-marked solid above. But the TAIL (last body
+      // segment, or the head itself when the snake has no body) may now be
+      // floating above the real ground. Check against the immutable BASE collision
+      // map and, if the tail is airborne, pull the entire snake (head + every
+      // body segment) down by that distance. This means:
+      //   • Short snake trying to go straight up → falls right back (net zero).
+      //   • Long snake with a horizontal tail still touching ground → advances ✓.
+      //   • The snake can only climb as high as its body length supports.
+      if (moved && afterCell.row < beforeCell.row) {
+        const level = levelRef.current;
+        if (level) {
+          const segments = snakeSegmentsRef.current;
+          // Use last body segment as the tail; fall back to the head when bodyless.
+          const tailCell =
+            segments.length > 0
+              ? segments[segments.length - 1]
+              : { col: after.x, row: after.y };
+
+          // Count empty tiles between the tail and the first solid tile below it
+          // using only the BASE (non-snake) collision grid.
+          let fallDist = 0;
+          let checkRow = tailCell.row + 1;
+          while (
+            checkRow < level.height &&
+            !(baseCollisionRef.current[checkRow]?.[tailCell.col] ?? true)
+          ) {
+            fallDist++;
+            checkRow++;
+          }
+
+          if (fallDist > 0) {
+            // Shift every body segment downward.
+            for (const seg of segments) {
+              seg.row += fallDist;
+            }
+            // Shift the head (engine player) downward to match.
+            after.y += fallDist;
+            after.targetPixelY = after.y * TILE_SIZE;
+            // Rebuild the live collision grid after the correction.
+            syncSnakeBodyCollision(false);
+          }
+        }
+      }
+      // ────────────────────────────────────────────────────────────────────────
 
       setLiveSteps(engine.getStepCount());
 
