@@ -1909,6 +1909,11 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep1MapInfoNote:
       "Values entered in Step 1 are reflected here immediately for easier review.",
     mapEditorWizardNotSet: "Not set",
+    mapEditorLayerInfoTitle: "Layer Information",
+    mapEditorLayerInfoBackgroundDesc: "The decorative background layer that sits behind everything. It has no physical collision. Used for skies, distant mountains, or wallpaper.",
+    mapEditorLayerInfoGroundDesc: "The primary flooring layer where characters and objects can be placed. This defines the main walkable surfaces.",
+    mapEditorLayerInfoForegroundDesc: "Decorative elements that render in front of the character and other objects. Used for overlapping elements like grass or front walls.",
+    mapEditorLayerInfoCollisionDesc: "Invisible walls and solid boundaries that block character movement. Use this to enclose areas or block paths without visible tiles.",
   },
   vi: {
     marketplace: "Cửa hàng",
@@ -3813,6 +3818,11 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     mapEditorWizardStep1MapInfoNote:
       "Thông tin bạn nhập ở Bước 1 sẽ hiện ngay tại đây để dễ quan sát và đối chiếu.",
     mapEditorWizardNotSet: "Chưa nhập",
+    mapEditorLayerInfoTitle: "Thông tin lớp (Layer)",
+    mapEditorLayerInfoBackgroundDesc: "Lớp nền đồ họa nằm dưới cùng, không có va chạm vật lý. Dùng cho bầu trời, núi đằng xa hoặc hình nền.",
+    mapEditorLayerInfoGroundDesc: "Lớp mặt đất chính yếu, nơi người chơi và tĩnh vật có thể đứng lên hoặc di chuyển. Đại diện cho bề mặt đi lại được.",
+    mapEditorLayerInfoForegroundDesc: "Các phần tử trang trí vẽ đè lên phía trước nhân vật và đối tượng khác. Điển hình là các lùm cây, ngọn cỏ lớn che khuất góc nhìn.",
+    mapEditorLayerInfoCollisionDesc: "Khối chướng ngại vật vô hình dùng để cản đường di chuyển. Áp dụng cho các mép tường, bờ nước không muốn đồ họa hiện diện nhưng vẫn ngăn đi tắt.",
   },
 };
 
