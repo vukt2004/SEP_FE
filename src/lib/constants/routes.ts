@@ -24,6 +24,7 @@ export const ROUTES = {
   LEARNER_PACKAGES: "/app/packages",
   LEARNER_VERIFY_OTP: "/verify-otp",
   LEARNER_REGISTER: "/register",
+  LEARNER_RESET_PASSWORD: "/reset-password",
   LEARNER_LEARN: "/app/browse",
   LEARNER_PROFILE: "/app/profile",
   LEARNER_LEADERBOARD: "/app/leaderboard",

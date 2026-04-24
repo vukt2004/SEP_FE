@@ -41,3 +41,9 @@ export type VerifyOtpRequest = {
   otpType?: 1 | 2; // default 1 (Registration)
   otpSentChannel?: 1 | 2; // default 1 (Email)
 };
+
+export type ResetPasswordRequest = {
+  contact: string;
+  newPassword: string;
+  otpSentChannel?: 1; // default 1 (Email only)
+};
