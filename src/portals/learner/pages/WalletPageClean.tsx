@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useNavigate } from "react-router-dom";
 import { useLanguageStore } from "@/stores/language.store";
 import { emitApiToast } from "@/shared/toast/apiToastBus";
+import { getCurrentUserPlan } from "@/lib/auth/subscriptionPlan";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import {
   CoinTransactionTypeEnum,
   orbitCoinApi,
@@ -13,7 +15,6 @@ import {
   type WalletDashboardTrendItem,
 } from "@/services/api/learner/orbitcoin.api";
 
-type WalletRole = "Buyer" | "Creator";
 type WalletFilters = {
   from: string;
   to: string;
@@ -27,7 +28,6 @@ type DisplayCurrency = "VND" | "OC";
 
 const PAGE_SIZE = 20;
 const MOBILE_WIDTH = 768;
-const ROLE_KEY = "wallet_v2_last_role";
 const categoryMap: Record<Exclude<WalletFilters["category"], "">, number> = {
   Topup: CoinTransactionTypeEnum.EarnDeposit,
   BuyPackage: CoinTransactionTypeEnum.SpendPackagePurchase,
@@ -91,6 +91,19 @@ const dict = {
     showVnd: "VND",
     showOc: "OC",
     exchangeRate: "Exchange rate",
+    viewAnalytics: "View analytics",
+    invoice: "Invoice",
+    downloadPdf: "Download PDF",
+    invoiceNo: "Invoice No.",
+    issuedAt: "Issued at",
+    note: "Note",
+    buyerLabel: "Buyer / Purchaser",
+    sellerLabel: "Seller / Receiver",
+    partnerLabel: "Transaction partner",
+    signedBuyer: "Buyer signature",
+    signedSeller: "Seller signature",
+    accountHolder: "Account holder",
+    platformLabel: "Platform",
   },
   vi: {
     title: "Ví",
@@ -146,17 +159,28 @@ const dict = {
     showVnd: "VND",
     showOc: "OC",
     exchangeRate: "Tỷ giá",
+    viewAnalytics: "Xem phân tích",
+    invoice: "Hóa đơn",
+    downloadPdf: "Tải PDF",
+    invoiceNo: "Mã hóa đơn",
+    issuedAt: "Ngày lập",
+    note: "Ghi chú",
+    buyerLabel: "Người mua",
+    sellerLabel: "Người bán",
+    partnerLabel: "Đối tác giao dịch",
+    signedBuyer: "Người mua ký tên",
+    signedSeller: "Người bán ký tên",
+    accountHolder: "Chủ tài khoản",
+    platformLabel: "Nền tảng",
   },
 } as const;
 
 export default function WalletPageClean() {
+  const navigate = useNavigate();
   const { locale } = useLanguageStore();
   const t = dict[locale];
-  const location = useLocation();
-  const navigate = useNavigate();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_WIDTH);
-  const [role, setRole] = useState<WalletRole>(() => getInitialRole(location.pathname));
   const [filters, setFilters] = useState<WalletFilters>(defaultFilters());
   const [page, setPage] = useState(1);
   const [balance, setBalance] = useState(0);
@@ -166,14 +190,16 @@ export default function WalletPageClean() {
   const [transactions, setTransactions] = useState<OrbitCoinTransaction[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedTx, setSelectedTx] = useState<OrbitCoinTransaction | null>(null);
-  const [selectedGame, setSelectedGame] = useState<WalletDashboardGameItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<WalletTab>("overview");
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
+  const [isCreator, setIsCreator] = useState(false);
+  const dashboardRole = activeTab === "revenue" && isCreator ? "Creator" : "Buyer";
 
   const statusOptions = useMemo(() => {
     const dynamic = availableStatuses.length > 0
@@ -226,17 +252,42 @@ export default function WalletPageClean() {
   }, []);
 
   useEffect(() => {
-    const nextRole = getInitialRole(location.pathname);
-    setRole(nextRole);
-  }, [location.pathname]);
+    let alive = true;
+    (async () => {
+      try {
+        const plan = await getCurrentUserPlan(false, "learner");
+        if (!alive) return;
+        setIsCreator(plan === "creator" || plan === "pro");
+      } catch {
+        if (!alive) return;
+        setIsCreator(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(ROLE_KEY, role);
-  }, [role]);
+    let alive = true;
+    (async () => {
+      try {
+        const res = await learnerProfileApi.getProfile();
+        if (!alive || !res.isSuccess || !res.data) return;
+        const fullName = [res.data.firstName, res.data.lastName].filter(Boolean).join(" ").trim();
+        setCurrentUserDisplayName(fullName);
+      } catch {
+        if (alive) setCurrentUserDisplayName("");
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     setPage(1);
-  }, [filters, role]);
+  }, [filters]);
 
   useEffect(() => {
     let alive = true;
@@ -248,8 +299,8 @@ export default function WalletPageClean() {
         const [balanceRes, txRes, summaryRes, trendRes, gamesRes, exchangeRateRes] = await Promise.all([
           orbitCoinApi.getBalance(),
           orbitCoinApi.getTransactionHistory(query),
-          orbitCoinApi.getDashboardSummary({ role, from: query.from, to: query.to }),
-          orbitCoinApi.getDashboardTrend({ role: "Buyer", bucket: "Day", from: query.from, to: query.to }),
+          orbitCoinApi.getDashboardSummary({ role: dashboardRole, from: query.from, to: query.to }),
+          orbitCoinApi.getDashboardTrend({ role: dashboardRole, bucket: "Day", from: query.from, to: query.to }),
           orbitCoinApi.getDashboardGames({ from: query.from, to: query.to, pageNumber: 1, pageSize: 100 }),
           orbitCoinApi.getExchangeRate(),
         ]);
@@ -280,13 +331,13 @@ export default function WalletPageClean() {
     return () => {
       alive = false;
     };
-  }, [query, role, page]);
+  }, [query, dashboardRole, page]);
 
   useEffect(() => {
-    if (role === "Buyer" && activeTab === "revenue") {
+    if (!isCreator && activeTab === "revenue") {
       setActiveTab("overview");
     }
-  }, [role, activeTab]);
+  }, [isCreator, activeTab]);
 
   useEffect(() => {
     if (!isMobile || !hasMore || loadingMore || loading) return;
@@ -309,9 +360,59 @@ export default function WalletPageClean() {
     }
     emitApiToast({ type: "warning", message: locale === "vi" ? "Đang chuẩn bị file CSV..." : "Preparing CSV export..." });
     window.setTimeout(() => {
-      const header = ["Game Title", "Gross", "Platform Fee", "Net", "Buyers"];
-      const body = games.map((g) => [g.gameTitle, g.gross.toFixed(0), g.fee.toFixed(0), g.net.toFixed(0), g.buyersCount.toString()]);
-      const csv = [header, ...body].map((line) => line.join(",")).join("\n");
+      const generatedAt = new Date().toISOString();
+      const totals = buildCreatorTotals(games);
+      const reportMeta = [
+        ["Report Name", locale === "vi" ? "Bao cao doanh thu Creator" : "Creator Revenue Report"],
+        ["Generated At (UTC)", generatedAt],
+        ["Period From", filters.from],
+        ["Period To", filters.to],
+        ["Exchange Rate (VND/OC)", exchangeRate.toFixed(2)],
+        ["Total Games", String(games.length)],
+        ["Total Gross (VND)", Math.round(totals.gross).toString()],
+        ["Total Fee (VND)", Math.round(totals.fee).toString()],
+        ["Total Net (VND)", Math.round(totals.net).toString()],
+        ["Total Orders", String(totals.orders)],
+        ["Total Buyers", String(totals.buyers)],
+      ];
+      const header = [
+        "Rank",
+        "Game ID",
+        "Game Title",
+        "Buyers",
+        "Orders",
+        "Pending Orders",
+        "Refunded Orders",
+        "Refund Rate (%)",
+        "Gross (VND)",
+        "Fee (VND)",
+        "Net (VND)",
+        "AOV (VND)",
+        "Take Rate (%)",
+        "Last Sold At",
+      ];
+      const body = games.map((g, idx) => [
+        String(idx + 1),
+        g.gameId,
+        g.gameTitle,
+        g.buyersCount.toString(),
+        g.ordersCount.toString(),
+        g.pendingOrdersCount.toString(),
+        g.refundedOrdersCount.toString(),
+        (g.ordersCount > 0 ? (g.refundedOrdersCount / g.ordersCount) * 100 : 0).toFixed(2),
+        Math.round(g.gross).toString(),
+        Math.round(g.fee).toString(),
+        Math.round(g.net).toString(),
+        Math.round(g.averageOrderValue).toString(),
+        (g.gross > 0 ? (g.fee / g.gross) * 100 : 0).toFixed(2),
+        g.lastSoldAt ? new Date(g.lastSoldAt).toISOString() : "",
+      ]);
+      const csv = [
+        ...reportMeta.map((row) => row.map(csvEscape).join(",")),
+        "",
+        header.map(csvEscape).join(","),
+        ...body.map((line) => line.map(csvEscape).join(",")),
+      ].join("\n");
       downloadBlob(csv, "text/csv;charset=utf-8", `creator-wallet-${filters.from}-${filters.to}.csv`);
       emitApiToast({ type: "success", message: locale === "vi" ? "CSV đã sẵn sàng." : "CSV export is ready." });
     }, 1000);
@@ -326,7 +427,7 @@ export default function WalletPageClean() {
     window.setTimeout(() => {
       const report = window.open("", "_blank", "width=1024,height=768");
       if (!report) return;
-      report.document.write(buildPrintFriendlyReport(games, filters.from, filters.to, locale));
+      report.document.write(buildPrintFriendlyReport(games, filters.from, filters.to, locale, exchangeRate));
       report.document.close();
       report.focus();
       report.print();
@@ -334,16 +435,23 @@ export default function WalletPageClean() {
     }, 1100);
   };
 
+  const handleDownloadTransactionPdf = (tx: OrbitCoinTransaction) => {
+    const report = window.open("", "_blank", "width=980,height=760");
+    if (!report) return;
+    report.document.write(
+      buildTransactionInvoiceHtml(tx, locale, t, exchangeRate, displayCurrency, currentUserDisplayName),
+    );
+    report.document.close();
+    report.focus();
+    report.print();
+  };
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <div>
           <h1 style={styles.title}>{t.title}</h1>
-          <div style={styles.sub}>{role === "Buyer" ? t.buyerSubtitle : t.creatorSubtitle}</div>
-        </div>
-        <div style={styles.switchWrap}>
-          <button style={roleBtn(role === "Buyer")} onClick={() => switchRole("Buyer", navigate)}>{t.buyer}</button>
-          <button style={roleBtn(role === "Creator")} onClick={() => switchRole("Creator", navigate)}>{t.creator}</button>
+          <div style={styles.sub}>{activeTab === "revenue" ? t.creatorSubtitle : t.buyerSubtitle}</div>
         </div>
       </header>
 
@@ -396,7 +504,7 @@ export default function WalletPageClean() {
       <section style={styles.tabs}>
         <button style={tabBtn(activeTab === "overview")} onClick={() => setActiveTab("overview")}>{t.overviewTab}</button>
         <button style={tabBtn(activeTab === "transactions")} onClick={() => setActiveTab("transactions")}>{t.transactions}</button>
-        {role === "Creator" ? (
+        {isCreator ? (
           <button style={tabBtn(activeTab === "revenue")} onClick={() => setActiveTab("revenue")}>{t.creatorGames}</button>
         ) : null}
       </section>
@@ -471,7 +579,7 @@ export default function WalletPageClean() {
         </section>
       ) : null}
 
-      {role === "Creator" && activeTab === "revenue" ? (
+      {isCreator && activeTab === "revenue" ? (
         <section style={styles.panel}>
           <div style={styles.rowHead}>
             <h3 style={styles.panelTitle}>{t.creatorGames}</h3>
@@ -501,11 +609,18 @@ export default function WalletPageClean() {
                     <th style={{ ...styles.th, textAlign: "right" }}>{`${t.net} (${displayCurrency})`}</th>
                     <th style={{ ...styles.th, textAlign: "right" }}>{`${t.avgOrder} (${displayCurrency})`}</th>
                     <th style={styles.th}>{t.lastSold}</th>
+                    <th style={styles.th}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {games.map((g) => (
-                    <tr key={g.gameId} style={styles.tr} onClick={() => setSelectedGame(g)}>
+                    <tr
+                      key={g.gameId}
+                      style={styles.tr}
+                      onClick={() =>
+                        navigate(`/app/wallet/revenue/${g.gameId}?from=${filters.from}&to=${filters.to}`)
+                      }
+                    >
                       <td style={styles.td}>{g.gameTitle}</td>
                       <td style={styles.td}>{g.buyersCount}</td>
                       <td style={styles.td}>{g.ordersCount}</td>
@@ -516,6 +631,9 @@ export default function WalletPageClean() {
                       <td style={{ ...styles.td, textAlign: "right" }}>{formatDisplayMoney(g.net, exchangeRate, displayCurrency)}</td>
                       <td style={{ ...styles.td, textAlign: "right" }}>{formatDisplayMoney(g.averageOrderValue, exchangeRate, displayCurrency)}</td>
                       <td style={styles.td}>{g.lastSoldAt ? new Date(g.lastSoldAt).toLocaleString() : t.statusUnavailable}</td>
+                      <td style={styles.td}>
+                        <button style={styles.btn}>{t.viewAnalytics}</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -528,57 +646,119 @@ export default function WalletPageClean() {
       {selectedTx ? (
         <aside style={styles.drawer}>
           <div style={styles.rowHead}>
-            <strong>{t.drawerTitle}</strong>
-            <button style={styles.btn} onClick={() => setSelectedTx(null)}>{t.close}</button>
+            <strong>{t.invoice}</strong>
+            <div style={styles.switchWrap}>
+              <button style={styles.btn} onClick={() => handleDownloadTransactionPdf(selectedTx)}>{t.downloadPdf}</button>
+              <button style={styles.btn} onClick={() => setSelectedTx(null)}>{t.close}</button>
+            </div>
           </div>
-          <DrawerLine label="ID" value={selectedTx.id} />
-          <DrawerLine label={t.status} value={resolveTxStatus(selectedTx, locale, t.statusUnavailable)} />
-          <DrawerLine label={t.direction} value={selectedTx.direction ?? t.statusUnavailable} />
-          <DrawerLine label={t.category} value={selectedTx.category ?? t.statusUnavailable} />
-          <DrawerLine label={t.counterparty} value={selectedTx.counterpartyName || t.statusUnavailable} />
-          <DrawerLine label={`${t.amount} (${displayCurrency})`} value={formatTxAmount(selectedTx, exchangeRate, displayCurrency)} />
-          <DrawerLine label={t.time} value={new Date(selectedTx.createdAt).toLocaleString()} />
-        </aside>
-      ) : null}
-      {selectedGame ? (
-        <aside style={styles.drawer}>
-          <div style={styles.rowHead}>
-            <strong>{t.gameDetailTitle}</strong>
-            <button style={styles.btn} onClick={() => setSelectedGame(null)}>{t.close}</button>
-          </div>
-          <DrawerLine label={t.game} value={selectedGame.gameTitle} />
-          <DrawerLine label={t.buyers} value={String(selectedGame.buyersCount)} />
-          <DrawerLine label={t.orders} value={String(selectedGame.ordersCount)} />
-          <DrawerLine label={t.pending} value={String(selectedGame.pendingOrdersCount)} />
-          <DrawerLine label={t.refunded} value={String(selectedGame.refundedOrdersCount)} />
-          <DrawerLine label={`${t.gross} (${displayCurrency})`} value={formatDisplayMoney(selectedGame.gross, exchangeRate, displayCurrency)} />
-          <DrawerLine label={`${t.fee} (${displayCurrency})`} value={formatDisplayMoney(selectedGame.fee, exchangeRate, displayCurrency)} />
-          <DrawerLine label={`${t.net} (${displayCurrency})`} value={formatDisplayMoney(selectedGame.net, exchangeRate, displayCurrency)} />
-          <DrawerLine label={`${t.avgOrder} (${displayCurrency})`} value={formatDisplayMoney(selectedGame.averageOrderValue, exchangeRate, displayCurrency)} />
-          <DrawerLine label={t.lastSold} value={selectedGame.lastSoldAt ? new Date(selectedGame.lastSoldAt).toLocaleString() : t.statusUnavailable} />
+          <TransactionInvoice
+            tx={selectedTx}
+            locale={locale}
+            t={t}
+            exchangeRate={exchangeRate}
+            displayCurrency={displayCurrency}
+            currentUserDisplayName={currentUserDisplayName}
+          />
         </aside>
       ) : null}
     </div>
   );
 }
 
-function DrawerLine({ label, value }: { label: string; value: string }) {
-  return <div style={styles.drawerLine}><span>{label}</span><strong>{value}</strong></div>;
+function TransactionInvoice({
+  tx,
+  locale,
+  t,
+  exchangeRate,
+  displayCurrency,
+  currentUserDisplayName,
+}: {
+  tx: OrbitCoinTransaction;
+  locale: "en" | "vi";
+  t: (typeof dict)["en"] | (typeof dict)["vi"];
+  exchangeRate: number;
+  displayCurrency: DisplayCurrency;
+  currentUserDisplayName: string;
+}) {
+  const issuedAt = new Date(tx.createdAt).toLocaleString();
+  const unitPrice = Math.abs(tx.amountVnd ?? tx.amountVND ?? Math.round(Math.abs(tx.amount) * exchangeRate));
+  const qty = 1;
+  const amountText = formatTxAmount(tx, exchangeRate, displayCurrency);
+  const counterparty = tx.counterpartyName || t.statusUnavailable;
+  const currentAccount = currentUserDisplayName || (locale === "vi" ? "Bạn" : "You");
+  const normalizedCounterparty = counterparty.trim().toLowerCase();
+  const isSystemCounterparty = normalizedCounterparty === "system";
+  const buyerName = tx.direction === "Out" ? currentAccount : counterparty;
+  const sellerName = tx.direction === "Out" ? counterparty : currentAccount;
+  const showPartnerRow = !isSystemCounterparty
+    && normalizedCounterparty !== buyerName.trim().toLowerCase()
+    && normalizedCounterparty !== sellerName.trim().toLowerCase();
+  return (
+    <div style={styles.invoicePaper}>
+      <div style={styles.invoiceTop}>
+        <div>
+          <div style={styles.invoiceBrand}>QUACKORBIT TECHNOLOGY</div>
+          <div style={styles.invoiceMeta}>Tax code: 1234567890</div>
+          <div style={styles.invoiceMeta}>Address: Ho Chi Minh City, Vietnam</div>
+          <div style={styles.invoiceMeta}>Email: contact@quackorbit.vn</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={styles.invoiceDocTitle}>{t.invoice.toUpperCase()}</div>
+          <div style={styles.invoiceMeta}>{t.invoiceNo}: {tx.id.slice(0, 8).toUpperCase()}</div>
+          <div style={styles.invoiceMeta}>{t.issuedAt}: {issuedAt}</div>
+          <div style={styles.invoiceMeta}>{t.status}: {resolveTxStatus(tx, locale, t.statusUnavailable)}</div>
+        </div>
+      </div>
+      {isSystemCounterparty ? (
+        <div style={styles.invoicePartyRow}>
+          <div><strong>{t.accountHolder}:</strong> {currentAccount}</div>
+          <div><strong>{t.platformLabel}:</strong> QuackOrbit Platform</div>
+        </div>
+      ) : (
+        <>
+          <div style={styles.invoicePartyRow}>
+            <div><strong>{t.buyerLabel}:</strong> {buyerName}</div>
+            <div><strong>{t.sellerLabel}:</strong> {sellerName}</div>
+          </div>
+          {showPartnerRow ? <div style={styles.invoiceMeta}><strong>{t.partnerLabel}:</strong> {counterparty}</div> : null}
+        </>
+      )}
+      <table style={styles.invoiceTable}>
+        <thead>
+          <tr>
+            <th style={styles.invoiceTh}>No.</th>
+            <th style={styles.invoiceTh}>Description</th>
+            <th style={styles.invoiceTh}>Qty</th>
+            <th style={styles.invoiceTh}>Unit Price (VND)</th>
+            <th style={styles.invoiceTh}>Amount ({displayCurrency})</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={styles.invoiceTd}>1</td>
+            <td style={styles.invoiceTd}>{tx.note || tx.category || t.transaction}</td>
+            <td style={styles.invoiceTd}>{qty}</td>
+            <td style={styles.invoiceTd}>{Math.round(unitPrice).toLocaleString("en-US")}</td>
+            <td style={styles.invoiceTd}>{amountText}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={styles.invoiceFooter}>
+        <div><strong>{t.direction}:</strong> {tx.direction ?? t.statusUnavailable}</div>
+        <div><strong>{t.category}:</strong> {tx.category ?? t.statusUnavailable}</div>
+        <div><strong>{t.note}:</strong> {tx.note || t.statusUnavailable}</div>
+      </div>
+      <div style={styles.invoiceSignRow}>
+        <div style={styles.invoiceSignCol}><strong>{t.signedBuyer}</strong></div>
+        <div style={styles.invoiceSignCol}><strong>{t.signedSeller}</strong></div>
+      </div>
+    </div>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
   return <div style={styles.metric}><div style={styles.sub}>{label}</div><div style={styles.metricValue}>{value}</div></div>;
-}
-
-function getInitialRole(pathname: string): WalletRole {
-  if (pathname.endsWith("/wallet/creator")) return "Creator";
-  if (pathname.endsWith("/wallet/buyer")) return "Buyer";
-  const stored = localStorage.getItem(ROLE_KEY);
-  return stored === "Creator" ? "Creator" : "Buyer";
-}
-
-function switchRole(role: WalletRole, navigate: ReturnType<typeof useNavigate>) {
-  navigate(role === "Creator" ? "/app/wallet/creator" : "/app/wallet/buyer");
 }
 
 function defaultFilters(): WalletFilters {
@@ -587,7 +767,6 @@ function defaultFilters(): WalletFilters {
 }
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function fmtDate(d: Date) { return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
-function roleBtn(active: boolean): CSSProperties { return { ...styles.btn, borderColor: active ? "var(--primary)" : "var(--border)", color: active ? "var(--primary)" : "var(--text)" }; }
 function tabBtn(active: boolean): CSSProperties { return { ...styles.btn, borderColor: active ? "var(--primary)" : "var(--border)", color: active ? "var(--primary)" : "var(--text)", fontWeight: active ? 700 : 500 }; }
 function fmtVnd(amount: number) { return `${Math.round(amount).toLocaleString("en-US")} VND`; }
 function fmtOc(amount: number) { return `${Number(amount.toFixed(2)).toLocaleString("en-US")} OC`; }
@@ -635,12 +814,173 @@ function downloadBlob(content: string, type: string, filename: string) {
   anchor.remove();
   URL.revokeObjectURL(href);
 }
-function buildPrintFriendlyReport(games: WalletDashboardGameItem[], from: string, to: string, locale: "en" | "vi") {
+function buildPrintFriendlyReport(
+  games: WalletDashboardGameItem[],
+  from: string,
+  to: string,
+  locale: "en" | "vi",
+  exchangeRate: number,
+) {
   const title = locale === "vi" ? "Báo cáo doanh thu Creator" : "Creator revenue report";
+  const generatedAt = new Date().toISOString();
+  const totals = buildCreatorTotals(games);
   const rows = games
-    .map((g) => `<tr><td>${g.gameTitle}</td><td>${Math.round(g.gross).toLocaleString("en-US")}</td><td>${Math.round(g.fee).toLocaleString("en-US")}</td><td>${Math.round(g.net).toLocaleString("en-US")}</td><td>${g.buyersCount}</td></tr>`)
+    .map((g, index) => {
+      const refundRate = g.ordersCount > 0 ? ((g.refundedOrdersCount / g.ordersCount) * 100).toFixed(2) : "0.00";
+      const takeRate = g.gross > 0 ? ((g.fee / g.gross) * 100).toFixed(2) : "0.00";
+      return `<tr>
+        <td>${index + 1}</td>
+        <td>${g.gameTitle}</td>
+        <td>${g.buyersCount}</td>
+        <td>${g.ordersCount}</td>
+        <td>${g.pendingOrdersCount}</td>
+        <td>${g.refundedOrdersCount}</td>
+        <td>${refundRate}%</td>
+        <td>${Math.round(g.gross).toLocaleString("en-US")}</td>
+        <td>${Math.round(g.fee).toLocaleString("en-US")}</td>
+        <td>${Math.round(g.net).toLocaleString("en-US")}</td>
+        <td>${Math.round(g.averageOrderValue).toLocaleString("en-US")}</td>
+        <td>${takeRate}%</td>
+        <td>${g.lastSoldAt ? new Date(g.lastSoldAt).toLocaleString() : "-"}</td>
+      </tr>`;
+    })
     .join("");
-  return `<!doctype html><html><head><title>${title}</title><style>body{font-family:Arial;padding:24px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #bbb;padding:8px;text-align:left;}h1{margin:0 0 8px;}small{color:#666;}</style></head><body><h1>QuackOrbit</h1><h2>${title}</h2><small>${from} - ${to}</small><table><thead><tr><th>Game</th><th>Gross</th><th>Fee</th><th>Net</th><th>Buyers</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  return `<!doctype html><html><head><title>${title}</title><style>
+    body{font-family:Arial;padding:24px;color:#0f172a;}
+    h1{margin:0 0 6px;}
+    h2{margin:0 0 10px;color:#334155;}
+    .meta{font-size:13px;color:#475569;line-height:1.6;margin-bottom:10px;}
+    .kpi{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:8px;margin:10px 0 14px;}
+    .kpi div{border:1px solid #cbd5e1;border-radius:8px;padding:8px;background:#f8fafc;font-size:13px;}
+    table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #94a3b8;padding:7px 8px;text-align:left;font-size:12px;}
+    th{background:#e2e8f0;}
+    .foot{margin-top:10px;font-size:11px;color:#64748b;}
+  </style></head><body>
+    <h1>QuackOrbit</h1>
+    <h2>${title}</h2>
+    <div class="meta">
+      <div><strong>Period:</strong> ${from} - ${to}</div>
+      <div><strong>Generated At (UTC):</strong> ${generatedAt}</div>
+      <div><strong>Exchange Rate:</strong> 1 OC = ${Math.round(exchangeRate).toLocaleString("en-US")} VND</div>
+    </div>
+    <div class="kpi">
+      <div><strong>Total Games:</strong> ${games.length}</div>
+      <div><strong>Total Gross (VND):</strong> ${Math.round(totals.gross).toLocaleString("en-US")}</div>
+      <div><strong>Total Fee (VND):</strong> ${Math.round(totals.fee).toLocaleString("en-US")}</div>
+      <div><strong>Total Net (VND):</strong> ${Math.round(totals.net).toLocaleString("en-US")}</div>
+      <div><strong>Total Orders:</strong> ${totals.orders.toLocaleString("en-US")}</div>
+      <div><strong>Total Buyers:</strong> ${totals.buyers.toLocaleString("en-US")}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Game</th><th>Buyers</th><th>Orders</th><th>Pending</th><th>Refunded</th><th>Refund %</th>
+          <th>Gross</th><th>Fee</th><th>Net</th><th>AOV</th><th>Take rate %</th><th>Last sold</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="foot">Internal analytics export - QuackOrbit Creator Wallet</div>
+  </body></html>`;
+}
+
+function buildCreatorTotals(games: WalletDashboardGameItem[]) {
+  return games.reduce(
+    (acc, g) => {
+      acc.gross += g.gross;
+      acc.fee += g.fee;
+      acc.net += g.net;
+      acc.orders += g.ordersCount;
+      acc.buyers += g.buyersCount;
+      return acc;
+    },
+    { gross: 0, fee: 0, net: 0, orders: 0, buyers: 0 },
+  );
+}
+
+function csvEscape(value: string) {
+  const escaped = value.replaceAll("\"", "\"\"");
+  return `"${escaped}"`;
+}
+
+function buildTransactionInvoiceHtml(
+  tx: OrbitCoinTransaction,
+  locale: "en" | "vi",
+  t: (typeof dict)["en"] | (typeof dict)["vi"],
+  exchangeRate: number,
+  displayCurrency: DisplayCurrency,
+  currentUserDisplayName: string,
+) {
+  const issuedAt = new Date(tx.createdAt).toLocaleString();
+  const safe = (v: string) => v.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const amountText = formatTxAmount(tx, exchangeRate, displayCurrency);
+  const unitPrice = Math.round(Math.abs(tx.amountVnd ?? tx.amountVND ?? Math.round(Math.abs(tx.amount) * exchangeRate)));
+  const counterparty = tx.counterpartyName || t.statusUnavailable;
+  const currentAccount = currentUserDisplayName || (locale === "vi" ? "Bạn" : "You");
+  const normalizedCounterparty = counterparty.trim().toLowerCase();
+  const isSystemCounterparty = normalizedCounterparty === "system";
+  const buyerName = tx.direction === "Out" ? currentAccount : counterparty;
+  const sellerName = tx.direction === "Out" ? counterparty : currentAccount;
+  const showPartnerRow = !isSystemCounterparty
+    && normalizedCounterparty !== buyerName.trim().toLowerCase()
+    && normalizedCounterparty !== sellerName.trim().toLowerCase();
+  return `<!doctype html><html><head><title>${safe(t.invoice)}</title><style>
+  body{font-family:Arial,sans-serif;padding:24px;color:#0f172a;}
+  .top{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid #cbd5e1;padding-bottom:12px;margin-bottom:12px;}
+  .brand{font-weight:800;font-size:18px;}
+  .meta{font-size:13px;color:#334155;line-height:1.5;}
+  .title{font-size:26px;font-weight:900;color:#b91c1c;letter-spacing:0.3px;}
+  .party{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;margin-bottom:10px;}
+  table{border-collapse:collapse;width:100%;}
+  th,td{border:1px solid #94a3b8;padding:9px 10px;font-size:13px;}
+  th{background:#f1f5f9;text-align:left;}
+  .sum{margin-top:12px;font-size:13px;line-height:1.6;}
+  </style></head><body>
+  <div class="top">
+    <div>
+      <div class="brand">QUACKORBIT TECHNOLOGY</div>
+      <div class="meta">Tax code: 1234567890</div>
+      <div class="meta">Address: Ho Chi Minh City, Vietnam</div>
+      <div class="meta">Email: contact@quackorbit.vn</div>
+    </div>
+    <div style="text-align:right">
+      <div class="title">${safe(t.invoice.toUpperCase())}</div>
+      <div class="meta">${safe(t.invoiceNo)}: ${safe(tx.id.slice(0, 8).toUpperCase())}</div>
+      <div class="meta">${safe(t.issuedAt)}: ${safe(issuedAt)}</div>
+      <div class="meta">${safe(t.status)}: ${safe(resolveTxStatus(tx, locale, t.statusUnavailable))}</div>
+    </div>
+  </div>
+  ${
+    isSystemCounterparty
+      ? `<div class="party">
+    <div><strong>${safe(t.accountHolder)}:</strong> ${safe(currentAccount)}</div>
+    <div><strong>${safe(t.platformLabel)}:</strong> QuackOrbit Platform</div>
+  </div>`
+      : `<div class="party">
+    <div><strong>${safe(t.buyerLabel)}:</strong> ${safe(buyerName)}</div>
+    <div><strong>${safe(t.sellerLabel)}:</strong> ${safe(sellerName)}</div>
+  </div>
+  ${
+    showPartnerRow
+      ? `<div class="meta" style="margin-bottom:8px"><strong>${safe(t.partnerLabel)}:</strong> ${safe(counterparty)}</div>`
+      : ""
+  }`
+  }
+  <table>
+    <thead><tr><th>No.</th><th>Description</th><th>Qty</th><th>Unit Price (VND)</th><th>Amount (${safe(displayCurrency)})</th></tr></thead>
+    <tbody><tr><td>1</td><td>${safe(tx.note || tx.category || t.transaction)}</td><td>1</td><td>${unitPrice.toLocaleString("en-US")}</td><td>${safe(amountText)}</td></tr></tbody>
+  </table>
+  <div class="sum">
+    <div><strong>${safe(t.direction)}:</strong> ${safe(tx.direction ?? t.statusUnavailable)}</div>
+    <div><strong>${safe(t.category)}:</strong> ${safe(tx.category ?? t.statusUnavailable)}</div>
+    <div><strong>${safe(t.note)}:</strong> ${safe(tx.note || t.statusUnavailable)}</div>
+  </div>
+  <div class="party" style="margin-top:18px">
+    <div><strong>${safe(t.signedBuyer)}</strong></div>
+    <div><strong>${safe(t.signedSeller)}</strong></div>
+  </div>
+  </body></html>`;
 }
 
 const styles: Record<string, CSSProperties> = {
@@ -670,6 +1010,17 @@ const styles: Record<string, CSSProperties> = {
   th: { textAlign: "left", fontSize: 12, color: "var(--muted)", borderBottom: "1px solid var(--border)", padding: "10px 12px", whiteSpace: "nowrap" },
   td: { padding: "10px 12px", borderBottom: "1px solid var(--border)", fontSize: 13, whiteSpace: "nowrap" },
   tr: { cursor: "pointer" },
-  drawer: { position: "fixed", right: 24, top: 100, width: 360, border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 12, display: "grid", gap: 8, zIndex: 80 },
-  drawerLine: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 },
+  drawer: { position: "fixed", right: 24, top: 58, width: 760, maxHeight: "88vh", overflowY: "auto", border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", padding: 16, display: "grid", gap: 10, zIndex: 80, boxShadow: "0 20px 40px rgba(2,6,23,0.22)" },
+  invoicePaper: { border: "1px solid #94a3b8", borderRadius: 10, background: "#fff", color: "#0f172a", padding: 14, display: "grid", gap: 10 },
+  invoiceTop: { display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #cbd5e1", paddingBottom: 8 },
+  invoiceBrand: { fontSize: 18, fontWeight: 900, letterSpacing: 0.4 },
+  invoiceDocTitle: { fontSize: 26, fontWeight: 900, color: "#b91c1c", lineHeight: 1.1 },
+  invoiceMeta: { fontSize: 13, lineHeight: 1.45, color: "#334155" },
+  invoicePartyRow: { display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 },
+  invoiceTable: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
+  invoiceTh: { border: "1px solid #94a3b8", background: "#f1f5f9", padding: "8px 9px", textAlign: "left" },
+  invoiceTd: { border: "1px solid #94a3b8", padding: "8px 9px", verticalAlign: "top" },
+  invoiceFooter: { borderTop: "1px solid #cbd5e1", paddingTop: 8, fontSize: 13, lineHeight: 1.6 },
+  invoiceSignRow: { display: "flex", justifyContent: "space-between", marginTop: 14, borderTop: "1px dashed #cbd5e1", paddingTop: 10 },
+  invoiceSignCol: { width: "46%", textAlign: "center", minHeight: 48, display: "grid", alignItems: "start" },
 };

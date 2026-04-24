@@ -29,6 +29,7 @@ export const ROUTES = {
   LEARNER_LEADERBOARD: "/app/leaderboard",
   LEARNER_NOTIFICATIONS: "/app/notifications",
   LEARNER_WALLET: "/app/wallet",
+  LEARNER_WALLET_REVENUE_DETAIL: (gameId: string) => `/app/wallet/revenue/${gameId}`,
   LEARNER_WALLET_PAYMENT_SUCCESS: "/app/wallet/payment-success",
   LEARNER_WALLET_PAYMENT_FAILURE: "/app/wallet/payment-failure",
   LEARNER_MAPS: "/app/my-games",
