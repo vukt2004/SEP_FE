@@ -221,6 +221,7 @@ export const RevenuePage: React.FC = () => {
               style={inputStyle}
             >
               <option value="Day">{t("cmsRevenue.groupBy.day")}</option>
+              <option value="Week">Week</option>
               <option value="Month">{t("cmsRevenue.groupBy.month")}</option>
               <option value="Year">{t("cmsRevenue.groupBy.year")}</option>
             </select>

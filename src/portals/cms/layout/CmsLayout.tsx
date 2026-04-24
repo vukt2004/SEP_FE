@@ -60,6 +60,19 @@ const CmsLayout: React.FC = () => {
       roles: ["admin"],
     },
     {
+      path: ROUTES.CMS_FINANCE_DASHBOARD,
+      labelKey: "cmsLayout.nav.financeDashboard",
+      icon: BarChart3,
+      roles: ["admin"],
+    },
+    {
+      path: ROUTES.CMS_ORBITCOIN,
+      labelKey: "cmsLayout.nav.orbitcoin",
+      icon: Coins,
+      roles: ["admin"],
+    },
+    { path: ROUTES.CMS_USERS, labelKey: "cmsLayout.nav.users", icon: Users, roles: ["admin"] },
+    {
       path: ROUTES.CMS_MAPS,
       labelKey: "cmsLayout.nav.games",
       icon: Map,
@@ -72,16 +85,9 @@ const CmsLayout: React.FC = () => {
       roles: ["admin"],
     },
     {
-      path: ROUTES.CMS_ORBITCOIN,
-      labelKey: "cmsLayout.nav.orbitcoin",
-      icon: Coins,
-      roles: ["admin"],
-    },
-    { path: ROUTES.CMS_USERS, labelKey: "cmsLayout.nav.users", icon: Users, roles: ["admin"] },
-    {
-      path: ROUTES.CMS_SYSTEM_ANNOUNCEMENT,
-      labelKey: "cmsLayout.nav.announcement",
-      icon: Megaphone,
+      path: ROUTES.CMS_PACKAGES,
+      labelKey: "cmsLayout.nav.packages",
+      icon: Package,
       roles: ["admin"],
     },
     {
@@ -89,18 +95,6 @@ const CmsLayout: React.FC = () => {
       labelKey: "cmsLayout.nav.reports",
       icon: Flag,
       roles: ["admin", "moderator"],
-    },
-    {
-      path: ROUTES.CMS_REVENUE,
-      labelKey: "cmsLayout.nav.revenue",
-      icon: BarChart3,
-      roles: ["admin"],
-    },
-    {
-      path: ROUTES.CMS_PACKAGES,
-      labelKey: "cmsLayout.nav.packages",
-      icon: Package,
-      roles: ["admin"],
     },
     {
       path: ROUTES.CMS_COMPLAINTS,
@@ -112,6 +106,12 @@ const CmsLayout: React.FC = () => {
       path: ROUTES.CMS_COMPLAINT_CATEGORIES,
       labelKey: "cmsLayout.nav.complaintCategories",
       icon: Tags,
+      roles: ["admin"],
+    },
+    {
+      path: ROUTES.CMS_SYSTEM_ANNOUNCEMENT,
+      labelKey: "cmsLayout.nav.announcement",
+      icon: Megaphone,
       roles: ["admin"],
     },
   ];
