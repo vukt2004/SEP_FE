@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Info,
 } from "lucide-react";
 import type { MapData } from "../../shared/types/MapSchema";
 import type { GameType } from "../../shared/types/GameType";
@@ -538,6 +539,7 @@ export function MapEditorControls({
 }: MapEditorControlsProps) {
   const navigate = useNavigate();
   const [showResizeDialog, setShowResizeDialog] = useState(false);
+  const [showLayerInfoModal, setShowLayerInfoModal] = useState(false);
   const [showMapInfoModal, setShowMapInfoModal] = useState(false);
   const [showCatalogDraftPreview, setShowCatalogDraftPreview] = useState(false);
   const [catalogSaveMode, setCatalogSaveMode] = useState<"overwrite" | "newListing">("overwrite");
@@ -2240,9 +2242,31 @@ export function MapEditorControls({
                     </div>
 
                     <div style={styles.section}>
-                      <h3 style={styles.sectionTitle}>
+                      <h3 style={{ ...styles.sectionTitle, display: "flex", alignItems: "center", gap: "6px" }}>
                         <Layers size={16} />{" "}
                         {tt("mapEditorLayerVisibilityTitle", "Layer Visibility")}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowLayerInfoModal(true);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: "2px",
+                            cursor: "pointer",
+                            color: "var(--text-2)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "50%",
+                            marginLeft: "2px",
+                          }}
+                          title={tt("mapEditorLayerInfoTitle", "Layer Information")}
+                        >
+                          <Info size={14} />
+                        </button>
                       </h3>
                       {editorStore ? (
                         <LayerPanel store={editorStore} hideTitle embedded />
@@ -3480,6 +3504,73 @@ export function MapEditorControls({
               </div>
             )}
         </>
+      )}
+
+      {/* Layer Info Dialog */}
+      {showLayerInfoModal && (
+        <div style={styles.modal} onClick={() => setShowLayerInfoModal(false)}>
+          <div style={{ ...styles.modalContent, maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0, fontSize: "18px", color: "var(--text)" }}>
+                {tt("mapEditorLayerInfoTitle", "Layer Information")}
+              </h3>
+              <button
+                onClick={() => setShowLayerInfoModal(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", padding: 0 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#6366f1" }} />
+                  <strong style={{ color: "var(--text)", fontSize: "14px" }}>{tt("mapEditorLayerBackground", "Background")}</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                  {tt("mapEditorLayerInfoBackgroundDesc", "The decorative background layer that sits behind everything. It has no physical collision. Used for skies, distant mountains, or wallpaper.")}
+                </p>
+              </div>
+
+              <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#22c55e" }} />
+                  <strong style={{ color: "var(--text)", fontSize: "14px" }}>{tt("mapEditorLayerGround", "Ground")}</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                  {tt("mapEditorLayerInfoGroundDesc", "The primary flooring layer where characters and objects can be placed. This defines the main walkable surfaces.")}
+                </p>
+              </div>
+
+              <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#f59e0b" }} />
+                  <strong style={{ color: "var(--text)", fontSize: "14px" }}>{tt("mapEditorLayerForeground", "Foreground")}</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                  {tt("mapEditorLayerInfoForegroundDesc", "Decorative elements that render in front of the character and other objects. Used for overlapping elements like grass or front walls.")}
+                </p>
+              </div>
+
+              <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#ef4444" }} />
+                  <strong style={{ color: "var(--text)", fontSize: "14px" }}>{tt("mapEditorLayerCollision", "Collision")}</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
+                  {tt("mapEditorLayerInfoCollisionDesc", "Invisible walls and solid boundaries that block character movement. Use this to enclose areas or block paths without visible tiles.")}
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end" }}>
+              <button style={styles.actionButton} onClick={() => setShowLayerInfoModal(false)}>
+                {tt("mapEditorClose", "Close")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Resize Dialog */}
