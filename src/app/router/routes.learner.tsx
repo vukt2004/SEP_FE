@@ -12,7 +12,10 @@ const LearnerLayout = React.lazy(() => import("@/portals/learner/layout/LearnerL
 //const LearnerHomePage = React.lazy(() => import("@/portals/learner/pages/HomePage"));
 const LearnerMapsBrowsePage = React.lazy(() => import("@/portals/learner/pages/MapsPage"));
 const LearnerPackagesPage = React.lazy(() => import("@/portals/learner/pages/PackagesPage"));
-const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/WalletPage"));
+const LearnerWalletPage = React.lazy(() => import("@/portals/learner/pages/WalletPageClean"));
+const LearnerWalletRevenueDetailPage = React.lazy(
+  () => import("@/portals/learner/pages/WalletRevenueDetailPage"),
+);
 const LearnerPaymentSuccessPage = React.lazy(
   () => import("@/portals/learner/pages/PaymentSuccessPage"),
 );
@@ -96,6 +99,9 @@ export const learnerRoutes: RouteObject = {
     { path: "leaderboard", element: <LearnerLeaderboardPage /> },
     { path: "notifications", element: <LearnerNotificationsPage /> },
     { path: "wallet", element: <LearnerWalletPage /> },
+    { path: "wallet/revenue/:gameId", element: <LearnerWalletRevenueDetailPage /> },
+    { path: "wallet/buyer", element: <LearnerWalletPage /> },
+    { path: "wallet/creator", element: <LearnerWalletPage /> },
     { path: "wallet/payment-success", element: <LearnerPaymentSuccessPage /> },
     { path: "wallet/payment-failure", element: <LearnerPaymentFailurePage /> },
     { path: "games", element: <LearnerMapsBrowsePage /> },

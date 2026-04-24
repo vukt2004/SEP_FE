@@ -1,6 +1,7 @@
 // src/app/router/routes.cms.tsx
 import React from "react";
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 // Guard (cms token + (optionally) role check inside)
 import { RequireCmsAuth } from "@/portals/cms/guards/RequireCmsAuth";
@@ -11,10 +12,10 @@ const CmsLayout = React.lazy(() => import("@/portals/cms/layout/CmsLayout"));
 
 // Pages (cms authenticated)
 const CmsDashboardPage = React.lazy(() => import("@/portals/cms/pages/DashboardPage"));
+const CmsFinanceDashboardPage = React.lazy(() => import("@/portals/cms/pages/FinanceDashboardPage"));
 const CmsUsersPage = React.lazy(() => import("@/portals/cms/pages/UsersPage"));
 const CmsMapsPage = React.lazy(() => import("@/portals/cms/pages/MapsPage"));
 const CmsReportsPage = React.lazy(() => import("@/portals/cms/pages/ReportsPage"));
-const CmsRevenuePage = React.lazy(() => import("@/portals/cms/pages/RevenuePage"));
 const CmsPackagesPage = React.lazy(() => import("@/portals/cms/pages/PackagesPage"));
 const CmsProfilePage = React.lazy(() => import("@/portals/cms/pages/ProfilePage"));
 const CmsSystemAnnouncementPage = React.lazy(
@@ -53,6 +54,14 @@ export const cmsRoutes: RouteObject = {
       element: (
         <RequireCmsRole allowedRoles={["admin"]}>
           <CmsDashboardPage />
+        </RequireCmsRole>
+      ),
+    },
+    {
+      path: "finance-dashboard",
+      element: (
+        <RequireCmsRole allowedRoles={["admin"]}>
+          <CmsFinanceDashboardPage />
         </RequireCmsRole>
       ),
     },
@@ -108,7 +117,7 @@ export const cmsRoutes: RouteObject = {
       path: "revenue",
       element: (
         <RequireCmsRole allowedRoles={["admin"]}>
-          <CmsRevenuePage />
+          <Navigate to="/cms/finance-dashboard?tab=overview" replace />
         </RequireCmsRole>
       ),
     },

@@ -320,6 +320,7 @@ export interface MapInfo {
   tagNames: string[];
   winCondition: number;
   avatarUrl: string | null;
+  gallery?: MapMediaItem[];
   levels?: MapLevelItem[];
   learnedTag?: string[] | string | null;
   learnedTags?: string[] | string | null;

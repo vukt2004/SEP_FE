@@ -6,8 +6,13 @@ export type OrbitCoinBalanceResponse = {
 };
 
 export const CoinTransactionTypeEnum = {
-  Credit: 0,
-  Debit: 1,
+  EarnDeposit: 0,
+  EarnMapSold: 1,
+  SpendMapPurchase: 2,
+  SpendPackagePurchase: 3,
+  SystemFee: 4,
+  Refund: 5,
+  AdminAdjustment: 6,
 } as const;
 
 export type CoinTransactionTypeEnum =
@@ -19,9 +24,18 @@ export type OrbitCoinTransaction = {
   amountVND?: number | null;
   amountVnd?: number | null;
   transactionType: CoinTransactionTypeEnum;
+  direction?: "In" | "Out";
+  category?: string;
   relatedEntityType?: string | null;
   relatedEntityId?: string | null;
+  paymentRecordId?: string | null;
+  gameId?: string | null;
+  packageId?: string | null;
+  counterpartyName?: string | null;
+  grossAmount?: number;
+  netAmount?: number;
   feeAmount: number;
+  status?: string | null;
   balanceAfter?: number | null;
   note?: string | null;
   createdAt: string;
@@ -32,6 +46,96 @@ export type OrbitCoinTransactionHistoryResponse = {
   totalCount: number;
   pageNumber: number;
   pageSize: number;
+  availableStatuses?: string[];
+};
+
+export type ExchangeRate = {
+  id: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  isActive: boolean;
+};
+
+export type WalletDashboardSummary = {
+  role: "Buyer" | "Creator";
+  currency?: "VND";
+  periodFrom: string;
+  periodTo: string;
+  currentBalance: number;
+  currentBalanceVnd?: number;
+  currentBalanceOc?: number;
+  pendingBalance: number;
+  totalIn: number;
+  totalOut: number;
+  netFlow: number;
+  incomeThisMonth: number;
+  spendingThisMonth: number;
+  netProfitThisMonth: number;
+  totalTransactions: number;
+  inflowTransactions: number;
+  outflowTransactions: number;
+  grossRevenue: number;
+  platformFee: number;
+  netRevenue: number;
+  uniqueBuyers: number;
+  unitsSold: number;
+  averageOrderValue: number;
+};
+
+export type WalletDashboardTrendItem = {
+  period: string;
+  inflow: number;
+  outflow: number;
+  net: number;
+  grossRevenue: number;
+  platformFee: number;
+  netRevenue: number;
+};
+
+export type WalletDashboardTrend = {
+  role: "Buyer" | "Creator";
+  bucket: "Day" | "Week" | "Month";
+  items: WalletDashboardTrendItem[];
+};
+
+export type WalletDashboardGameItem = {
+  gameId: string;
+  gameTitle: string;
+  buyersCount: number;
+  ordersCount: number;
+  pendingOrdersCount: number;
+  refundedOrdersCount: number;
+  gross: number;
+  fee: number;
+  net: number;
+  averageOrderValue: number;
+  lastSoldAt?: string | null;
+};
+
+export type WalletDashboardGames = {
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  items: WalletDashboardGameItem[];
+};
+
+export type TransactionHistoryParams = {
+  pageNumber?: number;
+  pageSize?: number;
+  direction?: "In" | "Out";
+  categories?: number[];
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+  from?: string;
+  to?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  status?: string;
+  statuses?: string[];
+  search?: string;
 };
 
 export type ApiResult<T> = {
@@ -72,15 +176,59 @@ export const orbitCoinApi = {
     return data;
   },
 
-  getTransactionHistory: async (params: { pageNumber?: number; pageSize?: number } = {}) => {
+  getTransactionHistory: async (params: TransactionHistoryParams = {}) => {
     const { data } = await learnerAxios.get<ApiResult<OrbitCoinTransactionHistoryResponse>>(
       "/api/learner/orbitcoin/transactions",
       {
         params: {
           pageNumber: params.pageNumber ?? 1,
           pageSize: params.pageSize ?? 20,
+          direction: params.direction,
+          categories: params.categories,
+          relatedEntityType: params.relatedEntityType,
+          relatedEntityId: params.relatedEntityId,
+          from: params.from,
+          to: params.to,
+          minAmount: params.minAmount,
+          maxAmount: params.maxAmount,
+          status: params.status,
+          statuses: params.statuses,
+          search: params.search,
         },
       },
+    );
+    return data;
+  },
+  getDashboardSummary: async (params: { role: "Buyer" | "Creator"; from?: string; to?: string }) => {
+    const { data } = await learnerAxios.get<ApiResult<WalletDashboardSummary>>(
+      "/api/learner/orbitcoin/dashboard/summary",
+      { params },
+    );
+    return data;
+  },
+  getDashboardTrend: async (params: {
+    role: "Buyer" | "Creator";
+    bucket: "Day" | "Week" | "Month";
+    from?: string;
+    to?: string;
+  }) => {
+    const { data } = await learnerAxios.get<ApiResult<WalletDashboardTrend>>(
+      "/api/learner/orbitcoin/dashboard/trend",
+      { params },
+    );
+    return data;
+  },
+  getDashboardGames: async (params: { from?: string; to?: string; pageNumber?: number; pageSize?: number }) => {
+    const { data } = await learnerAxios.get<ApiResult<WalletDashboardGames>>(
+      "/api/learner/orbitcoin/dashboard/games",
+      { params },
+    );
+    return data;
+  },
+  getExchangeRate: async (params: { fromCurrency?: string; toCurrency?: string } = {}) => {
+    const { data } = await learnerAxios.get<ApiResult<ExchangeRate>>(
+      "/api/learner/orbitcoin/exchange-rate",
+      { params: { fromCurrency: params.fromCurrency ?? "OrbitCoin", toCurrency: params.toCurrency ?? "VND" } },
     );
     return data;
   },
