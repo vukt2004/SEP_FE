@@ -25,7 +25,7 @@ import {
   setVerifyContact,
 } from "@/services/api/learner/verifyContact";
 
-type NavState = { contact: string };
+type NavState = { contact: string; otpType?: 1 | 2 };
 
 const OTP_LEN = 6;
 
@@ -121,7 +121,7 @@ export default function VerifyOtpPage() {
       const res = await learnerAuthApi.verifyOtp({
         contact,
         otp: cleaned,
-        otpType: 1,
+        otpType: st?.otpType ?? 1,
         otpSentChannel: 1,
       });
 
@@ -144,9 +144,12 @@ export default function VerifyOtpPage() {
         navigate(ROUTES.LEARNER_HOME, { replace: true });
       } else {
         // ✅ fallback “vẹn cả đôi đường”
+        const infoMsg = st?.otpType === 2
+          ? "Password reset successfully. Please login with your new password."
+          : "Verified successfully. Please login to continue.";
         navigate(ROUTES.LEARNER_LOGIN, {
           replace: true,
-          state: { info: "Verified successfully. Please login to continue." },
+          state: { info: infoMsg },
         });
       }
     } catch (err: unknown) {

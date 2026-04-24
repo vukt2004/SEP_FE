@@ -18,6 +18,7 @@ const LandingPage = React.lazy(() => import("../../pages/Home"));
 const LearnerLoginPage = React.lazy(() => import("@/portals/learner/pages/LoginPage"));
 const LearnerRegisterPage = React.lazy(() => import("@/portals/learner/pages/RegisterPage"));
 const LearnerVerifyOtpPage = React.lazy(() => import("@/portals/learner/pages/VerifyOtpPage"));
+const LearnerResetPasswordPage = React.lazy(() => import("@/portals/learner/pages/ResetPasswordPage"));
 
 const CmsLoginPage = React.lazy(() => import("@/portals/cms/pages/LoginPage"));
 
@@ -182,6 +183,14 @@ const routes: RouteObject[] = [
         element: (
           <React.Suspense fallback={<AppLoader />}>
             <LearnerVerifyOtpPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: ROUTES.LEARNER_RESET_PASSWORD ?? "/reset-password",
+        element: (
+          <React.Suspense fallback={<AppLoader />}>
+            <LearnerResetPasswordPage />
           </React.Suspense>
         ),
       },

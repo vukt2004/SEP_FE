@@ -406,6 +406,7 @@ export default function LoginPage() {
           googleLoading: "Đang tải Google...",
           googleSigning: "Đang đăng nhập Google...",
           footer: "Tiếp tục hành trình học tập của bạn",
+          forgotPassword: "Quên mật khẩu?",
         }
       : {
           title: "Learner Login",
@@ -421,6 +422,7 @@ export default function LoginPage() {
           googleLoading: "Loading Google...",
           googleSigning: "Signing in with Google...",
           footer: "Continue your learning journey",
+          forgotPassword: "Forgot password?",
         };
 
   return (
@@ -585,10 +587,24 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* ✅ Forgot password link */}
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 13,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <Link to={ROUTES.LEARNER_RESET_PASSWORD} className="auth-link">
+                {copy.forgotPassword}
+              </Link>
+            </div>
+
             {/* ✅ Register navigation */}
             <div
               style={{
-                marginTop: 12,
+                marginTop: 8,
                 fontSize: 13,
                 display: "flex",
                 justifyContent: "center",

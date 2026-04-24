@@ -7,6 +7,7 @@ import type {
   LoginRequest,
   Result,
   LearnerRegisterForm,
+  ResetPasswordRequest,
   VerifyOtpRequest,
   VerifyOtpResponseResult,
 } from "@/types/api/learner/auth";
@@ -72,6 +73,13 @@ export const learnerAuthApi = {
     const fd = toFormData(payload);
     return learnerAxios.post<Result>("/api/learner/auth/register", fd, {
       headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  resetPassword(payload: ResetPasswordRequest) {
+    return learnerAxios.post<Result>("/api/learner/auth/reset-password", {
+      ...payload,
+      otpSentChannel: 1, // Email only
     });
   },
 
