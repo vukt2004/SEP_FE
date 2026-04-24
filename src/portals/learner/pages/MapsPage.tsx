@@ -1,7 +1,7 @@
 // src/portals/learner/pages/MapsPage.tsx
 // Game library + progression UI for 2D puzzle learning platform
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Clock,
@@ -237,30 +237,67 @@ function MapsContent() {
   const location = useLocation();
   const lobbyPickState = (location.state ?? null) as
     | {
-        lobbyPickMode?: boolean;
-        lobbyPickReturnTo?: string;
-        lobbyCreateMaxPlayers?: number;
-        lobbyPickForRoom?: boolean;
-        roomId?: string;
-        roomCode?: string;
-      }
+      lobbyPickMode?: boolean;
+      lobbyPickReturnTo?: string;
+      lobbyCreateMaxPlayers?: number;
+      lobbyPickForRoom?: boolean;
+      roomId?: string;
+      roomCode?: string;
+    }
     | null;
   const lobbyPickMode = lobbyPickState?.lobbyPickMode === true;
   const lobbyPickReturnTo = lobbyPickState?.lobbyPickReturnTo || ROUTES.LEARNER_LEARN;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Restore filters from URL search params on mount
+  const initializedRef = useRef(false);
   const [maps, setMaps] = useState<ApiMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
-  const [selectedKnowledgeConcepts, setSelectedKnowledgeConcepts] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") ?? "");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>(() => searchParams.get("diff") ?? "all");
+  const [selectedKnowledgeConcepts, setSelectedKnowledgeConcepts] = useState<string[]>(() => {
+    const v = searchParams.get("kc");
+    return v ? v.split(",").filter(Boolean) : [];
+  });
   const [knowledgeConceptPicker, setKnowledgeConceptPicker] = useState<string>("all");
-  const [selectedMechanismConcepts, setSelectedMechanismConcepts] = useState<string[]>([]);
+  const [selectedMechanismConcepts, setSelectedMechanismConcepts] = useState<string[]>(() => {
+    const v = searchParams.get("mc");
+    return v ? v.split(",").filter(Boolean) : [];
+  });
   const [mechanismConceptPicker, setMechanismConceptPicker] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("recommended");
-  const [mainTab, setMainTab] = useState<MainTab>("all");
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    const v = searchParams.get("sort");
+    return v === "newest" || v === "most_played" ? v : "recommended";
+  });
+  const [priceMin, setPriceMin] = useState<string>(() => searchParams.get("pmin") ?? "");
+  const [priceMax, setPriceMax] = useState<string>(() => searchParams.get("pmax") ?? "");
+  const [mainTab, setMainTab] = useState<MainTab>(() => {
+    const v = searchParams.get("tab");
+    return v === "recommended" || v === "progress" ? v : "all";
+  });
   const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
   const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<RecommendationResultDto | null>(null);
+
+  // Sync filter state → URL search params (replace to avoid polluting history)
+  useEffect(() => {
+    // Skip the first render to avoid overwriting URL params on mount
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      return;
+    }
+    const p = new URLSearchParams();
+    if (searchTerm.trim()) p.set("q", searchTerm.trim());
+    if (difficultyFilter !== "all") p.set("diff", difficultyFilter);
+    if (selectedKnowledgeConcepts.length > 0) p.set("kc", selectedKnowledgeConcepts.join(","));
+    if (selectedMechanismConcepts.length > 0) p.set("mc", selectedMechanismConcepts.join(","));
+    if (sortBy !== "recommended") p.set("sort", sortBy);
+    if (priceMin.trim()) p.set("pmin", priceMin.trim());
+    if (priceMax.trim()) p.set("pmax", priceMax.trim());
+    if (mainTab !== "all") p.set("tab", mainTab);
+    setSearchParams(p, { replace: true });
+  }, [searchTerm, difficultyFilter, selectedKnowledgeConcepts, selectedMechanismConcepts, sortBy, priceMin, priceMax, mainTab, setSearchParams]);
 
   const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
   const { inProgress, completed, locked } = useMapProgressFromHistory(mapIds);
@@ -367,6 +404,9 @@ function MapsContent() {
     return idx;
   }, [recommendedIdOrder]);
 
+  const parsedPriceMin = priceMin.trim() !== "" ? Number(priceMin) : undefined;
+  const parsedPriceMax = priceMax.trim() !== "" ? Number(priceMax) : undefined;
+
   const loadMaps = useCallback(async () => {
     try {
       setLoading(true);
@@ -377,6 +417,8 @@ function MapsContent() {
         publishedOnly: true,
         search: searchTerm.trim() || undefined,
         difficulty: difficultyFilter === "all" ? undefined : Number(difficultyFilter),
+        minPrice: parsedPriceMin != null && !isNaN(parsedPriceMin) ? parsedPriceMin : undefined,
+        maxPrice: parsedPriceMax != null && !isNaN(parsedPriceMax) ? parsedPriceMax : undefined,
         sortBy: "CreatedAt",
         sortAscending: sortBy !== "newest", // false = newest first
       });
@@ -391,7 +433,7 @@ function MapsContent() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, difficultyFilter, sortBy, t]);
+  }, [searchTerm, difficultyFilter, sortBy, parsedPriceMin, parsedPriceMax, t]);
 
   useEffect(() => {
     loadMaps();
@@ -510,7 +552,9 @@ function MapsContent() {
     mechanismConceptPicker !== "all" ||
     selectedKnowledgeConcepts.length > 0 ||
     selectedMechanismConcepts.length > 0 ||
-    searchTerm.trim() !== "";
+    searchTerm.trim() !== "" ||
+    priceMin.trim() !== "" ||
+    priceMax.trim() !== "";
 
   if (loading && maps.length === 0) {
     return (
@@ -535,6 +579,8 @@ function MapsContent() {
     setSearchTerm("");
     setKnowledgeConceptPicker("all");
     setMechanismConceptPicker("all");
+    setPriceMin("");
+    setPriceMax("");
   };
 
   const handleMapPrimaryAction = (mapId: string, mapTitle?: string) => {
@@ -744,6 +790,35 @@ function MapsContent() {
                       </button>
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("priceRange")}</span>
+                <div className={styles.priceRangeRow}>
+                  <input
+                    id="price-min"
+                    className={styles.priceInput}
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder={t("priceMin")}
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                    aria-label={t("priceMin")}
+                  />
+                  <span className={styles.priceSeparator}>—</span>
+                  <input
+                    id="price-max"
+                    className={styles.priceInput}
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder={t("priceMax")}
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                    aria-label={t("priceMax")}
+                  />
                 </div>
               </div>
 
