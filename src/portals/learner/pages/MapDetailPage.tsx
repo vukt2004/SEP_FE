@@ -6,10 +6,7 @@ import {
   ArrowLeft,
   Lock,
   PlusCircle,
-  Heart,
-  Bell,
   Star,
-  Share2,
   MessageCircle,
   MessageSquareWarning,
   ImagePlus,
@@ -1391,30 +1388,7 @@ export default function MapDetailPage() {
               <Star size={16} /> {t("rate")}
             </motion.button>
           ) : null}
-          <motion.button
-            type="button"
-            className={styles.steamFooterSecondary}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Heart size={16} /> {t("addToWishlist")}
-          </motion.button>
-          <motion.button
-            type="button"
-            className={styles.steamFooterSecondary}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Bell size={16} /> {t("follow")}
-          </motion.button>
-          <motion.button
-            type="button"
-            className={styles.steamFooterSecondary}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Share2 size={16} /> {t("share")}
-          </motion.button>
+
           {canReportOwnedMapIssue ? (
             <motion.button
               type="button"
