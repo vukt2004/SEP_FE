@@ -3018,7 +3018,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     "complaints.prefill.orbitCoinIssueDescription":
       "Tôi phát hiện bất thường ở giao dịch OrbitCoin hoặc số dư sau giao dịch. Vui lòng kiểm tra giúp tôi.",
     "complaints.contextLabel.paymentRecordId": "Mã giao dịch thanh toán",
-    "complaints.contextLabel.mapId": "Mã bản đồ",
+    "complaints.contextLabel.mapId": "Mã trò chơi",
     "complaints.contextLabel.packageId": "Mã gói",
     "complaints.contextLabel.submissionId": "Mã lượt nộp",
     "complaints.contextLabel.playHistoryId": "Mã lịch sử chơi",
@@ -3032,7 +3032,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
       "Thanh toán thành công nhưng quyền truy cập/số dư không đúng",
     "complaints.runtimeCategory.AccessIssue.displayName": "Lỗi truy cập",
     "complaints.runtimeCategory.AccessIssue.description":
-      "Đã mua map/gói nhưng không truy cập được",
+      "Đã mua game/gói nhưng không truy cập được",
     "complaints.runtimeCategory.GameplayScoringIssue.displayName": "Lỗi điểm số gameplay",
     "complaints.runtimeCategory.GameplayScoringIssue.description":
       "Điểm/sao/trạng thái sau khi chơi không đúng",

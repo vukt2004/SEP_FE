@@ -243,9 +243,9 @@ export default function MapDetailPage() {
           setRatings([]);
           setRatingsError(
             response.data.message ||
-              (locale.startsWith("vi")
-                ? "Không tải được danh sách đánh giá."
-                : "Unable to load reviews."),
+            (locale.startsWith("vi")
+              ? "Không tải được danh sách đánh giá."
+              : "Unable to load reviews."),
           );
         }
       } catch (err) {
@@ -380,10 +380,10 @@ export default function MapDetailPage() {
       const mapType =
         typeof selectedLevel?.type === "string"
           ? ((selectedLevel.type.trim().toLowerCase() === "platform"
-              ? "platform"
-              : selectedLevel.type.trim().toLowerCase() === "snake"
-                ? "snake"
-                : "topdown") as "platform" | "topdown" | "snake")
+            ? "platform"
+            : selectedLevel.type.trim().toLowerCase() === "snake"
+              ? "snake"
+              : "topdown") as "platform" | "topdown" | "snake")
           : playHint.mapType;
 
       navigate(toPlayRoute(mapType), {
@@ -454,11 +454,11 @@ export default function MapDetailPage() {
       mapId: map.id,
       occurredAt: getVietnamNowDateTimeLocal(),
       subject: locale.startsWith("vi")
-        ? "Map đã mua bị lỗi khi chơi"
-        : "Purchased map has gameplay issue",
+        ? "Game đã mua bị lỗi khi chơi"
+        : "Purchased game has gameplay issue",
       description: locale.startsWith("vi")
-        ? "Tôi đã mua map này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
-        : "I purchased this map and encountered an issue during gameplay. Please help investigate.",
+        ? "Tôi đã mua game này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
+        : "I purchased this game and encountered an issue during gameplay. Please help investigate.",
     });
 
     navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
@@ -1021,9 +1021,8 @@ export default function MapDetailPage() {
                   <button
                     key={item.key}
                     type="button"
-                    className={`${styles.steamThumb} ${
-                      carouselIndex === idx ? styles.steamThumbActive : ""
-                    }`}
+                    className={`${styles.steamThumb} ${carouselIndex === idx ? styles.steamThumbActive : ""
+                      }`}
                     onClick={() => setCarouselIndex(idx)}
                   >
                     {isVideoMediaKind(item.kind) ? (
@@ -1108,9 +1107,8 @@ export default function MapDetailPage() {
                       <button
                         key={tag.id}
                         type="button"
-                        className={`${styles.authorTagChip} ${
-                          selectedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
-                        }`}
+                        className={`${styles.authorTagChip} ${selectedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
+                          }`}
                         onClick={() => toggleTagSelection(tag.id)}
                       >
                         {localizeTagName(tag.name, locale)}
@@ -1124,9 +1122,8 @@ export default function MapDetailPage() {
                     <button
                       key={tag.id}
                       type="button"
-                      className={`${styles.authorTagChip} ${
-                        selectedLearnedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
-                      }`}
+                      className={`${styles.authorTagChip} ${selectedLearnedTagIds.includes(tag.id) ? styles.authorTagChipActive : ""
+                        }`}
                       onClick={() => toggleLearnedTagSelection(tag.id)}
                     >
                       {localizeTagName(tag.name, locale)}
@@ -1465,7 +1462,7 @@ export default function MapDetailPage() {
                     item.isAuthor && map.createdByUserName?.trim()
                       ? map.createdByUserName.trim()
                       : item.reviewerName?.trim() ||
-                        (locale.startsWith("vi") ? "Người chơi ẩn danh" : "Anonymous player");
+                      (locale.startsWith("vi") ? "Người chơi ẩn danh" : "Anonymous player");
 
                   return (
                     <article key={item.id} className={styles.ratingItem}>
@@ -1694,11 +1691,10 @@ export default function MapDetailPage() {
           <div className={styles.modalOverlay} onClick={() => setPurchaseModal(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h3
-                className={`${styles.modalTitle} ${
-                  purchaseModal.kind === "success"
+                className={`${styles.modalTitle} ${purchaseModal.kind === "success"
                     ? styles.modalTitleSuccess
                     : styles.modalTitleError
-                }`}
+                  }`}
               >
                 {purchaseModal.kind === "success"
                   ? locale.startsWith("vi")
@@ -1793,9 +1789,8 @@ export default function MapDetailPage() {
                   <button
                     key={value}
                     type="button"
-                    className={`${styles.rateModalStarBtn} ${
-                      rateValue >= value ? styles.rateModalStarBtnActive : ""
-                    }`}
+                    className={`${styles.rateModalStarBtn} ${rateValue >= value ? styles.rateModalStarBtnActive : ""
+                      }`}
                     onClick={() => setRateValue(value)}
                     aria-label={`${value} star`}
                   >

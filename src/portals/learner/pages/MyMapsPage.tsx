@@ -1031,11 +1031,11 @@ export const MyMapsPage: React.FC = () => {
       mapId,
       occurredAt: getVietnamNowDateTimeLocal(),
       subject: locale.startsWith("vi")
-        ? "Map đã mua bị lỗi khi chơi"
-        : "Purchased map has gameplay issue",
+        ? "Game đã mua bị lỗi khi chơi"
+        : "Purchased game has gameplay issue",
       description: locale.startsWith("vi")
-        ? "Tôi đã mua map này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
-        : "I purchased this map and encountered an issue during gameplay. Please help investigate.",
+        ? "Tôi đã mua game này và gặp lỗi trong lúc chơi. Vui lòng kiểm tra giúp."
+        : "I purchased this game and encountered an issue during gameplay. Please help investigate.",
     });
 
     navigate(`${ROUTES.LEARNER_COMPLAINTS}?${params.toString()}`);
