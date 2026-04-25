@@ -41,6 +41,7 @@ export type CmsComplaintCategoryConfigItem = {
 export type CmsComplaintCategoryConfigListResult = ApiResult<CmsComplaintCategoryConfigItem[]>;
 
 export type CmsUpsertComplaintCategoryConfigRequest = {
+  categoryKey: string;
   displayName: string;
   description?: string;
   isEnabled: boolean;

@@ -136,6 +136,7 @@ export default function ComplaintCategoryConfigsPage() {
     try {
       setSubmitting(true);
       const res = await cmsComplaintsApi.upsertCategoryConfig(payload.categoryKey, {
+        categoryKey: payload.categoryKey,
         displayName: payload.displayName,
         description: payload.description || undefined,
         isEnabled: payload.isEnabled,
