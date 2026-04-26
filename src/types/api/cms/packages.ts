@@ -20,11 +20,12 @@ export interface PaginationResult<T> {
 
 /**
  * Package status enum
- * 0 = Inactive/Draft
+ * 0 = Inactive
  * 1 = Active
- * 2 = Archived
+ * 2 = Pending
+ * 3 = Rejected
  */
-export type PackageStatusEnum = 0 | 1 | 2;
+export type PackageStatusEnum = 0 | 1 | 2 | 3;
 
 /**
  * Package item in list view
@@ -33,11 +34,14 @@ export interface PackageListItem {
   id: string;
   name: string;
   durationDays: number;
-  limit: number;
+  limit: number | null;
   price: number;
-  featuresSpec: string;
+  featuresSpec: string | null;
   isActive: boolean;
   status: PackageStatusEnum;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 }
 
 /**
@@ -47,11 +51,14 @@ export interface PackageDetail {
   id: string;
   name: string;
   durationDays: number;
-  limit: number;
+  limit: number | null;
   price: number;
-  featuresSpec: string;
+  featuresSpec: string | null;
   isActive: boolean;
   status: PackageStatusEnum;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 }
 
 /**
@@ -75,7 +82,7 @@ export type PackageDetailResult = ApiResult<PackageDetail>;
 export interface GetPackagesParams {
   pageNumber?: number;
   pageSize?: number;
-  searchTerm?: string;
+  search?: string;
   isActive?: boolean;
   status?: PackageStatusEnum;
 }
@@ -86,9 +93,9 @@ export interface GetPackagesParams {
 export interface CreatePackageRequest {
   name: string;
   durationDays: number;
-  limit: number;
+  limit: number | null;
   price: number;
-  featuresSpec: string;
+  featuresSpec?: string | null;
 }
 
 /**
@@ -102,10 +109,11 @@ export type CreatePackageResult = ApiResult<string>;
 export interface UpdatePackageRequest {
   name: string;
   durationDays: number;
-  limit: number;
+  limit: number | null;
   price: number;
-  featuresSpec: string;
-  isActive: boolean;
+  featuresSpec?: string | null;
+  isActive?: boolean;
+  status?: PackageStatusEnum;
 }
 
 /**

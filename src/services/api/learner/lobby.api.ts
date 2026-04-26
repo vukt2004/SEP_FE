@@ -10,6 +10,7 @@ import type {
   CreateLobbyRoomRequest,
   JoinLobbyRoomRequest,
   SetRoomGameRequest,
+  SetRoomLockRequest,
   LobbySubmitSolutionRequest,
   SubmitGameResult,
 } from "@/types/api/learner/lobby";
@@ -76,6 +77,10 @@ export const learnerLobbyApi = {
     if (gameId !== undefined) body.gameId = gameId;
     if (typeof request.maxPlayers === "number") body.maxPlayers = request.maxPlayers;
     return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/game`, body);
+  },
+
+  setRoomLock(roomId: string, request: SetRoomLockRequest) {
+    return learnerAxios.post<LobbyRoomDetailResult>(`${BASE}/rooms/${roomId}/lock`, request);
   },
 
   /** POST /api/learner/lobby/rooms/:roomId/submit – submit solution when room is Playing */

@@ -17,6 +17,101 @@ import { Modal } from "../components/Modal";
 import { Plus, Eye, Pencil, Check } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 
+type FeatureFlags = {
+  can_create_game: boolean;
+  advanced_assets: boolean;
+  can_private_room: boolean;
+  xp_boost_multiplier: number;
+  monthly_hint_quota: number;
+};
+
+type FeatureFormState = {
+  plan: "free" | "pro" | "creator";
+  flags: FeatureFlags;
+};
+
+const FEATURE_LABELS: Array<{ key: keyof FeatureFlags; label: string; type: "boolean" | "number" }> = [
+  { key: "can_create_game", label: "Can create game", type: "boolean" },
+  { key: "advanced_assets", label: "Advanced assets", type: "boolean" },
+  { key: "can_private_room", label: "Can private room", type: "boolean" },
+  { key: "xp_boost_multiplier", label: "XP boost multiplier", type: "number" },
+  { key: "monthly_hint_quota", label: "Monthly hint quota", type: "number" },
+];
+
+const PACKAGE_PRESETS: Record<FeatureFormState["plan"], FeatureFlags> = {
+  free: {
+    can_create_game: false,
+    advanced_assets: false,
+    can_private_room: false,
+    xp_boost_multiplier: 1.0,
+    monthly_hint_quota: 20,
+  },
+  pro: {
+    can_create_game: true,
+    advanced_assets: false,
+    can_private_room: true,
+    xp_boost_multiplier: 1.15,
+    monthly_hint_quota: 120,
+  },
+  creator: {
+    can_create_game: true,
+    advanced_assets: true,
+    can_private_room: true,
+    xp_boost_multiplier: 1.3,
+    monthly_hint_quota: 500,
+  },
+};
+
+function detectPlanFromName(name: string): FeatureFormState["plan"] {
+  const normalized = name.trim().toLowerCase();
+  if (normalized.includes("creator")) return "creator";
+  if (normalized.includes("pro") || normalized.includes("premium")) return "pro";
+  return "free";
+}
+
+function buildFeaturesSpec(state: FeatureFormState): string {
+  return JSON.stringify({ plan: state.plan, features: state.flags });
+}
+
+function parseFeaturesSpec(raw: string, fallbackPlan: FeatureFormState["plan"]): FeatureFormState {
+  const baseFlags = PACKAGE_PRESETS[fallbackPlan];
+  if (!raw || raw.trim().length === 0) {
+    return { plan: fallbackPlan, flags: { ...baseFlags } };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsedFeatures =
+      parsed.features && typeof parsed.features === "object"
+        ? (parsed.features as Record<string, unknown>)
+        : {};
+    const parsedPlan = parsed.plan;
+    const plan: FeatureFormState["plan"] =
+      parsedPlan === "creator" || parsedPlan === "pro" || parsedPlan === "free"
+        ? parsedPlan
+        : fallbackPlan;
+
+    return {
+      plan,
+      flags: {
+        can_create_game: parsedFeatures.can_create_game === true,
+        advanced_assets: parsedFeatures.advanced_assets === true,
+        can_private_room: parsedFeatures.can_private_room === true,
+        xp_boost_multiplier:
+          typeof parsedFeatures.xp_boost_multiplier === "number"
+            ? parsedFeatures.xp_boost_multiplier
+            : baseFlags.xp_boost_multiplier,
+        monthly_hint_quota:
+          typeof parsedFeatures.monthly_hint_quota === "number"
+            ? parsedFeatures.monthly_hint_quota
+            : baseFlags.monthly_hint_quota,
+      },
+    };
+  } catch {
+    return { plan: fallbackPlan, flags: { ...baseFlags } };
+  }
+}
+
 export const PackagesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t, locale } = useTranslation();
@@ -29,6 +124,8 @@ export const PackagesPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   // Modal and action states
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -45,6 +142,10 @@ export const PackagesPage: React.FC = () => {
     price: 0,
     featuresSpec: "",
   });
+  const [createFeatures, setCreateFeatures] = useState<FeatureFormState>({
+    plan: "free",
+    flags: { ...PACKAGE_PRESETS.free },
+  });
 
   const [updateForm, setUpdateForm] = useState({
     name: "",
@@ -54,6 +155,18 @@ export const PackagesPage: React.FC = () => {
     featuresSpec: "",
     isActive: false,
   });
+  const [updateFeatures, setUpdateFeatures] = useState<FeatureFormState>({
+    plan: "free",
+    flags: { ...PACKAGE_PRESETS.free },
+  });
+
+  useEffect(() => {
+    setCreateForm((prev) => ({ ...prev, featuresSpec: buildFeaturesSpec(createFeatures) }));
+  }, [createFeatures]);
+
+  useEffect(() => {
+    setUpdateForm((prev) => ({ ...prev, featuresSpec: buildFeaturesSpec(updateFeatures) }));
+  }, [updateFeatures]);
 
   const fetchPackages = useCallback(async () => {
     try {
@@ -63,6 +176,8 @@ export const PackagesPage: React.FC = () => {
       const response = await cmsPackagesApi.getPackages({
         pageNumber: currentPage,
         pageSize,
+        search: search.trim() || undefined,
+        isActive: statusFilter === "all" ? undefined : statusFilter === "active",
       });
 
       const paginationData = response.data.data;
@@ -77,7 +192,7 @@ export const PackagesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, search, statusFilter, t]);
 
   useEffect(() => {
     fetchPackages();
@@ -126,6 +241,7 @@ export const PackagesPage: React.FC = () => {
         alert(`${t("cmsPackages.createSuccess")} ID: ${response.data.data}`);
         setCreateModalOpen(false);
         setCreateForm({ name: "", durationDays: 0, limit: 0, price: 0, featuresSpec: "" });
+        setCreateFeatures({ plan: "free", flags: { ...PACKAGE_PRESETS.free } });
         fetchPackages();
       } else {
         alert(response.data.message || t("cmsPackages.failedCreate"));
@@ -144,15 +260,18 @@ export const PackagesPage: React.FC = () => {
       const response = await cmsPackagesApi.getPackageById(packageId);
       const packageDetail = response.data.data;
       if (packageDetail) {
+        const fallbackPlan = detectPlanFromName(packageDetail.name);
+        const parsedFeatures = parseFeaturesSpec(packageDetail.featuresSpec ?? "", fallbackPlan);
         setSelectedPackage(packageDetail);
         setUpdateForm({
           name: packageDetail.name,
           durationDays: packageDetail.durationDays,
-          limit: packageDetail.limit,
+          limit: packageDetail.limit ?? 0,
           price: packageDetail.price,
-          featuresSpec: packageDetail.featuresSpec,
+          featuresSpec: buildFeaturesSpec(parsedFeatures),
           isActive: packageDetail.isActive,
         });
+        setUpdateFeatures(parsedFeatures);
         setUpdateModalOpen(true);
       } else {
         alert(t("cmsPackages.notFound"));
@@ -187,6 +306,23 @@ export const PackagesPage: React.FC = () => {
     }
   };
 
+  const handleQuickToggle = async (pkg: PackageListItem) => {
+    try {
+      setActionLoading(true);
+      const response = await cmsPackagesApi.batchUpdateStatus([pkg.id], !pkg.isActive);
+      if (!response.data.isSuccess) {
+        alert(response.data.message || t("cmsPackages.failedUpdate"));
+        return;
+      }
+      await fetchPackages();
+    } catch (err) {
+      alert(t("cmsPackages.failedUpdate"));
+      console.error("Batch status update error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getPackageStatusLabel = (status: PackageStatusEnum) => {
     switch (status) {
       case 0:
@@ -194,7 +330,9 @@ export const PackagesPage: React.FC = () => {
       case 1:
         return t("cmsPackages.status.active");
       case 2:
-        return t("cmsPackages.status.archived");
+        return "Pending";
+      case 3:
+        return "Rejected";
       default:
         return t("unknown");
     }
@@ -208,6 +346,8 @@ export const PackagesPage: React.FC = () => {
         return "var(--success)";
       case 2:
         return "var(--warning)";
+      case 3:
+        return "var(--danger)";
       default:
         return "var(--text-2)";
     }
@@ -239,6 +379,112 @@ export const PackagesPage: React.FC = () => {
     if (limit === null || limit === 0) return t("cmsPackages.unlimited");
     return limit.toString();
   };
+
+  const renderFeatureEditor = (
+    value: FeatureFormState,
+    onChange: (next: FeatureFormState) => void,
+  ) => (
+    <div
+      style={{
+        padding: "12px",
+        border: "1px solid var(--border)",
+        borderRadius: "10px",
+        background: "var(--surface-2)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+      }}
+    >
+      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "12px", color: "var(--text-2)" }}>Preset plan</span>
+        {(["free", "pro", "creator"] as const).map((plan) => (
+          <button
+            key={plan}
+            type="button"
+            onClick={() => onChange({ plan, flags: { ...PACKAGE_PRESETS[plan] } })}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "999px",
+              padding: "4px 10px",
+              fontSize: "12px",
+              cursor: "pointer",
+              color: value.plan === plan ? "white" : "var(--text)",
+              background: value.plan === plan ? "var(--primary)" : "var(--surface)",
+            }}
+          >
+            {plan}
+          </button>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "10px",
+        }}
+      >
+        {FEATURE_LABELS.map((item) => (
+          <label
+            key={item.key}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "8px",
+              padding: "8px 10px",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              background: "var(--surface)",
+            }}
+          >
+            <span style={{ fontSize: "13px", color: "var(--text)" }}>{item.label}</span>
+            {item.type === "boolean" ? (
+              <input
+                type="checkbox"
+                checked={value.flags[item.key] === true}
+                onChange={(e) =>
+                  onChange({
+                    ...value,
+                    flags: {
+                      ...value.flags,
+                      [item.key]: e.target.checked,
+                    },
+                  })
+                }
+              />
+            ) : (
+              <input
+                type="number"
+                step={item.key === "monthly_hint_quota" ? "1" : "0.05"}
+                min="0"
+                value={Number(value.flags[item.key] ?? 1)}
+                onChange={(e) =>
+                  onChange({
+                    ...value,
+                    flags: {
+                      ...value.flags,
+                      [item.key]:
+                        item.key === "monthly_hint_quota"
+                          ? Math.max(0, Number.parseInt(e.target.value, 10) || 0)
+                          : Math.max(0, Number.parseFloat(e.target.value) || 0),
+                    },
+                  })
+                }
+                style={{
+                  width: "90px",
+                  padding: "4px 6px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-2)",
+                  color: "var(--text)",
+                }}
+              />
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
 
   if (loading && packages.length === 0) {
     return (
@@ -293,7 +539,10 @@ export const PackagesPage: React.FC = () => {
           <p style={{ color: "var(--text-2)" }}>{t("cmsPackages.subtitle")}</p>
         </div>
         <button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => {
+            setCreateFeatures({ plan: "free", flags: { ...PACKAGE_PRESETS.free } });
+            setCreateModalOpen(true);
+          }}
           style={{
             padding: "10px 20px",
             background: "var(--primary)",
@@ -354,6 +603,51 @@ export const PackagesPage: React.FC = () => {
             {packages.filter((p) => p.isActive).length}
           </div>
         </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <input
+          value={search}
+          onChange={(e) => {
+            setCurrentPage(1);
+            setSearch(e.target.value);
+          }}
+          placeholder={t("search")}
+          style={{
+            padding: "10px 12px",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            background: "var(--surface)",
+            color: "var(--text)",
+            minWidth: "260px",
+          }}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setCurrentPage(1);
+            setStatusFilter(e.target.value as "all" | "active" | "inactive");
+          }}
+          style={{
+            padding: "10px 12px",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            background: "var(--surface)",
+            color: "var(--text)",
+          }}
+        >
+          <option value="all">{t("all")}</option>
+          <option value="active">{t("cmsPackages.status.active")}</option>
+          <option value="inactive">{t("cmsPackages.status.inactive")}</option>
+        </select>
       </div>
 
       {error && (
@@ -464,6 +758,17 @@ export const PackagesPage: React.FC = () => {
                 <th
                   style={{
                     padding: "16px",
+                    textAlign: "left",
+                    fontWeight: "600",
+                    fontSize: "13px",
+                    color: "var(--text-2)",
+                  }}
+                >
+                  Updated
+                </th>
+                <th
+                  style={{
+                    padding: "16px",
                     textAlign: "center",
                     fontWeight: "600",
                     fontSize: "13px",
@@ -564,6 +869,10 @@ export const PackagesPage: React.FC = () => {
                       {pkg.featuresSpec || t("cmsPackages.none")}
                     </div>
                   </td>
+                  <td style={{ padding: "16px", color: "var(--text-2)", fontSize: "12px" }}>
+                    <div>{pkg.updatedAt ? new Date(pkg.updatedAt).toLocaleString() : "-"}</div>
+                    <div style={{ opacity: 0.85 }}>{pkg.updatedBy ?? "-"}</div>
+                  </td>
                   <td style={{ padding: "16px" }}>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                       {/* View Details */}
@@ -585,6 +894,23 @@ export const PackagesPage: React.FC = () => {
                         <Eye size={16} />
                       </button>
                       {/* Edit Package */}
+                      <button
+                        onClick={() => void handleQuickToggle(pkg)}
+                        disabled={actionLoading}
+                        style={{
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          color: pkg.isActive ? "var(--danger)" : "var(--success)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          transition: "all 0.2s ease",
+                        }}
+                        title={pkg.isActive ? "Deactivate package" : "Activate package"}
+                      >
+                        {pkg.isActive ? "Off" : "On"}
+                      </button>
                       <button
                         onClick={() => handleOpenUpdateModal(pkg.id)}
                         disabled={actionLoading}
@@ -824,23 +1150,23 @@ export const PackagesPage: React.FC = () => {
             >
               {t("cmsPackages.field.featuresSpec")} *
             </label>
+            {renderFeatureEditor(createFeatures, setCreateFeatures)}
             <textarea
               value={createForm.featuresSpec}
-              onChange={(e) => setCreateForm({ ...createForm, featuresSpec: e.target.value })}
-              required
+              readOnly
               rows={4}
               style={{
                 width: "100%",
+                marginTop: "10px",
                 padding: "10px 12px",
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: "8px",
-                color: "var(--text)",
-                fontSize: "14px",
+                color: "var(--text-2)",
+                fontSize: "12px",
                 resize: "vertical",
-                fontFamily: "inherit",
+                fontFamily: "monospace",
               }}
-              placeholder={t("cmsPackages.placeholder.featuresSpec")}
             />
           </div>
 
@@ -1047,23 +1373,23 @@ export const PackagesPage: React.FC = () => {
             >
               {t("cmsPackages.field.featuresSpec")} *
             </label>
+            {renderFeatureEditor(updateFeatures, setUpdateFeatures)}
             <textarea
               value={updateForm.featuresSpec}
-              onChange={(e) => setUpdateForm({ ...updateForm, featuresSpec: e.target.value })}
-              required
+              readOnly
               rows={4}
               style={{
                 width: "100%",
+                marginTop: "10px",
                 padding: "10px 12px",
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: "8px",
-                color: "var(--text)",
-                fontSize: "14px",
+                color: "var(--text-2)",
+                fontSize: "12px",
                 resize: "vertical",
-                fontFamily: "inherit",
+                fontFamily: "monospace",
               }}
-              placeholder={t("cmsPackages.placeholder.featuresSpec")}
             />
           </div>
 

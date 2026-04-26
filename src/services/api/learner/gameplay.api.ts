@@ -3,6 +3,7 @@ import type {
   ValidateSolutionRequest,
   ValidateSolutionResult,
   MyPlayHistoryResult,
+  ProgressDashboardResult,
 } from "@/types/api/learner/gameplay";
 
 export const learnerGameplayApi = {
@@ -54,6 +55,11 @@ export const learnerGameplayApi = {
       }
     }
 
+    return data;
+  },
+
+  async getProgressDashboard() {
+    const { data } = await learnerAxios.get<ProgressDashboardResult>("/api/learner/gameplay/dashboard");
     return data;
   },
 };

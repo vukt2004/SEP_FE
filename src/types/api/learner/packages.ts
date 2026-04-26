@@ -5,9 +5,9 @@ export type Package = {
   id: string;
   name: string;
   durationDays: number;
-  limit: number;
+  limit: number | null;
   price: number;
-  featuresSpec: string;
+  featuresSpec: string | null;
   isActive: boolean;
   status: number;
 };
@@ -31,10 +31,10 @@ export type UserPackage = {
   durationDays: number;
   limit: number | null;
   price: number;
-  featuresSpec: string;
+  featuresSpec: string | null;
   remaining: number | null;
-  expiresAt: string;
-  purchasedAt: string;
+  expiresAt: string | null;
+  purchasedAt: string | null;
 };
 
 export type MyPackagesData = {

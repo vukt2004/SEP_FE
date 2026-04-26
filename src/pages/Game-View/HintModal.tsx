@@ -11,9 +11,23 @@ interface HintModalProps {
   revealedHints: number;
   onRevealNext: () => void;
   onClose: () => void;
+  monthlyQuota?: number | null;
+  remainingQuota?: number | null;
+  canRevealMore?: boolean;
+  quotaMessage?: string | null;
 }
 
-export function HintModal({ isOpen, hints, revealedHints, onRevealNext, onClose }: HintModalProps) {
+export function HintModal({
+  isOpen,
+  hints,
+  revealedHints,
+  onRevealNext,
+  onClose,
+  monthlyQuota = null,
+  remainingQuota = null,
+  canRevealMore = true,
+  quotaMessage = null,
+}: HintModalProps) {
   const [showFirstHintConfirm, setShowFirstHintConfirm] = useState(false);
 
   const sortedHints = useMemo(() => [...hints].sort((a, b) => a.orderNo - b.orderNo), [hints]);
@@ -43,8 +57,10 @@ export function HintModal({ isOpen, hints, revealedHints, onRevealNext, onClose 
     }
   };
 
+  const revealBlockedByQuota = !canRevealMore || (remainingQuota != null && remainingQuota <= 0);
+
   const handleShowNextHint = () => {
-    if (allHintsRevealed || sortedHints.length === 0) return;
+    if (allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota) return;
 
     if (revealedCount === 0) {
       setShowFirstHintConfirm(true);
@@ -201,10 +217,12 @@ export function HintModal({ isOpen, hints, revealedHints, onRevealNext, onClose 
               : sortedHints.length === 0
                 ? "No hints available for this map."
                 : "Reveal hints one by one to keep challenge."}
+            {monthlyQuota != null ? ` Monthly quota: ${remainingQuota ?? 0}/${monthlyQuota}.` : ""}
+            {quotaMessage ? ` ${quotaMessage}` : ""}
           </span>
           <button
             type="button"
-            disabled={allHintsRevealed || sortedHints.length === 0}
+            disabled={allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota}
             onClick={handleShowNextHint}
             style={{
               border: "1px solid #f59e0b",
@@ -212,14 +230,17 @@ export function HintModal({ isOpen, hints, revealedHints, onRevealNext, onClose 
               padding: "8px 12px",
               fontSize: "13px",
               fontWeight: 800,
-              color: allHintsRevealed || sortedHints.length === 0 ? "#b8a56d" : "#78350f",
+              color: allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota ? "#b8a56d" : "#78350f",
               background:
-                allHintsRevealed || sortedHints.length === 0
+                allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota
                   ? "rgba(254, 243, 199, 0.62)"
                   : "linear-gradient(180deg, #fde68a 0%, #fcd34d 100%)",
-              cursor: allHintsRevealed || sortedHints.length === 0 ? "not-allowed" : "pointer",
+              cursor:
+                allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota
+                  ? "not-allowed"
+                  : "pointer",
               boxShadow:
-                allHintsRevealed || sortedHints.length === 0
+                allHintsRevealed || sortedHints.length === 0 || revealBlockedByQuota
                   ? "none"
                   : "0 8px 14px rgba(251, 191, 36, 0.26)",
               transition: "all 180ms ease",

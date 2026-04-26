@@ -6,7 +6,13 @@ import {
   type ProfileResponse,
 } from "@/services/api/learner/profile.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
-import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
+import { learnerXpApi } from "@/services/api/learner/xp.api";
+import type {
+  MapPlayHistoryItem,
+  PaginationResult,
+  ProgressDashboardData,
+} from "@/types/api/learner/gameplay";
+import type { XpHistoryItem } from "@/types/api/learner/xp";
 import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./ProfilePage.module.css";
 import {
@@ -49,6 +55,8 @@ export default function ProfilePage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [playHistory, setPlayHistory] = useState<PaginationResult<MapPlayHistoryItem> | null>(null);
   const [xpProfile, setXpProfile] = useState<MyXpProfileResponse | null>(null);
+  const [xpHistory, setXpHistory] = useState<XpHistoryItem[]>([]);
+  const [progressDashboard, setProgressDashboard] = useState<ProgressDashboardData | null>(null);
 
   const fullName = useMemo(() => {
     const fn = form.firstName?.trim();
@@ -104,10 +112,12 @@ export default function ProfilePage() {
       setHistoryError(null);
 
       try {
-        const [profileRes, historyRes, xpRes] = await Promise.all([
+        const [profileRes, historyRes, xpRes, xpHistoryRes, dashboardRes] = await Promise.all([
           learnerProfileApi.getProfile(),
           learnerGameplayApi.getMyPlayHistory({ pageNumber: 1, pageSize: 10 }),
           learnerProfileApi.getMyXpProfile(),
+          learnerXpApi.getMyHistory(1, 10),
+          learnerGameplayApi.getProgressDashboard(),
         ]);
 
         if (!alive) return;
@@ -134,6 +144,14 @@ export default function ProfilePage() {
         if (xpRes.isSuccess) {
           setXpProfile(xpRes.data ?? null);
         }
+
+        if (xpHistoryRes?.data?.isSuccess) {
+          setXpHistory(xpHistoryRes.data.data?.items ?? []);
+        }
+
+        if (dashboardRes?.isSuccess) {
+          setProgressDashboard(dashboardRes.data ?? null);
+        }
       } catch {
         if (!alive) return;
         setError("Failed to load profile");
@@ -148,6 +166,17 @@ export default function ProfilePage() {
       alive = false;
     };
   }, [t]);
+
+  const xpLast7Days = useMemo(() => {
+    const threshold = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return xpHistory.reduce((sum, item) => {
+      const createdAt = item.createdAt ? Date.parse(item.createdAt) : NaN;
+      if (!Number.isFinite(createdAt) || createdAt < threshold) return sum;
+      return sum + item.delta;
+    }, 0);
+  }, [xpHistory]);
+
+  const xpLatest = useMemo(() => xpHistory.slice(0, 3), [xpHistory]);
 
   const onPickAvatar = (file: File | null) => {
     setSuccessMsg(null);
@@ -281,6 +310,20 @@ export default function ProfilePage() {
                   </span>
                 </div>
               )}
+              <div
+                style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                <span className={styles.introBadge}>Total XP: {xpProfile?.currentXp?.toLocaleString() ?? 0}</span>
+                <span className={styles.introBadge}>Last 7 days: +{xpLast7Days.toLocaleString()} XP</span>
+                <span className={styles.introBadge}>
+                  Stars: {progressDashboard?.totalStars?.toLocaleString() ?? 0}
+                </span>
+              </div>
             </div>
             <div className={styles.identityActions}>
               {successMsg && (
@@ -441,6 +484,60 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+          </section>
+
+          <section className={styles.cardFb}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitleFb}>XP Tracking</h2>
+            </div>
+            {xpLatest.length > 0 ? (
+              <div className={styles.historyList}>
+                {xpLatest.map((item) => (
+                  <div key={item.id} className={styles.historyItem}>
+                    <div className={styles.historyItemTop}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className={styles.historyTitle}>
+                          {item.reason || item.sourceType}
+                        </div>
+                        <div className={styles.historyMeta}>{item.sourceType}</div>
+                      </div>
+                      <div className={styles.historyScore}>+{item.delta} XP</div>
+                    </div>
+                    <div className={styles.historyBottom}>
+                      <span>
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.introPlaceholder}>No XP activity yet.</div>
+            )}
+          </section>
+
+          <section className={styles.cardFb}>
+            <div className={styles.cardHead}>
+              <h2 className={styles.cardTitleFb}>Badges</h2>
+            </div>
+            {progressDashboard?.badges?.length ? (
+              <div className={styles.introBadges}>
+                {progressDashboard.badges.slice(0, 6).map((badge) => (
+                  <span key={`${badge.code}-${badge.unlockedAt}`} className={styles.introBadge}>
+                    {badge.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.introPlaceholder}>No badges unlocked yet.</div>
+            )}
           </section>
 
           <section className={styles.cardFb}>

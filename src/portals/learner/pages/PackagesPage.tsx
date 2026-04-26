@@ -46,7 +46,7 @@ function normalizePlanName(name: string): NormalizedPlan | null {
 
 function isPackageActiveNow(pkg: UserPackage): boolean {
   const hasRemaining = pkg.remaining === null || pkg.remaining > 0;
-  const expiresAtMs = Date.parse(pkg.expiresAt);
+  const expiresAtMs = pkg.expiresAt ? Date.parse(pkg.expiresAt) : Number.NaN;
   const notExpired = Number.isFinite(expiresAtMs) ? expiresAtMs > Date.now() : true;
   return hasRemaining && notExpired;
 }
@@ -68,13 +68,13 @@ function pickCurrentPackage(items: UserPackage[]): UserPackage | null {
     if (a.price !== b.price) {
       return b.price - a.price;
     }
-    const purchasedA = Date.parse(a.purchasedAt);
-    const purchasedB = Date.parse(b.purchasedAt);
+    const purchasedA = a.purchasedAt ? Date.parse(a.purchasedAt) : Number.NaN;
+    const purchasedB = b.purchasedAt ? Date.parse(b.purchasedAt) : Number.NaN;
     if (Number.isFinite(purchasedA) && Number.isFinite(purchasedB) && purchasedA !== purchasedB) {
       return purchasedB - purchasedA;
     }
-    const expiresA = Date.parse(a.expiresAt);
-    const expiresB = Date.parse(b.expiresAt);
+    const expiresA = a.expiresAt ? Date.parse(a.expiresAt) : Number.NaN;
+    const expiresB = b.expiresAt ? Date.parse(b.expiresAt) : Number.NaN;
     if (Number.isFinite(expiresA) && Number.isFinite(expiresB) && expiresA !== expiresB) {
       return expiresB - expiresA;
     }
@@ -351,8 +351,8 @@ export default function PackagesPage() {
           <span className={styles.currentPackageMeta}>
             {currentPackage
               ? locale.startsWith("vi")
-                ? `Hết hạn: ${formatDate(currentPackage.expiresAt)}`
-                : `Expires: ${formatDate(currentPackage.expiresAt)}`
+                ? `Hết hạn: ${formatDate(currentPackage.expiresAt ?? "")}`
+                : `Expires: ${formatDate(currentPackage.expiresAt ?? "")}`
               : locale.startsWith("vi")
                 ? "Bạn chưa có gói trả phí đang hoạt động."
                 : "You do not have an active paid package yet."}
@@ -375,7 +375,7 @@ export default function PackagesPage() {
               const isLockedByCurrent = isSameOrLowerPackage(pkg, currentPackage);
               const isDisabled = !pkg.isActive || purchasingId === pkg.id || isLockedByCurrent;
               const { display, unit, original } = getDisplayPrice(pkg);
-              const features = parseFeatures(pkg.featuresSpec);
+              const features = parseFeatures(pkg.featuresSpec ?? "");
               if (features.length === 0) {
                 features.push(
                   isFree(pkg) ? `${t("lifetime")} access` : `${pkg.durationDays} days access`,

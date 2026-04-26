@@ -40,9 +40,22 @@ import { AlertToast } from "@/shared/components/AlertToast";
 import { useTranslation } from "@/lib/i18n/translations";
 import { leaveLobbyRoom } from "@/lib/lobby/leaveLobbyRoom";
 import { markCampaignLevelCompleted, markCampaignLevelStarted } from "@/lib/game/campaignProgress";
+import { getCurrentUserCapabilities } from "@/lib/auth/subscriptionPlan";
 import blocksConfig from "../../shared/block/blocks-config.json";
 
 const BACK_NAV_BLOCKED_ROUTE = "/game-session-expired";
+
+function parseHintQuotaFromMessage(
+  message: string | null | undefined,
+): { remaining: number; quota: number } | null {
+  if (!message) return null;
+  const match = message.match(/Còn\s+(\d+)\/(\d+)\s+lượt/i);
+  if (!match) return null;
+  const remaining = Number.parseInt(match[1], 10);
+  const quota = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(remaining) || !Number.isFinite(quota)) return null;
+  return { remaining, quota };
+}
 
 export default function GameView() {
   const { t } = useTranslation();
@@ -101,6 +114,9 @@ export default function GameView() {
   const [hints, setHints] = useState<GameplayHint[]>([]);
   const [showHintsModal, setShowHintsModal] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [hintQuota, setHintQuota] = useState<number | null>(null);
+  const [hintRemaining, setHintRemaining] = useState<number | null>(null);
+  const [xpBoostMultiplier, setXpBoostMultiplier] = useState<number>(1);
   const [showDoorKeyHints, setShowDoorKeyHints] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(true);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
@@ -316,6 +332,19 @@ export default function GameView() {
   }, [isCmsPreview, levelId, navigateWithoutPrompt]);
 
   useEffect(() => {
+    if (isCmsPreview) return;
+    getCurrentUserCapabilities(false, "learner")
+      .then((capabilities) => {
+        setXpBoostMultiplier(capabilities.xpBoostMultiplier);
+        setHintQuota(capabilities.monthlyHintQuota);
+      })
+      .catch(() => {
+        setXpBoostMultiplier(1);
+        setHintQuota(null);
+      });
+  }, [isCmsPreview]);
+
+  useEffect(() => {
     let isMounted = true;
 
     const loadMapHints = async () => {
@@ -346,10 +375,18 @@ export default function GameView() {
             .filter((hint) => hint.content.length > 0);
 
           setHints(nextHints);
+          const parsedQuota = parseHintQuotaFromMessage(response.data.message);
+          if (parsedQuota) {
+            setHintRemaining(parsedQuota.remaining);
+            setHintQuota(parsedQuota.quota);
+          }
           return;
         }
 
         setHints([]);
+        if (response.data.message) {
+          setWarningToast(response.data.message);
+        }
       } catch (hintError) {
         console.error("Failed to load map hints:", hintError);
         if (isMounted) {
@@ -1450,7 +1487,9 @@ export default function GameView() {
           if (beforeXp != null && afterXp != null) {
             const delta = afterXp - beforeXp;
             if (delta > 0) {
-              setXpToast(`+${delta} XP`);
+              const suffix =
+                xpBoostMultiplier > 1 ? ` (${xpBoostMultiplier.toFixed(2)}x package boost)` : "";
+              setXpToast(`+${delta} XP${suffix}`);
               window.setTimeout(() => setXpToast(""), 2600);
             }
           }
@@ -2267,8 +2306,12 @@ export default function GameView() {
         isOpen={showHintsModal}
         hints={hints}
         revealedHints={revealedHintCount}
+        monthlyQuota={hintQuota}
+        remainingQuota={hintRemaining}
+        canRevealMore={hintRemaining == null || hintRemaining > 0}
         onRevealNext={() => {
           setRevealedHints((prev) => Math.min(prev + 1, totalHints));
+          setHintRemaining((prev) => (prev == null ? prev : Math.max(0, prev - 1)));
         }}
         onClose={() => setShowHintsModal(false)}
       />

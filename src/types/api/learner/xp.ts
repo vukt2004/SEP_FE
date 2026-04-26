@@ -29,5 +29,17 @@ export interface PaginationResult<T> {
   items: T[];
 }
 
+export interface XpHistoryItem {
+  id: string;
+  delta: number;
+  reason?: string | null;
+  sourceType: string;
+  sourceId?: string | null;
+  idempotencyKey: string;
+  metadata?: string | null;
+  createdAt?: string | null;
+}
+
 export type XpLeaderboardResult = ApiResult<PaginationResult<XpLeaderboardItem>>;
 export type XpGainLeaderboardResult = ApiResult<PaginationResult<XpGainLeaderboardItem>>;
+export type XpHistoryResult = ApiResult<PaginationResult<XpHistoryItem>>;
