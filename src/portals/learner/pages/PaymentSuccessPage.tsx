@@ -159,6 +159,32 @@ export default function PaymentSuccessPage() {
       : `${timeStr} — ${t("paymentStepPaymentRecorded")}`;
   const step2Variant = isCompleted ? ("done" as const) : ("active" as const);
   const step3Variant = isCompleted ? ("done" as const) : ("pending" as const);
+  const invoiceOrderId = orderId ?? "N/A";
+  const invoiceOrderCode = orderCode ?? "N/A";
+  const invoiceAmountVnd = amountVnd ?? 0;
+  const invoiceOc = orbitCoinDisplay ?? 0;
+
+  const handleDownloadInvoicePdf = () => {
+    const report = window.open("", "_blank", "width=980,height=760");
+    if (!report) return;
+    report.document.write(
+      buildPaymentInvoiceHtml({
+        title: t("paymentSuccessTitle"),
+        orderId: invoiceOrderId,
+        orderCode: invoiceOrderCode,
+        paymentMethod: paymentMethodLabel,
+        statusLabel: isCompleted ? t("paymentStatusCompleted") : t("paymentStatusProcessing"),
+        date: dateStr,
+        time: timeStr,
+        amountVnd: invoiceAmountVnd,
+        orbitCoin: invoiceOc,
+        locale,
+      }),
+    );
+    report.document.close();
+    report.focus();
+    report.print();
+  };
 
   return (
     <div style={styles.page}>
@@ -306,9 +332,7 @@ export default function PaymentSuccessPage() {
             type="button"
             style={styles.outlineBtn}
             title={t("paymentDownloadInvoiceHint")}
-            onClick={() => {
-              /* TODO: download invoice (e.g. PDF) when backend endpoint exists */
-            }}
+            onClick={handleDownloadInvoicePdf}
           >
             <Download size={16} aria-hidden />
             {t("paymentDownloadInvoice")}
@@ -536,6 +560,121 @@ function formatVnd(value: number, locale: LocaleId): string {
       ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 })
       : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
   return `${nf.format(value)} vnđ`;
+}
+
+function buildPaymentInvoiceHtml({
+  title,
+  orderId,
+  orderCode,
+  paymentMethod,
+  statusLabel,
+  date,
+  time,
+  amountVnd,
+  orbitCoin,
+  locale,
+}: {
+  title: string;
+  orderId: string;
+  orderCode: string;
+  paymentMethod: string;
+  statusLabel: string;
+  date: string;
+  time: string;
+  amountVnd: number;
+  orbitCoin: number;
+  locale: LocaleId;
+}) {
+  const safe = (v: string) =>
+    v.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const issuedAt = `${date} ${time}`;
+  const amount = formatVnd(amountVnd, locale);
+  const ocText = orbitCoin > 0 ? `+${orbitCoin.toLocaleString("en-US")} OC` : "N/A";
+  const invoiceNo = orderId !== "N/A" ? orderId.slice(0, 8).toUpperCase() : "N/A";
+  const statusLine = statusLabel;
+
+  const labels =
+    locale === "vi"
+      ? {
+          invoice: "HÓA ĐƠN",
+          invoiceNo: "Mã hóa đơn",
+          issuedAt: "Ngày lập",
+          status: "Trạng thái",
+          accountHolder: "Chủ tài khoản",
+          platformLabel: "Nền tảng",
+          no: "No.",
+          description: "Mô tả",
+          qty: "SL",
+          unitPrice: "Đơn giá (VND)",
+          amount: "Thành tiền (VND)",
+          note: "Ghi chú",
+          noteText: "Hóa đơn này được tạo từ giao dịch nạp tiền thành công.",
+          buyerSign: "Người mua ký tên",
+          sellerSign: "Nền tảng ký tên",
+        }
+      : {
+          invoice: "INVOICE",
+          invoiceNo: "Invoice No.",
+          issuedAt: "Issued at",
+          status: "Status",
+          accountHolder: "Account holder",
+          platformLabel: "Platform",
+          no: "No.",
+          description: "Description",
+          qty: "Qty",
+          unitPrice: "Unit Price (VND)",
+          amount: "Amount (VND)",
+          note: "Note",
+          noteText: "This invoice is generated from successful top-up transaction details.",
+          buyerSign: "Buyer signature",
+          sellerSign: "Platform signature",
+        };
+
+  return `<!doctype html><html><head><title>${safe(title)}</title><style>
+  body{font-family:Arial,sans-serif;padding:24px;color:#0f172a;}
+  .top{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid #cbd5e1;padding-bottom:12px;margin-bottom:12px;}
+  .brand{font-weight:800;font-size:18px;}
+  .meta{font-size:13px;color:#334155;line-height:1.5;}
+  .title{font-size:26px;font-weight:900;color:#b91c1c;letter-spacing:0.3px;}
+  .party{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;margin-bottom:10px;}
+  table{border-collapse:collapse;width:100%;}
+  th,td{border:1px solid #94a3b8;padding:9px 10px;font-size:13px;}
+  th{background:#f1f5f9;text-align:left;}
+  .sum{margin-top:12px;font-size:13px;line-height:1.6;}
+  </style></head><body>
+  <div class="top">
+    <div>
+      <div class="brand">QUACKORBIT TECHNOLOGY</div>
+      <div class="meta">Tax code: 1234567890</div>
+      <div class="meta">Address: Ho Chi Minh City, Vietnam</div>
+      <div class="meta">Email: contact@quackorbit.vn</div>
+    </div>
+    <div style="text-align:right">
+      <div class="title">${safe(labels.invoice)}</div>
+      <div class="meta">${safe(labels.invoiceNo)}: ${safe(invoiceNo)}</div>
+      <div class="meta">${safe(labels.issuedAt)}: ${safe(issuedAt)}</div>
+      <div class="meta">${safe(labels.status)}: ${safe(statusLine)}</div>
+    </div>
+  </div>
+  <div class="party">
+    <div><strong>${safe(labels.accountHolder)}:</strong> ${safe(orderCode)}</div>
+    <div><strong>${safe(labels.platformLabel)}:</strong> QuackOrbit Platform</div>
+  </div>
+  <table>
+    <thead><tr><th>${safe(labels.no)}</th><th>${safe(labels.description)}</th><th>${safe(labels.qty)}</th><th>${safe(labels.unitPrice)}</th><th>${safe(labels.amount)}</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Top up OrbitCoin (${safe(paymentMethod)})</td><td>1</td><td>${safe(amount)}</td><td>${safe(amount)}</td></tr>
+      <tr><td>2</td><td>Order reference</td><td>1</td><td>${safe(orderId)}</td><td>${safe(ocText)}</td></tr>
+    </tbody>
+  </table>
+  <div class="sum">
+    <div><strong>${safe(labels.note)}:</strong> ${safe(labels.noteText)}</div>
+  </div>
+  <div class="party" style="margin-top:18px">
+    <div><strong>${safe(labels.buyerSign)}</strong></div>
+    <div><strong>${safe(labels.sellerSign)}</strong></div>
+  </div>
+  </body></html>`;
 }
 
 const styles: Record<string, CSSProperties> = {
