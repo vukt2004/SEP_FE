@@ -85,6 +85,10 @@ export interface SetRoomGameRequest {
 
 export type SetRoomMapRequest = SetRoomGameRequest;
 
+export interface SetRoomLockRequest {
+  isLocked: boolean;
+}
+
 /** Request body for submitting solution in lobby game */
 export interface LobbySubmitSolutionRequest {
   language?: string;

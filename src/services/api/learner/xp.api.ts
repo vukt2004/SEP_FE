@@ -1,6 +1,7 @@
 import { learnerAxios } from "@/services/http/axios.learner";
 import type {
   LeaderboardPeriodType,
+  XpHistoryResult,
   XpGainLeaderboardResult,
   XpLeaderboardResult,
 } from "@/types/api/learner/xp";
@@ -17,6 +18,12 @@ export const learnerXpApi = {
   getXpGainLeaderboard(periodType: LeaderboardPeriodType = "Week", pageNumber = 1, pageSize = 20) {
     return learnerAxios.get<XpGainLeaderboardResult>(`${BASE}/leaderboard/xp-gain`, {
       params: { periodType, pageNumber, pageSize },
+    });
+  },
+
+  getMyHistory(pageNumber = 1, pageSize = 20) {
+    return learnerAxios.get<XpHistoryResult>(`${BASE}/history`, {
+      params: { pageNumber, pageSize },
     });
   },
 

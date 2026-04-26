@@ -28,6 +28,7 @@ import type { RoomChatMessagePayload } from "@/lib/realtime/gameLobbyHub";
 import styles from "./RoomDetailPage.module.css";
 import { LobbyMapPickerGrid } from "../components/LobbyMapPickerGrid";
 import { getFirstLevelPlayHint } from "@/utils/levelLoader";
+import { getCurrentUserCapabilities } from "@/lib/auth/subscriptionPlan";
 
 function lobbyPlayNavigationState(
   mapId: string,
@@ -206,6 +207,7 @@ export default function RoomDetailPage() {
   const [roomChatSending, setRoomChatSending] = useState(false);
   const [roomChatUnread, setRoomChatUnread] = useState(0);
   const [roomChatNotice, setRoomChatNotice] = useState<string | null>(null);
+  const [canUsePrivateRoomFeature, setCanUsePrivateRoomFeature] = useState(false);
   const roomChatNoticeTimeoutRef = useRef<number | null>(null);
   const [showMaxPlayersEditor, setShowMaxPlayersEditor] = useState(false);
   const leftViaButton = useRef(false);
@@ -345,6 +347,14 @@ export default function RoomDetailPage() {
         if (id) setCurrentUserId(String(id));
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    getCurrentUserCapabilities(false, "learner")
+      .then((capabilities) => {
+        setCanUsePrivateRoomFeature(capabilities.canPrivateRoom);
+      })
+      .catch(() => setCanUsePrivateRoomFeature(false));
   }, []);
 
   useEffect(() => {
@@ -657,10 +667,18 @@ export default function RoomDetailPage() {
 
   const handleToggleLock = async () => {
     if (!roomId || actioning || !room) return;
+    if (!canUsePrivateRoomFeature) {
+      window.alert("Gói hiện tại chưa hỗ trợ phòng private.");
+      return;
+    }
     setActioning(true);
     try {
-      await gameLobbyHub.setRoomLocked(roomId, !room.isLocked);
-      setRoom({ ...room, isLocked: !room.isLocked } as LobbyRoomDetailResponse);
+      const res = await learnerLobbyApi.setRoomLock(roomId, { isLocked: !room.isLocked });
+      if (res.data?.isSuccess && res.data?.data) {
+        setRoom((prev) => normalizeDetail(res.data.data as unknown as Record<string, unknown>, prev));
+      } else {
+        window.alert(res.data?.message ?? t("couldNotUpdateReady"));
+      }
     } catch {
       window.alert(t("couldNotUpdateReady"));
     } finally {
@@ -936,7 +954,8 @@ export default function RoomDetailPage() {
               type="button"
               className={styles.hostBtnSecondary}
               onClick={handleToggleLock}
-              disabled={actioning}
+              disabled={actioning || !canUsePrivateRoomFeature}
+              style={!canUsePrivateRoomFeature ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
               title={room.isLocked ? t("unlockRoom") : t("lockRoom")}
             >
               {room.isLocked ? <Unlock size={16} /> : <Lock size={16} />}

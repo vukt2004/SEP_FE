@@ -157,6 +157,9 @@ export default function MyPathPage() {
   const nextItem = currentIndex >= 0 ? items[currentIndex] : null;
   const nextTitle = nextItem ? (isConcept(nextItem) ? nextItem.conceptName : nextItem.mapTitle) : null;
   const xpTotal = items.reduce((sum, i) => (i.isCompleted ? sum + getXp(i) : sum), 0);
+  const starsTotal = items.reduce((sum, i) => sum + (i.bestStars ?? 0), 0);
+  const starsCompletedCount = items.filter((i) => i.isCompleted && (i.bestStars ?? 0) > 0).length;
+  const starsAverage = starsCompletedCount > 0 ? (starsTotal / starsCompletedCount).toFixed(1) : "0.0";
   const canContinue = !!nextItem && nextItem.isUnlocked;
 
   const getItemState = (item: LearningPathItemDto) => {
@@ -419,10 +422,18 @@ export default function MyPathPage() {
                 <div className={styles.sideStatValue}>{xpTotal}</div>
               </div>
               <div className={styles.sideStat}>
+                <div className={styles.sideStatLabel}>Stars</div>
+                <div className={styles.sideStatValue}>{starsTotal}</div>
+              </div>
+              <div className={styles.sideStat}>
                 <div className={styles.sideStatLabel}>{t("myPathStatDone")}</div>
                 <div className={styles.sideStatValue}>
                   {completedCount}/{totalSteps}
                 </div>
+              </div>
+              <div className={styles.sideStat}>
+                <div className={styles.sideStatLabel}>Avg stars</div>
+                <div className={styles.sideStatValue}>{starsAverage}</div>
               </div>
             </div>
             <button

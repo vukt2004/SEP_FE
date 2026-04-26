@@ -74,3 +74,27 @@ export type MyPlayHistoryResult = ApiResult<PaginationResult<MapPlayHistoryItem>
 
 export type GamePlayHistoryItem = MapPlayHistoryItem;
 
+export interface BadgeItem {
+  code: string;
+  name: string;
+  unlockedAt: string;
+}
+
+export interface RecentActivityItem {
+  gameId: string;
+  mapTitle: string;
+  stars: number;
+  at: string;
+}
+
+export interface ProgressDashboardData {
+  totalXp: number;
+  mapsCompleted: number;
+  totalStars: number;
+  badges: BadgeItem[];
+  conceptsPracticed: string[];
+  recentActivities: RecentActivityItem[];
+}
+
+export type ProgressDashboardResult = ApiResult<ProgressDashboardData>;
+

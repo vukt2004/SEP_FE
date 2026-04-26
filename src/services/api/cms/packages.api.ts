@@ -59,4 +59,11 @@ export const cmsPackagesApi = {
   updatePackage(id: string, data: UpdatePackageRequest) {
     return cmsAxios.put<UpdatePackageResult>(`/api/cms/marketplace/packages/${id}`, data);
   },
+
+  batchUpdateStatus(packageIds: string[], isActive: boolean) {
+    return cmsAxios.post<UpdatePackageResult>("/api/cms/marketplace/packages/batch/status", {
+      packageIds,
+      isActive,
+    });
+  },
 };
