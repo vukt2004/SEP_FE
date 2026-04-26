@@ -104,6 +104,19 @@ const dict = {
     signedSeller: "Seller signature",
     accountHolder: "Account holder",
     platformLabel: "Platform",
+    topUp: "Top up",
+    topUpPrompt: "Enter OrbitCoin amount",
+    topUpInvalid: "Please enter an amount greater than 0.",
+    topUpRedirecting: "Redirecting to payment...",
+    topUpFailed: "Unable to start top-up. Please try again.",
+    topUpAmountLabel: "Amount (OC)",
+    topUpQuickSelect: "Quick select",
+    topUpConfirm: "Proceed to payment",
+    cancel: "Cancel",
+    topUpPreview: "You pay",
+    topUpInstant: "Top-up is credited right after successful payment.",
+    securePayment: "Secure payment",
+    paymentGateway: "Gateway: PayOS",
   },
   vi: {
     title: "Ví",
@@ -172,6 +185,19 @@ const dict = {
     signedSeller: "Người bán ký tên",
     accountHolder: "Chủ tài khoản",
     platformLabel: "Nền tảng",
+    topUp: "Nạp tiền",
+    topUpPrompt: "Nhập số OrbitCoin muốn nạp",
+    topUpInvalid: "Vui lòng nhập số tiền lớn hơn 0.",
+    topUpRedirecting: "Đang chuyển sang cổng thanh toán...",
+    topUpFailed: "Không thể khởi tạo nạp tiền. Vui lòng thử lại.",
+    topUpAmountLabel: "Số tiền (OC)",
+    topUpQuickSelect: "Chọn nhanh",
+    topUpConfirm: "Tiếp tục thanh toán",
+    cancel: "Hủy",
+    topUpPreview: "Bạn sẽ thanh toán",
+    topUpInstant: "Tiền sẽ được cộng ngay sau khi thanh toán thành công.",
+    securePayment: "Thanh toán bảo mật",
+    paymentGateway: "Cổng thanh toán: PayOS",
   },
 } as const;
 
@@ -199,6 +225,9 @@ export default function WalletPageClean() {
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
   const [isCreator, setIsCreator] = useState(false);
+  const [isToppingUp, setIsToppingUp] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("10");
   const dashboardRole = activeTab === "revenue" && isCreator ? "Creator" : "Buyer";
 
   const statusOptions = useMemo(() => {
@@ -446,6 +475,28 @@ export default function WalletPageClean() {
     report.print();
   };
 
+  const handleTopUp = async () => {
+    const amount = Number(topUpAmount.trim());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      emitApiToast({ type: "error", message: t.topUpInvalid });
+      return;
+    }
+    setIsToppingUp(true);
+    try {
+      const res = await orbitCoinApi.deposit({ amountOrbitCoin: amount });
+      if (res.isSuccess && res.data?.checkoutUrl) {
+        emitApiToast({ type: "success", message: t.topUpRedirecting });
+        window.location.href = res.data.checkoutUrl;
+        return;
+      }
+      emitApiToast({ type: "error", message: t.topUpFailed });
+    } catch {
+      emitApiToast({ type: "error", message: t.topUpFailed });
+    } finally {
+      setIsToppingUp(false);
+    }
+  };
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
@@ -453,6 +504,13 @@ export default function WalletPageClean() {
           <h1 style={styles.title}>{t.title}</h1>
           <div style={styles.sub}>{activeTab === "revenue" ? t.creatorSubtitle : t.buyerSubtitle}</div>
         </div>
+        <button
+          style={styles.primaryBtn}
+          onClick={() => setShowTopUpModal(true)}
+          disabled={isToppingUp}
+        >
+          {isToppingUp ? "..." : t.topUp}
+        </button>
       </header>
 
       <section style={styles.metrics}>
@@ -643,6 +701,76 @@ export default function WalletPageClean() {
         </section>
       ) : null}
 
+      {showTopUpModal ? (
+        <div style={styles.overlay} onClick={() => !isToppingUp && setShowTopUpModal(false)}>
+          <div style={styles.topUpModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.topUpHero}>
+              <div>
+                <div style={styles.topUpTitle}>{"✨ "}{t.topUp}</div>
+                <div style={styles.sub}>{t.topUpPrompt}</div>
+              </div>
+              <button
+                style={styles.iconBtn}
+                onClick={() => setShowTopUpModal(false)}
+                disabled={isToppingUp}
+              >
+                x
+              </button>
+            </div>
+            <div style={{ ...styles.sub, fontWeight: 600 }}>{t.topUpQuickSelect}</div>
+            <div style={styles.switchWrap}>
+              {[10, 20, 50, 100].map((value) => (
+                <button
+                  key={value}
+                  style={topUpChipBtn(topUpAmount === String(value))}
+                  onClick={() => setTopUpAmount(String(value))}
+                  disabled={isToppingUp}
+                >
+                  {value} OC
+                </button>
+              ))}
+            </div>
+            <div style={styles.topUpInputWrap}>
+              <label style={styles.sub}>{t.topUpAmountLabel}</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                style={styles.input}
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+                disabled={isToppingUp}
+              />
+            </div>
+            <div style={styles.topUpPreviewCard}>
+              <span style={styles.sub}>{t.topUpPreview}</span>
+              <strong>
+                {Number.isFinite(Number(topUpAmount)) && Number(topUpAmount) > 0
+                  ? formatDisplayMoney(Number(topUpAmount) * exchangeRate, exchangeRate, "VND")
+                  : "--"}
+              </strong>
+            </div>
+            <div style={styles.topUpMetaRow}>
+              <span style={styles.metaBadge}>{t.securePayment}</span>
+              <span style={styles.metaBadge}>{t.paymentGateway}</span>
+            </div>
+            <div style={styles.sub}>{t.topUpInstant}</div>
+            <div style={styles.topUpActions}>
+              <button
+                style={styles.btn}
+                onClick={() => setShowTopUpModal(false)}
+                disabled={isToppingUp}
+              >
+                {t.cancel}
+              </button>
+            <button style={styles.primaryBtn} onClick={handleTopUp} disabled={isToppingUp}>
+              {isToppingUp ? "..." : t.topUpConfirm}
+            </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {selectedTx ? (
         <aside style={styles.drawer}>
           <div style={styles.rowHead}>
@@ -768,6 +896,15 @@ function defaultFilters(): WalletFilters {
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function fmtDate(d: Date) { return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 function tabBtn(active: boolean): CSSProperties { return { ...styles.btn, borderColor: active ? "var(--primary)" : "var(--border)", color: active ? "var(--primary)" : "var(--text)", fontWeight: active ? 700 : 500 }; }
+function topUpChipBtn(active: boolean): CSSProperties {
+  return {
+    ...styles.btn,
+    borderColor: active ? "var(--primary)" : "var(--border)",
+    color: active ? "var(--primary)" : "var(--text)",
+    background: active ? "color-mix(in srgb, var(--primary) 12%, var(--surface))" : "var(--surface)",
+    fontWeight: active ? 700 : 500,
+  };
+}
 function fmtVnd(amount: number) { return `${Math.round(amount).toLocaleString("en-US")} VND`; }
 function fmtOc(amount: number) { return `${Number(amount.toFixed(2)).toLocaleString("en-US")} OC`; }
 function formatDisplayMoney(amountVnd: number, exchangeRate: number, currency: DisplayCurrency) {
@@ -1010,6 +1147,17 @@ const styles: Record<string, CSSProperties> = {
   th: { textAlign: "left", fontSize: 12, color: "var(--muted)", borderBottom: "1px solid var(--border)", padding: "10px 12px", whiteSpace: "nowrap" },
   td: { padding: "10px 12px", borderBottom: "1px solid var(--border)", fontSize: 13, whiteSpace: "nowrap" },
   tr: { cursor: "pointer" },
+  primaryBtn: { border: "none", borderRadius: 8, background: "var(--primary)", color: "#fff", padding: "8px 12px", cursor: "pointer", fontWeight: 700 },
+  overlay: { position: "fixed", inset: 0, background: "rgba(2,6,23,0.55)", backdropFilter: "blur(3px)", display: "grid", placeItems: "center", zIndex: 90 },
+  topUpModal: { width: "min(460px, 92vw)", border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", padding: 16, display: "grid", gap: 12, boxShadow: "0 24px 48px rgba(2,6,23,0.25)" },
+  topUpHero: { display: "flex", justifyContent: "space-between", alignItems: "start", gap: 8, padding: 10, borderRadius: 10, background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 22%, transparent), color-mix(in srgb, var(--success) 18%, transparent))" },
+  topUpTitle: { fontWeight: 800, fontSize: 18, lineHeight: 1.2 },
+  topUpInputWrap: { display: "grid", gap: 6 },
+  topUpPreviewCard: { border: "1px solid var(--border)", borderRadius: 10, background: "var(--surface-2)", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  topUpMetaRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  metaBadge: { border: "1px solid var(--border)", borderRadius: 999, padding: "4px 10px", fontSize: 12, color: "var(--muted)", background: "var(--surface-2)" },
+  topUpActions: { display: "flex", justifyContent: "flex-end", gap: 8 },
+  iconBtn: { border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", padding: "4px 8px", cursor: "pointer", lineHeight: 1, fontSize: 14, color: "var(--muted)" },
   drawer: { position: "fixed", right: 24, top: 58, width: 760, maxHeight: "88vh", overflowY: "auto", border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", padding: 16, display: "grid", gap: 10, zIndex: 80, boxShadow: "0 20px 40px rgba(2,6,23,0.22)" },
   invoicePaper: { border: "1px solid #94a3b8", borderRadius: 10, background: "#fff", color: "#0f172a", padding: 14, display: "grid", gap: 10 },
   invoiceTop: { display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #cbd5e1", paddingBottom: 8 },
