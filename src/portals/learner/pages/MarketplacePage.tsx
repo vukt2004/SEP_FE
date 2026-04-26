@@ -25,6 +25,8 @@ type MapItem = {
   isFavorited: boolean;
   previews?: string[]; // for featured carousel
   learnedTags?: string[];
+  price: number; // in OC (game currency)
+  prerequisiteTags?: string[]; // required knowledge / prerequisites
 };
 
 const TAG_STYLES: Record<MapTag["color"], React.CSSProperties> = {
@@ -79,6 +81,14 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
 
   const categoryTags: MapTag[] = [typeTag, difficultyTag];
 
+  // Extract prerequisite tags (concepts) - exclude difficulty-related tags
+  const DIFFICULTY_TAG_NAMES = new Set(
+    ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
+  );
+  const prerequisiteTags = apiMap.tagNames
+    .filter((tag) => !DIFFICULTY_TAG_NAMES.has(tag.trim().toLowerCase()))
+    .slice(0, 3);
+
   const modeTags: MapTag[] = apiMap.tagNames.slice(0, 2).map((tag) => ({
     label: tag,
     color: "yellow",
@@ -112,24 +122,25 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
     likesPercentage: Math.min(likes, 99),
     isFavorited: false,
     learnedTags: extractLearnedTags(apiMap),
+    price: apiMap.price,
+    prerequisiteTags: prerequisiteTags.length > 0 ? prerequisiteTags : undefined,
   };
 }
 
-type TabId = "trending" | "random" | "favorites";
+type SortOption = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs";
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [heroMaps, setHeroMaps] = useState<MapItem[]>([]);
-  const [activeTab, setActiveTab] = useState<TabId>("trending");
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [favorites] = useState<Set<string>>(() => new Set());
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [difficultyFilter] = useState<number | undefined>(undefined);
-  const [typeFilter] = useState<number | undefined>(undefined);
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("CreatedAt");
+  const [sortAscending, setSortAscending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -155,11 +166,11 @@ export default function MarketplacePage() {
           pageNumber: currentPage,
           pageSize: PAGE_SIZE,
           mapStatus: "Published",
-          difficulty: difficultyFilter,
-          type: typeFilter,
+          difficulty: difficultyFilter !== "all" ? Number(difficultyFilter) : undefined,
+          type: typeFilter !== "all" ? Number(typeFilter) : undefined,
           search: debouncedSearchTerm || undefined,
-          sortBy: "CreatedAt",
-          sortAscending: false,
+          sortBy: sortBy,
+          sortAscending: sortAscending,
         });
 
         if (response.data.isSuccess && response.data.data) {
@@ -186,7 +197,7 @@ export default function MarketplacePage() {
     };
 
     loadMaps();
-  }, [currentPage, difficultyFilter, typeFilter, debouncedSearchTerm]);
+  }, [currentPage, difficultyFilter, typeFilter, debouncedSearchTerm, sortBy, sortAscending, t]);
 
   useEffect(() => {
     const loadHeroMaps = async () => {
@@ -235,26 +246,14 @@ export default function MarketplacePage() {
     return pages;
   };
 
-  const tabs: { id: TabId; labelKey: string }[] = [
-    { id: "trending", labelKey: "trending" },
-    { id: "favorites", labelKey: "favorites" },
-    { id: "random", labelKey: "random" },
-  ];
-
   const listMaps = useMemo(() => {
-    if (activeTab === "trending") {
-      return [...maps].sort((a, b) => b.views - a.views);
-    }
-    if (activeTab === "favorites") {
-      return maps.filter((m) => favorites.has(m.id));
-    }
-    return [...maps];
-  }, [activeTab, favorites, maps]);
+    return maps;
+  }, [maps]);
 
   // Hero hiển thị tối đa 10 map, lấy từ nguồn hero riêng; nếu lỗi thì fallback slice từ maps
   const heroSource = heroMaps.length > 0 ? heroMaps : maps.slice(0, 10);
   const featuredMap =
-    heroSource.length > 0 ? heroSource[featuredIndex % heroSource.length] : undefined;
+    heroSource.length > 0 ? heroSource[0] : undefined;
 
   const goToMapDetail = (mapId: string) => {
     navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
@@ -349,50 +348,22 @@ export default function MarketplacePage() {
                     right: 12,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    justifyContent: "center",
                   }}
                 >
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <motion.button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFeaturedIndex((i) => Math.max(0, i - 1));
-                      }}
-                      style={navBtn}
-                      aria-label={t("previousAria")}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <ChevronLeft size={20} />
-                    </motion.button>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: featuredIndex % 3 === i ? "var(--primary)" : "var(--muted)",
-                            opacity: featuredIndex % 3 === i ? 1 : 0.4,
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <motion.button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFeaturedIndex((i) => i + 1);
-                      }}
-                      style={navBtn}
-                      aria-label={t("nextAria")}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <ChevronRight size={20} />
-                    </motion.button>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: "var(--muted)",
+                          opacity: 0.4,
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -428,31 +399,49 @@ export default function MarketplacePage() {
                       </span>
                     ))}
                   </div>
-                  {/* Hidden: likes & views for featured map */}
-                  {/*
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  color: "var(--muted)",
-                  fontSize: 14,
-                }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <ThumbsUp size={16} />
-                  <span style={{ fontWeight: 800 }}>
-                    {featuredMap?.likesPercentage ?? 0}%
-                  </span>
-                </span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Play size={16} />
-                  <span style={{ fontWeight: 800 }}>
-                    {formatViews(featuredMap?.views ?? 0)}
-                  </span>
-                </span>
-              </div>
-              */}
+                  
+                  {/* Price */}
+                  <p
+                    style={{
+                      margin: "12px 0 8px 0",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: "var(--primary)",
+                    }}
+                  >
+                    {featuredMap?.price && featuredMap.price > 0 
+                      ? `${featuredMap.price.toLocaleString()} OC` 
+                      : t("free") || "Miễn phí"}
+                  </p>
+
+                  {/* Prerequisite knowledge */}
+                  {featuredMap?.prerequisiteTags && featuredMap.prerequisiteTags.length > 0 && (
+                    <p
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      <strong>{t("prerequisiteKnowledge") || "Kiến thức cần biết"}:</strong> {featuredMap.prerequisiteTags.slice(0, 3).join(", ")}
+                    </p>
+                  )}
+
+                  {/* Learned tags */}
+                  {featuredMap?.learnedTags && featuredMap.learnedTags.length > 0 && (
+                    <p
+                      style={{
+                        margin: "0 0 12px 0",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--text-2)",
+                      }}
+                    >
+                      <strong>{t("youWillLearn") || "Sẽ học được"}:</strong> {featuredMap.learnedTags.slice(0, 3).join(", ")}
+                    </p>
+                  )}
+
                   {featuredMap?.previews && (
                     <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                       {featuredMap.previews.map((bg, i) => (
@@ -491,32 +480,7 @@ export default function MarketplacePage() {
                 gap: 12,
               }}
             >
-              <div style={{ display: "flex", gap: 4 }}>
-                {tabs
-                  .filter((tab) => tab.id !== "favorites") // Temporarily hide Favorites tab
-                  .map((tab) => (
-                    <motion.button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      style={{
-                        padding: "10px 18px",
-                        borderRadius: 12,
-                        border: "1px solid var(--border)",
-                        background: activeTab === tab.id ? "var(--primary)" : "transparent",
-                        color: activeTab === tab.id ? "var(--on-primary, #0b1020)" : "var(--text)",
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.97 }}
-                    >
-                      {t(tab.labelKey)}
-                    </motion.button>
-                  ))}
-              </div>
+              <div />
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
@@ -545,6 +509,156 @@ export default function MarketplacePage() {
                 />
               </div>
             )}
+          </motion.div>
+
+          {/* Filter Panel */}
+          <motion.div
+            style={card()}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 12,
+                alignItems: "end",
+              }}
+            >
+              {/* Difficulty Filter */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+                  {t("difficulty") || "Độ khó"}
+                </label>
+                <select
+                  value={difficultyFilter}
+                  onChange={(e) => {
+                    setDifficultyFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="all">{t("all") || "Tất cả"}</option>
+                  <option value="1">1/5 - {t("easy") || "Dễ"}</option>
+                  <option value="2">2/5 - {t("easy") || "Dễ"}</option>
+                  <option value="3">3/5 - {t("medium") || "Trung bình"}</option>
+                  <option value="4">4/5 - {t("hard") || "Khó"}</option>
+                  <option value="5">5/5 - {t("hard") || "Khó"}</option>
+                </select>
+              </div>
+
+              {/* Type Filter */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+                  {t("type") || "Loại game"}
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="all">{t("all") || "Tất cả"}</option>
+                  <option value="0">Topdown</option>
+                  <option value="1">Platform</option>
+                  <option value="2">Snake</option>
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+                  {t("sortBy") || "Sắp xếp"}
+                </label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value as SortOption);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="CreatedAt">{t("newest") || "Mới nhất"}</option>
+                  <option value="Title">{t("title") || "Tiêu đề"}</option>
+                  <option value="Difficulty">{t("difficulty") || "Độ khó"}</option>
+                  <option value="TimeLimitMs">{t("timeLimit") || "Thời gian"}</option>
+                </select>
+              </div>
+
+              {/* Sort Order */}
+              <button
+                type="button"
+                onClick={() => setSortAscending(!sortAscending)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {sortAscending ? "↑ Asc" : "↓ Desc"}
+              </button>
+
+              {/* Clear Filters */}
+              {(difficultyFilter !== "all" || typeFilter !== "all" || searchTerm) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setDifficultyFilter("all");
+                    setTypeFilter("all");
+                    setSortBy("CreatedAt");
+                    setSortAscending(false);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--primary)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {t("clearFilters") || "Xóa bộ lọc"}
+                </button>
+              )}
+            </div>
           </motion.div>
 
           {/* Map grid */}
@@ -719,11 +833,21 @@ function MapCard({
   onClick?: () => void;
 }) {
   const { t } = useTranslation();
+  const difficultyNumber = Number(map.categoryTags.find(t => t.label.startsWith("Difficulty"))?.label.split(" ")[1] ?? 1);
+  const tier = getDifficultyTier(difficultyNumber);
+  const difficultyLabel = tier === "easy" ? t("easy") || "Dễ" : tier === "medium" ? t("medium") || "Trung bình" : t("hard") || "Khó";
 
   return (
     <motion.div
       variants={cardVariants}
-      style={{ ...card(), padding: 0, overflow: "hidden", cursor: onClick ? "pointer" : "default" }}
+      style={{ 
+        ...card(), 
+        padding: 0, 
+        overflow: "hidden", 
+        cursor: onClick ? "pointer" : "default",
+        display: "flex",
+        flexDirection: "column",
+      }}
       onClick={onClick}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
@@ -766,30 +890,13 @@ function MapCard({
             </span>
           ))}
         </div>
-        {/* Hidden: card favorite button */}
-        {/*
-        <button
-          type="button"
-          onClick={onToggleFavorite}
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            ...iconBtn,
-            color: isFavorited ? "#facc15" : "var(--muted)",
-          }}
-          aria-label={isFavorited ? "Remove favorite" : "Add favorite"}
-        >
-          <Star size={18} fill={isFavorited ? "currentColor" : "none"} />
-        </button>
-        */}
       </div>
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
         <h3
           style={{
             fontSize: 15,
             fontWeight: 800,
-            margin: "0 0 8px 0",
+            margin: "0",
             color: "var(--text)",
             lineHeight: 1.3,
             display: "-webkit-box",
@@ -800,10 +907,39 @@ function MapCard({
         >
           {map.title}
         </h3>
+        {/* Price */}
+        <p
+          style={{
+            margin: "0",
+            fontSize: 13,
+            fontWeight: 700,
+            color: "var(--primary)",
+          }}
+        >
+          {map.price > 0 ? `${map.price.toLocaleString()} OC` : t("free") || "Miễn phí"}
+        </p>
+        {/* Prerequisite knowledge */}
+        {map.prerequisiteTags && map.prerequisiteTags.length > 0 && (
+          <p
+            style={{
+              margin: "0",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-2)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={map.prerequisiteTags.join(", ")}
+          >
+            {t("prerequisiteKnowledge") || "Kiến thức cần biết"}: {map.prerequisiteTags.slice(0, 2).join(", ")}
+          </p>
+        )}
+        {/* Learned tags */}
         {map.learnedTags && map.learnedTags.length > 0 && (
           <p
             style={{
-              margin: "0 0 8px 0",
+              margin: "0",
               fontSize: 12,
               fontWeight: 600,
               color: "var(--text-2)",
@@ -813,31 +949,27 @@ function MapCard({
             }}
             title={map.learnedTags.join(", ")}
           >
-            {t("youWillLearn")}: {map.learnedTags.slice(0, 3).join(", ")}
+            {t("youWillLearn") || "Sẽ học được"}: {map.learnedTags.slice(0, 2).join(", ")}
           </p>
         )}
-        {/* Hidden: card views & likes */}
-        {/*
+        {/* Difficulty tier badge - inside card at bottom */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            color: "var(--muted)",
+            marginTop: "auto",
+            padding: "6px 10px",
+            borderRadius: 8,
+            border: `1px solid ${tier === "easy" ? "rgba(34, 197, 94, 0.5)" : tier === "medium" ? "rgba(234, 179, 8, 0.5)" : "rgba(168, 85, 247, 0.5)"}`,
+            background: tier === "easy" ? "rgba(34, 197, 94, 0.2)" : tier === "medium" ? "rgba(234, 179, 8, 0.2)" : "rgba(168, 85, 247, 0.2)",
+            color: tier === "easy" ? "#4ade80" : tier === "medium" ? "#facc15" : "#c084fc",
             fontSize: 12,
             fontWeight: 700,
+            textAlign: "center",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Play size={12} />
-            {formatViews(map.views)}
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <ThumbsUp size={12} />
-            {map.likesPercentage}%
-          </span>
+          {difficultyLabel}
         </div>
-        */}
       </div>
     </motion.div>
   );
@@ -863,19 +995,6 @@ function pillTag(): React.CSSProperties {
     whiteSpace: "nowrap",
   };
 }
-
-const navBtn: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--text)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-};
 
 const iconBtn: React.CSSProperties = {
   width: 40,
