@@ -18,7 +18,6 @@ import {
   LayoutDashboard,
   Map,
   Users,
-  Flag,
   Package,
   ChevronLeft,
   ChevronRight,
@@ -89,12 +88,6 @@ const CmsLayout: React.FC = () => {
       labelKey: "cmsLayout.nav.packages",
       icon: Package,
       roles: ["admin"],
-    },
-    {
-      path: ROUTES.CMS_REPORTS,
-      labelKey: "cmsLayout.nav.reports",
-      icon: Flag,
-      roles: ["admin", "moderator"],
     },
     {
       path: ROUTES.CMS_COMPLAINTS,

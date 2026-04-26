@@ -1495,36 +1495,6 @@ export default function ComplaintsPage() {
               <ArrowLeft size={16} />
               {t("complaints.success.backToList")}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedComplaint(null);
-                setCreateSuccess("");
-              }}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "10px 20px",
-                background: "var(--surface)",
-                color: "var(--text-2)",
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "background 160ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--surface)";
-              }}
-            >
-              <Plus size={16} />
-              {t("complaints.success.createAnother")}
-            </button>
           </div>
 
           {/* CSS keyframes for the success animation */}
@@ -2022,22 +1992,7 @@ export default function ComplaintsPage() {
             </div>
           </form>
         </section>
-      ) : (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            type="button"
-            onClick={() => navigate(ROUTES.LEARNER_COMPLAINTS_NEW)}
-            style={{
-              ...createUi.toggleBtn,
-              background: "var(--primary)",
-              color: "white",
-              borderColor: "var(--primary)",
-            }}
-          >
-            {t("complaints.createTicket")}
-          </button>
-        </div>
-      )}
+      ) : null}
 
       {activeError ? (
         <div style={{ color: "var(--danger)" }}>
