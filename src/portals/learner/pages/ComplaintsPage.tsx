@@ -28,7 +28,6 @@ import {
   X,
   ArrowLeft,
   Eye,
-  Plus,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
