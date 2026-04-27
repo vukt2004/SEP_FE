@@ -1024,7 +1024,7 @@ export const MyMapsPage: React.FC = () => {
   const handleOpenReportComplaint = (mapId: string) => {
     const selectedMap = maps.find((map) => map.id === mapId);
     const params = new URLSearchParams({
-      prefill: `map-owned-gameplay-${mapId}-${Date.now()}`,
+      prefill: `game-owned-gameplay-${mapId}-${Date.now()}`,
       openCreate: "1",
       categoryKey: "AccessIssue",
       gameName: selectedMap?.title ?? "",
@@ -1169,7 +1169,7 @@ export const MyMapsPage: React.FC = () => {
                 navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "learner" } });
               }}
               disabled={activeTab !== "author" || !canCreateMap}
-              title={!canCreateMap ? "Upgrade to Pro to create maps" : undefined}
+              title={!canCreateMap ? "Upgrade to Pro to create games" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1190,7 +1190,7 @@ export const MyMapsPage: React.FC = () => {
             </button>
             {!canCreateMap && (
               <p style={{ color: "var(--warning)", fontSize: "13px", margin: 0 }}>
-                Upgrade to Pro to create maps
+                Upgrade to Pro to create games
               </p>
             )}
           </div>
@@ -1440,7 +1440,7 @@ export const MyMapsPage: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <h2 style={{ color: "var(--text)", marginBottom: "16px", fontSize: "20px" }}>
-                Rate This Map
+                Rate This Game
               </h2>
 
               <div style={{ marginBottom: "16px" }}>
@@ -1595,12 +1595,12 @@ export const MyMapsPage: React.FC = () => {
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
-                    {locale.startsWith("vi") ? "Xác nhận publish map" : "Confirm publish map"}
+                    {locale.startsWith("vi") ? "Xác nhận publish game" : "Confirm publish game"}
                   </div>
                   <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
                     {locale.startsWith("vi")
-                      ? "Map sẽ được công khai sau khi publish."
-                      : "The map will be publicly visible after publishing."}
+                      ? "Game sẽ được công khai sau khi publish."
+                      : "The game will be publicly visible after publishing."}
                   </div>
                 </div>
               </div>

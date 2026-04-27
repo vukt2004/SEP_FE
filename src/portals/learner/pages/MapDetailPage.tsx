@@ -428,7 +428,7 @@ export default function MapDetailPage() {
     if (!map?.id || !purchaseModal || purchaseModal.kind === "success") return;
     const isInsufficient = purchaseModal.kind === "insufficient";
     const params = new URLSearchParams({
-      prefill: `map-purchase-${purchaseModal.kind}-${map.id}-${Date.now()}`,
+      prefill: `game-purchase-${purchaseModal.kind}-${map.id}-${Date.now()}`,
       openCreate: "1",
       categoryKey: isInsufficient ? "PaymentIssue" : "AccessIssue",
       gameName: map.title,
@@ -447,7 +447,7 @@ export default function MapDetailPage() {
   const handleReportOwnedMapIssue = () => {
     if (!map?.id || !canReportOwnedMapIssue) return;
     const params = new URLSearchParams({
-      prefill: `map-owned-gameplay-${map.id}-${Date.now()}`,
+      prefill: `game-owned-gameplay-${map.id}-${Date.now()}`,
       openCreate: "1",
       categoryKey: "AccessIssue",
       gameName: map.title,
@@ -1498,7 +1498,7 @@ export default function MapDetailPage() {
               <h2 className={styles.moreByCreatorTitle}>
                 {locale.startsWith("vi")
                   ? "Bản đồ khác của tác giả"
-                  : "More maps from this creator"}
+                  : "More games from this creator"}
               </h2>
               <div className={styles.moreByCreatorHeaderActions}>
                 <span className={styles.moreByCreatorName}>{getCreatorLabel()}</span>
@@ -1558,7 +1558,7 @@ export default function MapDetailPage() {
                           {otherMap.description?.trim() ||
                             (locale.startsWith("vi")
                               ? "Chưa có mô tả cho bản đồ này."
-                              : "No description for this map.")}
+                              : "No description for this game.")}
                         </p>
                         <div className={styles.creatorMapMetaRow}>
                           <span>{difficultyLabel}</span>
@@ -1577,7 +1577,7 @@ export default function MapDetailPage() {
               <p className={styles.moreByCreatorState}>
                 {locale.startsWith("vi")
                   ? "Tác giả chưa có bản đồ công khai khác."
-                  : "No other published maps from this creator yet."}
+                  : "No other published games from this creator yet."}
               </p>
             )}
           </section>
@@ -1598,7 +1598,7 @@ export default function MapDetailPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className={styles.modalTitle}>
-                {locale.startsWith("vi") ? "Xác nhận mua bản đồ" : "Confirm map purchase"}
+                {locale.startsWith("vi") ? "Xác nhận mua trò chơi" : "Confirm game purchase"}
               </h3>
               <div className={styles.purchaseConfirmCard}>
                 <div className={styles.purchaseConfirmThumbWrap}>
@@ -1626,7 +1626,7 @@ export default function MapDetailPage() {
               <p className={styles.modalMessage}>
                 {locale.startsWith("vi")
                   ? "Bạn có chắc muốn mua bản đồ này không?"
-                  : "Are you sure you want to purchase this map?"}
+                  : "Are you sure you want to purchase this game?"}
               </p>
               <p className={styles.purchasePolicyNote}>
                 {locale.startsWith("vi")

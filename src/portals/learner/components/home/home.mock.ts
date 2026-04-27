@@ -17,7 +17,7 @@ export const mockStudentHome: LearnerHomeVM = {
   planets: [
     {
       id: "map",
-      title: "Map Mode",
+      title: "Game Mode",
       subtitle: "Solo missions • Learn-by-playing",
       state: "ready",
       primaryCta: "Resume",
