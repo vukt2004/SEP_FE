@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { learnerComplaintsApi } from "@/services/api/learner/complaints.api";
 import { learnerChatApi } from "@/services/api/learner/chat.api";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
+import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { ComplaintMessageList } from "@/shared/components/complaints/ComplaintMessageList";
 import { ComplaintTimeline } from "@/shared/components/complaints/ComplaintTimeline";
@@ -62,6 +63,7 @@ export default function ComplaintDetailPage() {
   const [data, setData] = useState<ComplaintDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [composerError, setComposerError] = useState("");
@@ -89,9 +91,26 @@ export default function ComplaintDetailPage() {
     void fetchDetail();
   }, [fetchDetail]);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await learnerProfileApi.getProfile();
+        if (!active || !res.isSuccess || !res.data?.userId) return;
+        setCurrentUserId(res.data.userId);
+      } catch {
+        if (active) setCurrentUserId("");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Nếu là seller (isLimitedView), redirect sang overview
   useEffect(() => {
-    if (data && (data as any).isLimitedView) {
+    const limitedViewData = data as (ComplaintDetail & { isLimitedView?: boolean }) | null;
+    if (limitedViewData?.isLimitedView) {
       navigate(`/app/complaints/${id}/overview`, { replace: true });
     }
   }, [data, id, navigate]);
@@ -503,7 +522,7 @@ export default function ComplaintDetailPage() {
               >
                 <ComplaintMessageList
                   messages={visibleMessages}
-                  currentUserId={data.userId}
+                  currentUserId={currentUserId || data.userId}
                   hideInternal
                   otherLabel={t("complaints.detail.supportTeam")}
                   currentUserLabel={t("complaints.detail.you")}

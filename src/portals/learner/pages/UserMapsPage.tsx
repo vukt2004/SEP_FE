@@ -159,7 +159,7 @@ export default function UserMapsPage() {
         <header className={styles.header}>
           <h1 className={styles.title}>
             <Gamepad2 size={24} />
-            {locale.startsWith("vi") ? "Bản đồ của tác giả" : "Creator maps"}
+            {locale.startsWith("vi") ? "Trò chơi của tác giả" : "Creator games"}
           </h1>
           {creatorLabel && <p className={styles.subtitle}>{creatorLabel}</p>}
           {maps.length > 0 && (
@@ -188,8 +188,8 @@ export default function UserMapsPage() {
         ) : maps.length === 0 ? (
           <p className={styles.state}>
             {locale.startsWith("vi")
-              ? "Chưa có bản đồ nào cho tác giả này."
-              : "No maps found for this creator."}
+              ? "Chưa có trò chơi nào cho tác giả này."
+              : "No games found for this creator."}
           </p>
         ) : (
           <>
@@ -217,8 +217,8 @@ export default function UserMapsPage() {
                       <p className={styles.cardDesc}>
                         {m.description?.trim() ||
                           (locale.startsWith("vi")
-                            ? "Chưa có mô tả cho bản đồ này."
-                            : "No description for this map.")}
+                            ? "Chưa có mô tả cho trò chơi này."
+                            : "No description for this game.")}
                       </p>
                       <div className={styles.cardMeta}>
                         <span>{difficultyLabel}</span>
@@ -233,7 +233,7 @@ export default function UserMapsPage() {
             </div>
 
             <p className={styles.pagerText}>
-              {locale.startsWith("vi") ? `${maps.length} bản đồ` : `${maps.length} maps`}
+              {locale.startsWith("vi") ? `${maps.length} trò chơi` : `${maps.length} games`}
             </p>
           </>
         )}

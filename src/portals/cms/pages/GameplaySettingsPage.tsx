@@ -20,7 +20,7 @@ const LABELS: Record<ScoreKey, string> = {
 };
 
 const HINTS: Record<ScoreKey, string> = {
-  baseScore: "Fixed portion for clearing the map",
+  baseScore: "Fixed portion for clearing the game",
   timeScore: "Faster runs score higher vs. time limit",
   stepsScore: "Fewer moves vs. optimal path",
   blocksScore: "Using required block types efficiently",
@@ -277,7 +277,7 @@ const GameplaySettingsPage: React.FC = () => {
                   type="button"
                   className="gss-info-btn"
                   title="Open scoring guide"
-                  aria-label="More about map solve scoring"
+                  aria-label="More about game solve scoring"
                   onClick={() => setShowGuideModal(true)}
                 >
                   <Info size={15} strokeWidth={2.25} aria-hidden />

@@ -444,7 +444,7 @@ export default function ModeSelectPage() {
                   <div className={styles.selectedMapMain}>
                     <div className={styles.selectedMapThumb}>
                       {selectedMapPreviewUrl ? (
-                        <img src={selectedMapPreviewUrl} alt={selectedMapDetail?.title || "Selected map"} />
+                        <img src={selectedMapPreviewUrl} alt={selectedMapDetail?.title || "Selected game"} />
                       ) : (
                         <span>NO IMAGE</span>
                       )}
@@ -452,7 +452,7 @@ export default function ModeSelectPage() {
                     <div className={styles.selectedMapMeta}>
                       <span className={styles.selectedMapText}>
                         {createMapTitle?.trim() ||
-                          (createMapId ? `Map ${createMapId.slice(0, 8)}...` : "Chưa chọn")}
+                          (createMapId ? `Game ${createMapId.slice(0, 8)}...` : "Chưa chọn")}
                       </span>
                       <span className={styles.selectedMapSubtext}>
                         {selectedMapDetailLoading

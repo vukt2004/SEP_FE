@@ -12,12 +12,12 @@ export default function GalaxyHomeLayout({ vm }: { vm: LearnerHomeVM }) {
       <HudBar hud={vm.hud} />
 
       <div className={styles.grid}>
-        <section className={styles.mapArea} aria-label="Galaxy map">
+        <section className={styles.mapArea} aria-label="Galaxy game">
           <div className={styles.mapBackdrop} aria-hidden />
 
           <div className={styles.mapHeader}>
             <div>
-              <div className={styles.mapTitle}>Galaxy Map</div>
+              <div className={styles.mapTitle}>Galaxy Game</div>
               <div className={styles.mapSub}>Choose your next destination</div>
             </div>
             <div className={styles.hintPill} title="Keyboard tip">
