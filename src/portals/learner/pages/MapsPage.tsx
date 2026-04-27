@@ -12,6 +12,7 @@ import {
   Sparkles,
   GraduationCap,
   LayoutGrid,
+  ChevronDown,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerRecommendationsApi } from "@/services/api/learner/recommendations.api";
@@ -26,50 +27,15 @@ import { ROUTES } from "@/lib/constants/routes";
 import styles from "./MapsPage.module.css";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import { getConceptLabel } from "@/lib/maps/conceptLabels";
 
 /** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
 const DIFFICULTY_TAG_NAMES = new Set(
   ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
 );
 
-/** Vietnamese labels for concept tags (dropdown + cards when locale is vi). Excluded concepts still translated on cards. */
-const CONCEPT_LABELS_VI: Record<string, string> = {
-  "Algorithm Basics": "Cơ bản thuật toán",
-  "Algorithm Design": "Thiết kế thuật toán",
-  Arrays: "Mảng",
-  "Computational Thinking": "Tư duy máy tính",
-  Conditionals: "Điều kiện",
-  Debugging: "Gỡ lỗi",
-  Functions: "Hàm",
-  "Logic Puzzle": "Câu đố logic",
-  "Logical Thinking": "Tư duy logic",
-  Loops: "Vòng lặp",
-  Objects: "Đối tượng",
-  "Obstacle Avoidance": "Tránh chướng ngại vật",
-  Operators: "Toán tử",
-  Optimization: "Tối ưu hóa",
-  Pathfinding: "Tìm đường",
-  "Pattern Recognition": "Nhận dạng mẫu",
-  Pointers: "Con trỏ",
-  "Problem Solving": "Giải quyết vấn đề",
-  Recursion: "Đệ quy",
-  "Resource Collection": "Thu thập tài nguyên",
-  Strategy: "Chiến lược",
-  Variables: "Biến",
-  "If Else": "If / Else",
-  "If/Else": "If / Else",
-};
-
-function getConceptLabel(name: string, locale: LocaleId): string {
-  if (locale === "vi") {
-    const exact = CONCEPT_LABELS_VI[name];
-    if (exact) return exact;
-    const lower = name.toLowerCase();
-    const entry = Object.entries(CONCEPT_LABELS_VI).find(([k]) => k.toLowerCase() === lower);
-    if (entry) return entry[1];
-  }
-  return name;
-}
+/** Số game hiển thị ban đầu trong các khối (Tiếp tục chơi, Đề xuất, Dành cho người mới); bấm tiêu đề để mở rộng. */
+const MAPS_SECTION_PREVIEW = 3;
 
 function isDifficultyTag(tagName: string): boolean {
   return DIFFICULTY_TAG_NAMES.has(tagName.trim().toLowerCase());
@@ -268,14 +234,19 @@ function MapsContent() {
   const [mechanismConceptPicker, setMechanismConceptPicker] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     const v = searchParams.get("sort");
-    return v === "newest" || v === "most_played" ? v : "recommended";
+    if (v === "recommended" || v === "most_played") return v;
+    return "newest";
   });
+  const [mostPlayedRankById, setMostPlayedRankById] = useState<Map<string, number>>(() => new Map());
   const [priceMin, setPriceMin] = useState<string>(() => searchParams.get("pmin") ?? "");
   const [priceMax, setPriceMax] = useState<string>(() => searchParams.get("pmax") ?? "");
   const [mainTab, setMainTab] = useState<MainTab>(() => {
     const v = searchParams.get("tab");
     return v === "recommended" || v === "progress" ? v : "all";
   });
+  const [expandContinueSection, setExpandContinueSection] = useState(false);
+  const [expandBeginnerSection, setExpandBeginnerSection] = useState(false);
+  const [expandRecommendedSection, setExpandRecommendedSection] = useState(false);
   const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
   const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<RecommendationResultDto | null>(null);
@@ -292,12 +263,37 @@ function MapsContent() {
     if (difficultyFilter !== "all") p.set("diff", difficultyFilter);
     if (selectedKnowledgeConcepts.length > 0) p.set("kc", selectedKnowledgeConcepts.join(","));
     if (selectedMechanismConcepts.length > 0) p.set("mc", selectedMechanismConcepts.join(","));
-    if (sortBy !== "recommended") p.set("sort", sortBy);
+    if (sortBy !== "newest") p.set("sort", sortBy);
     if (priceMin.trim()) p.set("pmin", priceMin.trim());
     if (priceMax.trim()) p.set("pmax", priceMax.trim());
     if (mainTab !== "all") p.set("tab", mainTab);
-    setSearchParams(p, { replace: true });
-  }, [searchTerm, difficultyFilter, selectedKnowledgeConcepts, selectedMechanismConcepts, sortBy, priceMin, priceMax, mainTab, setSearchParams]);
+    // Preserve route location.state (e.g. lobbyPickMode from /app/browse) — replace-only search updates otherwise drop it.
+    setSearchParams(p, {
+      replace: true,
+      ...(location.state != null ? { state: location.state } : {}),
+    });
+  }, [
+    searchTerm,
+    difficultyFilter,
+    selectedKnowledgeConcepts,
+    selectedMechanismConcepts,
+    sortBy,
+    priceMin,
+    priceMax,
+    mainTab,
+    setSearchParams,
+    location.state,
+  ]);
+
+  useEffect(() => {
+    if (mainTab !== "all") {
+      setExpandContinueSection(false);
+      setExpandBeginnerSection(false);
+    }
+    if (mainTab !== "recommended") {
+      setExpandRecommendedSection(false);
+    }
+  }, [mainTab]);
 
   const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
   const { inProgress, completed, locked } = useMapProgressFromHistory(mapIds);
@@ -373,19 +369,6 @@ function MapsContent() {
     [completed, inProgress, ownershipByMapId],
   );
 
-  // Stable sort: playable maps first, keep existing order within each group.
-  const mapsSortedPlayable = useMemo(() => {
-    return maps
-      .map((m, i) => ({ m, i }))
-      .sort((a, b) => {
-        const ap = isPlayableMap(a.m);
-        const bp = isPlayableMap(b.m);
-        if (ap !== bp) return ap ? -1 : 1;
-        return a.i - b.i;
-      })
-      .map((x) => x.m);
-  }, [maps, isPlayableMap]);
-
   const recommendedIdOrder = useMemo(() => {
     type RecommendationMapItem = { mapId?: string; MapId?: string };
     const r = recommendations as {
@@ -394,7 +377,6 @@ function MapsContent() {
     } | null;
     const recommendedMaps = r?.recommendedMaps ?? r?.RecommendedMaps ?? [];
     const ids = (recommendedMaps ?? []).map((x) => x.mapId ?? x.MapId);
-    // Normalize for stable matching (Guid comparison is case-insensitive).
     return ids.filter(Boolean).map((id) => String(id).toLowerCase());
   }, [recommendations]);
 
@@ -403,6 +385,55 @@ function MapsContent() {
     recommendedIdOrder.forEach((id, i) => idx.set(id, i));
     return idx;
   }, [recommendedIdOrder]);
+
+  const byCreatedDesc = (a: ApiMap, b: ApiMap) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+  /** playable trước; trong từng nhóm áp dụng sort theo tab Sắp xếp (mới nhất / đề xuất / chơi nhiều). */
+  const catalogMapsOrdered = useMemo(() => {
+    const list = [...maps];
+    const playableFirst = (a: ApiMap, b: ApiMap) => {
+      const ap = isPlayableMap(a);
+      const bp = isPlayableMap(b);
+      if (ap !== bp) return ap ? -1 : 1;
+      return 0;
+    };
+
+    if (sortBy === "newest") {
+      list.sort((a, b) => {
+        const pf = playableFirst(a, b);
+        if (pf !== 0) return pf;
+        return byCreatedDesc(a, b);
+      });
+      return list;
+    }
+
+    if (sortBy === "recommended") {
+      list.sort((a, b) => {
+        const pf = playableFirst(a, b);
+        if (pf !== 0) return pf;
+        const ia = recommendedIdIndex.get(a.id.toLowerCase()) ?? 999999;
+        const ib = recommendedIdIndex.get(b.id.toLowerCase()) ?? 999999;
+        if (ia !== ib) return ia - ib;
+        return byCreatedDesc(a, b);
+      });
+      return list;
+    }
+
+    if (sortBy === "most_played") {
+      list.sort((a, b) => {
+        const pf = playableFirst(a, b);
+        if (pf !== 0) return pf;
+        const ra = mostPlayedRankById.get(a.id.toLowerCase()) ?? 999999;
+        const rb = mostPlayedRankById.get(b.id.toLowerCase()) ?? 999999;
+        if (ra !== rb) return ra - rb;
+        return byCreatedDesc(a, b);
+      });
+      return list;
+    }
+
+    return list;
+  }, [maps, sortBy, isPlayableMap, recommendedIdIndex, mostPlayedRankById]);
 
   const parsedPriceMin = priceMin.trim() !== "" ? Number(priceMin) : undefined;
   const parsedPriceMax = priceMax.trim() !== "" ? Number(priceMax) : undefined;
@@ -420,15 +451,32 @@ function MapsContent() {
         minPrice: parsedPriceMin != null && !isNaN(parsedPriceMin) ? parsedPriceMin : undefined,
         maxPrice: parsedPriceMax != null && !isNaN(parsedPriceMax) ? parsedPriceMax : undefined,
         sortBy: "CreatedAt",
-        sortAscending: sortBy !== "newest", // false = newest first
+        sortAscending: false,
       });
       if (res.data.isSuccess && res.data.data) {
         setMaps(res.data.data.items as ApiMap[]);
       } else {
         setError(res.data.message || t("failedLoadMapList"));
+        setMostPlayedRankById(new Map());
+      }
+
+      if (res.data.isSuccess && sortBy === "most_played") {
+        const lb = await learnerMapsApi.getMostPlayedCreatedLeaderboard("Month", 1, 200);
+        const next = new Map<string, number>();
+        if (lb.data.isSuccess && lb.data.data?.items?.length) {
+          lb.data.data.items.forEach((row, idx) => {
+            const raw = row.mapId ?? row.gameId;
+            const id = raw != null ? String(raw).toLowerCase() : "";
+            if (id) next.set(id, idx);
+          });
+        }
+        setMostPlayedRankById(next);
+      } else {
+        setMostPlayedRankById(new Map());
       }
     } catch (err) {
       setError(t("errorLoadMapList"));
+      setMostPlayedRankById(new Map());
       console.error(err);
     } finally {
       setLoading(false);
@@ -478,7 +526,7 @@ function MapsContent() {
   }, []);
 
   const filteredMaps = useMemo(() => {
-    let list = [...mapsSortedPlayable];
+    let list = [...catalogMapsOrdered];
     if (selectedKnowledgeConcepts.length > 0) {
       // Match-all semantics within each group.
       list = list.filter((m) => {
@@ -515,7 +563,7 @@ function MapsContent() {
     }
     return list;
   }, [
-    mapsSortedPlayable,
+    catalogMapsOrdered,
     selectedKnowledgeConcepts,
     selectedMechanismConcepts,
     mainTab,
@@ -527,22 +575,21 @@ function MapsContent() {
   ]);
 
   const inProgressMaps = useMemo(
-    () => mapsSortedPlayable.filter((m) => m.id in inProgress),
-    [mapsSortedPlayable, inProgress],
+    () => catalogMapsOrdered.filter((m) => m.id in inProgress),
+    [catalogMapsOrdered, inProgress],
   );
 
   const recommendedMaps = useMemo(() => {
-    if (!recommendedIdOrder.length) return mapsSortedPlayable.slice(0, 2);
-    const byId = new Map(mapsSortedPlayable.map((m) => [m.id.toLowerCase(), m]));
+    if (!recommendedIdOrder.length) return catalogMapsOrdered.slice(0, 24);
+    const byId = new Map(catalogMapsOrdered.map((m) => [m.id.toLowerCase(), m]));
     return recommendedIdOrder
       .map((id) => byId.get(id))
-      .filter((m): m is ApiMap => m != null)
-      .slice(0, 2);
-  }, [mapsSortedPlayable, recommendedIdOrder]);
+      .filter((m): m is ApiMap => m != null);
+  }, [catalogMapsOrdered, recommendedIdOrder]);
 
   const beginnerMaps = useMemo(
-    () => mapsSortedPlayable.filter((m) => getDifficultyTier(m.difficulty) === "easy"),
-    [mapsSortedPlayable],
+    () => catalogMapsOrdered.filter((m) => getDifficultyTier(m.difficulty) === "easy"),
+    [catalogMapsOrdered],
   );
   const allMapsForGrid = filteredMaps;
 
@@ -555,6 +602,13 @@ function MapsContent() {
     searchTerm.trim() !== "" ||
     priceMin.trim() !== "" ||
     priceMax.trim() !== "";
+
+  useEffect(() => {
+    if (!hasActiveFilters) return;
+    setExpandContinueSection(false);
+    setExpandBeginnerSection(false);
+    setExpandRecommendedSection(false);
+  }, [hasActiveFilters]);
 
   if (loading && maps.length === 0) {
     return (
@@ -830,8 +884,8 @@ function MapsContent() {
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
                   aria-label={t("sortByLabel")}
                 >
-                  <option value="recommended">{t("sortRecommended")}</option>
                   <option value="newest">{t("sortNewest")}</option>
+                  <option value="recommended">{t("sortRecommended")}</option>
                   <option value="most_played">{t("sortMostPlayed")}</option>
                 </select>
               </div>
@@ -846,7 +900,12 @@ function MapsContent() {
                 key={tab}
                 type="button"
                 className={`${styles.mainTab} ${mainTab === tab ? styles.mainTabActive : ""}`}
-                onClick={() => setMainTab(tab)}
+                onClick={() => {
+                  setMainTab(tab);
+                  if (tab === "recommended") {
+                    setExpandRecommendedSection(true);
+                  }
+                }}
               >
                 {tab === "all"
                   ? t("allMaps")
@@ -860,12 +919,36 @@ function MapsContent() {
           {/* Continue Playing */}
           {inProgressMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
             <section className={styles.block}>
-              <h2 className={styles.blockTitle}>
-                <Play size={20} className={styles.blockTitleIcon} aria-hidden />
-                {t("continuePlaying")}
-              </h2>
+              {inProgressMaps.length > MAPS_SECTION_PREVIEW ? (
+                <button
+                  type="button"
+                  className={`${styles.curatedHead} ${styles.curatedHeadButton}`}
+                  onClick={() => setExpandContinueSection((v) => !v)}
+                  aria-expanded={expandContinueSection}
+                >
+                  <Play size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("continuePlaying")}</span>
+                  <span className={styles.curatedExpandHint}>
+                    {expandContinueSection ? t("mapsSectionShowLess") : t("mapsSectionShowMore")}
+                  </span>
+                  <ChevronDown
+                    size={22}
+                    className={styles.curatedChevron}
+                    aria-hidden
+                    data-expanded={expandContinueSection ? "true" : "false"}
+                  />
+                </button>
+              ) : (
+                <h2 className={styles.curatedHead}>
+                  <Play size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("continuePlaying")}</span>
+                </h2>
+              )}
               <div className={styles.continueGrid}>
-                {inProgressMaps.map((map) => {
+                {(expandContinueSection
+                  ? inProgressMaps
+                  : inProgressMaps.slice(0, MAPS_SECTION_PREVIEW)
+                ).map((map) => {
                   const { status, progressPercent } = getMapStatus(
                     map.id,
                     inProgress,
@@ -894,12 +977,36 @@ function MapsContent() {
           {/* Recommended for you */}
           {recommendedMaps.length > 0 && mainTab === "recommended" && !hasActiveFilters && (
             <section className={styles.block}>
-              <h2 className={styles.blockTitle}>
-                <Sparkles size={20} className={styles.blockTitleIcon} aria-hidden />
-                {t("recommendedForYou")}
-              </h2>
+              {recommendedMaps.length > MAPS_SECTION_PREVIEW ? (
+                <button
+                  type="button"
+                  className={`${styles.curatedHead} ${styles.curatedHeadButton}`}
+                  onClick={() => setExpandRecommendedSection((v) => !v)}
+                  aria-expanded={expandRecommendedSection}
+                >
+                  <Sparkles size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("recommendedForYou")}</span>
+                  <span className={styles.curatedExpandHint}>
+                    {expandRecommendedSection ? t("mapsSectionShowLess") : t("mapsSectionShowMore")}
+                  </span>
+                  <ChevronDown
+                    size={22}
+                    className={styles.curatedChevron}
+                    aria-hidden
+                    data-expanded={expandRecommendedSection ? "true" : "false"}
+                  />
+                </button>
+              ) : (
+                <h2 className={styles.curatedHead}>
+                  <Sparkles size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("recommendedForYou")}</span>
+                </h2>
+              )}
               <div className={styles.recommendedGrid}>
-                {recommendedMaps.map((map) => {
+                {(expandRecommendedSection
+                  ? recommendedMaps
+                  : recommendedMaps.slice(0, MAPS_SECTION_PREVIEW)
+                ).map((map) => {
                   const { status, progressPercent } = getMapStatus(
                     map.id,
                     inProgress,
@@ -928,12 +1035,36 @@ function MapsContent() {
           {/* Beginner friendly */}
           {beginnerMaps.length > 0 && mainTab === "all" && !hasActiveFilters && (
             <section className={styles.block}>
-              <h2 className={styles.blockTitle}>
-                <GraduationCap size={20} className={styles.blockTitleIcon} aria-hidden />
-                {t("beginnerFriendly")}
-              </h2>
+              {beginnerMaps.length > MAPS_SECTION_PREVIEW ? (
+                <button
+                  type="button"
+                  className={`${styles.curatedHead} ${styles.curatedHeadButton}`}
+                  onClick={() => setExpandBeginnerSection((v) => !v)}
+                  aria-expanded={expandBeginnerSection}
+                >
+                  <GraduationCap size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("beginnerFriendly")}</span>
+                  <span className={styles.curatedExpandHint}>
+                    {expandBeginnerSection ? t("mapsSectionShowLess") : t("mapsSectionShowMore")}
+                  </span>
+                  <ChevronDown
+                    size={22}
+                    className={styles.curatedChevron}
+                    aria-hidden
+                    data-expanded={expandBeginnerSection ? "true" : "false"}
+                  />
+                </button>
+              ) : (
+                <h2 className={styles.curatedHead}>
+                  <GraduationCap size={22} className={styles.curatedHeadIcon} aria-hidden />
+                  <span className={styles.curatedHeadLabel}>{t("beginnerFriendly")}</span>
+                </h2>
+              )}
               <div className={styles.beginnerGrid}>
-                {beginnerMaps.slice(0, 4).map((map) => {
+                {(expandBeginnerSection
+                  ? beginnerMaps
+                  : beginnerMaps.slice(0, MAPS_SECTION_PREVIEW)
+                ).map((map) => {
                   const { status, progressPercent } = getMapStatus(
                     map.id,
                     inProgress,
@@ -948,7 +1079,7 @@ function MapsContent() {
                       locale={locale}
                       status={status}
                       progressPercent={progressPercent}
-                      size="medium"
+                      size="large"
                       badge="start_here"
                       onPlay={() => handleMapPrimaryAction(map.id, map.title)}
                       onLocked={() => navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", map.id))}

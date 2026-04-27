@@ -8,15 +8,18 @@ import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
+import { getConceptLabel } from "@/lib/maps/conceptLabels";
+import type { LocaleId } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
 import styles from "./MarketplacePage.module.css";
 
-type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" };
+type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" | "red" };
 
 type MapItem = {
   id: string;
   title: string;
   thumbnail: string; // url or placeholder
+  difficulty: number;
   categoryTags: MapTag[];
   modeTags: MapTag[];
   description?: string;
@@ -50,6 +53,11 @@ const TAG_STYLES: Record<MapTag["color"], React.CSSProperties> = {
     color: "#c084fc",
     borderColor: "rgba(168, 85, 247, 0.4)",
   },
+  red: {
+    background: "rgba(239, 68, 68, 0.2)",
+    color: "#f87171",
+    borderColor: "rgba(239, 68, 68, 0.45)",
+  },
   green: {
     background: "rgba(34, 197, 94, 0.2)",
     color: "#4ade80",
@@ -76,7 +84,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
   const tier = getDifficultyTier(apiMap.difficulty);
   const difficultyTag: MapTag = {
     label: `Difficulty ${apiMap.difficulty}`,
-    color: tier === "easy" ? "green" : tier === "medium" ? "yellow" : "purple",
+    color: tier === "easy" ? "green" : tier === "medium" ? "yellow" : "red",
   };
 
   const categoryTags: MapTag[] = [typeTag, difficultyTag];
@@ -115,6 +123,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
     id: apiMap.id,
     title: apiMap.title,
     thumbnail,
+    difficulty: apiMap.difficulty,
     description: apiMap.description,
     categoryTags,
     modeTags,
@@ -131,10 +140,9 @@ type SortOption = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs";
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [maps, setMaps] = useState<MapItem[]>([]);
   const [heroMaps, setHeroMaps] = useState<MapItem[]>([]);
-  const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
@@ -424,7 +432,11 @@ export default function MarketplacePage() {
                         color: "var(--text-2)",
                       }}
                     >
-                      <strong>{t("prerequisiteKnowledge") || "Kiến thức cần biết"}:</strong> {featuredMap.prerequisiteTags.slice(0, 3).join(", ")}
+                      <strong>{t("prerequisiteKnowledge")}:</strong>{" "}
+                      {featuredMap.prerequisiteTags
+                        .slice(0, 3)
+                        .map((tag) => getConceptLabel(tag, locale))
+                        .join(", ")}
                     </p>
                   )}
 
@@ -438,7 +450,11 @@ export default function MarketplacePage() {
                         color: "var(--text-2)",
                       }}
                     >
-                      <strong>{t("youWillLearn") || "Sẽ học được"}:</strong> {featuredMap.learnedTags.slice(0, 3).join(", ")}
+                      <strong>{t("youWillLearn")}:</strong>{" "}
+                      {featuredMap.learnedTags
+                        .slice(0, 3)
+                        .map((tag) => getConceptLabel(tag, locale))
+                        .join(", ")}
                     </p>
                   )}
 
@@ -464,87 +480,48 @@ export default function MarketplacePage() {
             </div>
           </motion.div>
 
-          {/* Tabs + Filter */}
+          {/* Tìm kiếm + bộ lọc (một khối, không để nút icon một mình một hàng) */}
           <motion.div
+            className={styles.filterCard}
             style={card()}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.05 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 12,
-              }}
-            >
-              <div />
-              <button
-                type="button"
-                onClick={() => setShowSearch(!showSearch)}
-                style={iconBtn}
-                aria-label={t("searchFilter")}
-              >
-                <Search size={20} />
-              </button>
+            <div className={styles.filterCardTitleRow}>
+              <Search size={18} className={styles.filterCardTitleIcon} aria-hidden />
+              <span>{t("searchFilter")}</span>
             </div>
-            {showSearch && (
-              <div style={{ marginTop: 12 }}>
-                <input
-                  type="search"
-                  placeholder={t("searchMapPlaceholder")}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--text)",
-                    fontSize: 14,
-                  }}
-                />
+            <div className={styles.filterGrid}>
+              <div className={styles.filterSearchField}>
+                <label className={styles.filterFieldLabel} htmlFor="marketplace-search">
+                  {t("mapsSearchLabel")}
+                </label>
+                <div className={styles.searchInputWrap}>
+                  <Search size={16} className={styles.searchInputIcon} aria-hidden />
+                  <input
+                    id="marketplace-search"
+                    type="search"
+                    className={styles.searchInput}
+                    placeholder={t("searchMapPlaceholder")}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
               </div>
-            )}
-          </motion.div>
 
-          {/* Filter Panel */}
-          <motion.div
-            style={card()}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                gap: 12,
-                alignItems: "end",
-              }}
-            >
-              {/* Difficulty Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+              <div className={styles.filterFieldCol}>
+                <label className={styles.filterFieldLabel} htmlFor="mp-difficulty">
                   {t("difficulty") || "Độ khó"}
                 </label>
                 <select
+                  id="mp-difficulty"
+                  className={styles.filterSelect}
                   value={difficultyFilter}
                   onChange={(e) => {
                     setDifficultyFilter(e.target.value);
                     setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--text)",
-                    fontSize: 13,
-                    cursor: "pointer",
                   }}
                 >
                   <option value="all">{t("all") || "Tất cả"}</option>
@@ -556,25 +533,17 @@ export default function MarketplacePage() {
                 </select>
               </div>
 
-              {/* Type Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+              <div className={styles.filterFieldCol}>
+                <label className={styles.filterFieldLabel} htmlFor="mp-type">
                   {t("type") || "Loại game"}
                 </label>
                 <select
+                  id="mp-type"
+                  className={styles.filterSelect}
                   value={typeFilter}
                   onChange={(e) => {
                     setTypeFilter(e.target.value);
                     setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--text)",
-                    fontSize: 13,
-                    cursor: "pointer",
                   }}
                 >
                   <option value="all">{t("all") || "Tất cả"}</option>
@@ -584,25 +553,17 @@ export default function MarketplacePage() {
                 </select>
               </div>
 
-              {/* Sort By */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+              <div className={styles.filterFieldCol}>
+                <label className={styles.filterFieldLabel} htmlFor="mp-sort">
                   {t("sortBy") || "Sắp xếp"}
                 </label>
                 <select
+                  id="mp-sort"
+                  className={styles.filterSelect}
                   value={sortBy}
                   onChange={(e) => {
                     setSortBy(e.target.value as SortOption);
                     setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--text)",
-                    fontSize: 13,
-                    cursor: "pointer",
                   }}
                 >
                   <option value="CreatedAt">{t("newest") || "Mới nhất"}</option>
@@ -612,51 +573,37 @@ export default function MarketplacePage() {
                 </select>
               </div>
 
-              {/* Sort Order */}
-              <button
-                type="button"
-                onClick={() => setSortAscending(!sortAscending)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  background: "var(--surface)",
-                  color: "var(--text)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {sortAscending ? "↑ Asc" : "↓ Desc"}
-              </button>
-
-              {/* Clear Filters */}
-              {(difficultyFilter !== "all" || typeFilter !== "all" || searchTerm) && (
+              <div className={styles.filterFieldCol}>
+                <span className={styles.filterFieldLabel}>{t("sortOrder") || "Thứ tự"}</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setDifficultyFilter("all");
-                    setTypeFilter("all");
-                    setSortBy("CreatedAt");
-                    setSortAscending(false);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--primary)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
+                  className={styles.sortDirBtn}
+                  onClick={() => setSortAscending(!sortAscending)}
                 >
-                  {t("clearFilters") || "Xóa bộ lọc"}
+                  {sortAscending ? "↑ Asc" : "↓ Desc"}
                 </button>
+              </div>
+
+              {(difficultyFilter !== "all" || typeFilter !== "all" || searchTerm) && (
+                <div className={styles.filterFieldCol}>
+                  <span className={styles.filterFieldLabel} aria-hidden>
+                    &nbsp;
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.clearFiltersBtn}
+                    onClick={() => {
+                      setSearchTerm("");
+                      setDifficultyFilter("all");
+                      setTypeFilter("all");
+                      setSortBy("CreatedAt");
+                      setSortAscending(false);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {t("clearFilters") || "Xóa bộ lọc"}
+                  </button>
+                </div>
               )}
             </div>
           </motion.div>
@@ -680,7 +627,7 @@ export default function MarketplacePage() {
                 <MapCard
                   key={map.id}
                   map={map}
-                  tagStyles={TAG_STYLES}
+                  locale={locale}
                   onClick={() => goToMapDetail(map.id)}
                 />
               ))
@@ -825,17 +772,17 @@ const cardVariants = {
 
 function MapCard({
   map,
-  tagStyles,
+  locale,
   onClick,
 }: {
   map: MapItem;
-  tagStyles: Record<MapTag["color"], React.CSSProperties>;
+  locale: LocaleId;
   onClick?: () => void;
 }) {
   const { t } = useTranslation();
-  const difficultyNumber = Number(map.categoryTags.find(t => t.label.startsWith("Difficulty"))?.label.split(" ")[1] ?? 1);
-  const tier = getDifficultyTier(difficultyNumber);
-  const difficultyLabel = tier === "easy" ? t("easy") || "Dễ" : tier === "medium" ? t("medium") || "Trung bình" : t("hard") || "Khó";
+  const tier = getDifficultyTier(map.difficulty);
+  const difficultyLabel =
+    tier === "easy" ? t("easy") : tier === "medium" ? t("medium") : t("hard");
 
   return (
     <motion.div
@@ -862,34 +809,6 @@ function MapCard({
             borderRadius: "16px 16px 0 0",
           }}
         />
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            right: 8,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 6,
-          }}
-        >
-          {map.categoryTags.map((t) => (
-            <span
-              key={t.label}
-              style={{ ...pillTag(), ...tagStyles[t.color], fontSize: 11, padding: "4px 8px" }}
-            >
-              {t.label}
-            </span>
-          ))}
-          {map.modeTags.map((t) => (
-            <span
-              key={t.label}
-              style={{ ...pillTag(), ...tagStyles[t.color], fontSize: 11, padding: "4px 8px" }}
-            >
-              {t.label}
-            </span>
-          ))}
-        </div>
       </div>
       <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
         <h3
@@ -932,7 +851,11 @@ function MapCard({
             }}
             title={map.prerequisiteTags.join(", ")}
           >
-            {t("prerequisiteKnowledge") || "Kiến thức cần biết"}: {map.prerequisiteTags.slice(0, 2).join(", ")}
+            {t("prerequisiteKnowledge")}:{" "}
+            {map.prerequisiteTags
+              .slice(0, 2)
+              .map((tag) => getConceptLabel(tag, locale))
+              .join(", ")}
           </p>
         )}
         {/* Learned tags */}
@@ -949,7 +872,11 @@ function MapCard({
             }}
             title={map.learnedTags.join(", ")}
           >
-            {t("youWillLearn") || "Sẽ học được"}: {map.learnedTags.slice(0, 2).join(", ")}
+            {t("youWillLearn")}:{" "}
+            {map.learnedTags
+              .slice(0, 2)
+              .map((tag) => getConceptLabel(tag, locale))
+              .join(", ")}
           </p>
         )}
         {/* Difficulty tier badge - inside card at bottom */}
@@ -958,9 +885,14 @@ function MapCard({
             marginTop: "auto",
             padding: "6px 10px",
             borderRadius: 8,
-            border: `1px solid ${tier === "easy" ? "rgba(34, 197, 94, 0.5)" : tier === "medium" ? "rgba(234, 179, 8, 0.5)" : "rgba(168, 85, 247, 0.5)"}`,
-            background: tier === "easy" ? "rgba(34, 197, 94, 0.2)" : tier === "medium" ? "rgba(234, 179, 8, 0.2)" : "rgba(168, 85, 247, 0.2)",
-            color: tier === "easy" ? "#4ade80" : tier === "medium" ? "#facc15" : "#c084fc",
+            border: `1px solid ${tier === "easy" ? "rgba(34, 197, 94, 0.5)" : tier === "medium" ? "rgba(234, 179, 8, 0.5)" : "rgba(239, 68, 68, 0.55)"}`,
+            background:
+              tier === "easy"
+                ? "rgba(34, 197, 94, 0.2)"
+                : tier === "medium"
+                  ? "rgba(234, 179, 8, 0.2)"
+                  : "rgba(239, 68, 68, 0.2)",
+            color: tier === "easy" ? "#4ade80" : tier === "medium" ? "#facc15" : "#f87171",
             fontSize: 12,
             fontWeight: 700,
             textAlign: "center",
@@ -995,19 +927,6 @@ function pillTag(): React.CSSProperties {
     whiteSpace: "nowrap",
   };
 }
-
-const iconBtn: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: 10,
-  border: "1px solid var(--border)",
-  background: "var(--surface)",
-  color: "var(--text)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-};
 
 const paginationBtn: React.CSSProperties = {
   minWidth: 38,

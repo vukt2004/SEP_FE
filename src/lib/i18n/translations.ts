@@ -1199,6 +1199,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     errorLoadMapList: "An error occurred while loading the game list",
 
     continuePlaying: "Continue playing",
+    mapsSectionShowMore: "Show more",
+    mapsSectionShowLess: "Show less",
     recommendedForYou: "Recommended for you",
     beginnerFriendly: "Beginner friendly",
     startHere: "Start here",
@@ -1218,6 +1220,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     clearAllFilters: "Clear all filters",
     conceptsMultiSelectHint: "Select one or more (game must match all)",
     sortByLabel: "Sort by",
+    sortOrder: "Order",
     priceRange: "Price (OrbitCoin)",
     priceMin: "Min",
     priceMax: "Max",
@@ -3267,6 +3270,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     errorLoadMapList: "Có lỗi khi tải danh sách trò chơi",
 
     continuePlaying: "Tiếp tục chơi",
+    mapsSectionShowMore: "Xem thêm",
+    mapsSectionShowLess: "Thu gọn",
     recommendedForYou: "Đề xuất cho bạn",
     beginnerFriendly: "Dành cho người mới",
     startHere: "Bắt đầu tại đây",
@@ -3286,6 +3291,7 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     clearAllFilters: "Xóa hết bộ lọc",
     conceptsMultiSelectHint: "Chọn một hoặc nhiều (trò chơi phải có đủ tất cả)",
     sortByLabel: "Sắp xếp",
+    sortOrder: "Thứ tự",
     priceRange: "Giá (OrbitCoin)",
     priceMin: "Từ",
     priceMax: "Đến",
