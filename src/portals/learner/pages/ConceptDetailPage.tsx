@@ -21,6 +21,8 @@ function getNormalizedContentKey(contentKey: string | null | undefined): string 
   if (k === "if-else" || k.includes("if-else") || slug.includes("ifelse")) return "if-else";
   if (k === "variables" || k.includes("variable") || slug.includes("var") || slug.includes("bin"))
     return "variables";
+  // Seed DB dùng ContentKey "operators" (Phép toán) — không chứa chuỗi "operation"
+  if (k === "operators" || slug === "operators") return "operations";
   if (
     k === "operations" ||
     k.includes("operation") ||
@@ -31,6 +33,16 @@ function getNormalizedContentKey(contentKey: string | null | undefined): string 
     slug.includes("ton")
   )
     return "operations";
+  if (k === "comparison" || k.includes("comparison") || slug.includes("sosanh") || slug.includes("so-sanh"))
+    return "comparison";
+  // while-loop must be before any rule that treats generic "loop" as for-loop
+  if (
+    k === "while-loop" ||
+    k.includes("while-loop") ||
+    k.includes("while loop") ||
+    (k.includes("while") && !k.includes("for"))
+  )
+    return "while-loop";
   if (
     k === "for-loop" ||
     k.includes("for-loop") ||
@@ -50,6 +62,11 @@ function getNormalizedContentKey(contentKey: string | null | undefined): string 
     slug.includes("thc")
   )
     return "execution-order";
+  // Seed: "problem-analysis" — giữ tường minh, rule `includes("problem")` cũng đủ nhưng dễ va chạm sau này
+  if (k === "problem-analysis" || k.includes("problem-analysis") || slug === "problemanalysis")
+    return "problem-solving";
+  if (k === "basic-algorithm" || k.includes("basic-algorithm") || slug.includes("thuattoan"))
+    return "basic-algorithm";
   if (
     k === "problem-solving" ||
     k.includes("problem") ||
@@ -107,6 +124,28 @@ const TOC_BY_KEY: Record<string, { id: string; label: string }[]> = {
     { id: "section-3", label: "Ví dụ: Đếm 1 đến 3" },
     { id: "section-4", label: "Trong game" },
     { id: "section-5", label: "Lặp ngược và bước nhảy" },
+    { id: "section-summary", label: "Ôn lại nhanh" },
+  ],
+  "while-loop": [
+    { id: "section-intro", label: "Bài này học gì?" },
+    { id: "section-1", label: "Cấu trúc tư duy" },
+    { id: "section-2", label: "Vòng lặp vô hạn" },
+    { id: "section-3", label: "Ví dụ đếm ngược" },
+    { id: "section-summary", label: "Ôn lại nhanh" },
+  ],
+  comparison: [
+    { id: "section-intro", label: "Bài này học gì?" },
+    { id: "section-1", label: "Kết quả so sánh" },
+    { id: "section-2", label: "Bảng gợi nhớ" },
+    { id: "section-3", label: "Gắn với if" },
+    { id: "section-summary", label: "Ôn lại nhanh" },
+  ],
+  "basic-algorithm": [
+    { id: "section-intro", label: "Bài này học gì?" },
+    { id: "section-1", label: "Thuật toán vs code" },
+    { id: "section-2", label: "Input – bước – output" },
+    { id: "section-3", label: "Ví dụ tìm max" },
+    { id: "section-4", label: "Khi nào cần vòng lặp?" },
     { id: "section-summary", label: "Ôn lại nhanh" },
   ],
   "problem-solving": [
@@ -365,7 +404,11 @@ export default function ConceptDetailPage() {
               ) : contentHtml ? (
                 <div className={styles.content} dangerouslySetInnerHTML={{ __html: contentHtml }} />
               ) : concept.contentKey ? (
-                <p className={styles.noContent}>{t("conceptContent")}</p>
+                <p className={styles.noContent}>
+                  {!contentKeyNorm
+                    ? t("conceptContentKeyUnsupported").replace("{key}", concept.contentKey)
+                    : t("conceptContent")}
+                </p>
               ) : null}
 
               <ConceptMiniGame contentKey={contentKeyNorm ?? concept.contentKey} />

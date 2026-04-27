@@ -1,4 +1,5 @@
 import { Target, Repeat, Hash, Gamepad2, Lightbulb, CheckCircle2 } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentForLoop() {
   return (
@@ -33,6 +34,12 @@ export function ConceptContentForLoop() {
             chạy xong thì i=i+1.
           </p>
         </div>
+        <ConceptLessonBlockly
+          title="Thử Repeat (for trong game)"
+          hint="Khối Repeat có ô số lần — gắn number vào, trong do xếp move / turn. Giống vòng for đếm bước."
+          preset="repeat_basic"
+          heightPx={340}
+        />
       </section>
 
       <section className="concept-section" id="section-3">

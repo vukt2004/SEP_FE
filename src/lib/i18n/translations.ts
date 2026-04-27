@@ -1394,6 +1394,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     locked: "Locked",
     completed: "Completed",
     conceptContent: "Concept content",
+    conceptContentKeyUnsupported:
+      "No lesson is mapped for this content key ({key}). Ask an admin to set ContentKey or update the app.",
     backToPath: "Back to path",
     pathSteps: "steps",
     exploreOtherConcepts: "Explore other concepts",
@@ -3460,6 +3462,8 @@ export const translations: Record<LocaleId, Record<string, string>> = {
     locked: "Khóa",
     completed: "Đã xong",
     conceptContent: "Nội dung khái niệm",
+    conceptContentKeyUnsupported:
+      "Chưa có bài học cho mã nội dung ({key}). Cần map ContentKey trên server hoặc cập nhật app.",
     backToPath: "Quay lại lộ trình",
     pathSteps: "bước",
     exploreOtherConcepts: "Học thêm concept khác",

@@ -1,4 +1,5 @@
 import { Target, Compass, ListChecks, Lightbulb, Wrench, CheckCircle2 } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentProblemSolving() {
   return (
@@ -75,6 +76,12 @@ duyệt từng phần tử x
   nếu x chẵn thì count++
 in count`}</code>
         </pre>
+        <ConceptLessonBlockly
+          title="Từ ý tưởng sang chuỗi lệnh"
+          hint="Thử ghép pseudo-code thành block: lặp + rẽ nhánh + đi — không cần chạy game, chỉ để quen tay với đúng khối của app."
+          preset="plan_mix"
+          heightPx={360}
+        />
       </section>
 
       <section className="concept-section" id="section-summary">

@@ -1,4 +1,5 @@
 import { Target, Package, ArrowRightLeft, Lightbulb, Gamepad2, CheckCircle2 } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentVariables() {
   return (
@@ -52,6 +53,12 @@ coin = coin+1; // đọc coin, cộng 1, rồi gán lại`}</code>
             “coin bằng coin cộng 1”.
           </p>
         </div>
+        <ConceptLessonBlockly
+          title="Thử gán biến bằng block (giống game)"
+          hint="Dùng create / set / get variable, số và phép toán. Ghép ví dụ: set score = score + 1."
+          preset="variables_play"
+          heightPx={340}
+        />
       </section>
 
       <section className="concept-section" id="section-4">

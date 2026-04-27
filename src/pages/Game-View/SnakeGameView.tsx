@@ -334,6 +334,8 @@ export default function SnakeGameView() {
   const [blockConstraints, setBlockConstraints] = useState<LevelBlockConstraints | null>(null);
   const [campaignLevels, setCampaignLevels] = useState<MapLevelItem[]>([]);
   const [activeMapDetailId, setActiveMapDetailId] = useState<string | null>(null);
+  /** Bản đồ con đang chơi — dùng để gỡ play-lock khi thoát / unmount (Snake không dùng playMapDetailIdRef như Game/Platform). */
+  const playMapDetailIdRef = useRef<string | null>(null);
 
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [showExecutionIncompleteModal, setShowExecutionIncompleteModal] = useState(false);
@@ -387,6 +389,15 @@ export default function SnakeGameView() {
         : null,
     [levelId, multiplayerRoomId],
   );
+
+  const releasePlayLock = useCallback(
+    (mapDetailId: string | null | undefined) => {
+      const key = playLockKey(mapDetailId);
+      if (key) localStorage.removeItem(key);
+    },
+    [playLockKey],
+  );
+
   const [showResultPopup, setShowResultPopup] = useState(true);
   const [showWinDecisionModal, setShowWinDecisionModal] = useState(false);
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState(false);
@@ -559,6 +570,8 @@ export default function SnakeGameView() {
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
 
+    releasePlayLock(playMapDetailIdRef.current);
+
     setShowResultsModal(false);
     setResultsDockVisible(false);
     setGameResult(null);
@@ -594,11 +607,14 @@ export default function SnakeGameView() {
     multiplayerRoomId,
     navigateWithoutPrompt,
     nextCampaignLevelId,
+    releasePlayLock,
     roleContext,
     returnTo,
   ]);
 
   const handleBackToMapFlow = useCallback(() => {
+    releasePlayLock(playMapDetailIdRef.current);
+
     if (multiplayerRoomId) {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigateWithoutPrompt(ROUTES.LEARNER_LEARN));
       return;
@@ -608,7 +624,7 @@ export default function SnakeGameView() {
       return;
     }
     navigateWithoutPrompt(-1);
-  }, [isCmsPreview, multiplayerRoomId, navigateWithoutPrompt, returnTo]);
+  }, [isCmsPreview, multiplayerRoomId, navigateWithoutPrompt, releasePlayLock, returnTo]);
 
   const handleBackRequest = useCallback(() => {
     setShowLeaveConfirmModal(true);
@@ -1586,6 +1602,8 @@ export default function SnakeGameView() {
         const resolvedWinCondition = loaded.mapConfig?.winCondition === 2 ? 2 : 1;
         const activeMapDetailIdNext = loaded.mapDetailId;
 
+        playMapDetailIdRef.current = activeMapDetailIdNext ?? null;
+
         setMapConfig(loaded.mapConfig ?? null);
         setCampaignLevels(loaded.levels ?? []);
         setActiveMapDetailId(activeMapDetailIdNext);
@@ -1712,6 +1730,7 @@ export default function SnakeGameView() {
       }
       executorRef.current?.stop();
       restoreDefaultPlayerSprite();
+      releasePlayLock(playMapDetailIdRef.current);
     };
   }, [
     applyLogicalFacingToEngine,
@@ -1721,6 +1740,7 @@ export default function SnakeGameView() {
     levelId,
     mapDetailId,
     mapUrl,
+    releasePlayLock,
     restoreDefaultPlayerSprite,
     playLockKey,
     syncSnakeBodyCollision,

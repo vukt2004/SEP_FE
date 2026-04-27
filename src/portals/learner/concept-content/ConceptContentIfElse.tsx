@@ -1,4 +1,5 @@
 import { Target, GitBranch, Lightbulb, Check, X, Gamepad2, Puzzle, BookOpen } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentIfElse() {
   return (
@@ -112,6 +113,12 @@ export function ConceptContentIfElse() {
             <li>Nếu còn ít mạng thì né quái, không thì tấn công.</li>
           </ul>
         </div>
+        <ConceptLessonBlockly
+          title="Thử khối If trong game"
+          hint="Khối If giống trong editor: gắn điều kiện (path ahead, wall ahead…) vào ô tròn, nhánh do/else chứa lệnh đi."
+          preset="branch"
+          heightPx={360}
+        />
         <div className="concept-diagram">
           <Puzzle size={58} strokeWidth={1.5} aria-hidden />
           <p style={{ marginTop: 10 }}>

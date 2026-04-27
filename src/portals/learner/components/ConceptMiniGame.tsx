@@ -1,10 +1,10 @@
 // 3 mini-game thẻ trên cùng một màn, mỗi thẻ 1 câu hỏi.
 import { useState } from "react";
-import { Gamepad2, Check, X } from "lucide-react";
+import { Gamepad2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./ConceptMiniGame.module.css";
 
-type GameKey = "if-else" | "variables" | "operations" | "execution-order" | "for-loop";
+type GameKey = "if-else" | "variables" | "operations" | "execution-order" | "for-loop" | "while-loop";
 
 interface ConceptMiniGameProps {
   contentKey: string | null | undefined;
@@ -17,6 +17,7 @@ function toGameKey(key: string | null | undefined): GameKey | null {
   if (k === "if-else" || k.includes("if-else") || slug.includes("ifelse")) return "if-else";
   if (k === "variables" || k.includes("variable") || slug.includes("var") || slug.includes("bin"))
     return "variables";
+  if (k === "operators" || slug === "operators") return "operations";
   if (
     k === "operations" ||
     k.includes("operation") ||
@@ -27,6 +28,15 @@ function toGameKey(key: string | null | undefined): GameKey | null {
     slug.includes("ton")
   )
     return "operations";
+  if (k === "comparison" || k.includes("comparison") || slug.includes("sosanh")) return null;
+  if (k === "basic-algorithm" || k.includes("basic-algorithm") || slug.includes("thuattoan")) return null;
+  if (
+    k === "while-loop" ||
+    k.includes("while-loop") ||
+    k.includes("while loop") ||
+    (k.includes("while") && !k.includes("for"))
+  )
+    return "while-loop";
   if (
     k === "for-loop" ||
     k.includes("for-loop") ||
@@ -83,20 +93,54 @@ const FOR_LOOP_ITEMS: { code: string; question: string; answer: number }[] = [
   { code: "i=0; for 2 lần: i = i + 1", question: "Giá trị của i sau khi hết vòng lặp?", answer: 2 },
 ];
 
+const WHILE_LOOP_ITEMS: { code: string; question: string; answer: number }[] = [
+  {
+    code: "i = 0\nwhile (i < 3) {\n  i = i + 1\n}",
+    question: "Thân while chạy mấy lần?",
+    answer: 3,
+  },
+  {
+    code: "i = 3\nwhile (i > 0) {\n  i = i - 1\n}",
+    question: "Thân while chạy mấy lần?",
+    answer: 3,
+  },
+  {
+    code: "while (3 < 1) {\n  ...\n}",
+    question: "Thân while chạy mấy lần?",
+    answer: 0,
+  },
+];
+
 const GAME_COUNT = 3;
+
+type RoundResult = "correct" | "wrong";
+
+function choiceBtnClass(optLabel: string, userPick: string | null, result: null | RoundResult): string {
+  const parts = [styles.choiceBtn];
+  if (result && userPick !== null && optLabel === userPick) {
+    parts.push(result === "correct" ? styles.choicePickedCorrect : styles.choicePickedWrong);
+  }
+  return parts.join(" ");
+}
 
 export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
   const { t } = useTranslation();
   const gameKey = toGameKey(contentKey);
-  const [results, setResults] = useState<(null | "correct" | "wrong")[]>([null, null, null]);
+  const [results, setResults] = useState<(null | RoundResult)[]>([null, null, null]);
+  const [picks, setPicks] = useState<(string | null)[]>([null, null, null]);
   const [orderSelections, setOrderSelections] = useState<number[][]>([[], [], []]);
 
   if (!gameKey) return null;
 
-  const setResult = (index: number, value: "correct" | "wrong") => {
+  const setRoundResult = (index: number, value: RoundResult, pickDisplay: string) => {
     setResults((prev) => {
       const next = [...prev];
       next[index] = value;
+      return next;
+    });
+    setPicks((prev) => {
+      const next = [...prev];
+      next[index] = pickDisplay;
       return next;
     });
   };
@@ -124,8 +168,8 @@ export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
               index={idx}
               question={q}
               result={results[idx]}
-              onResult={setResult}
-              t={t}
+              pickLabel={picks[idx]}
+              onResult={setRoundResult}
             />
           ))}
         {gameKey === "variables" &&
@@ -135,8 +179,8 @@ export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
               index={idx}
               question={q}
               result={results[idx]}
-              onResult={setResult}
-              t={t}
+              pickLabel={picks[idx]}
+              onResult={setRoundResult}
             />
           ))}
         {gameKey === "operations" &&
@@ -146,8 +190,8 @@ export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
               index={idx}
               question={q}
               result={results[idx]}
-              onResult={setResult}
-              t={t}
+              pickLabel={picks[idx]}
+              onResult={setRoundResult}
             />
           ))}
         {gameKey === "execution-order" &&
@@ -159,8 +203,7 @@ export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
               result={results[idx]}
               selection={orderSelections[idx] ?? []}
               onSelection={(sel) => setOrderFor(idx, sel)}
-              onResult={setResult}
-              t={t}
+              onResult={setRoundResult}
             />
           ))}
         {gameKey === "for-loop" &&
@@ -170,8 +213,19 @@ export function ConceptMiniGame({ contentKey }: ConceptMiniGameProps) {
               index={idx}
               question={q}
               result={results[idx]}
-              onResult={setResult}
-              t={t}
+              pickLabel={picks[idx]}
+              onResult={setRoundResult}
+            />
+          ))}
+        {gameKey === "while-loop" &&
+          WHILE_LOOP_ITEMS.slice(0, GAME_COUNT).map((q, idx) => (
+            <WhileLoopCard
+              key={idx}
+              index={idx}
+              question={q}
+              result={results[idx]}
+              pickLabel={picks[idx]}
+              onResult={setRoundResult}
             />
           ))}
       </div>
@@ -183,14 +237,14 @@ function IfElseCard({
   index,
   question,
   result,
+  pickLabel,
   onResult,
-  t,
 }: {
   index: number;
   question: (typeof IF_ELSE_ITEMS)[0];
-  result: null | "correct" | "wrong";
-  onResult: (i: number, v: "correct" | "wrong") => void;
-  t: (k: string) => string;
+  result: null | RoundResult;
+  pickLabel: string | null;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
 }) {
   return (
     <div className={styles.card}>
@@ -203,20 +257,17 @@ function IfElseCard({
           <button
             key={opt}
             type="button"
-            className={styles.choiceBtn}
+            className={choiceBtnClass(opt, pickLabel, result)}
             disabled={result !== null}
-            onClick={() => onResult(index, opt === question.correct ? "correct" : "wrong")}
+            onClick={() => {
+              const ok = opt === question.correct;
+              onResult(index, ok ? "correct" : "wrong", opt);
+            }}
           >
             {opt}
           </button>
         ))}
       </div>
-      {result && (
-        <div className={result === "correct" ? styles.feedbackCorrect : styles.feedbackWrong}>
-          {result === "correct" ? <Check size={18} /> : <X size={18} />}
-          <span>{result === "correct" ? t("correct") : t("wrong")}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -225,14 +276,14 @@ function VarCard({
   index,
   question,
   result,
+  pickLabel,
   onResult,
-  t,
 }: {
   index: number;
   question: (typeof VAR_ITEMS)[0];
-  result: null | "correct" | "wrong";
-  onResult: (i: number, v: "correct" | "wrong") => void;
-  t: (k: string) => string;
+  result: null | RoundResult;
+  pickLabel: string | null;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
 }) {
   const options = [question.answer, question.answer + 1, question.answer - 1, question.answer + 2]
     .filter((v, i, arr) => v >= 0 && arr.indexOf(v) === i)
@@ -251,20 +302,17 @@ function VarCard({
           <button
             key={opt}
             type="button"
-            className={styles.choiceBtn}
+            className={choiceBtnClass(String(opt), pickLabel, result)}
             disabled={result !== null}
-            onClick={() => onResult(index, opt === question.answer ? "correct" : "wrong")}
+            onClick={() => {
+              const ok = opt === question.answer;
+              onResult(index, ok ? "correct" : "wrong", String(opt));
+            }}
           >
             {opt}
           </button>
         ))}
       </div>
-      {result && (
-        <div className={result === "correct" ? styles.feedbackCorrect : styles.feedbackWrong}>
-          {result === "correct" ? <Check size={18} /> : <X size={18} />}
-          <span>{result === "correct" ? t("correct") : t("wrong")}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -273,14 +321,14 @@ function OpsCard({
   index,
   question,
   result,
+  pickLabel,
   onResult,
-  t,
 }: {
   index: number;
   question: (typeof OPS_ITEMS)[0];
-  result: null | "correct" | "wrong";
-  onResult: (i: number, v: "correct" | "wrong") => void;
-  t: (k: string) => string;
+  result: null | RoundResult;
+  pickLabel: string | null;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
 }) {
   const options = [question.answer, question.answer + 2, question.answer - 2, question.answer + 5]
     .filter((v, i, arr) => v >= 0 && arr.indexOf(v) === i)
@@ -298,20 +346,17 @@ function OpsCard({
           <button
             key={opt}
             type="button"
-            className={styles.choiceBtn}
+            className={choiceBtnClass(String(opt), pickLabel, result)}
             disabled={result !== null}
-            onClick={() => onResult(index, opt === question.answer ? "correct" : "wrong")}
+            onClick={() => {
+              const ok = opt === question.answer;
+              onResult(index, ok ? "correct" : "wrong", String(opt));
+            }}
           >
             {opt}
           </button>
         ))}
       </div>
-      {result && (
-        <div className={result === "correct" ? styles.feedbackCorrect : styles.feedbackWrong}>
-          {result === "correct" ? <Check size={18} /> : <X size={18} />}
-          <span>{result === "correct" ? t("correct") : t("wrong")}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -323,15 +368,13 @@ function OrderCard({
   selection,
   onSelection,
   onResult,
-  t,
 }: {
   index: number;
   question: (typeof ORDER_ITEMS)[0];
-  result: null | "correct" | "wrong";
+  result: null | RoundResult;
   selection: number[];
   onSelection: (sel: number[]) => void;
-  onResult: (i: number, v: "correct" | "wrong") => void;
-  t: (k: string) => string;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
 }) {
   const toggle = (i: number) => {
     if (result !== null) return;
@@ -344,13 +387,18 @@ function OrderCard({
   const submit = () => {
     if (selection.length !== 3) return;
     const ok = selection.join(",") === question.correctOrder.join(",");
-    onResult(index, ok ? "correct" : "wrong");
+    const pickedStr = selection.map((i) => question.steps[i]).join(" → ");
+    onResult(index, ok ? "correct" : "wrong", pickedStr);
   };
+
+  const listFrame =
+    result === "correct" ? styles.orderListFrameOk : result === "wrong" ? styles.orderListFrameBad : "";
+
   return (
     <div className={styles.card}>
       <p className={styles.cardLabel}>Mini game {index + 1}</p>
       <p className={styles.cardQuestion}>Chọn thứ tự chạy (1 → 2 → 3):</p>
-      <div className={styles.orderList}>
+      <div className={`${styles.orderList} ${listFrame}`.trim()}>
         {question.steps.map((s, i) => (
           <button
             key={i}
@@ -369,12 +417,6 @@ function OrderCard({
           Kiểm tra
         </button>
       )}
-      {result && (
-        <div className={result === "correct" ? styles.feedbackCorrect : styles.feedbackWrong}>
-          {result === "correct" ? <Check size={18} /> : <X size={18} />}
-          <span>{result === "correct" ? t("correct") : t("wrong")}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -383,14 +425,14 @@ function ForLoopCard({
   index,
   question,
   result,
+  pickLabel,
   onResult,
-  t,
 }: {
   index: number;
   question: (typeof FOR_LOOP_ITEMS)[0];
-  result: null | "correct" | "wrong";
-  onResult: (i: number, v: "correct" | "wrong") => void;
-  t: (k: string) => string;
+  result: null | RoundResult;
+  pickLabel: string | null;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
 }) {
   const options = [question.answer, question.answer + 1, question.answer - 1, question.answer + 2]
     .filter((v, i, arr) => v >= 0 && arr.indexOf(v) === i)
@@ -409,20 +451,62 @@ function ForLoopCard({
           <button
             key={opt}
             type="button"
-            className={styles.choiceBtn}
+            className={choiceBtnClass(String(opt), pickLabel, result)}
             disabled={result !== null}
-            onClick={() => onResult(index, opt === question.answer ? "correct" : "wrong")}
+            onClick={() => {
+              const ok = opt === question.answer;
+              onResult(index, ok ? "correct" : "wrong", String(opt));
+            }}
           >
             {opt}
           </button>
         ))}
       </div>
-      {result && (
-        <div className={result === "correct" ? styles.feedbackCorrect : styles.feedbackWrong}>
-          {result === "correct" ? <Check size={18} /> : <X size={18} />}
-          <span>{result === "correct" ? t("correct") : t("wrong")}</span>
-        </div>
-      )}
+    </div>
+  );
+}
+
+function WhileLoopCard({
+  index,
+  question,
+  result,
+  pickLabel,
+  onResult,
+}: {
+  index: number;
+  question: (typeof WHILE_LOOP_ITEMS)[0];
+  result: null | RoundResult;
+  pickLabel: string | null;
+  onResult: (i: number, v: RoundResult, pick: string) => void;
+}) {
+  const options = [question.answer, question.answer + 1, question.answer - 1, question.answer + 2]
+    .filter((v, i, arr) => v >= 0 && arr.indexOf(v) === i)
+    .slice(0, 4)
+    .sort((a, b) => a - b);
+  if (!options.includes(question.answer)) options.push(question.answer);
+  return (
+    <div className={styles.card}>
+      <p className={styles.cardLabel}>Mini game {index + 1}</p>
+      <p className={styles.cardQuestion}>{question.question}</p>
+      <pre className={styles.codeBlock}>
+        <code>{question.code}</code>
+      </pre>
+      <div className={styles.choices}>
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            className={choiceBtnClass(String(opt), pickLabel, result)}
+            disabled={result !== null}
+            onClick={() => {
+              const ok = opt === question.answer;
+              onResult(index, ok ? "correct" : "wrong", String(opt));
+            }}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
