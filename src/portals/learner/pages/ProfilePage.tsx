@@ -1,5 +1,5 @@
 // src/portals/learner/pages/ProfilePage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   learnerProfileApi,
   type MyXpProfileResponse,
@@ -7,11 +7,7 @@ import {
 } from "@/services/api/learner/profile.api";
 import { learnerGameplayApi } from "@/services/api/learner/gameplay.api";
 import { learnerXpApi } from "@/services/api/learner/xp.api";
-import type {
-  MapPlayHistoryItem,
-  PaginationResult,
-  ProgressDashboardData,
-} from "@/types/api/learner/gameplay";
+import type { MapPlayHistoryItem, PaginationResult } from "@/types/api/learner/gameplay";
 import type { XpHistoryItem } from "@/types/api/learner/xp";
 import { useTranslation } from "@/lib/i18n/translations";
 import styles from "./ProfilePage.module.css";
@@ -26,6 +22,11 @@ import {
   Calendar,
   VenusAndMars,
   Hash,
+  ChevronLeft,
+  ChevronRight,
+  ImagePlus,
+  Loader2,
+  Maximize2,
 } from "lucide-react";
 
 type FormState = {
@@ -34,6 +35,107 @@ type FormState = {
   phoneNumber: string;
   avatarFile: File | null;
 };
+
+function isRealProfileImageUrl(url: string | null | undefined): boolean {
+  if (!url?.trim()) return false;
+  return !url.includes("/brand/avatar-fallback.png");
+}
+
+/** Hiển thị tối đa mỗi “trang” con trong tab XP / Lịch sử đấu */
+const PROFILE_ACTIVITY_PAGE_SIZE = 5;
+/** Một lần tải XP history để tính 7 ngày + chia trang client */
+const PROFILE_XP_HISTORY_FETCH_SIZE = 100;
+
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{{${k}}}`, String(v)), template);
+}
+
+type PaginationSlot = number | "ellipsis";
+
+/** Gần giống mẫu: 1–5 … 10 khi đang ở đầu; co cụm khi ở giữa / cuối. */
+function buildPaginationItems(current: number, total: number): PaginationSlot[] {
+  if (total < 1) return [];
+  if (total === 1) return [1];
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis", total];
+  }
+  if (current >= total - 3) {
+    return [1, "ellipsis", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis", current - 1, current, current + 1, "ellipsis", total];
+}
+
+function ProfilePagination(props: {
+  currentPage: number;
+  totalPages: number;
+  disabled?: boolean;
+  onPageChange: (page: number) => void;
+  previousLabel: string;
+  nextLabel: string;
+  navAriaLabel: string;
+  pageAria: (page: number) => string;
+}) {
+  const { currentPage, totalPages, disabled, onPageChange, previousLabel, nextLabel, navAriaLabel, pageAria } =
+    props;
+  const slots = useMemo(
+    () => buildPaginationItems(currentPage, totalPages),
+    [currentPage, totalPages],
+  );
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav className={styles.profilePagination} aria-label={navAriaLabel}>
+      <button
+        type="button"
+        className={styles.profilePaginationSideBtn}
+        disabled={disabled || currentPage <= 1}
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        <ChevronLeft size={18} strokeWidth={2} aria-hidden className={styles.profilePaginationChevron} />
+        <span>{previousLabel}</span>
+      </button>
+
+      <div className={styles.profilePaginationPages}>
+        {slots.map((slot, idx) =>
+          slot === "ellipsis" ? (
+            <span key={`ellipsis-${idx}`} className={styles.profilePaginationEllipsis} aria-hidden>
+              …
+            </span>
+          ) : slot === currentPage ? (
+            <span key={slot} className={styles.profilePaginationPageActive} aria-current="page">
+              {slot}
+            </span>
+          ) : (
+            <button
+              key={slot}
+              type="button"
+              className={styles.profilePaginationPage}
+              disabled={disabled}
+              aria-label={pageAria(slot)}
+              onClick={() => onPageChange(slot)}
+            >
+              {slot}
+            </button>
+          ),
+        )}
+      </div>
+
+      <button
+        type="button"
+        className={styles.profilePaginationSideBtn}
+        disabled={disabled || currentPage >= totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        <span>{nextLabel}</span>
+        <ChevronRight size={18} strokeWidth={2} aria-hidden className={styles.profilePaginationChevron} />
+      </button>
+    </nav>
+  );
+}
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -56,7 +158,11 @@ export default function ProfilePage() {
   const [playHistory, setPlayHistory] = useState<PaginationResult<MapPlayHistoryItem> | null>(null);
   const [xpProfile, setXpProfile] = useState<MyXpProfileResponse | null>(null);
   const [xpHistory, setXpHistory] = useState<XpHistoryItem[]>([]);
-  const [progressDashboard, setProgressDashboard] = useState<ProgressDashboardData | null>(null);
+  const [xpChunkIndex, setXpChunkIndex] = useState(0);
+  const [profileActivityTab, setProfileActivityTab] = useState<"xp" | "history">("history");
+  const [historyRefreshing, setHistoryRefreshing] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const fullName = useMemo(() => {
     const fn = form.firstName?.trim();
@@ -68,6 +174,20 @@ export default function ProfilePage() {
     if (form.avatarFile) return URL.createObjectURL(form.avatarFile);
     return null;
   }, [form.avatarFile]);
+
+  useEffect(() => {
+    if (!lightboxSrc) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxSrc(null);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightboxSrc]);
 
   const hasChanges = useMemo(() => {
     const p = profile;
@@ -112,12 +232,11 @@ export default function ProfilePage() {
       setHistoryError(null);
 
       try {
-        const [profileRes, historyRes, xpRes, xpHistoryRes, dashboardRes] = await Promise.all([
+        const [profileRes, historyRes, xpRes, xpHistoryRes] = await Promise.all([
           learnerProfileApi.getProfile(),
-          learnerGameplayApi.getMyPlayHistory({ pageNumber: 1, pageSize: 10 }),
+          learnerGameplayApi.getMyPlayHistory({ pageNumber: 1, pageSize: PROFILE_ACTIVITY_PAGE_SIZE }),
           learnerProfileApi.getMyXpProfile(),
-          learnerXpApi.getMyHistory(1, 10),
-          learnerGameplayApi.getProgressDashboard(),
+          learnerXpApi.getMyHistory(1, PROFILE_XP_HISTORY_FETCH_SIZE),
         ]);
 
         if (!alive) return;
@@ -138,7 +257,7 @@ export default function ProfilePage() {
         if (historyRes.isSuccess) {
           setPlayHistory(historyRes.data ?? null);
         } else {
-          setHistoryError(historyRes.message ?? "Failed to load play history");
+          setHistoryError(historyRes.message ?? t("profileHistoryLoadFailed"));
         }
 
         if (xpRes.isSuccess) {
@@ -148,14 +267,10 @@ export default function ProfilePage() {
         if (xpHistoryRes?.data?.isSuccess) {
           setXpHistory(xpHistoryRes.data.data?.items ?? []);
         }
-
-        if (dashboardRes?.isSuccess) {
-          setProgressDashboard(dashboardRes.data ?? null);
-        }
       } catch {
         if (!alive) return;
         setError("Failed to load profile");
-        setHistoryError("Failed to load play history");
+        setHistoryError(t("profileHistoryLoadFailed"));
       } finally {
         if (alive) setLoading(false);
         if (alive) setHistoryLoading(false);
@@ -176,11 +291,73 @@ export default function ProfilePage() {
     }, 0);
   }, [xpHistory]);
 
-  const xpLatest = useMemo(() => xpHistory.slice(0, 3), [xpHistory]);
+  const xpChunks = useMemo(() => {
+    if (xpHistory.length === 0) return [];
+    const chunks: XpHistoryItem[][] = [];
+    for (let i = 0; i < xpHistory.length; i += PROFILE_ACTIVITY_PAGE_SIZE) {
+      chunks.push(xpHistory.slice(i, i + PROFILE_ACTIVITY_PAGE_SIZE));
+    }
+    return chunks;
+  }, [xpHistory]);
+
+  useEffect(() => {
+    if (xpChunks.length === 0) return;
+    if (xpChunkIndex >= xpChunks.length) {
+      setXpChunkIndex(xpChunks.length - 1);
+    }
+  }, [xpChunks.length, xpChunkIndex]);
+
+  const visibleXpItems = xpChunks[xpChunkIndex] ?? [];
+
+  const loadPlayHistoryPage = useCallback(async (page: number) => {
+    setHistoryRefreshing(true);
+    setHistoryError(null);
+    try {
+      const historyRes = await learnerGameplayApi.getMyPlayHistory({
+        pageNumber: page,
+        pageSize: PROFILE_ACTIVITY_PAGE_SIZE,
+      });
+      if (historyRes.isSuccess) {
+        setPlayHistory(historyRes.data ?? null);
+      } else {
+        setHistoryError(historyRes.message ?? t("profileHistoryLoadFailed"));
+      }
+    } catch {
+      setHistoryError(t("profileHistoryLoadFailed"));
+    } finally {
+      setHistoryRefreshing(false);
+    }
+  }, [t]);
 
   const onPickAvatar = (file: File | null) => {
     setSuccessMsg(null);
     setForm((s) => ({ ...s, avatarFile: file }));
+  };
+
+  const uploadCoverImage = async (file: File) => {
+    const p = profile;
+    if (!p) return;
+    setCoverUploading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await learnerProfileApi.updateProfile({
+        firstName: (p.firstName ?? "").trim(),
+        lastName: (p.lastName ?? "").trim(),
+        phoneNumber: (p.phoneNumber ?? "").trim(),
+        coverImageFile: file,
+      });
+      if (res.isSuccess && res.data) {
+        setProfile(res.data);
+        setSuccessMsg(t("profileWallUpdated"));
+      } else {
+        setError(res.message ?? t("updateFailed"));
+      }
+    } catch {
+      setError(t("updateFailed"));
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   const onSave = async () => {
@@ -240,37 +417,120 @@ export default function ProfilePage() {
       <div className={styles.content}>
         {/* Facebook-style: cover + identity bar */}
         <div className={styles.profileHero}>
-          <div className={styles.cover} aria-hidden />
+          <div className={styles.coverWrap}>
+            <div
+              className={`${styles.cover} ${profile?.coverImagePath ? styles.coverHasImage : ""} ${
+                profile?.coverImagePath ? styles.coverViewable : ""
+              }`}
+              style={
+                profile?.coverImagePath
+                  ? {
+                      backgroundImage: `url(${profile.coverImagePath})`,
+                    }
+                  : undefined
+              }
+              role={profile?.coverImagePath ? "button" : undefined}
+              tabIndex={profile?.coverImagePath ? 0 : undefined}
+              aria-label={profile?.coverImagePath ? t("profileViewCover") : undefined}
+              onClick={() => {
+                if (profile?.coverImagePath) setLightboxSrc(profile.coverImagePath);
+              }}
+              onKeyDown={(e) => {
+                if (!profile?.coverImagePath) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setLightboxSrc(profile.coverImagePath);
+                }
+              }}
+            />
+            <div className={styles.coverActions}>
+              <label
+                className={`${styles.coverUploadLabel} ${coverUploading ? styles.coverUploadLabelBusy : ""}`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className={styles.coverFileInput}
+                  disabled={coverUploading}
+                  onChange={(e) => {
+                    const f = e.currentTarget.files?.[0];
+                    e.currentTarget.value = "";
+                    if (f) void uploadCoverImage(f);
+                  }}
+                />
+                {coverUploading ? (
+                  <Loader2 size={18} className={styles.coverUploadSpinner} aria-hidden />
+                ) : (
+                  <ImagePlus size={18} aria-hidden />
+                )}
+                <span>{t("profileChangeWallPhoto")}</span>
+              </label>
+            </div>
+          </div>
           <div className={styles.identityBar}>
             <div className={styles.avatarWrap}>
               {isEditMode ? (
-                <label className={styles.avatarWrapperFb}>
-                  <img
-                    src={avatarPreviewUrl ?? profile?.avatarPath ?? "/brand/avatar-fallback.png"}
-                    alt="Avatar"
-                    className={styles.avatarImg}
-                    onError={(e) => {
-                      const img = e.currentTarget as HTMLImageElement;
-                      const fallbackSrc = "/brand/avatar-fallback.png";
-                      if (img.dataset.fallbackTried === "1") return;
-                      img.dataset.fallbackTried = "1";
-                      // Guard against browsers turning the src into an absolute URL.
-                      if (!img.src.includes(fallbackSrc)) img.src = fallbackSrc;
-                    }}
-                  />
-                  <div className={styles.avatarOverlay}>
-                    <Camera size={24} />
-                    <span className={styles.avatarOverlayText}>Change photo</span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => onPickAvatar(e.currentTarget.files?.[0] ?? null)}
-                    className={styles.avatarInput}
-                  />
-                </label>
+                <div className={styles.avatarWrapperFb}>
+                  {(avatarPreviewUrl || isRealProfileImageUrl(profile?.avatarPath)) && (
+                    <button
+                      type="button"
+                      className={styles.avatarViewBtn}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const src = avatarPreviewUrl ?? profile?.avatarPath;
+                        if (src) setLightboxSrc(src);
+                      }}
+                      aria-label={t("profileViewPhoto")}
+                      title={t("profileViewPhoto")}
+                    >
+                      <Maximize2 size={16} strokeWidth={2.5} />
+                    </button>
+                  )}
+                  <label className={styles.avatarLabelBlock}>
+                    <img
+                      src={avatarPreviewUrl ?? profile?.avatarPath ?? "/brand/avatar-fallback.png"}
+                      alt="Avatar"
+                      className={styles.avatarImg}
+                      onError={(e) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        const fallbackSrc = "/brand/avatar-fallback.png";
+                        if (img.dataset.fallbackTried === "1") return;
+                        img.dataset.fallbackTried = "1";
+                        if (!img.src.includes(fallbackSrc)) img.src = fallbackSrc;
+                      }}
+                    />
+                    <div className={styles.avatarOverlay}>
+                      <Camera size={24} />
+                      <span className={styles.avatarOverlayText}>Change photo</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => onPickAvatar(e.currentTarget.files?.[0] ?? null)}
+                      className={styles.avatarInput}
+                    />
+                  </label>
+                </div>
               ) : (
-                <div className={`${styles.avatarWrapperFb} ${styles.avatarWrapperStatic}`}>
+                <div
+                  className={`${styles.avatarWrapperFb} ${styles.avatarWrapperStatic} ${
+                    isRealProfileImageUrl(profile?.avatarPath) ? styles.avatarViewable : ""
+                  }`}
+                  role={isRealProfileImageUrl(profile?.avatarPath) ? "button" : undefined}
+                  tabIndex={isRealProfileImageUrl(profile?.avatarPath) ? 0 : undefined}
+                  aria-label={isRealProfileImageUrl(profile?.avatarPath) ? t("profileViewPhoto") : undefined}
+                  onClick={() => {
+                    if (isRealProfileImageUrl(profile?.avatarPath)) setLightboxSrc(profile!.avatarPath!);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!isRealProfileImageUrl(profile?.avatarPath)) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setLightboxSrc(profile!.avatarPath!);
+                    }
+                  }}
+                >
                   <img
                     src={profile?.avatarPath ?? "/brand/avatar-fallback.png"}
                     alt="Avatar"
@@ -290,40 +550,38 @@ export default function ProfilePage() {
               <h1 className={styles.identityName}>{fullName}</h1>
               <p className={styles.identitySubtitle}>{profile?.email ?? "—"}</p>
               {xpProfile && (
-                <div className={styles.identityXp}>
-                  <span className={styles.identityLevelBadge}>Lv. {xpProfile.currentLevel}</span>
-                  <div
-                    className={styles.identityXpBar}
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(xpProfile.progressPercent)}
-                    aria-label="Experience progress"
-                  >
-                    <div
-                      className={styles.identityXpBarFill}
-                      style={{ width: `${Math.max(0, Math.min(100, xpProfile.progressPercent))}%` }}
-                    />
+                <div className={styles.identityXpCompact}>
+                  <div className={styles.identityXpMainRow}>
+                    <span className={styles.identityLevelBadge}>Lv. {xpProfile.currentLevel}</span>
+                    <div className={styles.identityXpBarColumn}>
+                      <div
+                        className={styles.identityXpBar}
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(xpProfile.progressPercent)}
+                        aria-label="Experience progress"
+                      >
+                        <div
+                          className={styles.identityXpBarFill}
+                          style={{ width: `${Math.max(0, Math.min(100, xpProfile.progressPercent))}%` }}
+                        />
+                      </div>
+                      <span className={styles.identityXpSubline}>
+                        {xpProfile.xpToNextLevel.toLocaleString()} XP to Lv. {xpProfile.nextLevel}
+                      </span>
+                    </div>
                   </div>
-                  <span className={styles.identityXpText}>
-                    {xpProfile.xpToNextLevel.toLocaleString()} XP to Lv. {xpProfile.nextLevel}
-                  </span>
+                  <div className={styles.identityStatBadges}>
+                    <span className={styles.introBadge}>
+                      {t("profileTotalXpLabel")}: {(xpProfile?.currentXp ?? 0).toLocaleString()}
+                    </span>
+                    <span className={styles.introBadge}>
+                      {t("profileLast7DaysXpLabel")}: +{xpLast7Days.toLocaleString()} XP
+                    </span>
+                  </div>
                 </div>
               )}
-              <div
-                style={{
-                  marginTop: "10px",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "8px",
-                }}
-              >
-                <span className={styles.introBadge}>Total XP: {xpProfile?.currentXp?.toLocaleString() ?? 0}</span>
-                <span className={styles.introBadge}>Last 7 days: +{xpLast7Days.toLocaleString()} XP</span>
-                <span className={styles.introBadge}>
-                  Stars: {progressDashboard?.totalStars?.toLocaleString() ?? 0}
-                </span>
-              </div>
             </div>
             <div className={styles.identityActions}>
               {successMsg && (
@@ -350,7 +608,7 @@ export default function ProfilePage() {
         <div className={styles.profileBody}>
           <section className={styles.cardFb}>
             <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>Intro</h2>
+              <h2 className={styles.cardTitleFb}>{t("intro")}</h2>
             </div>
             <div className={styles.introContent}>
               {profile?.bio ? (
@@ -486,108 +744,171 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <section className={styles.cardFb}>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>XP Tracking</h2>
+          <section className={styles.cardFb} aria-label={`${t("profilePlayHistoryTab")} / ${t("profileXpTrackingTitle")}`}>
+            <div
+              className={styles.profileActivityTabRow}
+              role="tablist"
+              aria-label={`${t("profilePlayHistoryTab")} / ${t("profileXpTrackingTitle")}`}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={profileActivityTab === "history"}
+                id="profile-tab-history"
+                className={`${styles.profileActivityTab} ${profileActivityTab === "history" ? styles.profileActivityTabActive : ""}`}
+                onClick={() => setProfileActivityTab("history")}
+              >
+                {t("profilePlayHistoryTab")}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={profileActivityTab === "xp"}
+                id="profile-tab-xp"
+                className={`${styles.profileActivityTab} ${profileActivityTab === "xp" ? styles.profileActivityTabActive : ""}`}
+                onClick={() => setProfileActivityTab("xp")}
+              >
+                {t("profileXpTrackingTitle")}
+              </button>
             </div>
-            {xpLatest.length > 0 ? (
-              <div className={styles.historyList}>
-                {xpLatest.map((item) => (
-                  <div key={item.id} className={styles.historyItem}>
-                    <div className={styles.historyItemTop}>
-                      <div style={{ minWidth: 0 }}>
-                        <div className={styles.historyTitle}>
-                          {item.reason || item.sourceType}
+
+            <div role="tabpanel" aria-labelledby="profile-tab-history" hidden={profileActivityTab !== "history"}>
+              {historyLoading ? (
+                <div className={styles.introPlaceholder}>{t("loading")}</div>
+              ) : historyError ? (
+                <div className={styles.pillError}>{historyError}</div>
+              ) : playHistory?.items?.length ? (
+                <>
+                  <div className={styles.historyList}>
+                    {playHistory.items.map((item) => (
+                      <div key={item.id} className={styles.historyItem}>
+                        <div className={styles.historyItemTop}>
+                          <div style={{ minWidth: 0 }}>
+                            <div className={styles.historyTitle}>
+                              {item.mapTitle ?? `${t("profileHistoryGameFallback")} ${item.mapId.slice(0, 8)}...`}
+                            </div>
+                            <div className={styles.historyMeta}>
+                              {item.playMode} ·{" "}
+                              {item.isCompleted ? t("profilePlayCompleted") : t("profilePlayNotCompleted")}
+                            </div>
+                          </div>
+                          <div className={styles.historyScore}>
+                            {item.score != null ? `${item.score}` : "—"}
+                            {item.stars != null ? ` ★${item.stars}` : ""}
+                          </div>
                         </div>
-                        <div className={styles.historyMeta}>{item.sourceType}</div>
-                      </div>
-                      <div className={styles.historyScore}>+{item.delta} XP</div>
-                    </div>
-                    <div className={styles.historyBottom}>
-                      <span>
-                        {item.createdAt
-                          ? new Date(item.createdAt).toLocaleString("en-US", {
+                        <div className={styles.historyBottom}>
+                          <span>
+                            {new Date(item.startTime).toLocaleString("en-US", {
                               month: "short",
                               day: "2-digit",
                               hour: "2-digit",
                               minute: "2-digit",
-                            })
-                          : "—"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.introPlaceholder}>No XP activity yet.</div>
-            )}
-          </section>
-
-          <section className={styles.cardFb}>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>Badges</h2>
-            </div>
-            {progressDashboard?.badges?.length ? (
-              <div className={styles.introBadges}>
-                {progressDashboard.badges.slice(0, 6).map((badge) => (
-                  <span key={`${badge.code}-${badge.unlockedAt}`} className={styles.introBadge}>
-                    {badge.name}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.introPlaceholder}>No badges unlocked yet.</div>
-            )}
-          </section>
-
-          <section className={styles.cardFb}>
-            <div className={styles.cardHead}>
-              <h2 className={styles.cardTitleFb}>Lịch sử đấu</h2>
-            </div>
-
-            {historyLoading ? (
-              <div className={styles.introPlaceholder}>Loading...</div>
-            ) : historyError ? (
-              <div className={styles.pillError}>{historyError}</div>
-            ) : playHistory?.items?.length ? (
-              <div className={styles.historyList}>
-                {playHistory.items.map((item) => (
-                  <div key={item.id} className={styles.historyItem}>
-                    <div className={styles.historyItemTop}>
-                      <div style={{ minWidth: 0 }}>
-                        <div className={styles.historyTitle}>
-                          {item.mapTitle ?? `${t("profileHistoryGameFallback")} ${item.mapId.slice(0, 8)}...`}
-                        </div>
-                        <div className={styles.historyMeta}>
-                          {item.playMode} · {item.isCompleted ? "Completed" : "Not completed"}
+                            })}
+                          </span>
                         </div>
                       </div>
-                      <div className={styles.historyScore}>
-                        {item.score != null ? `${item.score}` : "—"}
-                        {item.stars != null ? ` ★${item.stars}` : ""}
-                      </div>
-                    </div>
-                    <div className={styles.historyBottom}>
-                      <span>
-                        {new Date(item.startTime).toLocaleString("en-US", {
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.introPlaceholder}>No game history yet.</div>
-            )}
+                  {(playHistory.totalPages ?? 0) > 1 ? (
+                    <div className={historyRefreshing ? styles.profilePaginationWrapBusy : styles.profilePaginationWrap}>
+                      <ProfilePagination
+                        currentPage={playHistory.currentPage ?? 1}
+                        totalPages={playHistory.totalPages ?? 1}
+                        disabled={historyRefreshing}
+                        onPageChange={(p) => void loadPlayHistoryPage(p)}
+                        previousLabel={t("profilePaginationPrevious")}
+                        nextLabel={t("profilePaginationNext")}
+                        navAriaLabel={t("profilePaginationNavLabel")}
+                        pageAria={(p) => interpolate(t("profileActivityPageTabAria"), { n: p })}
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className={styles.introPlaceholder}>{t("profileNoGameHistoryYet")}</div>
+              )}
+            </div>
+
+            <div role="tabpanel" aria-labelledby="profile-tab-xp" hidden={profileActivityTab !== "xp"}>
+              {visibleXpItems.length > 0 ? (
+                <>
+                  <div className={styles.historyList}>
+                    {visibleXpItems.map((item) => (
+                      <div key={item.id} className={styles.historyItem}>
+                        <div className={styles.historyItemTop}>
+                          <div style={{ minWidth: 0 }}>
+                            <div className={styles.historyTitle}>
+                              {item.reason || item.sourceType}
+                            </div>
+                            <div className={styles.historyMeta}>{item.sourceType}</div>
+                          </div>
+                          <div className={styles.historyScore}>+{item.delta} XP</div>
+                        </div>
+                        <div className={styles.historyBottom}>
+                          <span>
+                            {item.createdAt
+                              ? new Date(item.createdAt).toLocaleString("en-US", {
+                                  month: "short",
+                                  day: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {xpChunks.length > 1 ? (
+                    <ProfilePagination
+                      currentPage={xpChunkIndex + 1}
+                      totalPages={xpChunks.length}
+                      onPageChange={(p) => setXpChunkIndex(p - 1)}
+                      previousLabel={t("profilePaginationPrevious")}
+                      nextLabel={t("profilePaginationNext")}
+                      navAriaLabel={t("profilePaginationNavLabel")}
+                      pageAria={(p) => interpolate(t("profileActivityPageTabAria"), { n: p })}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <div className={styles.introPlaceholder}>{t("profileNoXpActivityYet")}</div>
+              )}
+            </div>
           </section>
 
           {/* quick links removed (space kept consistent with Facebook-style layout) */}
         </div>
       </div>
+
+      {lightboxSrc ? (
+        <div
+          className={styles.imageLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("profileImagePreview")}
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            type="button"
+            className={styles.imageLightboxClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxSrc(null);
+            }}
+            aria-label={t("cancel")}
+          >
+            <X size={26} />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt=""
+            className={styles.imageLightboxImg}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

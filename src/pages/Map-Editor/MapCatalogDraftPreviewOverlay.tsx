@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useNavigate, generatePath } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useLanguageStore } from "@/stores/language.store";
 import { getT } from "@/lib/i18n/translations";
@@ -124,9 +123,16 @@ export function MapCatalogDraftPreviewOverlay({
 }: MapCatalogDraftPreviewOverlayProps) {
   const { locale } = useLanguageStore();
   const t = useMemo(() => getT(locale), [locale]);
-  const navigate = useNavigate();
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
   const [pendingSaveIntent, setPendingSaveIntent] = useState<SaveIntent>("draft");
+  const [agreedSubmitReviewRules, setAgreedSubmitReviewRules] = useState(false);
+  const saveConfirmTitleId = useId();
+
+  const catalogSaveConfirmDifficultyLabel = useMemo(() => {
+    if (difficulty <= 2) return t("easy");
+    if (difficulty === 3) return t("medium");
+    return t("hard");
+  }, [difficulty, t]);
   const [gallerySlideIndex, setGallerySlideIndex] = useState(0);
   const [heroLoadError, setHeroLoadError] = useState(false);
   const [keyArtLoadError, setKeyArtLoadError] = useState(false);
@@ -251,20 +257,29 @@ export function MapCatalogDraftPreviewOverlay({
     ? ROUTES.GAME_CREATION_RULE_VI
     : ROUTES.GAME_CREATION_RULE_EN;
 
-  const handleOpenSaveConfirmModal = (intent: SaveIntent) => {
+  const handleSaveDraftDirect = async () => {
     if (saving) return;
-    setPendingSaveIntent(intent);
+    await onSaveToServer({ submitForReview: false });
+  };
+
+  const handleOpenSubmitConfirmModal = () => {
+    if (saving) return;
+    setPendingSaveIntent("submit");
+    setAgreedSubmitReviewRules(false);
     setShowSaveConfirmModal(true);
   };
 
   const handleCloseSaveConfirmModal = () => {
     if (saving) return;
     setShowSaveConfirmModal(false);
+    setAgreedSubmitReviewRules(false);
   };
 
   const handleConfirmSaveToServer = async () => {
     if (saving) return;
+    if (pendingSaveIntent === "submit" && !agreedSubmitReviewRules) return;
     setShowSaveConfirmModal(false);
+    setAgreedSubmitReviewRules(false);
     await onSaveToServer({ submitForReview: pendingSaveIntent === "submit" });
   };
 
@@ -935,7 +950,7 @@ export function MapCatalogDraftPreviewOverlay({
                 type="button"
                 className={styles.steamFooterPrimary}
                 disabled={saving}
-                onClick={() => handleOpenSaveConfirmModal("draft")}
+                onClick={() => void handleSaveDraftDirect()}
               >
                 <Save size={18} />{" "}
                 {saving
@@ -947,7 +962,7 @@ export function MapCatalogDraftPreviewOverlay({
                   type="button"
                   className={styles.steamFooterSecondary}
                   disabled={saving}
-                  onClick={() => handleOpenSaveConfirmModal("submit")}
+                  onClick={() => handleOpenSubmitConfirmModal()}
                   style={{
                     borderColor: "rgba(22, 101, 52, 0.35)",
                     color: "#166534",
@@ -955,19 +970,6 @@ export function MapCatalogDraftPreviewOverlay({
                   }}
                 >
                   <Send size={16} /> {t("mapEditorCatalogPreviewSaveAndSubmit")}
-                </button>
-              ) : null}
-              {persistedMapId ? (
-                <button
-                  type="button"
-                  className={styles.steamFooterSecondary}
-                  onClick={() => {
-                    navigate(generatePath(ROUTES.LEARNER_MAP_DETAIL, { id: persistedMapId }), {
-                      state: { mapCatalogSetup: true },
-                    });
-                  }}
-                >
-                  {t("mapEditorCatalogPreviewOpenDetailToSave")}
                 </button>
               ) : null}
               {persistedMapId ? (
@@ -979,8 +981,14 @@ export function MapCatalogDraftPreviewOverlay({
 
             {showSaveConfirmModal ? (
               <div className={styles.modalOverlay} onClick={handleCloseSaveConfirmModal}>
-                <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                  <h3 className={styles.modalTitle}>
+                <div
+                  className={`${styles.modal} ${styles.purchaseConfirmModal}`}
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={saveConfirmTitleId}
+                >
+                  <h3 className={styles.modalTitle} id={saveConfirmTitleId}>
                     {pendingSaveIntent === "submit"
                       ? locale.startsWith("vi")
                         ? "Xác nhận lưu và gửi duyệt"
@@ -989,6 +997,41 @@ export function MapCatalogDraftPreviewOverlay({
                         ? "Xác nhận lưu nháp trò chơi"
                         : "Confirm save game draft"}
                   </h3>
+                  <div className={styles.purchaseConfirmCard}>
+                    <div className={styles.purchaseConfirmThumbWrap}>
+                      {avatarPreviewUrl ? (
+                        <img
+                          src={avatarPreviewUrl}
+                          alt={titleValue.trim() || (locale.startsWith("vi") ? "Ảnh đại diện game" : "Game thumbnail")}
+                          className={styles.purchaseConfirmThumb}
+                        />
+                      ) : (
+                        <div className={styles.purchaseConfirmThumbPlaceholder}>
+                          {locale.startsWith("vi") ? "Chưa có ảnh" : "No preview"}
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.purchaseConfirmBody}>
+                      <p className={styles.purchaseConfirmTitle}>
+                        {titleValue.trim() || (locale.startsWith("vi") ? "Chưa có tiêu đề" : "Untitled")}
+                      </p>
+                      <p className={styles.purchaseConfirmMeta}>
+                        {t("difficulty")}: {catalogSaveConfirmDifficultyLabel}
+                      </p>
+                      <p className={styles.purchaseConfirmMeta}>
+                        {pendingSaveIntent === "submit"
+                          ? locale.startsWith("vi")
+                            ? "Hành động: Lưu và gửi duyệt"
+                            : "Action: Save and submit for review"
+                          : locale.startsWith("vi")
+                            ? "Hành động: Lưu bản nháp"
+                            : "Action: Save as draft"}
+                      </p>
+                      <p className={styles.purchaseConfirmPrice}>
+                        {price > 0 ? `${price.toLocaleString()} OC` : t("free")}
+                      </p>
+                    </div>
+                  </div>
                   <p className={styles.modalMessage}>
                     {pendingSaveIntent === "submit"
                       ? locale.startsWith("vi")
@@ -998,19 +1041,44 @@ export function MapCatalogDraftPreviewOverlay({
                         ? "Game sẽ được lưu ở trạng thái nháp."
                         : "The game will be saved as a draft."}
                   </p>
-                  <p className={styles.purchasePolicyNote}>
-                    {locale.startsWith("vi") ? "Tham khảo: " : "Reference: "}
-                    <a
-                      href={gameCreationRuleRoute}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.purchasePolicyLink}
-                    >
+                  {pendingSaveIntent === "submit" ? (
+                    <label className={styles.purchasePolicyAgreeRow}>
+                      <input
+                        type="checkbox"
+                        className={styles.purchasePolicyCheckbox}
+                        checked={agreedSubmitReviewRules}
+                        disabled={saving}
+                        onChange={(event) => setAgreedSubmitReviewRules(event.target.checked)}
+                      />
+                      <span className={styles.purchasePolicyAgreeText}>
+                        {t("mapEditorCatalogSubmitReviewAgreeBeforeLink")}
+                        <a
+                          href={gameCreationRuleRoute}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.purchasePolicyLink}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {t("mapEditorCatalogGameCreationRuleLinkLabel")}
+                        </a>
+                        {t("mapEditorCatalogSubmitReviewAgreeAfterLink")}
+                      </span>
+                    </label>
+                  ) : (
+                    <p className={styles.purchasePolicyNote}>
                       {locale.startsWith("vi")
-                        ? "Mở Game Creation Rule"
-                        : "Open Game Creation Rule"}
-                    </a>
-                  </p>
+                        ? "Tham khảo quy định tạo game trước khi xác nhận."
+                        : "Please review the game creation rules before confirming."}{" "}
+                      <a
+                        href={gameCreationRuleRoute}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.purchasePolicyLink}
+                      >
+                        {t("mapEditorCatalogGameCreationRuleLinkLabel")}
+                      </a>
+                    </p>
+                  )}
                   <div className={styles.modalActions}>
                     <button
                       type="button"
@@ -1023,7 +1091,10 @@ export function MapCatalogDraftPreviewOverlay({
                     <button
                       type="button"
                       className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-                      disabled={saving}
+                      disabled={
+                        saving ||
+                        (pendingSaveIntent === "submit" && !agreedSubmitReviewRules)
+                      }
                       onClick={() => void handleConfirmSaveToServer()}
                     >
                       {saving ? t("mapEditorCatalogPreviewSaving") : t("save")}

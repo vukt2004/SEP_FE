@@ -1,5 +1,5 @@
 // src/portals/learner/pages/PackagesPage.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -44,6 +44,105 @@ function normalizePlanName(name: string): NormalizedPlan | null {
   return null;
 }
 
+type ParsedFeaturesSpec = {
+  plan?: string;
+  features?: {
+    can_create_game?: boolean;
+    advanced_assets?: boolean;
+    can_private_room?: boolean;
+    xp_boost_multiplier?: number;
+    monthly_hint_quota?: number;
+  };
+};
+
+function tryParseFeaturesSpec(raw: string | null | undefined): ParsedFeaturesSpec | null {
+  const s = raw?.trim();
+  if (!s || !s.startsWith("{")) return null;
+  try {
+    const data = JSON.parse(s) as ParsedFeaturesSpec;
+    if (
+      data &&
+      typeof data === "object" &&
+      data.features != null &&
+      typeof data.features === "object" &&
+      !Array.isArray(data.features)
+    ) {
+      return data;
+    }
+    if (data && typeof data === "object" && typeof data.plan === "string") {
+      return data;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{{${k}}}`, String(v)), template);
+}
+
+/** Human-readable bullets from CMS JSON `featuresSpec` or legacy newline-separated text. */
+function buildPackageFeatureLines(featuresSpec: string | null | undefined, t: (key: string) => string): string[] {
+  const parsed = tryParseFeaturesSpec(featuresSpec ?? "");
+  if (parsed?.features) {
+    const f = parsed.features;
+    const lines: string[] = [];
+    if (typeof f.can_create_game === "boolean") {
+      lines.push(
+        f.can_create_game ? t("learnerPackages.feature.createGameYes") : t("learnerPackages.feature.createGameNo"),
+      );
+    }
+    if (typeof f.advanced_assets === "boolean") {
+      lines.push(
+        f.advanced_assets
+          ? t("learnerPackages.feature.advancedAssetsYes")
+          : t("learnerPackages.feature.advancedAssetsNo"),
+      );
+    }
+    if (typeof f.can_private_room === "boolean") {
+      lines.push(
+        f.can_private_room
+          ? t("learnerPackages.feature.privateRoomYes")
+          : t("learnerPackages.feature.privateRoomNo"),
+      );
+    }
+    if (typeof f.xp_boost_multiplier === "number" && Number.isFinite(f.xp_boost_multiplier)) {
+      lines.push(interpolate(t("learnerPackages.feature.xpBoost"), { n: f.xp_boost_multiplier }));
+    }
+    if (typeof f.monthly_hint_quota === "number" && Number.isFinite(f.monthly_hint_quota)) {
+      lines.push(interpolate(t("learnerPackages.feature.monthlyHints"), { n: f.monthly_hint_quota }));
+    }
+    if (lines.length > 0) return lines;
+  }
+
+  const s = featuresSpec?.trim() ?? "";
+  if (!s || s.startsWith("{")) return [];
+
+  return s
+    .split(/\n|,|;/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function packageTagline(
+  pkg: Package,
+  index: number,
+  t: (key: string) => string,
+  defaults: string[],
+): string {
+  const parsed = tryParseFeaturesSpec(pkg.featuresSpec);
+  const plan = parsed?.plan?.toLowerCase();
+  if (plan === "free" || plan === "pro" || plan === "creator") {
+    return t(`learnerPackages.planTagline.${plan}`);
+  }
+  const spec = pkg.featuresSpec?.trim() ?? "";
+  if (spec && !spec.startsWith("{") && spec.length < 60) {
+    return spec;
+  }
+  return defaults[index % defaults.length];
+}
+
 function isPackageActiveNow(pkg: UserPackage): boolean {
   const hasRemaining = pkg.remaining === null || pkg.remaining > 0;
   const expiresAtMs = pkg.expiresAt ? Date.parse(pkg.expiresAt) : Number.NaN;
@@ -84,12 +183,17 @@ function pickCurrentPackage(items: UserPackage[]): UserPackage | null {
   return ranked[0] ?? null;
 }
 
+/** No active paid subscription ⇒ coi như đang ở bậc Free (không cho "mua" lại gói Free). */
 function isSameOrLowerPackage(target: Package, current: UserPackage | null): boolean {
-  if (!current) return false;
-
-  const currentRank = normalizePlanName(current.name);
   const targetRank = normalizePlanName(target.name);
 
+  if (!current) {
+    if (targetRank === "free") return true;
+    if (target.price === 0) return true;
+    return false;
+  }
+
+  const currentRank = normalizePlanName(current.name);
   if (currentRank && targetRank) {
     return PLAN_RANK[targetRank] <= PLAN_RANK[currentRank];
   }
@@ -97,8 +201,17 @@ function isSameOrLowerPackage(target: Package, current: UserPackage | null): boo
   return target.price <= current.price;
 }
 
+function isCardCurrentPlan(pkg: Package, current: UserPackage | null): boolean {
+  if (current?.packageId && current.packageId === pkg.id) return true;
+  if (!current) {
+    const tr = normalizePlanName(pkg.name);
+    return tr === "free" || pkg.price === 0;
+  }
+  return false;
+}
+
 export default function PackagesPage() {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +271,7 @@ export default function PackagesPage() {
     return () => {
       cancelled = true;
     };
-  }, [t, locale]);
+  }, [t]);
 
   const executePurchase = async (pkg: Package) => {
     try {
@@ -168,40 +281,34 @@ export default function PackagesPage() {
         clearCurrentUserPlanCache();
         setPurchaseModal({
           kind: "success",
-          message:
-            response.data.message ||
-            (locale.startsWith("vi")
-              ? "Đã mua gói thành công."
-              : "Package purchased successfully."),
+          message: response.data.message || t("learnerPackages.purchaseSuccessDefault"),
         });
         return;
       }
       setPurchaseModal({
         kind: "error",
-        message:
-          response.data.message ||
-          (locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package."),
+        message: response.data.message || t("learnerPackages.purchaseFailedDefault"),
       });
       setLastFailedPackage(pkg);
     } catch (err) {
       if (isAxiosError(err)) {
         const body = err.response?.data as ApiResult<string> | undefined;
+        const msgLower = (body?.message ?? "").toLowerCase();
         const isInsufficientBalance =
           body?.errorCode === "InvalidOperation" ||
-          (body?.message ?? "").toLowerCase().includes("insufficient");
+          msgLower.includes("insufficient") ||
+          msgLower.includes("không đủ");
 
         setPurchaseModal({
           kind: isInsufficientBalance ? "insufficient" : "error",
-          message:
-            body?.message ||
-            (locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package."),
+          message: body?.message || t("learnerPackages.purchaseFailedDefault"),
         });
         setLastFailedPackage(pkg);
         return;
       }
       setPurchaseModal({
         kind: "error",
-        message: locale.startsWith("vi") ? "Không mua được gói." : "Failed to purchase package.",
+        message: t("learnerPackages.purchaseFailedDefault"),
       });
       setLastFailedPackage(pkg);
       console.error(err);
@@ -248,48 +355,28 @@ export default function PackagesPage() {
       const monthly = Math.round(base / 12);
       return {
         display: formatPrice(monthly),
-        unit: ` ${CURRENCY}/month`,
+        unit: t("learnerPackages.priceUnitPerMonth"),
         original: formatPrice(base),
       };
     }
     if (pkg.durationDays <= 31) {
       return {
         display: formatPrice(base),
-        unit: ` ${CURRENCY}/month`,
+        unit: t("learnerPackages.priceUnitPerMonth"),
         original: null as string | null,
       };
     }
     return {
       display: formatPrice(base),
-      unit: ` ${CURRENCY} / ${pkg.durationDays} days`,
+      unit: interpolate(t("learnerPackages.priceUnitForDuration"), { days: pkg.durationDays }),
       original: null as string | null,
     };
   };
 
-  const parseFeatures = (spec: string): string[] => {
-    if (!spec || !spec.trim()) return [];
-    return spec
-      .split(/\n|,|;/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  };
-
-  const getTagline = (pkg: Package, index: number) => {
-    if (pkg.featuresSpec) {
-      const first = pkg.featuresSpec.split(/\n|,|;/)[0]?.trim();
-      if (first && first.length < 60) return first;
-    }
-    const defaults = [t("taglineSolo"), t("taglineRegular"), t("taglineTeams")];
-    return defaults[index % defaults.length];
-  };
-
-  const formatDate = (isoDate: string) => {
-    const value = Date.parse(isoDate);
-    if (!Number.isFinite(value)) {
-      return isoDate;
-    }
-    return new Date(value).toLocaleDateString(locale.startsWith("vi") ? "vi-VN" : "en-US");
-  };
+  const planTaglineDefaults = useMemo(
+    () => [t("taglineSolo"), t("taglineRegular"), t("taglineTeams")],
+    [t],
+  );
 
   if (loading) {
     return (
@@ -314,7 +401,15 @@ export default function PackagesPage() {
   }
 
   const visiblePackages = packages.filter((p) => p.isActive);
-  const defaultFeaturedIndex = visiblePackages.length >= 2 ? 1 : -1; // Pro (giữa) sáng mặc định
+  const currentPlanCardIndex = visiblePackages.findIndex((p) => isCardCurrentPlan(p, currentPackage));
+  const defaultFeaturedIndex =
+    currentPlanCardIndex >= 0
+      ? currentPlanCardIndex
+      : visiblePackages.length >= 2
+        ? 1
+        : visiblePackages.length === 1
+          ? 0
+          : -1;
 
   const containerVariants = {
     hidden: {},
@@ -338,27 +433,6 @@ export default function PackagesPage() {
           <h1 className={styles.title}>{t("flexiblePlansTitle")}</h1>
         </motion.header>
 
-        <motion.section
-          className={styles.currentPackagePanel}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <span className={styles.currentPackageLabel}>
-            {locale.startsWith("vi") ? "Gói hiện tại" : "Current package"}
-          </span>
-          <strong className={styles.currentPackageName}>{currentPackage?.name ?? "Free"}</strong>
-          <span className={styles.currentPackageMeta}>
-            {currentPackage
-              ? locale.startsWith("vi")
-                ? `Hết hạn: ${formatDate(currentPackage.expiresAt ?? "")}`
-                : `Expires: ${formatDate(currentPackage.expiresAt ?? "")}`
-              : locale.startsWith("vi")
-                ? "Bạn chưa có gói trả phí đang hoạt động."
-                : "You do not have an active paid package yet."}
-          </span>
-        </motion.section>
-
         {visiblePackages.length === 0 ? (
           <div className={styles.emptyWrap}>{t("noPackagesAvailable")}</div>
         ) : (
@@ -371,16 +445,20 @@ export default function PackagesPage() {
             {visiblePackages.map((pkg, index) => {
               const featured =
                 hoveredIndex !== null ? hoveredIndex === index : index === defaultFeaturedIndex;
-              const isCurrentPackageCard = currentPackage?.packageId === pkg.id;
+              const isCurrentPackageCard = isCardCurrentPlan(pkg, currentPackage);
               const isLockedByCurrent = isSameOrLowerPackage(pkg, currentPackage);
               const isDisabled = !pkg.isActive || purchasingId === pkg.id || isLockedByCurrent;
               const { display, unit, original } = getDisplayPrice(pkg);
-              const features = parseFeatures(pkg.featuresSpec ?? "");
+              const features = buildPackageFeatureLines(pkg.featuresSpec, t);
               if (features.length === 0) {
                 features.push(
-                  isFree(pkg) ? `${t("lifetime")} access` : `${pkg.durationDays} days access`,
+                  interpolate(t("learnerPackages.fallback.accessDays"), { days: pkg.durationDays }),
                 );
-                features.push(`${pkg.limit} courses included`);
+                if (pkg.limit != null) {
+                  features.push(interpolate(t("learnerPackages.fallback.coursesIncluded"), { n: pkg.limit }));
+                } else {
+                  features.push(t("learnerPackages.fallback.unlimitedCourses"));
+                }
               }
 
               return (
@@ -398,9 +476,7 @@ export default function PackagesPage() {
                   <div className={styles.cardHeaderRow}>
                     <h3 className={styles.cardName}>{pkg.name}</h3>
                     {isCurrentPackageCard ? (
-                      <span className={styles.currentBadge}>
-                        {locale.startsWith("vi") ? "Hiện tại" : "Current"}
-                      </span>
+                      <span className={styles.currentBadge}>{t("learnerPackages.currentBadge")}</span>
                     ) : null}
                   </div>
                   <div className={styles.priceRow}>
@@ -412,7 +488,7 @@ export default function PackagesPage() {
                       </span>
                     )}
                   </div>
-                  <p className={styles.cardTagline}>{getTagline(pkg, index)}</p>
+                  <p className={styles.cardTagline}>{packageTagline(pkg, index, t, planTaglineDefaults)}</p>
                   <div className={styles.cardDivider} />
                   <ul className={styles.featureList}>
                     {features.map((text, i) => (
@@ -430,17 +506,11 @@ export default function PackagesPage() {
                     whileTap={{ scale: 0.97 }}
                   >
                     {purchasingId === pkg.id
-                      ? locale.startsWith("vi")
-                        ? "Đang mua..."
-                        : "Purchasing..."
+                      ? t("learnerPackages.purchasing")
                       : isCurrentPackageCard
-                        ? locale.startsWith("vi")
-                          ? "Gói hiện tại"
-                          : "Current package"
+                        ? t("learnerPackages.currentPackageBtn")
                         : isLockedByCurrent
-                          ? locale.startsWith("vi")
-                            ? "Chỉ mua được gói cao hơn"
-                            : "Higher package required"
+                          ? t("learnerPackages.higherRequired")
                           : `${t("choose")} ${pkg.name}`}
                   </motion.button>
                 </motion.div>
@@ -452,13 +522,13 @@ export default function PackagesPage() {
         {confirmingPackage && (
           <div className={styles.modalOverlay} onClick={() => setConfirmingPackage(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <h3 className={styles.modalTitle}>
-                {locale.startsWith("vi") ? "Xác nhận mua gói" : "Confirm package purchase"}
-              </h3>
+              <h3 className={styles.modalTitle}>{t("learnerPackages.confirmTitle")}</h3>
               <p className={styles.modalMessage}>
-                {locale.startsWith("vi")
-                  ? `Bạn có chắc muốn mua gói ${confirmingPackage.name} với giá ${formatPrice(confirmingPackage.price)} ${CURRENCY}?`
-                  : `Do you want to purchase ${confirmingPackage.name} for ${formatPrice(confirmingPackage.price)} ${CURRENCY}?`}
+                {interpolate(t("learnerPackages.confirmMessage"), {
+                  name: confirmingPackage.name,
+                  price: formatPrice(confirmingPackage.price),
+                  currency: CURRENCY,
+                })}
               </p>
               <div className={styles.modalActions}>
                 <button
@@ -466,14 +536,14 @@ export default function PackagesPage() {
                   className={styles.modalBtn}
                   onClick={() => setConfirmingPackage(null)}
                 >
-                  {locale.startsWith("vi") ? "Hủy" : "Cancel"}
+                  {t("learnerPackages.cancel")}
                 </button>
                 <button
                   type="button"
                   className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
                   onClick={handleConfirmPurchase}
                 >
-                  {locale.startsWith("vi") ? "Xác nhận mua" : "Confirm"}
+                  {t("learnerPackages.confirmBuy")}
                 </button>
               </div>
             </div>
@@ -493,16 +563,10 @@ export default function PackagesPage() {
                 }`}
               >
                 {purchaseModal.kind === "success"
-                  ? locale.startsWith("vi")
-                    ? "Mua thành công"
-                    : "Purchase successful"
+                  ? t("learnerPackages.purchaseSuccessTitle")
                   : purchaseModal.kind === "insufficient"
-                    ? locale.startsWith("vi")
-                      ? "Không đủ số dư"
-                      : "Insufficient balance"
-                    : locale.startsWith("vi")
-                      ? "Mua thất bại"
-                      : "Purchase failed"}
+                    ? t("learnerPackages.purchaseInsufficientTitle")
+                    : t("learnerPackages.purchaseErrorTitle")}
               </h3>
               <p className={styles.modalMessage}>{purchaseModal.message}</p>
               <div className={styles.modalActions}>
@@ -521,7 +585,7 @@ export default function PackagesPage() {
                         className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
                         onClick={() => navigate(ROUTES.LEARNER_WALLET)}
                       >
-                        {locale.startsWith("vi") ? "Nạp thêm OC" : "Top up OrbitCoin"}
+                        {t("learnerPackages.topUpOrbitCoin")}
                       </button>
                     ) : null}
                     {purchaseModal.kind === "error" ? (

@@ -11,6 +11,8 @@ export type ProfileResponse = {
   dateOfBirth?: string | null; // date-time
   bio?: string | null;
   avatarPath?: string | null;
+  /** Profile wall / cover image URL from API. */
+  coverImagePath?: string | null;
   learnerCode?: string | null;
   teacherCode?: string | null;
   position?: string | null;
@@ -46,12 +48,14 @@ export const learnerProfileApi = {
     lastName: string;
     phoneNumber: string;
     avatarFile?: File | null;
+    coverImageFile?: File | null;
   }) => {
     const fd = new FormData();
     fd.append("FirstName", payload.firstName);
     fd.append("LastName", payload.lastName);
     fd.append("PhoneNumber", payload.phoneNumber);
     if (payload.avatarFile) fd.append("avatarFile", payload.avatarFile);
+    if (payload.coverImageFile) fd.append("coverImageFile", payload.coverImageFile);
 
     const { data } = await learnerAxios.put<ApiResult<ProfileResponse>>(
       "/api/learner/auth/profile",

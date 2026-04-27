@@ -1,6 +1,6 @@
 /**
  * CMS — Map solve score weights (Base / Time / Steps / Blocks), sum = 100%.
- * GET/PUT /api/cms/gameplay/map-solve-score
+ * GET/PUT /api/cms/gameplay/game-solve-score
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
