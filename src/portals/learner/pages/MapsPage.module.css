@@ -428,12 +428,14 @@
 }
 
 .cardLocked {
-  opacity: 0.85;
-  cursor: not-allowed;
+  opacity: 0.95;
+  cursor: pointer;
 }
 
 .cardLocked:hover {
-  transform: none;
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .cardSize_default .cardInfo {

@@ -1167,7 +1167,7 @@ function MapCard({
   );
 
   const handleClick = () => {
-    if (isLocked) return;
+    // Locked = chưa mua (paid game): vẫn mở trang chi tiết để xem và mua / dùng thử.
     onPlay();
   };
 
