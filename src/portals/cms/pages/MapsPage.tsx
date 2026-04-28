@@ -623,22 +623,16 @@ export const MapsPage: React.FC = () => {
           setReviewValidationError(t("cmsReview.validationAllCriteria"));
           return;
         }
-        const failedCriteriaSummary = failedCriteria
-          .map((criterion, index) => {
-            const sectionTitle = t(criterion.sectionTitleKey);
-            const criterionLabel = t(criterion.labelKey);
-            return `${index + 1}. [${sectionTitle}] ${criterionLabel}`;
-          })
-          .join("\n");
-
+        
+        // Compact format: use criterion keys only to reduce payload size
+        const failedCriteriaKeys = failedCriteria.map((c) => c.key).join("; ");
+        
         const rejectReason = [
-          t("cmsReview.checklistFailed"),
-          t("cmsReview.failedCriteria"),
-          failedCriteriaSummary,
-          trimmedOtherReason ? `${t("cmsReview.otherReason")}:\n${trimmedOtherReason}` : null,
+          "Failed criteria: " + failedCriteriaKeys,
+          trimmedOtherReason ? `Note: ${trimmedOtherReason}` : null,
         ]
           .filter(Boolean)
-          .join("\n\n");
+          .join(" | ");
 
         await cmsMapsApi.rejectMap(selectedMapForAction.id, {
           rejectReason,
