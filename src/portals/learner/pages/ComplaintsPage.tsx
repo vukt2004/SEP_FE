@@ -636,15 +636,39 @@ export default function ComplaintsPage() {
   );
 
   const prefilledContextEntries = useMemo(
-    () =>
-      requiredAnyContextFields
+    () => {
+      // Always show all context fields that have values, regardless of category requirements
+      const allContextFields: Array<keyof CreateComplaintRequest["context"]> = [
+        "paymentRecordId",
+        "gameId",
+        "mapId",
+        "packageId",
+        "submissionId",
+        "playHistoryId",
+        "xpTransactionId",
+        "orbitCoinTransactionId",
+      ];
+
+      const entries = allContextFields
         .map((field) => ({
           field,
-          value:
-            (createForm.context[field as keyof CreateComplaintRequest["context"]] as string) ?? "",
+          value: (createForm.context[field] as string) ?? "",
         }))
-        .filter((item) => item.value.trim().length > 0),
-    [createForm.context, requiredAnyContextFields],
+        .filter((item) => item.value.trim().length > 0);
+
+      // If both gameId and mapId exist with gameDisplayName, only show mapId to avoid duplication
+      const gameDisplayName = getGameContextDisplayName(createForm.context);
+      if (
+        gameDisplayName &&
+        entries.some((e) => e.field === "gameId") &&
+        entries.some((e) => e.field === "mapId")
+      ) {
+        return entries.filter((e) => e.field !== "gameId");
+      }
+
+      return entries;
+    },
+    [createForm.context],
   );
 
   const showOccurredAtInput = useMemo(
@@ -1562,11 +1586,6 @@ export default function ComplaintsPage() {
                         disabled={categoryOptionsLoading}
                         style={{ ...createUi.control, height: 44 }}
                       >
-                        <option value="">
-                          {categoryOptionsLoading
-                            ? t("complaints.loadingCategories")
-                            : t("complaints.selectCategory")}
-                        </option>
                         {categoryOptions.map((cat) => (
                           <option key={cat.categoryKey} value={cat.categoryKey}>
                             {getCategoryDisplayName(t, cat)}
@@ -1619,7 +1638,7 @@ export default function ComplaintsPage() {
                     >
                       {t("complaints.context.title")}
                     </div>
-                    {requiredAnyContextFields.length > 0 ? (
+                    {requiredAnyContextFields.length > 0 || prefilledContextEntries.length > 0 ? (
                       allowManualContextInput ? (
                         <div
                           style={{
@@ -1764,11 +1783,6 @@ export default function ComplaintsPage() {
                                   })()}
                                 </div>
                               ))}
-                            </div>
-                          ) : null}
-                          {!hasAnyRequiredContextValue ? (
-                            <div style={createUi.warningText}>
-                              {t("complaints.context.reportFromFlowHint")}
                             </div>
                           ) : null}
                         </div>
