@@ -77,6 +77,8 @@
   position: relative;
   width: 100%;
   min-height: 0;
+  aspect-ratio: 16 / 9;
+  max-height: min(72vh, 580px);
   background: var(--surface-2);
   border-radius: 3px;
   overflow: hidden;
@@ -84,7 +86,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .steamPlayer:hover .steamPlayerPlayOverlay,
@@ -93,26 +96,28 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* max-width + width:auto: ô layout khớp media, tránh letterbox dọc do ép width 100% + contain */
+/* Khung cố 16:9 — ảnh/video scale theo tỉ lệ trong ô (không ép px cố định) */
 .steamPlayerImg {
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
-  max-height: 520px;
-  width: auto;
-  height: auto;
+  max-height: 100%;
   object-fit: contain;
-  margin: 0 auto;
+  object-position: center;
+  margin: 0;
   background: var(--surface-2);
 }
 
 .steamPlayerVideo {
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
-  max-height: 520px;
-  width: auto;
-  height: auto;
+  max-height: 100%;
   object-fit: contain;
-  margin: 0 auto;
+  object-position: center;
+  margin: 0;
   background: #000;
 }
 
@@ -199,8 +204,9 @@
 
 .steamThumb {
   flex-shrink: 0;
-  width: 120px;
-  height: 68px;
+  width: clamp(76px, 13vw, 132px);
+  aspect-ratio: 16 / 9;
+  height: auto;
   border-radius: 3px;
   overflow: hidden;
   background: var(--surface-2);
@@ -256,13 +262,19 @@
   font-size: 24px;
 }
 
-/* Right: sidebar – từng section rõ ràng */
+/* Right: sidebar – scroll riêng, không kéo cao cả hàng (tránh khoảng trống dưới gallery trái) */
 .steamSidebar {
-  padding: 0 14px 0 28px;
+  padding: 0 8px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
   min-width: 0;
+  align-self: start;
+  max-height: min(82vh, 900px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .steamSidebarSection {
@@ -427,6 +439,52 @@
 
 .steamTag:hover {
   background: color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+/* Độ khó trên tag — xanh / vàng / đỏ (không dùng primary tím cho Khó) */
+.steamTagDiffeasy {
+  color: color-mix(in srgb, var(--success, #22c55e) 92%, var(--text));
+  border-color: color-mix(in srgb, var(--success, #22c55e) 45%, var(--border));
+  background: color-mix(in srgb, var(--success, #22c55e) 16%, transparent);
+}
+
+.steamTagDiffeasy:hover {
+  background: color-mix(in srgb, var(--success, #22c55e) 24%, transparent);
+}
+
+.steamTagDiffmedium {
+  color: color-mix(in srgb, var(--warning, #eab308) 88%, #1a1a1a);
+  border-color: color-mix(in srgb, var(--warning, #eab308) 50%, var(--border));
+  background: color-mix(in srgb, var(--warning, #eab308) 18%, transparent);
+}
+
+.steamTagDiffmedium:hover {
+  background: color-mix(in srgb, var(--warning, #eab308) 28%, transparent);
+}
+
+.steamTagDiffhard {
+  color: color-mix(in srgb, var(--danger, #ef4444) 92%, var(--text));
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger, #ef4444) 14%, transparent);
+}
+
+.steamTagDiffhard:hover {
+  background: color-mix(in srgb, var(--danger, #ef4444) 22%, transparent);
+}
+
+.steamMetaValueDiffEasy {
+  color: color-mix(in srgb, var(--success, #22c55e) 85%, var(--text-2));
+  font-weight: 700;
+}
+
+.steamMetaValueDiffMedium {
+  color: color-mix(in srgb, var(--warning, #ca8a04) 80%, var(--text-2));
+  font-weight: 700;
+}
+
+.steamMetaValueDiffHard {
+  color: color-mix(in srgb, var(--danger, #ef4444) 85%, var(--text-2));
+  font-weight: 700;
 }
 
 .ratingsSection {
@@ -1807,6 +1865,9 @@
 
   .steamSidebar {
     padding: 20px 8px 0 0;
+    max-height: none;
+    overflow-y: visible;
+    align-self: stretch;
   }
 
   .steamMetaGrid {
@@ -1814,12 +1875,13 @@
   }
 
   .steamPlayer {
-    max-height: 320px;
+    max-height: min(48vh, 360px);
+    aspect-ratio: 16 / 9;
   }
 
   .steamPlayerImg,
   .steamPlayerVideo {
-    max-height: 320px;
+    max-height: 100%;
   }
 }
 

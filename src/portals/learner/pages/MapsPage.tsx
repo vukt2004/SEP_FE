@@ -28,63 +28,14 @@ import styles from "./MapsPage.module.css";
 import { getDifficultyTier } from "@/lib/maps/difficultyDisplay";
 import { extractLearnedTags } from "@/lib/maps/learnedTags";
 import { getConceptLabel } from "@/lib/maps/conceptLabels";
-
-/** Tag names that represent difficulty level – exclude from Concept filter and show only in Difficulty filter */
-const DIFFICULTY_TAG_NAMES = new Set(
-  ["beginner", "easy", "medium", "hard", "expert"].map((s) => s.toLowerCase()),
-);
+import {
+  isDifficultyTag,
+  isConceptExcluded,
+  isSkillMechanismConcept,
+} from "@/lib/maps/mapConceptFilters";
 
 /** Số game hiển thị ban đầu trong các khối (Tiếp tục chơi, Đề xuất, Dành cho người mới); bấm tiêu đề để mở rộng. */
 const MAPS_SECTION_PREVIEW = 3;
-
-function isDifficultyTag(tagName: string): boolean {
-  return DIFFICULTY_TAG_NAMES.has(tagName.trim().toLowerCase());
-}
-
-/** Concept tags to hide from the filter dropdown – compare case-insensitively */
-const CONCEPT_FILTER_EXCLUDE_LOWER = new Set([
-  "optimization",
-  "debugging",
-  "computational thinking",
-  "algorithm basics",
-  "algorithm design",
-  "logic puzzle",
-]);
-
-function isConceptExcluded(tagName: string): boolean {
-  return CONCEPT_FILTER_EXCLUDE_LOWER.has(tagName.trim().toLowerCase());
-}
-
-/**
- * Split concept tags into two groups for filtering:
- * - Programming knowledge: variables, loops, conditionals, functions, etc.
- * - Skills / mechanics: pathfinding, pattern recognition, problem solving, etc.
- *
- * Note: Backend tag names can be English or Vietnamese -> compare case-insensitively.
- */
-const SKILL_MECHANISM_CONCEPTS_LOWER = new Set([
-  // Vietnamese
-  "tư duy logic",
-  "tránh chướng ngại vật",
-  "tìm đường",
-  "nhận dạng mẫu",
-  "giải quyết vấn đề",
-  "thu thập tài nguyên",
-  "chiến lược",
-  "điều hướng",
-  // English
-  "pathfinding",
-  "obstacle avoidance",
-  "pattern recognition",
-  "problem solving",
-  "resource collection",
-  "strategy",
-  "logical thinking",
-]);
-
-function isSkillMechanismConcept(tagName: string): boolean {
-  return SKILL_MECHANISM_CONCEPTS_LOWER.has(tagName.trim().toLowerCase());
-}
 
 type MapStatus = "locked" | "available" | "in_progress" | "completed";
 type MainTab = "all" | "recommended" | "progress";

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import type { Map as ApiMap } from "@/types/api/learner/maps";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -11,6 +11,11 @@ import { extractLearnedTags } from "@/lib/maps/learnedTags";
 import { getConceptLabel } from "@/lib/maps/conceptLabels";
 import type { LocaleId } from "@/lib/i18n/translations";
 import { ROUTES } from "@/lib/constants/routes";
+import {
+  isDifficultyTag,
+  isConceptExcluded,
+  isSkillMechanismConcept,
+} from "@/lib/maps/mapConceptFilters";
 import styles from "./MarketplacePage.module.css";
 
 type MapTag = { label: string; color: "orange" | "yellow" | "blue" | "purple" | "green" | "red" };
@@ -136,7 +141,7 @@ function mapApiMapToUiMap(apiMap: ApiMap, index: number): MapItem {
   };
 }
 
-type SortOption = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs";
+type SortOption = "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs" | "Price";
 
 export default function MarketplacePage() {
   const navigate = useNavigate();
@@ -147,13 +152,27 @@ export default function MarketplacePage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("CreatedAt");
+  /** Price + descending: BE sorts by price high→low; free (0) xếp cuối. */
+  const [sortBy, setSortBy] = useState<SortOption>("Price");
   const [sortAscending, setSortAscending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [knowledgeConceptPicker, setKnowledgeConceptPicker] = useState("all");
+  const [mechanismConceptPicker, setMechanismConceptPicker] = useState("all");
+  const [selectedKnowledgeConcepts, setSelectedKnowledgeConcepts] = useState<string[]>([]);
+  const [selectedMechanismConcepts, setSelectedMechanismConcepts] = useState<string[]>([]);
+  const [knowledgeConceptOptions, setKnowledgeConceptOptions] = useState<string[]>([]);
+  const [mechanismConceptOptions, setMechanismConceptOptions] = useState<string[]>([]);
   const PAGE_SIZE = 12;
+
+  const parsedPriceMin = priceMin.trim() !== "" ? Number(priceMin) : undefined;
+  const parsedPriceMax = priceMax.trim() !== "" ? Number(priceMax) : undefined;
+  const hasConceptFilter =
+    selectedKnowledgeConcepts.length > 0 || selectedMechanismConcepts.length > 0;
 
   // Debounce search term: only update after user stops typing for 400ms
   useEffect(() => {
@@ -165,36 +184,118 @@ export default function MarketplacePage() {
   }, [searchTerm]);
 
   useEffect(() => {
+    learnerMapsApi.getMapTags().then((r) => {
+      if (r.data.isSuccess && r.data.data) {
+        const onlyConcepts = r.data.data
+          .map((tag) => tag.name)
+          .filter((name) => !isDifficultyTag(name) && !isConceptExcluded(name));
+        const uniqueConcepts = [...new Set(onlyConcepts)];
+        const knowledge = uniqueConcepts
+          .filter((name) => !isSkillMechanismConcept(name))
+          .sort((a, b) => a.localeCompare(b));
+        const mechanism = uniqueConcepts
+          .filter((name) => isSkillMechanismConcept(name))
+          .sort((a, b) => a.localeCompare(b));
+        setKnowledgeConceptOptions(knowledge);
+        setMechanismConceptOptions(mechanism);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     const loadMaps = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await learnerMapsApi.getMaps({
-          pageNumber: currentPage,
-          pageSize: PAGE_SIZE,
-          mapStatus: "Published",
+        const minP =
+          parsedPriceMin != null && !Number.isNaN(parsedPriceMin) ? parsedPriceMin : undefined;
+        const maxP =
+          parsedPriceMax != null && !Number.isNaN(parsedPriceMax) ? parsedPriceMax : undefined;
+
+        const baseParams = {
+          mapStatus: "Published" as const,
           difficulty: difficultyFilter !== "all" ? Number(difficultyFilter) : undefined,
           type: typeFilter !== "all" ? Number(typeFilter) : undefined,
           search: debouncedSearchTerm || undefined,
-          sortBy: sortBy,
-          sortAscending: sortAscending,
-        });
+          sortBy,
+          sortAscending,
+          minPrice: minP,
+          maxPrice: maxP,
+        };
 
-        if (response.data.isSuccess && response.data.data) {
-          const { items, totalPages: apiTotalPages } = response.data.data;
+        const applyConceptFilters = (rows: ApiMap[]) => {
+          let list = rows;
+          if (selectedKnowledgeConcepts.length > 0) {
+            list = list.filter((m) => {
+              const tags = (m.tagNames ?? []).map((x) => x.toLowerCase().trim());
+              return selectedKnowledgeConcepts.every((c) =>
+                tags.includes(c.toLowerCase().trim()),
+              );
+            });
+          }
+          if (selectedMechanismConcepts.length > 0) {
+            list = list.filter((m) => {
+              const tags = (m.tagNames ?? []).map((x) => x.toLowerCase().trim());
+              return selectedMechanismConcepts.every((c) =>
+                tags.includes(c.toLowerCase().trim()),
+              );
+            });
+          }
+          return list;
+        };
 
-          const visibleItems = (items as (ApiMap & { isAuthor?: boolean })[]).filter(
-            (m) => !m.isAuthor,
-          );
+        if (hasConceptFilter) {
+          const response = await learnerMapsApi.getMaps({
+            ...baseParams,
+            pageNumber: 1,
+            pageSize: 200,
+          });
 
-          const mapped = visibleItems.map((apiMap, idx) =>
-            mapApiMapToUiMap(apiMap as ApiMap, (currentPage - 1) * PAGE_SIZE + idx),
-          );
-          setMaps(mapped);
-          setTotalPages(apiTotalPages);
+          if (response.data.isSuccess && response.data.data) {
+            const { items } = response.data.data;
+            const visibleItems = (items as (ApiMap & { isAuthor?: boolean })[]).filter(
+              (m) => !m.isAuthor,
+            ) as ApiMap[];
+            const filtered = applyConceptFilters(visibleItems);
+            const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+            setTotalPages(pages);
+            const effectivePage = Math.min(Math.max(1, currentPage), pages);
+            if (effectivePage !== currentPage) {
+              setCurrentPage(effectivePage);
+            }
+            const start = (effectivePage - 1) * PAGE_SIZE;
+            const slice = filtered.slice(start, start + PAGE_SIZE);
+            setMaps(
+              slice.map((apiMap, idx) =>
+                mapApiMapToUiMap(apiMap as ApiMap, start + idx),
+              ),
+            );
+          } else {
+            setError(response.data.message || t("failedLoadMapList"));
+          }
         } else {
-          setError(response.data.message || t("failedLoadMapList"));
+          const response = await learnerMapsApi.getMaps({
+            ...baseParams,
+            pageNumber: currentPage,
+            pageSize: PAGE_SIZE,
+          });
+
+          if (response.data.isSuccess && response.data.data) {
+            const { items, totalPages: apiTotalPages } = response.data.data;
+
+            const visibleItems = (items as (ApiMap & { isAuthor?: boolean })[]).filter(
+              (m) => !m.isAuthor,
+            );
+
+            const mapped = visibleItems.map((apiMap, idx) =>
+              mapApiMapToUiMap(apiMap as ApiMap, (currentPage - 1) * PAGE_SIZE + idx),
+            );
+            setMaps(mapped);
+            setTotalPages(apiTotalPages);
+          } else {
+            setError(response.data.message || t("failedLoadMapList"));
+          }
         }
       } catch (err) {
         console.error("Failed to load marketplace maps:", err);
@@ -205,7 +306,20 @@ export default function MarketplacePage() {
     };
 
     loadMaps();
-  }, [currentPage, difficultyFilter, typeFilter, debouncedSearchTerm, sortBy, sortAscending, t]);
+  }, [
+    currentPage,
+    difficultyFilter,
+    typeFilter,
+    debouncedSearchTerm,
+    sortBy,
+    sortAscending,
+    priceMin,
+    priceMax,
+    hasConceptFilter,
+    selectedKnowledgeConcepts.join("|"),
+    selectedMechanismConcepts.join("|"),
+    t,
+  ]);
 
   useEffect(() => {
     const loadHeroMaps = async () => {
@@ -267,6 +381,30 @@ export default function MarketplacePage() {
     navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
   };
 
+  const clearAllMpFilters = () => {
+    setSearchTerm("");
+    setDifficultyFilter("all");
+    setTypeFilter("all");
+    setSortBy("Price");
+    setSortAscending(false);
+    setPriceMin("");
+    setPriceMax("");
+    setSelectedKnowledgeConcepts([]);
+    setSelectedMechanismConcepts([]);
+    setKnowledgeConceptPicker("all");
+    setMechanismConceptPicker("all");
+    setCurrentPage(1);
+  };
+
+  const hasMpFilters =
+    difficultyFilter !== "all" ||
+    typeFilter !== "all" ||
+    searchTerm.trim() !== "" ||
+    priceMin.trim() !== "" ||
+    priceMax.trim() !== "" ||
+    selectedKnowledgeConcepts.length > 0 ||
+    selectedMechanismConcepts.length > 0;
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -304,7 +442,285 @@ export default function MarketplacePage() {
     <div className={styles.page}>
       <div className={styles.bg} aria-hidden />
       <div className={styles.content}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className={styles.storeGrid}>
+          <aside className={styles.filterSidebar}>
+            <div className={styles.filterSidebarHeader}>
+              <span className={styles.filterSidebarTitle}>{t("filtersPanel")}</span>
+              {hasMpFilters && (
+                <button
+                  type="button"
+                  className={styles.clearAllFiltersBtn}
+                  onClick={clearAllMpFilters}
+                >
+                  {t("clearAllFilters")}
+                </button>
+              )}
+            </div>
+            <div className={styles.filterGroups}>
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel} id="mp-filter-search-label">
+                  {t("mapsSearchLabel")}
+                </span>
+                <label
+                  className={styles.searchBar}
+                  htmlFor="marketplace-search"
+                  aria-labelledby="mp-filter-search-label"
+                >
+                  <Search size={16} aria-hidden />
+                  <input
+                    id="marketplace-search"
+                    type="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={t("searchMapPlaceholder")}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("difficulty")}</span>
+                <select
+                  className={styles.filterSelect}
+                  value={difficultyFilter}
+                  onChange={(e) => {
+                    setDifficultyFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  aria-label={t("difficulty")}
+                >
+                  <option value="all">{t("filterAll")}</option>
+                  <option value="1">1/5</option>
+                  <option value="2">2/5</option>
+                  <option value="3">3/5</option>
+                  <option value="4">4/5</option>
+                  <option value="5">5/5</option>
+                </select>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("type")}</span>
+                <select
+                  className={styles.filterSelect}
+                  value={typeFilter}
+                  onChange={(e) => {
+                    setTypeFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  aria-label={t("type")}
+                >
+                  <option value="all">{t("filterAll")}</option>
+                  <option value="0">{t("lobbyMapTypeTopdown")}</option>
+                  <option value="1">{t("lobbyMapTypePlatform")}</option>
+                  <option value="2">Snake</option>
+                </select>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel} title={t("conceptsMultiSelectHint")}>
+                  {t("programmingKnowledge")}
+                </span>
+                <div className={styles.conceptFieldWrap}>
+                  <select
+                    className={styles.filterSelect}
+                    value={knowledgeConceptPicker}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setKnowledgeConceptPicker(value);
+                      if (value === "all") return;
+                      setSelectedKnowledgeConcepts((prev) =>
+                        prev.includes(value) ? prev : [...prev, value],
+                      );
+                      setCurrentPage(1);
+                    }}
+                    aria-label={t("addConcept")}
+                    title={t("conceptsMultiSelectHint")}
+                  >
+                    <option value="all">— {t("addConcept")} —</option>
+                    {knowledgeConceptOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {getConceptLabel(name, locale)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className={styles.conceptChipsRow}>
+                    {selectedKnowledgeConcepts.map((concept) => (
+                      <button
+                        key={concept}
+                        type="button"
+                        className={styles.conceptChip}
+                        onClick={() => {
+                          const next = selectedKnowledgeConcepts.filter((x) => x !== concept);
+                          setSelectedKnowledgeConcepts(next);
+                          if (knowledgeConceptPicker === concept && next.length === 0) {
+                            setKnowledgeConceptPicker("all");
+                          }
+                          setCurrentPage(1);
+                        }}
+                        title={t("conceptMatchAll")}
+                      >
+                        {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                      </button>
+                    ))}
+                    {selectedKnowledgeConcepts.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.clearConceptsBtn}
+                        onClick={() => {
+                          setSelectedKnowledgeConcepts([]);
+                          setKnowledgeConceptPicker("all");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {t("filterAll")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel} title={t("conceptsMultiSelectHint")}>
+                  {t("skillMechanism")}
+                </span>
+                <div className={styles.conceptFieldWrap}>
+                  <select
+                    className={styles.filterSelect}
+                    value={mechanismConceptPicker}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMechanismConceptPicker(value);
+                      if (value === "all") return;
+                      setSelectedMechanismConcepts((prev) =>
+                        prev.includes(value) ? prev : [...prev, value],
+                      );
+                      setCurrentPage(1);
+                    }}
+                    aria-label={t("addConcept")}
+                    title={t("conceptsMultiSelectHint")}
+                  >
+                    <option value="all">— {t("addConcept")} —</option>
+                    {mechanismConceptOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {getConceptLabel(name, locale)}
+                      </option>
+                    ))}
+                  </select>
+                  <div className={styles.conceptChipsRow}>
+                    {selectedMechanismConcepts.map((concept) => (
+                      <button
+                        key={concept}
+                        type="button"
+                        className={styles.conceptChip}
+                        onClick={() => {
+                          const next = selectedMechanismConcepts.filter((x) => x !== concept);
+                          setSelectedMechanismConcepts(next);
+                          if (mechanismConceptPicker === concept && next.length === 0) {
+                            setMechanismConceptPicker("all");
+                          }
+                          setCurrentPage(1);
+                        }}
+                        title={t("conceptMatchAll")}
+                      >
+                        {getConceptLabel(concept, locale)} <span aria-hidden>×</span>
+                      </button>
+                    ))}
+                    {selectedMechanismConcepts.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.clearConceptsBtn}
+                        onClick={() => {
+                          setSelectedMechanismConcepts([]);
+                          setMechanismConceptPicker("all");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {t("filterAll")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("priceRange")}</span>
+                <div className={styles.priceRangeRow}>
+                  <input
+                    id="mp-price-min"
+                    className={styles.priceInput}
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder={t("priceMin")}
+                    value={priceMin}
+                    onChange={(e) => {
+                      setPriceMin(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    aria-label={t("priceMin")}
+                  />
+                  <span className={styles.priceSeparator}>—</span>
+                  <input
+                    id="mp-price-max"
+                    className={styles.priceInput}
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder={t("priceMax")}
+                    value={priceMax}
+                    onChange={(e) => {
+                      setPriceMax(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    aria-label={t("priceMax")}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("sortByLabel")}</span>
+                <select
+                  className={styles.filterSelect}
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value as SortOption);
+                    setCurrentPage(1);
+                  }}
+                  aria-label={t("sortByLabel")}
+                >
+                  <option value="CreatedAt">{t("sortNewest")}</option>
+                  <option value="Title">{t("sortByTitle")}</option>
+                  <option value="Difficulty">{t("difficulty")}</option>
+                  <option value="TimeLimitMs">{t("sortByTimeLimit")}</option>
+                  <option value="Price">{t("sortByPrice")}</option>
+                </select>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t("sortOrder")}</span>
+                <button
+                  type="button"
+                  className={styles.sortDirBtn}
+                  onClick={() => {
+                    setSortAscending(!sortAscending);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <span>{sortAscending ? t("sortDirAsc") : t("sortDirDesc")}</span>
+                  <ChevronDown
+                    size={14}
+                    className={styles.sortDirChevron}
+                    aria-hidden
+                    style={{
+                      transform: sortAscending ? "rotate(180deg)" : "none",
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <div className={styles.storeMain}>
           {/* Featured / Hero */}
           <motion.div
             style={card()}
@@ -480,134 +896,6 @@ export default function MarketplacePage() {
             </div>
           </motion.div>
 
-          {/* Tìm kiếm + bộ lọc (một khối, không để nút icon một mình một hàng) */}
-          <motion.div
-            className={styles.filterCard}
-            style={card()}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-          >
-            <div className={styles.filterCardTitleRow}>
-              <Search size={18} className={styles.filterCardTitleIcon} aria-hidden />
-              <span>{t("searchFilter")}</span>
-            </div>
-            <div className={styles.filterGrid}>
-              <div className={styles.filterSearchField}>
-                <label className={styles.filterFieldLabel} htmlFor="marketplace-search">
-                  {t("mapsSearchLabel")}
-                </label>
-                <div className={styles.searchInputWrap}>
-                  <Search size={16} className={styles.searchInputIcon} aria-hidden />
-                  <input
-                    id="marketplace-search"
-                    type="search"
-                    className={styles.searchInput}
-                    placeholder={t("searchMapPlaceholder")}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.filterFieldCol}>
-                <label className={styles.filterFieldLabel} htmlFor="mp-difficulty">
-                  {t("difficulty") || "Độ khó"}
-                </label>
-                <select
-                  id="mp-difficulty"
-                  className={styles.filterSelect}
-                  value={difficultyFilter}
-                  onChange={(e) => {
-                    setDifficultyFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="all">{t("all") || "Tất cả"}</option>
-                  <option value="1">1/5 - {t("easy") || "Dễ"}</option>
-                  <option value="2">2/5 - {t("easy") || "Dễ"}</option>
-                  <option value="3">3/5 - {t("medium") || "Trung bình"}</option>
-                  <option value="4">4/5 - {t("hard") || "Khó"}</option>
-                  <option value="5">5/5 - {t("hard") || "Khó"}</option>
-                </select>
-              </div>
-
-              <div className={styles.filterFieldCol}>
-                <label className={styles.filterFieldLabel} htmlFor="mp-type">
-                  {t("type") || "Loại game"}
-                </label>
-                <select
-                  id="mp-type"
-                  className={styles.filterSelect}
-                  value={typeFilter}
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="all">{t("all") || "Tất cả"}</option>
-                  <option value="0">Topdown</option>
-                  <option value="1">Platform</option>
-                  <option value="2">Snake</option>
-                </select>
-              </div>
-
-              <div className={styles.filterFieldCol}>
-                <label className={styles.filterFieldLabel} htmlFor="mp-sort">
-                  {t("sortBy") || "Sắp xếp"}
-                </label>
-                <select
-                  id="mp-sort"
-                  className={styles.filterSelect}
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value as SortOption);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="CreatedAt">{t("newest") || "Mới nhất"}</option>
-                  <option value="Title">{t("title") || "Tiêu đề"}</option>
-                  <option value="Difficulty">{t("difficulty") || "Độ khó"}</option>
-                  <option value="TimeLimitMs">{t("timeLimit") || "Thời gian"}</option>
-                </select>
-              </div>
-
-              <div className={styles.filterFieldCol}>
-                <span className={styles.filterFieldLabel}>{t("sortOrder") || "Thứ tự"}</span>
-                <button
-                  type="button"
-                  className={styles.sortDirBtn}
-                  onClick={() => setSortAscending(!sortAscending)}
-                >
-                  {sortAscending ? "↑ Asc" : "↓ Desc"}
-                </button>
-              </div>
-
-              {(difficultyFilter !== "all" || typeFilter !== "all" || searchTerm) && (
-                <div className={styles.filterFieldCol}>
-                  <span className={styles.filterFieldLabel} aria-hidden>
-                    &nbsp;
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.clearFiltersBtn}
-                    onClick={() => {
-                      setSearchTerm("");
-                      setDifficultyFilter("all");
-                      setTypeFilter("all");
-                      setSortBy("CreatedAt");
-                      setSortAscending(false);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    {t("clearFilters") || "Xóa bộ lọc"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
           {/* Map grid */}
           <motion.div
             style={{
@@ -759,6 +1047,7 @@ export default function MarketplacePage() {
               </button>
             </motion.div>
           )}
+          </div>
         </div>
       </div>
     </div>

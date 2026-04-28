@@ -75,6 +75,44 @@ function isSkillMechanismConcept(tagName: string): boolean {
   return SKILL_MECHANISM_CONCEPTS_LOWER.has(tagName.trim().toLowerCase());
 }
 
+type DifficultyTone = "easy" | "medium" | "hard";
+
+/** Tag hiển thị kiểu Beginner / Medium / Hard / Expert (sau normalize). */
+function difficultyToneFromTagLabel(tag: string): DifficultyTone {
+  const s = tag.trim().toLowerCase();
+  if (s === "beginner" || s === "easy" || s === "dễ") return "easy";
+  if (s === "medium" || s === "trung bình" || s === "trung binh") return "medium";
+  return "hard";
+}
+
+function difficultyToneFromNumeric(d: number): DifficultyTone {
+  if (d <= 1) return "easy";
+  if (d === 2) return "medium";
+  return "hard";
+}
+
+function difficultyTagToneClass(tone: DifficultyTone): string {
+  switch (tone) {
+    case "easy":
+      return styles.steamTagDiffeasy;
+    case "medium":
+      return styles.steamTagDiffmedium;
+    default:
+      return styles.steamTagDiffhard;
+  }
+}
+
+function difficultyMetaToneClass(tone: DifficultyTone): string {
+  switch (tone) {
+    case "easy":
+      return styles.steamMetaValueDiffEasy;
+    case "medium":
+      return styles.steamMetaValueDiffMedium;
+    default:
+      return styles.steamMetaValueDiffHard;
+  }
+}
+
 const GALLERY_UPLOAD_MAX = 20;
 
 const HIDDEN_LEARNED_TAG_NAMES = new Set(["beginner", "expert", "easy", "medium", "hard"]);
@@ -1249,7 +1287,11 @@ export default function MapDetailPage() {
                 ) : null}
                 <div className={styles.steamMetaRow}>
                   <span className={styles.steamMetaLabel}>{t("difficulty")}</span>
-                  <span className={styles.steamMetaValue}>
+                  <span
+                    className={`${styles.steamMetaValue} ${difficultyMetaToneClass(
+                      difficultyToneFromNumeric(map.difficulty),
+                    )}`}
+                  >
                     {map.difficulty === 1
                       ? t("easy")
                       : map.difficulty === 2
@@ -1296,11 +1338,17 @@ export default function MapDetailPage() {
                     <div className={styles.steamTagGroup}>
                       <h3 className={styles.steamSubTitle}>{t("difficulty")}</h3>
                       <div className={styles.steamTagsList}>
-                        {difficultyTagNames.map((tag) => (
-                          <span key={tag} className={styles.steamTag}>
-                            {localizeTagName(tag, locale)}
-                          </span>
-                        ))}
+                        {difficultyTagNames.map((tag) => {
+                          const tone = difficultyToneFromTagLabel(tag);
+                          return (
+                            <span
+                              key={tag}
+                              className={`${styles.steamTag} ${difficultyTagToneClass(tone)}`}
+                            >
+                              {localizeTagName(tag, locale)}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

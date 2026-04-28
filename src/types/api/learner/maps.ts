@@ -173,9 +173,9 @@ export interface GetMapsParams {
   maxPrice?: number;
   search?: string;
   /**
-   * Backend supports: CreatedAt, Title, Difficulty, TimeLimitMs
+   * Backend supports: CreatedAt, Title, Difficulty, TimeLimitMs, Price
    */
-  sortBy?: "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs";
+  sortBy?: "CreatedAt" | "Title" | "Difficulty" | "TimeLimitMs" | "Price";
   sortAscending?: boolean;
   /**
    * true = only maps created by current user
