@@ -49,9 +49,16 @@
   margin-bottom: 0;
 }
 
+.coverWrap {
+  position: relative;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
 .cover {
   width: 100%;
-  height: 340px;
+  height: 200px;
   border-radius: 0 0 16px 16px;
   background: linear-gradient(
     135deg,
@@ -59,15 +66,78 @@
     color-mix(in srgb, var(--primary) 25%, var(--bg)) 50%,
     color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%
   );
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.coverHasImage {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.coverViewable {
+  cursor: zoom-in;
+}
+
+.coverActions {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 2;
+}
+
+.coverUploadLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.coverUploadLabel:hover {
+  background: rgba(0, 0, 0, 0.58);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.coverUploadLabelBusy {
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.coverFileInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.coverUploadSpinner {
+  animation: profileCoverSpin 0.85s linear infinite;
+}
+
+@keyframes profileCoverSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .identityBar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 20px;
-  padding: 12px 24px 20px;
+  gap: 16px;
+  padding: 8px 24px 14px;
   margin-top: 0;
   position: relative;
   z-index: 1;
@@ -75,7 +145,7 @@
 
 .avatarWrap {
   flex-shrink: 0;
-  margin-top: -84px;
+  margin-top: -52px;
 }
 
 .avatarWrapperFb {
@@ -102,35 +172,99 @@
   cursor: default;
 }
 
+.avatarViewable.avatarWrapperStatic {
+  cursor: zoom-in;
+}
+
+.avatarLabelBlock {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.avatarViewBtn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.avatarViewBtn:hover {
+  background: rgba(0, 0, 0, 0.72);
+  transform: scale(1.05);
+}
+
 .identityMeta {
   flex: 1;
   min-width: 0;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .identityName {
   margin: 0;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .identitySubtitle {
-  margin: 4px 0 0;
-  font-size: 15px;
+  margin: 2px 0 0;
+  font-size: 14px;
   color: var(--text-2);
   font-weight: 500;
+  line-height: 1.3;
 }
 
-.identityXp {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+.identityXpCompact {
+  margin-top: 6px;
+  max-width: 640px;
+}
+
+.identityXpMainRow {
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
-  max-width: 620px;
+}
+
+.identityXpBarColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.identityXpSubline {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  line-height: 1.25;
+}
+
+.identityStatBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .identityLevelBadge {
@@ -164,19 +298,13 @@
   transition: width 0.25s ease;
 }
 
-.identityXpText {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-2);
-  white-space: nowrap;
-}
-
 .identityActions {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
+  align-self: flex-start;
 }
 
 .btnEditProfile {
@@ -236,6 +364,161 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.profileActivityTabRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: -4px -4px 16px;
+  padding: 0 2px 0;
+}
+
+.profileActivityTab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-2);
+  padding: 10px 14px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.profileActivityTab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.profileActivityTabActive {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.profilePaginationWrap {
+  margin-top: 4px;
+}
+
+.profilePaginationWrapBusy {
+  margin-top: 4px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.profilePagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.profilePaginationSideBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.profilePaginationSideBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+.profilePaginationSideBtn:disabled {
+  color: var(--text-2);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.profilePaginationChevron {
+  flex-shrink: 0;
+}
+
+.profilePaginationPages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profilePaginationPage {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 2rem;
+  height: 2.25rem;
+  padding: 0 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.profilePaginationPage:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.profilePaginationPage:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.profilePaginationPageActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.profilePaginationEllipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-2);
+  user-select: none;
 }
 
 .introContent {
@@ -476,12 +759,13 @@
     font-size: 14px;
   }
 
-  .identityXp {
-    grid-template-columns: auto 1fr;
+  .identityXpCompact {
+    margin-top: 4px;
   }
 
-  .identityXpText {
-    grid-column: 1 / -1;
+  .identityStatBadges {
+    margin-top: 4px;
+    gap: 5px;
   }
 }
 
@@ -868,8 +1152,54 @@
 .avatarInput {
   position: absolute;
   inset: 0;
+  z-index: 1;
   opacity: 0;
   cursor: pointer;
+}
+
+.imageLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px 32px;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(4px);
+}
+
+.imageLightboxClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.imageLightboxClose:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.imageLightboxImg {
+  max-width: min(96vw, 1200px);
+  max-height: min(88vh, 900px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.45);
 }
 
 .profileInfo {

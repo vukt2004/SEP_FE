@@ -1791,6 +1791,7 @@ export default function MapEditor() {
                 <h2 style={styles.stepHeading}>
                   {tt("mapEditorWizardStep1Heading", "Step 1 - Game info")}
                 </h2>
+                <p style={styles.stepNote}>{tt("mapEditorWizardStep1Note", "")}</p>
               </div>
 
               <MapEditorControls
@@ -2427,6 +2428,7 @@ export default function MapEditor() {
                 <h2 style={styles.stepHeading}>
                   {tt("mapEditorWizardStep6Heading", "Step 6 - Review and submit")}
                 </h2>
+                <p style={styles.stepNote}>{tt("mapEditorWizardStep6Note", "")}</p>
               </div>
 
               <div style={styles.reviewLayout}>

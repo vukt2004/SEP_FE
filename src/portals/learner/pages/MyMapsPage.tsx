@@ -10,7 +10,7 @@
  * - Action buttons (View, Edit)
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { tokenStorage } from "@/lib/storage/tokenStorage";
@@ -42,6 +42,7 @@ import {
   type SubscriptionPlan,
 } from "@/lib/auth/subscriptionPlan";
 import styles from "./MyMapsPage.module.css";
+import detailModalStyles from "@/portals/learner/pages/MapDetailPage.module.css";
 
 type OwnershipMap = Record<string, { isAuthor: boolean }>;
 
@@ -780,6 +781,17 @@ export const MapList: React.FC<MapListProps> = ({
   );
 };
 
+function getMapListingThumbUrl(map: Map | undefined): string | null {
+  if (!map) return null;
+  const fromAvatar = map.avatarUrl?.trim();
+  if (fromAvatar) return fromAvatar;
+  for (const item of map.gallery ?? []) {
+    const u = item.url?.trim();
+    if (u) return u;
+  }
+  return null;
+}
+
 export const MyMapsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, locale } = useTranslation();
@@ -819,12 +831,20 @@ export const MyMapsPage: React.FC = () => {
     open: boolean;
     mapId: string | null;
     mapTitle: string;
+    avatarUrl: string | null;
+    difficulty: number;
+    price: number;
   }>({
     open: false,
     mapId: null,
     mapTitle: "",
+    avatarUrl: null,
+    difficulty: 1,
+    price: 0,
   });
   const [publishLoading, setPublishLoading] = useState(false);
+  const [agreedPublishTerms, setAgreedPublishTerms] = useState(false);
+  const publishConfirmTitleId = useId();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -915,16 +935,33 @@ export const MyMapsPage: React.FC = () => {
 
   const handleOpenPublishModal = (mapId: string) => {
     const map = maps.find((m) => m.id === mapId);
-    setPublishModal({ open: true, mapId, mapTitle: map?.title ?? "" });
+    setAgreedPublishTerms(false);
+    setPublishModal({
+      open: true,
+      mapId,
+      mapTitle: map?.title ?? "",
+      avatarUrl: getMapListingThumbUrl(map),
+      difficulty: map?.difficulty ?? 1,
+      price: map?.price ?? 0,
+    });
   };
 
   const handleClosePublishModal = () => {
     if (publishLoading) return;
-    setPublishModal({ open: false, mapId: null, mapTitle: "" });
+    setAgreedPublishTerms(false);
+    setPublishModal({
+      open: false,
+      mapId: null,
+      mapTitle: "",
+      avatarUrl: null,
+      difficulty: 1,
+      price: 0,
+    });
   };
 
   const handleConfirmPublish = async () => {
     if (!publishModal.mapId) return;
+    if (!agreedPublishTerms) return;
 
     try {
       setPublishLoading(true);
@@ -1094,6 +1131,10 @@ export const MyMapsPage: React.FC = () => {
   const sellerPolicyRoute = locale.startsWith("vi")
     ? ROUTES.SELLER_POLICY_VI
     : ROUTES.SELLER_POLICY_EN;
+
+  const gameCreationRuleRoute = locale.startsWith("vi")
+    ? ROUTES.GAME_CREATION_RULE_VI
+    : ROUTES.GAME_CREATION_RULE_EN;
 
   const ownershipMap: OwnershipMap = maps.reduce((acc, map) => {
     // Tab "author" only returns maps created by the current user; if BE omits `isAuthor`,
@@ -1548,144 +1589,117 @@ export const MyMapsPage: React.FC = () => {
 
         {/* Publish Confirm Modal */}
         {publishModal.open && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.55)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-            }}
-            onClick={handleClosePublishModal}
-          >
+          <div className={detailModalStyles.modalOverlay} onClick={handleClosePublishModal}>
             <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "16px",
-                padding: "28px 28px 24px",
-                maxWidth: "480px",
-                width: "90%",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              }}
+              className={`${detailModalStyles.modal} ${detailModalStyles.purchaseConfirmModal}`}
+              style={{ paddingBottom: 18 }}
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={publishConfirmTitleId}
             >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}
-              >
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    minWidth: "44px",
-                    borderRadius: "12px",
-                    background: "rgba(34,197,94,0.14)",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Send size={20} color="#166534" />
+              <h3 className={detailModalStyles.modalTitle} id={publishConfirmTitleId}>
+                {t("myMapsPublishConfirmTitle")}
+              </h3>
+              <div className={detailModalStyles.purchaseConfirmCard}>
+                <div className={detailModalStyles.purchaseConfirmThumbWrap}>
+                  {publishModal.avatarUrl ? (
+                    <img
+                      src={publishModal.avatarUrl}
+                      alt={publishModal.mapTitle || t("profileHistoryGameFallback")}
+                      className={detailModalStyles.purchaseConfirmThumb}
+                    />
+                  ) : (
+                    <div className={detailModalStyles.purchaseConfirmThumbPlaceholder}>
+                      {locale.startsWith("vi") ? "Chưa có ảnh" : "No preview"}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text)" }}>
-                    {locale.startsWith("vi") ? "Xác nhận publish game" : "Confirm publish game"}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "2px" }}>
-                    {locale.startsWith("vi")
-                      ? "Game sẽ được công khai sau khi publish."
-                      : "The game will be publicly visible after publishing."}
-                  </div>
+                <div className={detailModalStyles.purchaseConfirmBody}>
+                  <p className={detailModalStyles.purchaseConfirmTitle}>
+                    {publishModal.mapTitle.trim() ||
+                      (locale.startsWith("vi") ? "Chưa có tiêu đề" : "Untitled")}
+                  </p>
+                  <p className={detailModalStyles.purchaseConfirmMeta}>
+                    {t("difficulty")}: {getDifficultyLabel(publishModal.difficulty)}
+                  </p>
+                  <p className={detailModalStyles.purchaseConfirmMeta}>
+                    {t("myMapsPublishMetaAction")}
+                  </p>
+                  <p className={detailModalStyles.purchaseConfirmPrice}>
+                    {publishModal.price > 0
+                      ? `${publishModal.price.toLocaleString()} OC`
+                      : t("free")}
+                  </p>
                 </div>
               </div>
-
-              {publishModal.mapTitle && (
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    color: "var(--text)",
-                    fontWeight: 600,
-                    marginBottom: "16px",
-                  }}
-                >
-                  {publishModal.mapTitle}
-                </div>
-              )}
-
               <p
-                style={{
-                  fontSize: "14px",
-                  color: "var(--text-2)",
-                  marginBottom: "18px",
-                  lineHeight: 1.6,
-                }}
+                className={detailModalStyles.modalMessage}
+                style={{ marginTop: 8, marginBottom: 0 }}
               >
-                {locale.startsWith("vi")
-                  ? "Vui lòng xem chính sách người bán trước khi xác nhận publish."
-                  : "Please review the seller policy before confirming publication."}{" "}
-                <a
-                  href={sellerPolicyRoute}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: "var(--primary)",
-                    textDecoration: "underline",
-                    textUnderlineOffset: "2px",
-                    fontWeight: 600,
-                  }}
-                >
-                  {locale.startsWith("vi") ? "Mở chính sách người bán" : "Open seller policy"}
-                </a>
+                {t("myMapsPublishConfirmBody")}
               </p>
-
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button
-                  onClick={handleClosePublishModal}
+              <label
+                className={detailModalStyles.purchasePolicyAgreeRow}
+                style={{ marginTop: 10 }}
+              >
+                <input
+                  type="checkbox"
+                  className={detailModalStyles.purchasePolicyCheckbox}
+                  checked={agreedPublishTerms}
                   disabled={publishLoading}
-                  style={{
-                    padding: "10px 20px",
-                    background: "transparent",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: publishLoading ? "not-allowed" : "pointer",
-                    opacity: publishLoading ? 0.5 : 1,
-                  }}
+                  onChange={(event) => setAgreedPublishTerms(event.target.checked)}
+                />
+                <span className={detailModalStyles.purchasePolicyAgreeText}>
+                  {t("myMapsPublishAgreeBeforeSeller")}
+                  <a
+                    href={sellerPolicyRoute}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={detailModalStyles.purchasePolicyLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t("myMapsPublishSellerPolicyLinkLabel")}
+                  </a>
+                  {t("myMapsPublishAgreeBetweenLinks")}
+                  <a
+                    href={gameCreationRuleRoute}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={detailModalStyles.purchasePolicyLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t("mapEditorCatalogGameCreationRuleLinkLabel")}
+                  </a>
+                  {t("myMapsPublishAgreeAfterLinks")}
+                </span>
+              </label>
+              <div className={detailModalStyles.modalActions} style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className={detailModalStyles.modalBtn}
+                  disabled={publishLoading}
+                  onClick={handleClosePublishModal}
                 >
                   {t("cancel")}
                 </button>
                 <button
-                  onClick={handleConfirmPublish}
-                  disabled={publishLoading}
+                  type="button"
+                  className={`${detailModalStyles.modalBtn} ${detailModalStyles.modalBtnPrimary}`}
                   style={{
-                    padding: "10px 20px",
                     background: "#166534",
-                    border: "none",
-                    borderRadius: "8px",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: publishLoading ? "not-allowed" : "pointer",
-                    opacity: publishLoading ? 0.6 : 1,
+                    borderColor: "#166534",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "8px",
+                    justifyContent: "center",
+                    gap: 8,
+                    whiteSpace: "nowrap",
                   }}
+                  disabled={publishLoading || !agreedPublishTerms}
+                  onClick={() => void handleConfirmPublish()}
                 >
-                  <Send size={14} />
-                  {publishLoading ? t("publishing") : t("publish")}
+                  <Send size={16} strokeWidth={2} aria-hidden style={{ flexShrink: 0 }} />
+                  {publishLoading ? t("myMapsPublishInProgress") : t("publish")}
                 </button>
               </div>
             </div>

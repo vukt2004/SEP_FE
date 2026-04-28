@@ -21,10 +21,10 @@ export type UpdateMapSolveScoreConfigRequest = UpdateGameSolveScoreConfigRequest
 
 export const cmsGameplayApi = {
   getMapSolveScoreConfig() {
-    return cmsAxios.get<ApiResult<MapSolveScoreConfigDto>>("/api/cms/gameplay/map-solve-score");
+    return cmsAxios.get<ApiResult<MapSolveScoreConfigDto>>("/api/cms/gameplay/game-solve-score");
   },
 
   updateMapSolveScoreConfig(body: UpdateGameSolveScoreConfigRequest) {
-    return cmsAxios.put<ApiResult<unknown>>("/api/cms/gameplay/map-solve-score", body);
+    return cmsAxios.put<ApiResult<unknown>>("/api/cms/gameplay/game-solve-score", body);
   },
 };

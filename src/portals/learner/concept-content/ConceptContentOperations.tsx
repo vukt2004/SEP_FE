@@ -1,4 +1,5 @@
 import { Target, Plus, Minus, X as XIcon, Divide, Gamepad2, Lightbulb, CheckCircle2 } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentOperations() {
   return (
@@ -69,6 +70,12 @@ if (hp > maxHp) hp = maxHp;`}</code>
             <code>{`x = (2 + 3) * 4; // = 20`}</code>
           </pre>
         </div>
+        <ConceptLessonBlockly
+          title="Ghép biểu thức với block math"
+          hint="Dùng khối số, phép toán (+ − * /) và biến: tạo biến rồi set = phép toán trên get variable."
+          preset="variables_play"
+          heightPx={340}
+        />
       </section>
 
       <section className="concept-section" id="section-4">

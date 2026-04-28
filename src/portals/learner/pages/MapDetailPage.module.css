@@ -67,6 +67,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  /* Tránh cột trái bị kéo cao bằng sidebar trong layout grid (khoảng trống dưới gallery). */
+  align-self: start;
+  min-width: 0;
+  width: 100%;
 }
 
 .steamPlayer {
@@ -89,21 +93,26 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
+/* max-width + width:auto: ô layout khớp media, tránh letterbox dọc do ép width 100% + contain */
 .steamPlayerImg {
-  width: 100%;
-  height: auto;
-  max-height: 520px;
-  object-fit: contain;
   display: block;
+  max-width: 100%;
+  max-height: 520px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto;
   background: var(--surface-2);
 }
 
 .steamPlayerVideo {
-  width: 100%;
-  height: auto;
-  max-height: 520px;
-  object-fit: contain;
   display: block;
+  max-width: 100%;
+  max-height: 520px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto;
   background: #000;
 }
 
@@ -1621,9 +1630,9 @@
 }
 
 .catalogDropZone {
-  flex: 1;
+  flex: 0 1 auto;
   width: 100%;
-  min-height: 0;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1805,6 +1814,11 @@
   }
 
   .steamPlayer {
+    max-height: 320px;
+  }
+
+  .steamPlayerImg,
+  .steamPlayerVideo {
     max-height: 320px;
   }
 }

@@ -1,4 +1,5 @@
 import { Target, ListOrdered, Footprints, Lightbulb, Gamepad2, CheckCircle2 } from "lucide-react";
+import { ConceptLessonBlockly } from "./ConceptLessonBlockly";
 
 export function ConceptContentExecutionOrder() {
   return (
@@ -48,6 +49,12 @@ x = x * 3;`}</code>
           </p>
           <p>Đổi thứ tự khối → kết quả đổi ngay.</p>
         </div>
+        <ConceptLessonBlockly
+          title="Thử thứ tự lệnh (đúng block trong game)"
+          hint="Chỉ có các khối di chuyển như khi chơi: đi thẳng, quay trái/phải, chờ. Xếp từ trên xuống — máy sẽ chạy đúng thứ tự đó."
+          preset="sequence"
+          heightPx={300}
+        />
         <div className="concept-callout">
           <p>
             <span className="concept-label concept-label--tip">Tip</span>{" "}

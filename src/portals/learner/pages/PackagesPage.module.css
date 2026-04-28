@@ -60,36 +60,6 @@
   line-height: 1.25;
 }
 
-.currentPackagePanel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 auto 22px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
-  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
-}
-
-.currentPackageLabel {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--primary) 70%, var(--text-2));
-}
-
-.currentPackageName {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.currentPackageMeta {
-  font-size: 13px;
-  color: var(--text-2);
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

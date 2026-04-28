@@ -1625,7 +1625,7 @@ export default function MapDetailPage() {
               </div>
               <p className={styles.modalMessage}>
                 {locale.startsWith("vi")
-                  ? "Bạn có chắc muốn mua bản đồ này không?"
+                  ? "Bạn có chắc muốn mua game này không?"
                   : "Are you sure you want to purchase this game?"}
               </p>
               <p className={styles.purchasePolicyNote}>

@@ -202,8 +202,26 @@ export default function PlatformGameView() {
     return `Level ${i + 1} / ${campaignLevels.length}`;
   }, [campaignLevels, activeMapDetailId]);
 
+  const playLockKey = useCallback(
+    (mapDetailId: string | null | undefined) =>
+      levelId && mapDetailId
+        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${mapDetailId}`
+        : null,
+    [levelId, multiplayerRoomId],
+  );
+
+  const releasePlayLock = useCallback(
+    (mapDetailId: string | null | undefined) => {
+      const key = playLockKey(mapDetailId);
+      if (key) localStorage.removeItem(key);
+    },
+    [playLockKey],
+  );
+
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
+
+    releasePlayLock(playMapDetailIdRef.current);
 
     // Close the game result modal and clear results
     setShowResultsModal(false);
@@ -243,9 +261,12 @@ export default function PlatformGameView() {
     navigateWithoutPrompt,
     roleContext,
     returnTo,
+    releasePlayLock,
   ]);
 
   const handleBackToMapFlow = useCallback(() => {
+    releasePlayLock(playMapDetailIdRef.current);
+
     if (multiplayerRoomId) {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigateWithoutPrompt(ROUTES.LEARNER_LEARN));
       return;
@@ -264,6 +285,7 @@ export default function PlatformGameView() {
     mapDetailPath,
     multiplayerRoomId,
     navigateWithoutPrompt,
+    releasePlayLock,
     returnTo,
   ]);
 
@@ -299,13 +321,6 @@ export default function PlatformGameView() {
   /** Mirrors timer for time-limit effect (ref alone does not trigger re-renders). */
   const [elapsedDisplay, setElapsedDisplay] = useState(0);
   const timeLimitTriggeredRef = useRef(false);
-  const playLockKey = useCallback(
-    (mapDetailId: string | null | undefined) =>
-      levelId && mapDetailId
-        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${mapDetailId}`
-        : null,
-    [levelId, multiplayerRoomId],
-  );
 
   const showWarningToast = useCallback((message: string) => {
     setWarningToast(message);
@@ -600,12 +615,14 @@ export default function PlatformGameView() {
     initGame();
     return () => {
       if (cleanup) cleanup();
+      releasePlayLock(playMapDetailIdRef.current);
     };
   }, [
     levelId,
     levelFile,
     mapDetailIdFromState,
     multiplayerRoomId,
+    releasePlayLock,
     returnTo,
     roleContext,
     showWarningToast,

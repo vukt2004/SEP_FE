@@ -23,6 +23,11 @@ const GAME_FIELD_ALIASES: Array<[source: string, target: string]> = [
   ["gameStatus", "mapStatus"],
   ["gameDetailJson", "mapDetailJson"],
   ["gameTitle", "mapTitle"],
+  ["AvatarUrl", "avatarUrl"],
+  ["Gallery", "gallery"],
+  /** Nested media DTOs (e.g. gallery items) may use PascalCase from some serializers */
+  ["Url", "url"],
+  ["Kind", "kind"],
 ];
 
 function normalizeGameContractDeep<T>(value: T): T {

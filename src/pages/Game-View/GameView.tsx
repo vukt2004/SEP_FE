@@ -194,8 +194,27 @@ export default function GameView() {
     return `Level ${i + 1} / ${campaignLevels.length}`;
   }, [campaignLevels, activeMapDetailId]);
 
+  const playLockKey = useCallback(
+    (mapDetailId: string | null | undefined) =>
+      levelId && mapDetailId
+        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${mapDetailId}`
+        : null,
+    [levelId, multiplayerRoomId],
+  );
+
+  /** Gỡ khóa phiên chơi khi user rời game — không gỡ thì submit lần trước để lock=1, lần sau vào lại bị /game-session-expired. */
+  const releasePlayLock = useCallback(
+    (mapDetailId: string | null | undefined) => {
+      const key = playLockKey(mapDetailId);
+      if (key) localStorage.removeItem(key);
+    },
+    [playLockKey],
+  );
+
   const handleNextCampaignLevel = useCallback(() => {
     if (!levelId || !nextCampaignLevelId) return;
+
+    releasePlayLock(playMapDetailIdRef.current);
 
     // Close the game result modal and clear results
     setShowResultsModal(false);
@@ -229,9 +248,12 @@ export default function GameView() {
     navigateWithoutPrompt,
     roleContext,
     returnTo,
+    releasePlayLock,
   ]);
 
   const handleBackToMapFlow = useCallback(() => {
+    releasePlayLock(playMapDetailIdRef.current);
+
     if (multiplayerRoomId) {
       void leaveLobbyRoom(multiplayerRoomId).then(() => navigateWithoutPrompt(ROUTES.LEARNER_LEARN));
       return;
@@ -250,6 +272,7 @@ export default function GameView() {
     mapDetailPath,
     multiplayerRoomId,
     navigateWithoutPrompt,
+    releasePlayLock,
     returnTo,
   ]);
 
@@ -284,13 +307,6 @@ export default function GameView() {
   const [submitted, setSubmitted] = useState(false);
   const [elapsedDisplay, setElapsedDisplay] = useState(0);
   const timeLimitTriggeredRef = useRef(false);
-  const playLockKey = useCallback(
-    (mapDetailId: string | null | undefined) =>
-      levelId && mapDetailId
-        ? `play-lock:${multiplayerRoomId ?? "solo"}:${levelId}:${mapDetailId}`
-        : null,
-    [levelId, multiplayerRoomId],
-  );
 
   const showWarningToast = useCallback((message: string) => {
     setWarningToast(message);
@@ -651,12 +667,14 @@ export default function GameView() {
       if (cleanup) {
         cleanup();
       }
+      releasePlayLock(playMapDetailIdRef.current);
     };
   }, [
     levelFile,
     levelId,
     mapDetailIdFromState,
     multiplayerRoomId,
+    releasePlayLock,
     returnTo,
     roleContext,
     showWarningToast,
