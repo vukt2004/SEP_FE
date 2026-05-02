@@ -23,6 +23,8 @@ export interface LevelLoadResult {
 export type LoadLevelOptions = {
   /** Play this MapDetails row; if omitted, first level (lowest order) is used. */
   mapDetailId?: string;
+  /** Use latest-version detail endpoint when available. */
+  useLatest?: boolean;
 };
 
 function num(v: unknown): number | undefined {
@@ -190,7 +192,9 @@ export async function loadLevelFromAPI(
       throw new Error("No authentication found. Please log in to play.");
     }
 
-    const response = await mapsApi.getMapById(mapId, false);
+    const response = options?.useLatest
+      ? await (mapsApi as typeof learnerMapsApi).getLatestMapById(mapId)
+      : await mapsApi.getMapById(mapId, false);
 
     if (!response.data.isSuccess || !response.data.data) {
       throw new Error(response.data.message || "Failed to load level");

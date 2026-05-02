@@ -136,6 +136,17 @@ export const learnerMapsApi = {
   },
 
   /**
+   * Get the newest game version in the same line for learner playtesting.
+   * GET /api/learner/games/{id}/latest
+   */
+  getLatestMapById(id: string) {
+    return learnerAxios.get<GameDetailResult>(`/api/learner/games/${id}/latest`).then((response) => {
+      normalizeGameContractDeep(response.data?.data);
+      return response;
+    });
+  },
+
+  /**
    * Get lightweight map info for marketplace modal
    * GET /api/learner/games/{id}/info
    */

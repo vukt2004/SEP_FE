@@ -96,6 +96,17 @@ export const cmsMapsApi = {
   },
 
   /**
+   * Get the newest game version in the same line for CMS playtesting.
+   * GET /api/cms/games/{id}/latest
+   */
+  getLatestMapById(id: string) {
+    return cmsAxios.get<GameDetailResult>(`/api/cms/games/${id}/latest`).then((response) => {
+      normalizeGameContractDeep(response.data?.data);
+      return response;
+    });
+  },
+
+  /**
    * Get available map tags
    * GET /api/cms/games/tags
    */
