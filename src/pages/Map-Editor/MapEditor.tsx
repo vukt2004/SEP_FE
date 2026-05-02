@@ -1257,7 +1257,7 @@ export default function MapEditor() {
           throw new Error("You must be logged in to edit a map");
         }
 
-        const response = await mapsApi.getMapById(mapId, false);
+        const response = await mapsApi.getLatestMapById(mapId);
         if (!response.data.isSuccess || !response.data.data) {
           throw new Error(response.data.message || "Failed to load map");
         }

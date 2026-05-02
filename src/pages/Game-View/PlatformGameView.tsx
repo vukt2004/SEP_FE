@@ -157,6 +157,7 @@ export default function PlatformGameView() {
     mapDetailId?: string;
     roleContext?: "cms" | "learner";
     returnTo?: string;
+    playLatest?: boolean;
   } | null;
   const levelId = locationState?.levelId;
   const levelFile = locationState?.levelFile;
@@ -251,6 +252,7 @@ export default function PlatformGameView() {
         multiplayerRoomId,
         roleContext,
         returnTo,
+        playLatest: locationState?.playLatest,
       },
     });
   }, [
@@ -456,7 +458,10 @@ export default function PlatformGameView() {
 
         // Load level from API or fallback to mock data
         const levelResult = levelId
-          ? await loadLevelFromAPI(levelId, { mapDetailId: mapDetailIdFromState })
+          ? await loadLevelFromAPI(levelId, {
+              mapDetailId: mapDetailIdFromState,
+              useLatest: locationState?.playLatest,
+            })
           : await loadLevelFromMockData(levelFile || "level-platform-01");
 
         if (levelId && levelResult.mapConfig?.type === "topdown") {
@@ -468,6 +473,7 @@ export default function PlatformGameView() {
               multiplayerRoomId,
               roleContext,
               returnTo,
+              playLatest: locationState?.playLatest,
             },
           });
           return;
@@ -482,6 +488,7 @@ export default function PlatformGameView() {
               multiplayerRoomId,
               roleContext,
               returnTo,
+              playLatest: locationState?.playLatest,
             },
           });
           return;

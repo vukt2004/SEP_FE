@@ -78,6 +78,7 @@ type SnakeGameLocationState = {
   multiplayerRoomCode?: string;
   roleContext?: string;
   returnTo?: string;
+  playLatest?: boolean;
 };
 
 type SnakeLevelLoadResult = Awaited<ReturnType<typeof loadLevelFromAPI>>;
@@ -256,6 +257,7 @@ async function loadSnakeLevel(options: SnakeGameLocationState): Promise<SnakeLev
   if (options.levelId) {
     return loadLevelFromAPI(options.levelId, {
       mapDetailId: options.mapDetailId,
+      useLatest: options.playLatest,
     });
   }
 
@@ -599,6 +601,7 @@ export default function SnakeGameView() {
         multiplayerRoomId,
         roleContext,
         returnTo,
+        playLatest: routeState?.playLatest,
       },
     });
   }, [

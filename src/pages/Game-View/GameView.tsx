@@ -149,6 +149,7 @@ export default function GameView() {
     mapDetailId?: string;
     roleContext?: "cms" | "learner";
     returnTo?: string;
+    playLatest?: boolean;
   } | null;
   const levelId = locationState?.levelId;
   const levelFile = locationState?.levelFile;
@@ -238,6 +239,7 @@ export default function GameView() {
         multiplayerRoomId,
         roleContext,
         returnTo,
+        playLatest: locationState?.playLatest,
       },
     });
   }, [
@@ -449,7 +451,10 @@ export default function GameView() {
         // Load level from API or fallback to mock data
         console.log("Loading level:", levelId || levelFile);
         const levelResult = levelId
-          ? await loadLevelFromAPI(levelId, { mapDetailId: mapDetailIdFromState })
+          ? await loadLevelFromAPI(levelId, {
+              mapDetailId: mapDetailIdFromState,
+              useLatest: locationState?.playLatest,
+            })
           : await loadLevelFromMockData(levelFile || "level-tutorial-01");
 
         const resolvedMapType = levelResult.mapConfig?.type;
@@ -464,6 +469,7 @@ export default function GameView() {
               multiplayerRoomId,
               roleContext,
               returnTo,
+              playLatest: locationState?.playLatest,
             },
           });
           return;

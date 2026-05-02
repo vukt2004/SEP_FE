@@ -5,6 +5,7 @@ import { cmsUsersApi } from "@/services/api/cms/users.api";
 import { COMPLAINT_STATUSES, type ComplaintStatus } from "@/types/api/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { Search, SlidersHorizontal, Ticket, Hourglass, CheckCircle2, ChevronsUpDown } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/translations";
 
 const pageSize = 10;
 const DEFAULT_AVATAR = "/brand/avatar-fallback.png";
@@ -32,6 +33,7 @@ function normalizeText(value: string) {
 }
 
 export default function ComplaintsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<
@@ -91,7 +93,7 @@ export default function ComplaintsPage() {
         const first = await cmsComplaintsApi.getComplaints({ pageNumber: 1, pageSize: 100 });
         if (!mounted) return;
         if (!first.data.isSuccess || !first.data.data) {
-          setError(first.data.message || "Failed to load complaints.");
+          setError(first.data.message || t("complaints.failedLoad"));
           return;
         }
 
@@ -111,7 +113,7 @@ export default function ComplaintsPage() {
         setItems(all);
       } catch {
         if (!mounted) return;
-        setError("Failed to load complaints.");
+        setError(t("complaints.failedLoad"));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -120,7 +122,7 @@ export default function ComplaintsPage() {
     return () => {
       mounted = false;
     };
-  }, [retryToken]);
+  }, [retryToken, t]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -306,7 +308,7 @@ export default function ComplaintsPage() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1480, margin: "0 auto", display: "grid", gap: 16 }}>
-      <h1 style={{ margin: 0 }}>Support Tickets</h1>
+      <h1 style={{ margin: 0 }}>{t("complaints.supportTickets")}</h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
@@ -315,7 +317,7 @@ export default function ComplaintsPage() {
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{totalItems}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>Total tickets</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.totalTickets")}</div>
           </div>
         </div>
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
@@ -324,7 +326,7 @@ export default function ComplaintsPage() {
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{pendingCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>Pending tickets</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.pendingTickets")}</div>
           </div>
         </div>
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--surface)", padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
@@ -333,18 +335,25 @@ export default function ComplaintsPage() {
           </div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{solvedCount}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13 }}>Solved tickets</div>
+            <div style={{ color: "var(--text-2)", fontSize: 13 }}>{t("complaints.solvedTickets")}</div>
           </div>
         </div>
       </div>
 
-      {error ? <div style={{ color: "var(--danger)" }}>{error} <button onClick={() => setRetryToken((x) => x + 1)}>Retry</button></div> : null}
+      {error ? (
+        <div style={{ color: "var(--danger)" }}>
+          {error}{" "}
+          <button type="button" onClick={() => setRetryToken((x) => x + 1)}>
+            {t("retry")}
+          </button>
+        </div>
+      ) : null}
 
       <div style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--surface)", overflow: "hidden" }}>
         <div style={{ padding: 14, borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>Support Tickets</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{t("complaints.supportTickets")}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <div
@@ -359,12 +368,12 @@ export default function ComplaintsPage() {
                 }}
               >
                 {[
-                  { label: "All", value: "" },
-                  { label: "Solved", value: SOLVED_FILTER_VALUE },
-                  { label: "Pending", value: PENDING_FILTER_VALUE },
+                  { labelKey: "complaints.filter.all", value: "" },
+                  { labelKey: "complaints.filter.solved", value: SOLVED_FILTER_VALUE },
+                  { labelKey: "complaints.filter.pending", value: PENDING_FILTER_VALUE },
                 ].map((s) => (
                   <button
-                    key={s.label}
+                    key={s.value || "all"}
                     type="button"
                     onClick={() => updateQuery("status", s.value)}
                     style={{
@@ -378,14 +387,14 @@ export default function ComplaintsPage() {
                       cursor: "pointer",
                     }}
                   >
-                    {s.label}
+                    {t(s.labelKey)}
                   </button>
                 ))}
               </div>
               <div style={{ position: "relative" }}>
                 <Search size={15} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-2)" }} />
                 <input
-                  placeholder="Search by subject, category, or description..."
+                  placeholder={t("complaints.cmsSearchPlaceholder")}
                   value={keywordInput}
                   onCompositionStart={() => setIsKeywordComposing(true)}
                   onCompositionEnd={(e) => {
@@ -404,17 +413,17 @@ export default function ComplaintsPage() {
                 type="button"
                 onClick={() => setShowAdvancedFilters((v) => !v)}
                 style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", background: showAdvancedFilters ? "rgba(59,130,246,0.12)" : "var(--bg)", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}
-                title="Toggle advanced filters"
+                title={t("complaints.filter.toggleAdvanced")}
               >
                 <SlidersHorizontal size={14} />
-                Filter
+                {t("complaints.filter.button")}
               </button>
             </div>
           </div>
           {showAdvancedFilters ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 8, marginTop: 10 }}>
               <input
-                placeholder="User name"
+                placeholder={t("complaints.filter.userNamePlaceholder")}
                 value={userNameFilter}
                 onChange={(e) => setUserNameFilter(e.target.value)}
                 style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", background: "var(--bg)" }}
@@ -440,19 +449,19 @@ export default function ComplaintsPage() {
             <thead>
               <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
                 <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("id")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>Ticket ID <ChevronsUpDown size={13} /></button>
+                  <button type="button" onClick={() => handleSort("id")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>{t("complaints.table.ticketId")} <ChevronsUpDown size={13} /></button>
                 </th>
                 <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("userId")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>Requested By <ChevronsUpDown size={13} /></button>
+                  <button type="button" onClick={() => handleSort("userId")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>{t("complaints.table.requestedBy")} <ChevronsUpDown size={13} /></button>
                 </th>
                 <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("subject")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>Subject <ChevronsUpDown size={13} /></button>
+                  <button type="button" onClick={() => handleSort("subject")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>{t("complaints.table.subject")} <ChevronsUpDown size={13} /></button>
                 </th>
                 <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("createdAt")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>Create Date <ChevronsUpDown size={13} /></button>
+                  <button type="button" onClick={() => handleSort("createdAt")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>{t("complaints.table.createDate")} <ChevronsUpDown size={13} /></button>
                 </th>
                 <th style={{ textAlign: "left", padding: 12, fontSize: 12, color: "var(--text-2)" }}>
-                  <button type="button" onClick={() => handleSort("status")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>Status <ChevronsUpDown size={13} /></button>
+                  <button type="button" onClick={() => handleSort("status")} style={{ border: "none", background: "transparent", padding: 0, display: "inline-flex", alignItems: "center", gap: 4, cursor: "pointer", color: "inherit" }}>{t("complaints.table.status")} <ChevronsUpDown size={13} /></button>
                 </th>
               </tr>
             </thead>
@@ -476,7 +485,7 @@ export default function ComplaintsPage() {
                     }
                   }}
                   tabIndex={0}
-                  aria-label={`Open complaint ${c.subject}`}
+                  aria-label={t("complaints.openComplaintAria").replace("{subject}", c.subject)}
                 >
                   <td style={{ padding: 12, fontWeight: 700 }}>#{c.id.slice(0, 8)}</td>
                   <td style={{ padding: 12, color: "var(--text-2)" }}>
@@ -492,7 +501,7 @@ export default function ComplaintsPage() {
               {empty ? (
                 <tr>
                   <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--text-2)" }}>
-                    No complaints found.
+                    {t("complaints.noComplaints")}
                   </td>
                 </tr>
               ) : null}
@@ -502,7 +511,9 @@ export default function ComplaintsPage() {
 
         {!empty ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, color: "var(--text-2)", fontSize: 13 }}>
-            <span>Page {pageNumber} of {totalPages}</span>
+            <span>
+              {t("complaints.page")} {pageNumber} {t("of")} {totalPages}
+            </span>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <button
                 type="button"
@@ -518,7 +529,7 @@ export default function ComplaintsPage() {
                   opacity: pageNumber <= 1 ? 0.6 : 1,
                 }}
               >
-                Previous
+                {t("previous")}
               </button>
               {getPaginationItems(pageNumber, totalPages).map((item, idx) =>
                 item === "..." ? (
@@ -559,7 +570,7 @@ export default function ComplaintsPage() {
                   opacity: pageNumber >= totalPages ? 0.6 : 1,
                 }}
               >
-                Next
+                {t("next")}
               </button>
             </div>
           </div>
@@ -583,7 +594,7 @@ export default function ComplaintsPage() {
             maxWidth: 360,
           }}
         >
-          <div style={{ fontSize: 12, color: "var(--text-2)" }}>Quick preview</div>
+          <div style={{ fontSize: 12, color: "var(--text-2)" }}>{t("complaints.quickPreview")}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img
               src={userMap[hoveredTicket.userId]?.avatarPath || DEFAULT_AVATAR}
@@ -598,7 +609,7 @@ export default function ComplaintsPage() {
             {hoveredTicket.category} • {hoveredTicket.userId.replace(/-/g, "").slice(0, 5)}
           </div>
           <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {ticketPreviewMap[hoveredTicket.id]?.description || "Loading description..."}
+            {ticketPreviewMap[hoveredTicket.id]?.description || t("complaints.loadingDescription")}
           </div>
           <div style={{ fontSize: 13, color: "var(--text-2)" }}>
             {new Date(hoveredTicket.createdAt).toLocaleString()}

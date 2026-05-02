@@ -19,6 +19,7 @@ import { learnerCommunityApi } from "@/services/api/learner/community.api";
 import type { Map, MapStatusEnum } from "@/types/api/learner/maps";
 import {
   Eye,
+  Play,
   Plus,
   Search,
   Edit,
@@ -100,6 +101,8 @@ type MapCardProps = {
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
+  onPlay: (mapId: string) => void;
+  isPlayLoading: boolean;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
   onPublish: (mapId: string) => void;
@@ -116,6 +119,8 @@ type MapListProps = {
   formatTime: (milliseconds: number) => string;
   getMapStatusLabel: (status: string) => string;
   getDifficultyLabel: (difficulty: number) => string;
+  onPlay: (mapId: string) => void;
+  isPlayLoading: boolean;
   onPreview: (mapId: string) => void;
   onEdit: (mapId: string) => void;
   onPublish: (mapId: string) => void;
@@ -223,6 +228,12 @@ const actionBtnStyle = (tone: "neutral" | "primary" | "success" | "warning" | "d
     transition: "all 0.2s ease",
   } as React.CSSProperties;
 };
+
+function getPlayRoute(mapType: Map["type"]) {
+  if (mapType === "Platform") return ROUTES.PLATFORM;
+  if (mapType === "Snake") return ROUTES.SNAKE;
+  return ROUTES.GAME;
+}
 
 export const StatsCards: React.FC<StatsCardsProps> = ({ cards }) => {
   return (
@@ -432,6 +443,8 @@ const MapCard: React.FC<MapCardProps> = ({
   formatTime,
   getMapStatusLabel,
   getDifficultyLabel,
+  onPlay,
+  isPlayLoading,
   onPreview,
   onEdit,
   onPublish,
@@ -700,6 +713,10 @@ const MapCard: React.FC<MapCardProps> = ({
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "flex-end" }}>
+          <button onClick={() => onPlay(map.id)} disabled={isPlayLoading} style={actionBtnStyle("primary")}>
+            <Play size={14} /> {t("play")}
+          </button>
+
           <button onClick={() => onPreview(map.id)} style={actionBtnStyle("neutral")}>
             <Eye size={14} /> {t("view")}
           </button>
@@ -750,6 +767,8 @@ export const MapList: React.FC<MapListProps> = ({
   formatTime,
   getMapStatusLabel,
   getDifficultyLabel,
+  onPlay,
+  isPlayLoading,
   onPreview,
   onEdit,
   onPublish,
@@ -769,6 +788,8 @@ export const MapList: React.FC<MapListProps> = ({
           formatTime={formatTime}
           getMapStatusLabel={getMapStatusLabel}
           getDifficultyLabel={getDifficultyLabel}
+          onPlay={onPlay}
+          isPlayLoading={isPlayLoading}
           onPreview={onPreview}
           onEdit={onEdit}
           onPublish={onPublish}
@@ -825,6 +846,7 @@ export const MyMapsPage: React.FC = () => {
     mapTitle: "",
   });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [playLoading, setPlayLoading] = useState(false);
 
   // Modal state for publish confirmation
   const [publishModal, setPublishModal] = useState<{
@@ -926,6 +948,33 @@ export const MyMapsPage: React.FC = () => {
   const handleViewDetails = (mapId: string) => {
     // Open the map in game view for both author and collected tabs
     navigate(ROUTES.LEARNER_MAP_DETAIL.replace(":id", mapId));
+  };
+
+  const handlePlayMap = async (mapId: string) => {
+    try {
+      setPlayLoading(true);
+
+      const response = await learnerMapsApi.getLatestMapById(mapId);
+      const latestMap = response.data.data;
+
+      if (!response.data.isSuccess || !latestMap?.id) {
+        alert(response.data.message || t("failedLoadMaps"));
+        return;
+      }
+
+      navigate(getPlayRoute(latestMap.type ?? "Topdown"), {
+        state: {
+          levelId: latestMap.id,
+          returnTo: ROUTES.LEARNER_MAPS,
+          playLatest: true,
+        },
+      });
+    } catch (err) {
+      alert(t("failedLoadMaps"));
+      console.error("Play map error:", err);
+    } finally {
+      setPlayLoading(false);
+    }
   };
 
   const handleUpdateMap = (mapId: string) => {
@@ -1386,6 +1435,8 @@ export const MyMapsPage: React.FC = () => {
               formatTime={formatTime}
               getMapStatusLabel={getMapStatusLabel}
               getDifficultyLabel={getDifficultyLabel}
+              onPlay={handlePlayMap}
+              isPlayLoading={playLoading}
               onPreview={handleViewDetails}
               onEdit={handleUpdateMap}
               onPublish={handleOpenPublishModal}

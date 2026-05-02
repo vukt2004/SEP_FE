@@ -413,7 +413,7 @@ export const MapsPage: React.FC = () => {
         setTotalPages(1);
       }
     } catch (err) {
-      setError("Failed to load games");
+      setError(t("failedLoadMaps"));
       console.error("Games fetch error:", err);
     } finally {
       setLoading(false);
@@ -427,6 +427,7 @@ export const MapsPage: React.FC = () => {
     sortBy,
     sortOrder,
     viewMode,
+    t,
   ]);
 
   useEffect(() => {
@@ -468,10 +469,10 @@ export const MapsPage: React.FC = () => {
         });
         setDetailModalOpen(true);
       } else {
-        alert("Game not found");
+        alert(t("gameIdNotFound"));
       }
     } catch (err) {
-      alert("Failed to load game details");
+      alert(t("failedLoadMapDetails"));
       console.error("Game detail error:", err);
     } finally {
       setActionLoading(false);
@@ -517,14 +518,31 @@ export const MapsPage: React.FC = () => {
     return ROUTES.GAME;
   };
 
-  const handlePlayMap = (mapId: string, mapType: MapListItem["type"]) => {
-    navigate(getPlayRoute(mapType), {
-      state: {
-        levelId: mapId,
-        roleContext: "cms",
-        returnTo: ROUTES.CMS_MAPS,
-      },
-    });
+  const handlePlayMap = async (mapId: string, mapType: MapListItem["type"]) => {
+    try {
+      setActionLoading(true);
+      const response = await cmsMapsApi.getLatestMapById(mapId);
+      const latestMap = response.data.data;
+
+      if (!response.data.isSuccess || !latestMap?.id) {
+        alert(response.data.message || t("cmsMaps.playGame"));
+        return;
+      }
+
+      navigate(getPlayRoute(mapType), {
+        state: {
+          levelId: latestMap.id,
+          roleContext: "cms",
+          returnTo: ROUTES.CMS_MAPS,
+          playLatest: true,
+        },
+      });
+    } catch (err) {
+      alert(t("cmsMaps.playGame"));
+      console.error("Play game error:", err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleLockMap = async (mapId: string, mapTitle: string) => {
@@ -675,17 +693,17 @@ export const MapsPage: React.FC = () => {
   const getMapStatusLabel = (status: MapStatusEnum) => {
     switch (status) {
       case "Draft":
-        return "Draft";
+        return t("draft");
       case "PendingReview":
-        return "Pending Review";
+        return t("pendingReview");
       case "Approved":
-        return "Approved";
+        return t("approved");
       case "Rejected":
-        return "Rejected";
+        return t("rejected");
       case "Published":
-        return "Published";
+        return t("published");
       default:
-        return "Unknown";
+        return t("unknown");
     }
   };
 
@@ -762,7 +780,7 @@ export const MapsPage: React.FC = () => {
               animation: "spin 1s linear infinite",
             }}
           ></div>
-          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>Loading games...</p>
+          <p style={{ color: "var(--text-2)", marginTop: "16px" }}>{t("loadingMaps")}</p>
         </div>
       </div>
     );
@@ -790,9 +808,9 @@ export const MapsPage: React.FC = () => {
               marginBottom: "8px",
             }}
           >
-            Games
+            {t("cmsMaps.pageTitle")}
           </h1>
-          <p style={{ color: "var(--text-2)" }}>View and manage all games</p>
+          <p style={{ color: "var(--text-2)" }}>{t("cmsMaps.subtitle")}</p>
         </div>
         <button
           onClick={() => {
@@ -800,7 +818,7 @@ export const MapsPage: React.FC = () => {
             navigate(ROUTES.MAP_EDITOR, { state: { roleContext: "cms" } });
           }}
           disabled={!canCreateMap}
-          title={!canCreateMap ? "Upgrade to Pro to create games" : undefined}
+          title={!canCreateMap ? t("cmsMaps.upgradeToCreate") : undefined}
           style={{
             display: "flex",
             alignItems: "center",
@@ -816,11 +834,11 @@ export const MapsPage: React.FC = () => {
             whiteSpace: "nowrap",
           }}
         >
-          <Plus size={16} /> Create Game
+          <Plus size={16} /> {t("cmsMaps.createGame")}
         </button>
         {!canCreateMap && (
           <p style={{ color: "var(--warning)", fontSize: "13px", margin: 0 }}>
-            Upgrade to Pro to create games
+            {t("cmsMaps.upgradeToCreate")}
           </p>
         )}
       </div>
@@ -906,7 +924,7 @@ export const MapsPage: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => handleFilterChange([() => setSearchTerm(e.target.value)])}
-            placeholder="Search games..."
+            placeholder={t("cmsMaps.searchPlaceholder")}
             disabled={viewMode === "locked"}
             style={{
               width: "100%",
@@ -943,12 +961,12 @@ export const MapsPage: React.FC = () => {
             opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
-          <option value="">All Statuses</option>
-          <option value="Draft">Draft</option>
-          <option value="PendingReview">Pending Review</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected">Rejected</option>
-          <option value="Published">Published</option>
+          <option value="">{t("cmsMaps.allStatuses")}</option>
+          <option value="Draft">{t("draft")}</option>
+          <option value="PendingReview">{t("pendingReview")}</option>
+          <option value="Approved">{t("approved")}</option>
+          <option value="Rejected">{t("rejected")}</option>
+          <option value="Published">{t("published")}</option>
         </select>
 
         {/* Difficulty Filter */}
@@ -971,7 +989,7 @@ export const MapsPage: React.FC = () => {
             opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
-          <option value="">All Difficulties</option>
+          <option value="">{t("cmsMaps.allDifficulties")}</option>
           <option value="1">1/5</option>
           <option value="2">2/5</option>
           <option value="3">3/5</option>
@@ -997,10 +1015,10 @@ export const MapsPage: React.FC = () => {
             opacity: viewMode === "locked" ? 0.7 : 1,
           }}
         >
-          <option value="createdAt">Sort: Created</option>
-          <option value="title">Sort: Title</option>
-          <option value="difficulty">Sort: Difficulty</option>
-          <option value="price">Sort: Price</option>
+          <option value="createdAt">{t("cmsMaps.sortByCreated")}</option>
+          <option value="title">{t("cmsMaps.sortByTitle")}</option>
+          <option value="difficulty">{t("cmsMaps.sortByDifficulty")}</option>
+          <option value="price">{t("cmsMaps.sortByPrice")}</option>
         </select>
 
         {/* Sort Order */}
@@ -1018,9 +1036,9 @@ export const MapsPage: React.FC = () => {
             fontWeight: "500",
             opacity: viewMode === "locked" ? 0.7 : 1,
           }}
-          title={sortOrder === "asc" ? "Ascending" : "Descending"}
+          title={sortOrder === "asc" ? t("cmsMaps.sortAscTitle") : t("cmsMaps.sortDescTitle")}
         >
-          {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+          {sortOrder === "asc" ? t("cmsMaps.sortAscShort") : t("cmsMaps.sortDescShort")}
         </button>
 
         {/* Clear Filters */}
@@ -1043,7 +1061,7 @@ export const MapsPage: React.FC = () => {
               cursor: "pointer",
             }}
           >
-            Clear Filters
+            {t("clearFilters")}
           </button>
         )}
       </div>
@@ -1106,7 +1124,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  TITLE
+                  {t("cmsMaps.tableTitle")}
                 </th>
                 <th
                   style={{
@@ -1117,7 +1135,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  DIFFICULTY
+                  {t("cmsMaps.tableDifficulty")}
                 </th>
                 <th
                   style={{
@@ -1128,7 +1146,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  STATUS
+                  {t("cmsMaps.tableStatus")}
                 </th>
                 <th
                   style={{
@@ -1139,7 +1157,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  PRICE
+                  {t("cmsMaps.tablePrice")}
                 </th>
                 <th
                   style={{
@@ -1150,7 +1168,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  TAGS
+                  {t("cmsMaps.tableTags")}
                 </th>
                 <th
                   style={{
@@ -1161,7 +1179,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  CREATED
+                  {t("cmsMaps.tableCreated")}
                 </th>
                 <th
                   style={{
@@ -1172,7 +1190,7 @@ export const MapsPage: React.FC = () => {
                     color: "var(--text-2)",
                   }}
                 >
-                  ACTIONS
+                  {t("cmsMaps.tableActions")}
                 </th>
               </tr>
             </thead>
@@ -1188,7 +1206,7 @@ export const MapsPage: React.FC = () => {
                       fontSize: "14px",
                     }}
                   >
-                    {viewMode === "locked" ? t("cmsMaps.noLockedGames") : "No games found"}
+                    {viewMode === "locked" ? t("cmsMaps.noLockedGames") : t("cmsMaps.noGamesFound")}
                   </td>
                 </tr>
               ) : maps.map((map) => (
@@ -1326,7 +1344,7 @@ export const MapsPage: React.FC = () => {
                             gap: "4px",
                           }}
                         >
-                          <Check size={14} /> Published
+                          <Check size={14} /> {t("cmsMaps.publishedBadge")}
                         </span>
                       )}
                     </div>
@@ -1339,7 +1357,7 @@ export const MapsPage: React.FC = () => {
                         fontWeight: map.price > 0 ? "500" : "normal",
                       }}
                     >
-                      {map.price > 0 ? `$${map.price}` : "Free"}
+                      {map.price > 0 ? `${map.price} OC` : t("free")}
                     </div>
                   </td>
                   <td style={{ padding: "16px" }}>
@@ -1413,7 +1431,7 @@ export const MapsPage: React.FC = () => {
                           fontSize: "12px",
                           transition: "all 0.2s ease",
                         }}
-                        title="View Details"
+                        title={t("cmsMaps.viewDetails")}
                       >
                         <Eye size={16} />
                       </button>
@@ -1499,7 +1517,7 @@ export const MapsPage: React.FC = () => {
             }}
           >
             <div style={{ color: "var(--text-2)", fontSize: "14px" }}>
-              Showing page {currentPage} of {totalPages}
+              {t("showingPage")} {currentPage} {t("of")} {totalPages}
             </div>
 
             <div style={{ display: "flex", gap: "8px" }}>
@@ -1517,7 +1535,7 @@ export const MapsPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Previous
+                {t("previous")}
               </button>
 
               <button
@@ -1534,7 +1552,7 @@ export const MapsPage: React.FC = () => {
                   transition: "all 0.2s ease",
                 }}
               >
-                Next
+                {t("next")}
               </button>
             </div>
           </div>
@@ -1545,7 +1563,7 @@ export const MapsPage: React.FC = () => {
       <Modal
         isOpen={detailModalOpen}
         onClose={handleCloseDetailModal}
-        title="Game details"
+        title={t("cmsMaps.detailModalTitle")}
         maxWidth="800px"
       >
         {selectedMap && (
@@ -1581,7 +1599,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Game Preview
+                  {t("cmsMaps.gamePreview")}
                 </div>
                 <div
                   style={{
@@ -1622,7 +1640,7 @@ export const MapsPage: React.FC = () => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Difficulty
+                  {t("difficulty")}
                 </div>
                 <div style={{ color: "var(--text)" }}>
                   {getDifficultyLabel(selectedMap.difficulty)}
@@ -1630,13 +1648,13 @@ export const MapsPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Time Limit
+                  {t("cmsMaps.timeLimit")}
                 </div>
                 <div style={{ color: "var(--text)" }}>{formatTime(selectedMap.timeLimitMs)}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Status
+                  {t("cmsMaps.statusField")}
                 </div>
                 <div style={{ color: "var(--text)" }}>
                   {getMapStatusLabel(selectedMap.mapStatus)}
@@ -1644,7 +1662,7 @@ export const MapsPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Published
+                  {t("cmsMaps.publishedField")}
                 </div>
                 <div
                   style={{
@@ -1656,29 +1674,29 @@ export const MapsPage: React.FC = () => {
                 >
                   {selectedMap.isPublished ? (
                     <>
-                      <Check size={16} color="var(--success)" /> <span>Yes</span>
+                      <Check size={16} color="var(--success)" /> <span>{t("cmsMaps.yes")}</span>
                     </>
                   ) : (
                     <>
-                      <X size={16} color="var(--danger)" /> <span>No</span>
+                      <X size={16} color="var(--danger)" /> <span>{t("cmsMaps.no")}</span>
                     </>
                   )}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Price
+                  {t("cmsMaps.priceField")}
                 </div>
                 <div style={{ color: "var(--text)" }}>
-                  {selectedMap.price > 0 ? `$${selectedMap.price}` : "Free"}
+                  {selectedMap.price > 0 ? `${selectedMap.price} OC` : t("free")}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Unlock Editorial After
+                  {t("cmsMaps.unlockEditorialAfter")}
                 </div>
                 <div style={{ color: "var(--text)" }}>
-                  {selectedMap.unlockEditorialAfterStars} stars
+                  {selectedMap.unlockEditorialAfterStars} {t("cmsMaps.starsSuffix")}
                 </div>
               </div>
             </div>
@@ -1694,7 +1712,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Editorial Content
+                  {t("cmsMaps.editorialContent")}
                 </div>
                 <div
                   style={{
@@ -1723,7 +1741,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Hints ({selectedMap.hints.length})
+                  {t("cmsMaps.hintsHeading").replace("{count}", String(selectedMap.hints.length))}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {selectedMap.hints.map((hint, idx) => (
@@ -1759,7 +1777,10 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Constraints ({selectedMap.constraints.length})
+                  {t("cmsMaps.constraintsHeading").replace(
+                    "{count}",
+                    String(selectedMap.constraints.length),
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {selectedMap.constraints.map((constraint, idx) => (
@@ -1774,7 +1795,7 @@ export const MapsPage: React.FC = () => {
                       }}
                     >
                       <div style={{ fontWeight: "500", color: "var(--text)", marginBottom: "4px" }}>
-                        Type: {constraint.type}
+                        {t("cmsMaps.constraintTypeLabel")} {constraint.type}
                       </div>
                       <div
                         style={{
@@ -1802,7 +1823,10 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Active Specification (v{selectedMap.activeSpec.version})
+                  {t("cmsMaps.activeSpecHeading").replace(
+                    "{version}",
+                    String(selectedMap.activeSpec.version),
+                  )}
                 </div>
                 <div
                   style={{
@@ -1817,7 +1841,7 @@ export const MapsPage: React.FC = () => {
                       <div
                         style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
                       >
-                        Grid Spec
+                        {t("cmsMaps.gridSpec")}
                       </div>
                       <div
                         style={{
@@ -1838,7 +1862,7 @@ export const MapsPage: React.FC = () => {
                       <div
                         style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
                       >
-                        Initial State
+                        {t("cmsMaps.initialState")}
                       </div>
                       <div
                         style={{
@@ -1859,7 +1883,7 @@ export const MapsPage: React.FC = () => {
                       <div
                         style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
                       >
-                        Win Condition
+                        {t("cmsMaps.winCondition")}
                       </div>
                       <div
                         style={{
@@ -1880,7 +1904,7 @@ export const MapsPage: React.FC = () => {
                       <div
                         style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}
                       >
-                        Fail Condition
+                        {t("cmsMaps.failCondition")}
                       </div>
                       <div
                         style={{
@@ -1913,7 +1937,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Tags
+                  {t("tags")}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {selectedMap.tagNames.map((tag, idx) => (
@@ -1942,7 +1966,7 @@ export const MapsPage: React.FC = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  Concepts
+                  {t("cmsMaps.concepts")}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {selectedMap.conceptNames && selectedMap.conceptNames.length > 0 ? (
@@ -1963,7 +1987,7 @@ export const MapsPage: React.FC = () => {
                     ))
                   ) : (
                     <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
-                      No concepts assigned
+                      {t("cmsMaps.noConceptsAssigned")}
                     </span>
                   )}
                 </div>
@@ -1982,7 +2006,7 @@ export const MapsPage: React.FC = () => {
             >
               <div>
                 <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Game ID
+                  {t("cmsMaps.gameId")}
                 </div>
                 <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
                   {selectedMap.id}
@@ -1990,7 +2014,7 @@ export const MapsPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Created At
+                  {t("cmsMaps.createdAtLabel")}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--text)" }}>
                   {formatDate(selectedMap.createdAt)}
@@ -1998,7 +2022,7 @@ export const MapsPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Created By User ID
+                  {t("cmsMaps.createdByUserId")}
                 </div>
                 <div style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text)" }}>
                   {selectedMap.createdByUserId}
@@ -2006,7 +2030,7 @@ export const MapsPage: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                  Created By User
+                  {t("cmsMaps.createdByUser")}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--text)" }}>
                   {selectedMap.createdByUserName ?? "—"}
@@ -2015,7 +2039,7 @@ export const MapsPage: React.FC = () => {
               {selectedMap.activeSpec && (
                 <div>
                   <div style={{ fontSize: "11px", color: "var(--text-2)", marginBottom: "4px" }}>
-                    Spec Version
+                    {t("cmsMaps.specVersion")}
                   </div>
                   <div style={{ fontSize: "11px", color: "var(--text)" }}>
                     v{selectedMap.activeSpec.version}
