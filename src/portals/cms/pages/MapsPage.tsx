@@ -10,7 +10,7 @@
  * - Action buttons (View, Review)
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cmsMapsApi } from "@/services/api/cms/maps.api";
 import type {
@@ -22,8 +22,27 @@ import type {
   MapStatusFilter,
 } from "@/types/api/cms/maps";
 import { Modal } from "../components/Modal";
-import { Eye, Check, CheckCircle, X, Plus, Search, Play, Lock, LockOpen } from "lucide-react";
+import {
+  Eye,
+  Check,
+  CheckCircle,
+  X,
+  Plus,
+  Search,
+  Play,
+  Lock,
+  LockOpen,
+  Pencil,
+  Trash2,
+  RefreshCw,
+} from "lucide-react";
 import { ROUTES } from "@/lib/constants/routes";
+import { useCmsAuthStore } from "@/stores/auth/cmsAuth.store";
+import type {
+  GameReviewCriterion,
+  CreateGameReviewCriterionPayload,
+  UpdateGameReviewCriterionPayload,
+} from "@/types/api/cms/maps";
 import { useTranslation } from "@/lib/i18n/translations";
 import {
   canCreateMaps,
@@ -165,12 +184,6 @@ type ReviewSection = {
     key: string;
     labelKey: string;
   }>;
-};
-
-type ReviewCriterion = {
-  key: string;
-  sectionTitleKey: string;
-  labelKey: string;
 };
 
 const MAP_REVIEW_SECTIONS: ReviewSection[] = [
@@ -318,17 +331,74 @@ const MAP_REVIEW_SECTIONS: ReviewSection[] = [
   },
 ];
 
-const MAP_REVIEW_CRITERIA: ReviewCriterion[] = MAP_REVIEW_SECTIONS.flatMap((section) =>
-  section.criteria.map((criterion) => ({
-    key: criterion.key,
-    sectionTitleKey: section.titleKey,
-    labelKey: criterion.labelKey,
-  })),
-);
+type ResolvedReviewCriterion = {
+  id?: string;
+  criterionKey: string;
+  sectionKey: string;
+  sectionTitle: string;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+};
 
-const createInitialReviewDecisions = (): Record<string, ReviewDecision> =>
-  MAP_REVIEW_CRITERIA.reduce<Record<string, ReviewDecision>>((acc, criterion) => {
-    acc[criterion.key] = null;
+function buildFallbackResolvedCriteria(translate: (k: string) => string): ResolvedReviewCriterion[] {
+  let sortOrder = 0;
+  const out: ResolvedReviewCriterion[] = [];
+  for (const section of MAP_REVIEW_SECTIONS) {
+    for (const c of section.criteria) {
+      out.push({
+        criterionKey: c.key,
+        sectionKey: section.key,
+        sectionTitle: translate(section.titleKey),
+        label: translate(c.labelKey),
+        sortOrder: sortOrder++,
+        isEnabled: true,
+      });
+    }
+  }
+  return out;
+}
+
+function mapApiCriteriaToResolved(rows: GameReviewCriterion[]): ResolvedReviewCriterion[] {
+  return rows.map((r) => ({
+    id: r.id,
+    criterionKey: r.criterionKey,
+    sectionKey: r.sectionKey,
+    sectionTitle: r.sectionTitle,
+    label: r.label,
+    sortOrder: r.sortOrder,
+    isEnabled: r.isEnabled,
+  }));
+}
+
+function groupResolvedIntoSections(
+  items: ResolvedReviewCriterion[],
+  enabledOnly: boolean,
+): Array<{ sectionKey: string; sectionTitle: string; criteria: ResolvedReviewCriterion[] }> {
+  const filtered = enabledOnly ? items.filter((x) => x.isEnabled) : [...items];
+  filtered.sort((a, b) => a.sortOrder - b.sortOrder);
+  const order: string[] = [];
+  const bySection = new Map<string, ResolvedReviewCriterion[]>();
+  for (const it of filtered) {
+    if (!bySection.has(it.sectionKey)) {
+      order.push(it.sectionKey);
+      bySection.set(it.sectionKey, []);
+    }
+    bySection.get(it.sectionKey)!.push(it);
+  }
+  return order.map((sk) => {
+    const rows = bySection.get(sk)!;
+    return {
+      sectionKey: sk,
+      sectionTitle: rows[0]?.sectionTitle ?? sk,
+      criteria: rows,
+    };
+  });
+}
+
+const createInitialReviewDecisionsForKeys = (keys: string[]): Record<string, ReviewDecision> =>
+  keys.reduce<Record<string, ReviewDecision>>((acc, k) => {
+    acc[k] = null;
     return acc;
   }, {});
 
@@ -336,6 +406,8 @@ export const MapsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t, locale } = useTranslation();
+  const cmsRole = useCmsAuthStore((s) => s.role);
+  const isCmsAdmin = cmsRole === "admin";
   const [userPlan, setUserPlan] = useState<SubscriptionPlan>("free");
   const canCreateMap = canCreateMaps(userPlan);
   const [maps, setMaps] = useState<MapListItem[]>([]);
@@ -356,11 +428,79 @@ export const MapsPage: React.FC = () => {
     title: string;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [reviewDecisions, setReviewDecisions] = useState<Record<string, ReviewDecision>>(() =>
-    createInitialReviewDecisions(),
-  );
+  const [reviewDecisions, setReviewDecisions] = useState<Record<string, ReviewDecision>>({});
   const [otherReviewReason, setOtherReviewReason] = useState("");
   const [reviewValidationError, setReviewValidationError] = useState<string | null>(null);
+
+  const [reviewCriteriaRows, setReviewCriteriaRows] = useState<GameReviewCriterion[]>([]);
+  const [reviewCriteriaLoaded, setReviewCriteriaLoaded] = useState(false);
+  const [reviewCriteriaFetchFailed, setReviewCriteriaFetchFailed] = useState(false);
+  const [criteriaInfoModalOpen, setCriteriaInfoModalOpen] = useState(false);
+  const [criteriaManageModalOpen, setCriteriaManageModalOpen] = useState(false);
+  const [criterionFormModalOpen, setCriterionFormModalOpen] = useState(false);
+  const [criterionEditingId, setCriterionEditingId] = useState<string | null>(null);
+  const [criterionForm, setCriterionForm] = useState<CreateGameReviewCriterionPayload>({
+    criterionKey: "",
+    sectionKey: "",
+    sectionTitle: "",
+    label: "",
+    sortOrder: 0,
+    isEnabled: true,
+  });
+  const [criterionFormError, setCriterionFormError] = useState("");
+  const [criterionSaving, setCriterionSaving] = useState(false);
+
+  const resolvedReviewCriteria = useMemo((): ResolvedReviewCriterion[] => {
+    if (reviewCriteriaLoaded && reviewCriteriaRows.length > 0 && !reviewCriteriaFetchFailed) {
+      return mapApiCriteriaToResolved(reviewCriteriaRows);
+    }
+    return buildFallbackResolvedCriteria(t);
+  }, [reviewCriteriaLoaded, reviewCriteriaRows, reviewCriteriaFetchFailed, t]);
+
+  const enabledReviewCriteria = useMemo(
+    () =>
+      resolvedReviewCriteria
+        .filter((c) => c.isEnabled)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [resolvedReviewCriteria],
+  );
+
+  const groupedEnabledReviewSections = useMemo(
+    () => groupResolvedIntoSections(resolvedReviewCriteria, true),
+    [resolvedReviewCriteria],
+  );
+
+  const sortedCriteriaRowsForAdmin = useMemo(
+    () =>
+      [...reviewCriteriaRows].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.criterionKey.localeCompare(b.criterionKey),
+      ),
+    [reviewCriteriaRows],
+  );
+
+  const canManageCriteriaOnServer =
+    isCmsAdmin && reviewCriteriaLoaded && reviewCriteriaRows.length > 0 && !reviewCriteriaFetchFailed;
+
+  const fetchReviewCriteria = useCallback(async () => {
+    try {
+      const res = await cmsMapsApi.getGameReviewCriteria();
+      setReviewCriteriaFetchFailed(false);
+      if (res.data.isSuccess && Array.isArray(res.data.data)) {
+        setReviewCriteriaRows(res.data.data);
+      } else {
+        setReviewCriteriaRows([]);
+      }
+    } catch {
+      setReviewCriteriaFetchFailed(true);
+      setReviewCriteriaRows([]);
+    } finally {
+      setReviewCriteriaLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchReviewCriteria();
+  }, [fetchReviewCriteria]);
 
   // Search, filter & sort state
   const [searchTerm, setSearchTerm] = useState("");
@@ -498,7 +638,9 @@ export const MapsPage: React.FC = () => {
 
   const handleOpenReviewModal = (mapId: string, mapTitle: string) => {
     setSelectedMapForAction({ id: mapId, title: mapTitle });
-    setReviewDecisions(createInitialReviewDecisions());
+    setReviewDecisions(
+      createInitialReviewDecisionsForKeys(enabledReviewCriteria.map((c) => c.criterionKey)),
+    );
     setOtherReviewReason("");
     setReviewValidationError(null);
     setReviewModalOpen(true);
@@ -507,7 +649,9 @@ export const MapsPage: React.FC = () => {
   const handleCloseReviewModal = () => {
     setReviewModalOpen(false);
     setSelectedMapForAction(null);
-    setReviewDecisions(createInitialReviewDecisions());
+    setReviewDecisions(
+      createInitialReviewDecisionsForKeys(enabledReviewCriteria.map((c) => c.criterionKey)),
+    );
     setOtherReviewReason("");
     setReviewValidationError(null);
   };
@@ -609,8 +753,8 @@ export const MapsPage: React.FC = () => {
   const handleSubmitReview = async (mode: "approve" | "reject") => {
     if (!selectedMapForAction) return;
 
-    const unevaluatedCriteria = MAP_REVIEW_CRITERIA.filter(
-      (criterion) => reviewDecisions[criterion.key] === null,
+    const unevaluatedCriteria = enabledReviewCriteria.filter(
+      (criterion) => reviewDecisions[criterion.criterionKey] === null,
     );
 
     if (unevaluatedCriteria.length > 0) {
@@ -618,8 +762,8 @@ export const MapsPage: React.FC = () => {
       return;
     }
 
-    const failedCriteria = MAP_REVIEW_CRITERIA.filter(
-      (criterion) => reviewDecisions[criterion.key] === "fail",
+    const failedCriteria = enabledReviewCriteria.filter(
+      (criterion) => reviewDecisions[criterion.criterionKey] === "fail",
     );
 
     const trimmedOtherReason = otherReviewReason.trim();
@@ -643,7 +787,7 @@ export const MapsPage: React.FC = () => {
         }
         
         // Compact format: use criterion keys only to reduce payload size
-        const failedCriteriaKeys = failedCriteria.map((c) => c.key).join("; ");
+        const failedCriteriaKeys = failedCriteria.map((c) => c.criterionKey).join("; ");
         
         const rejectReason = [
           "Failed criteria: " + failedCriteriaKeys,
@@ -676,18 +820,124 @@ export const MapsPage: React.FC = () => {
     }));
   };
 
-  const reviewedCriteriaCount = MAP_REVIEW_CRITERIA.filter(
-    (criterion) => reviewDecisions[criterion.key] !== null,
+  const reviewedCriteriaCount = enabledReviewCriteria.filter(
+    (criterion) => reviewDecisions[criterion.criterionKey] !== null,
   ).length;
-  const failedCriteriaCount = MAP_REVIEW_CRITERIA.filter(
-    (criterion) => reviewDecisions[criterion.key] === "fail",
+  const failedCriteriaCount = enabledReviewCriteria.filter(
+    (criterion) => reviewDecisions[criterion.criterionKey] === "fail",
   ).length;
-  const canApproveReview = reviewedCriteriaCount === MAP_REVIEW_CRITERIA.length && failedCriteriaCount === 0;
-  const canRejectReview = reviewedCriteriaCount === MAP_REVIEW_CRITERIA.length && failedCriteriaCount > 0;
+  const canApproveReview =
+    enabledReviewCriteria.length > 0 &&
+    reviewedCriteriaCount === enabledReviewCriteria.length &&
+    failedCriteriaCount === 0;
+  const canRejectReview =
+    enabledReviewCriteria.length > 0 &&
+    reviewedCriteriaCount === enabledReviewCriteria.length &&
+    failedCriteriaCount > 0;
 
   const handleFilterChange = (updaters: Array<() => void>) => {
     updaters.forEach((fn) => fn());
     setCurrentPage(1);
+  };
+
+  const openCriterionCreate = () => {
+    setCriterionEditingId(null);
+    setCriterionForm({
+      criterionKey: "",
+      sectionKey: "",
+      sectionTitle: "",
+      label: "",
+      sortOrder: sortedCriteriaRowsForAdmin.length,
+      isEnabled: true,
+    });
+    setCriterionFormError("");
+    setCriterionFormModalOpen(true);
+  };
+
+  const openCriterionEdit = (row: GameReviewCriterion) => {
+    setCriterionEditingId(row.id);
+    setCriterionForm({
+      criterionKey: row.criterionKey,
+      sectionKey: row.sectionKey,
+      sectionTitle: row.sectionTitle,
+      label: row.label,
+      sortOrder: row.sortOrder,
+      isEnabled: row.isEnabled,
+    });
+    setCriterionFormError("");
+    setCriterionFormModalOpen(true);
+  };
+
+  const handleCriterionFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCriterionFormError("");
+    const sk = criterionForm.sectionKey.trim();
+    const st = criterionForm.sectionTitle.trim();
+    const lb = criterionForm.label.trim();
+    if (!sk || !st || !lb) {
+      setCriterionFormError(t("cmsReview.criteriaManage.validationRequired"));
+      return;
+    }
+    setCriterionSaving(true);
+    try {
+      if (criterionEditingId) {
+        const payload: UpdateGameReviewCriterionPayload = {
+          sectionKey: sk,
+          sectionTitle: st,
+          label: lb,
+          sortOrder: criterionForm.sortOrder,
+          isEnabled: criterionForm.isEnabled,
+        };
+        const res = await cmsMapsApi.updateGameReviewCriterion(criterionEditingId, payload);
+        if (!res.data.isSuccess) {
+          setCriterionFormError(res.data.message || t("cmsReview.criteriaManage.saveFailed"));
+          return;
+        }
+      } else {
+        const keyNorm = criterionForm.criterionKey
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9_-]/g, "");
+        if (!keyNorm) {
+          setCriterionFormError(t("cmsReview.criteriaManage.validationKey"));
+          return;
+        }
+        const payload: CreateGameReviewCriterionPayload = {
+          criterionKey: keyNorm,
+          sectionKey: sk,
+          sectionTitle: st,
+          label: lb,
+          sortOrder: criterionForm.sortOrder,
+          isEnabled: criterionForm.isEnabled,
+        };
+        const res = await cmsMapsApi.createGameReviewCriterion(payload);
+        if (!res.data.isSuccess) {
+          setCriterionFormError(res.data.message || t("cmsReview.criteriaManage.saveFailed"));
+          return;
+        }
+      }
+      await fetchReviewCriteria();
+      setCriterionFormModalOpen(false);
+    } catch {
+      setCriterionFormError(t("cmsReview.criteriaManage.saveFailed"));
+    } finally {
+      setCriterionSaving(false);
+    }
+  };
+
+  const handleCriterionDelete = async (id: string) => {
+    if (!window.confirm(t("cmsReview.criteriaManage.confirmDelete"))) return;
+    try {
+      const res = await cmsMapsApi.deleteGameReviewCriterion(id);
+      if (!res.data.isSuccess) {
+        alert(res.data.message || t("cmsReview.criteriaManage.deleteFailed"));
+        return;
+      }
+      await fetchReviewCriteria();
+    } catch {
+      alert(t("cmsReview.criteriaManage.deleteFailed"));
+    }
   };
 
   const getMapStatusLabel = (status: MapStatusEnum) => {
@@ -799,18 +1049,57 @@ export const MapsPage: React.FC = () => {
           flexWrap: "wrap",
         }}
       >
-        <div>
-          <h1
+        <div style={{ flex: "1 1 220px" }}>
+          <div
             style={{
-              color: "var(--text)",
-              fontSize: "28px",
-              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
               marginBottom: "8px",
+              flexWrap: "wrap",
             }}
           >
-            {t("cmsMaps.pageTitle")}
-          </h1>
-          <p style={{ color: "var(--text-2)" }}>{t("cmsMaps.subtitle")}</p>
+            <h1
+              style={{
+                color: "var(--text)",
+                fontSize: "28px",
+                fontWeight: "bold",
+                margin: 0,
+              }}
+            >
+              {t("cmsMaps.pageTitle")}
+            </h1>
+            <button
+              type="button"
+              onClick={() => setCriteriaInfoModalOpen(true)}
+              title={t("cmsReview.criteriaInfo.tooltip")}
+              aria-label={t("cmsReview.criteriaInfo.tooltip")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--primary)",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  fontFamily: "system-ui, sans-serif",
+                }}
+              >
+                !
+              </span>
+            </button>
+          </div>
+          <p style={{ color: "var(--text-2)", margin: 0 }}>{t("cmsMaps.subtitle")}</p>
         </div>
         <button
           onClick={() => {
@@ -2164,107 +2453,121 @@ export const MapsPage: React.FC = () => {
                 fontSize: "13px",
               }}
             >
-              {t("cmsReview.criteriaReviewed")}: {reviewedCriteriaCount}/{MAP_REVIEW_CRITERIA.length}
+              {t("cmsReview.criteriaReviewed")}: {reviewedCriteriaCount}/{enabledReviewCriteria.length}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {MAP_REVIEW_SECTIONS.map((section) => (
+              {enabledReviewCriteria.length === 0 ? (
                 <div
-                  key={section.key}
                   style={{
+                    padding: "12px",
+                    borderRadius: "8px",
                     border: "1px solid var(--border)",
-                    borderRadius: "10px",
-                    background: "var(--surface)",
-                    overflow: "hidden",
+                    color: "var(--text-2)",
+                    fontSize: "13px",
                   }}
                 >
+                  {t("cmsReview.noCriteriaEnabled")}
+                </div>
+              ) : (
+                groupedEnabledReviewSections.map((section) => (
                   <div
+                    key={section.sectionKey}
                     style={{
-                      padding: "10px 12px",
-                      background: "var(--surface-2)",
-                      borderBottom: "1px solid var(--border)",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      color: "var(--text)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "10px",
+                      background: "var(--surface)",
+                      overflow: "hidden",
                     }}
                   >
-                    {t(section.titleKey)}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {section.criteria.map((criterion) => {
-                      const decision = reviewDecisions[criterion.key];
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        background: "var(--surface-2)",
+                        borderBottom: "1px solid var(--border)",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: "var(--text)",
+                      }}
+                    >
+                      {section.sectionTitle}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {section.criteria.map((criterion) => {
+                        const decision = reviewDecisions[criterion.criterionKey];
 
-                      return (
-                        <div
-                          key={criterion.key}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr auto",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "10px 12px",
-                            borderBottom: "1px solid var(--border)",
-                          }}
-                        >
-                          <div style={{ color: "var(--text)", fontSize: "13px", lineHeight: "1.45" }}>
-                            {t(criterion.labelKey)}
+                        return (
+                          <div
+                            key={criterion.criterionKey}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr auto",
+                              gap: "12px",
+                              alignItems: "center",
+                              padding: "10px 12px",
+                              borderBottom: "1px solid var(--border)",
+                            }}
+                          >
+                            <div style={{ color: "var(--text)", fontSize: "13px", lineHeight: "1.45" }}>
+                              {criterion.label}
+                            </div>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                type="button"
+                                onClick={() => setCriterionDecision(criterion.criterionKey, "pass")}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "6px 10px",
+                                  borderRadius: "8px",
+                                  border:
+                                    decision === "pass"
+                                      ? "1px solid var(--success)"
+                                      : "1px solid var(--border)",
+                                  background:
+                                    decision === "pass"
+                                      ? "color-mix(in srgb, var(--success) 18%, transparent)"
+                                      : "transparent",
+                                  color: decision === "pass" ? "var(--success)" : "var(--text-2)",
+                                  fontSize: "12px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <Check size={14} /> {t("cmsReview.pass")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCriterionDecision(criterion.criterionKey, "fail")}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "6px 10px",
+                                  borderRadius: "8px",
+                                  border:
+                                    decision === "fail"
+                                      ? "1px solid var(--danger)"
+                                      : "1px solid var(--border)",
+                                  background:
+                                    decision === "fail"
+                                      ? "color-mix(in srgb, var(--danger) 18%, transparent)"
+                                      : "transparent",
+                                  color: decision === "fail" ? "var(--danger)" : "var(--text-2)",
+                                  fontSize: "12px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <X size={14} /> {t("cmsReview.fail")}
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              type="button"
-                              onClick={() => setCriterionDecision(criterion.key, "pass")}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "6px 10px",
-                                borderRadius: "8px",
-                                border:
-                                  decision === "pass"
-                                    ? "1px solid var(--success)"
-                                    : "1px solid var(--border)",
-                                background:
-                                  decision === "pass"
-                                    ? "color-mix(in srgb, var(--success) 18%, transparent)"
-                                    : "transparent",
-                                color: decision === "pass" ? "var(--success)" : "var(--text-2)",
-                                fontSize: "12px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <Check size={14} /> {t("cmsReview.pass")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCriterionDecision(criterion.key, "fail")}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "6px 10px",
-                                borderRadius: "8px",
-                                border:
-                                  decision === "fail"
-                                    ? "1px solid var(--danger)"
-                                    : "1px solid var(--border)",
-                                background:
-                                  decision === "fail"
-                                    ? "color-mix(in srgb, var(--danger) 18%, transparent)"
-                                    : "transparent",
-                                color: decision === "fail" ? "var(--danger)" : "var(--text-2)",
-                                fontSize: "12px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <X size={14} /> {t("cmsReview.fail")}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div>
@@ -2377,6 +2680,399 @@ export const MapsPage: React.FC = () => {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={criteriaInfoModalOpen}
+        onClose={() => setCriteriaInfoModalOpen(false)}
+        title={t("cmsReview.criteriaInfo.title")}
+        maxWidth="640px"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {reviewCriteriaFetchFailed && (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid var(--warning)",
+                background: "color-mix(in srgb, var(--warning) 12%, transparent)",
+                color: "var(--text)",
+                fontSize: "13px",
+              }}
+            >
+              {t("cmsReview.criteriaInfo.fallbackHint")}
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {groupedEnabledReviewSections.map((section) => (
+              <div
+                key={`info-${section.sectionKey}`}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                  background: "var(--surface)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    background: "var(--surface-2)",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "var(--text)",
+                  }}
+                >
+                  {section.sectionTitle}
+                </div>
+                <ul style={{ margin: 0, padding: "10px 12px 10px 28px", fontSize: "13px", color: "var(--text)" }}>
+                  {section.criteria.map((c) => (
+                    <li key={c.criterionKey} style={{ marginBottom: "6px" }}>
+                      {c.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", flexWrap: "wrap" }}>
+            {canManageCriteriaOnServer && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCriteriaInfoModalOpen(false);
+                  setCriteriaManageModalOpen(true);
+                }}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                {t("cmsReview.criteriaInfo.manage")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setCriteriaInfoModalOpen(false)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: "none",
+                background: "var(--primary)",
+                color: "white",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              {t("cmsReview.criteriaInfo.close")}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={criteriaManageModalOpen}
+        onClose={() => setCriteriaManageModalOpen(false)}
+        title={t("cmsReview.criteriaManage.title")}
+        maxWidth="920px"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => void fetchReviewCriteria()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              <RefreshCw size={14} /> {t("cmsReview.criteriaManage.refresh")}
+            </button>
+            <button
+              type="button"
+              onClick={openCriterionCreate}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "none",
+                background: "var(--primary)",
+                color: "white",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={14} /> {t("cmsReview.criteriaManage.add")}
+            </button>
+          </div>
+
+          <div
+            style={{
+              overflowX: "auto",
+              border: "1px solid var(--border)",
+              borderRadius: "10px",
+            }}
+          >
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ background: "var(--surface-2)", textAlign: "left" }}>
+                  <th style={{ padding: "10px 12px" }}>{t("cmsReview.criteriaManage.colKey")}</th>
+                  <th style={{ padding: "10px 12px" }}>{t("cmsReview.criteriaManage.colSection")}</th>
+                  <th style={{ padding: "10px 12px" }}>{t("cmsReview.criteriaManage.colLabel")}</th>
+                  <th style={{ padding: "10px 12px", width: "72px" }}>{t("cmsReview.criteriaManage.colOrder")}</th>
+                  <th style={{ padding: "10px 12px", width: "88px" }}>{t("cmsReview.criteriaManage.colEnabled")}</th>
+                  <th style={{ padding: "10px 12px", width: "120px" }}>{t("cmsReview.criteriaManage.colActions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedCriteriaRowsForAdmin.map((row) => (
+                  <tr key={row.id} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "8px 12px", verticalAlign: "top", wordBreak: "break-word" }}>
+                      {row.criterionKey}
+                    </td>
+                    <td style={{ padding: "8px 12px", verticalAlign: "top", wordBreak: "break-word" }}>
+                      <div style={{ fontWeight: 600 }}>{row.sectionTitle}</div>
+                      <div style={{ color: "var(--text-2)", fontSize: "12px" }}>{row.sectionKey}</div>
+                    </td>
+                    <td style={{ padding: "8px 12px", verticalAlign: "top", wordBreak: "break-word" }}>{row.label}</td>
+                    <td style={{ padding: "8px 12px" }}>{row.sortOrder}</td>
+                    <td style={{ padding: "8px 12px" }}>
+                      {row.isEnabled ? t("cmsUsers.yes") : t("cmsUsers.no")}
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => openCriterionEdit(row)}
+                          title={t("cmsReview.criteriaManage.edit")}
+                          style={{
+                            padding: "6px",
+                            borderRadius: "6px",
+                            border: "1px solid var(--border)",
+                            background: "var(--surface)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleCriterionDelete(row.id)}
+                          title={t("cmsReview.criteriaManage.delete")}
+                          style={{
+                            padding: "6px",
+                            borderRadius: "6px",
+                            border: "1px solid var(--danger)",
+                            background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+                            color: "var(--danger)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => setCriteriaManageModalOpen(false)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "transparent",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={criterionFormModalOpen}
+        onClose={() => !criterionSaving && setCriterionFormModalOpen(false)}
+        title={
+          criterionEditingId
+            ? t("cmsReview.criteriaManage.editTitle")
+            : t("cmsReview.criteriaManage.createTitle")
+        }
+        maxWidth="520px"
+      >
+        <form onSubmit={handleCriterionFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+              {t("cmsReview.criteriaManage.fieldKey")}
+            </label>
+            <input
+              value={criterionForm.criterionKey}
+              onChange={(e) => setCriterionForm((p) => ({ ...p, criterionKey: e.target.value }))}
+              readOnly={!!criterionEditingId}
+              disabled={!!criterionEditingId}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: criterionEditingId ? "var(--surface-2)" : "var(--surface)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+              }}
+              placeholder={t("cmsReview.criteriaManage.fieldKeyPlaceholder")}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+              {t("cmsReview.criteriaManage.fieldSectionKey")}
+            </label>
+            <input
+              value={criterionForm.sectionKey}
+              onChange={(e) => setCriterionForm((p) => ({ ...p, sectionKey: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+              {t("cmsReview.criteriaManage.fieldSectionTitle")}
+            </label>
+            <input
+              value={criterionForm.sectionTitle}
+              onChange={(e) => setCriterionForm((p) => ({ ...p, sectionTitle: e.target.value }))}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+              {t("cmsReview.criteriaManage.fieldLabel")}
+            </label>
+            <textarea
+              value={criterionForm.label}
+              onChange={(e) => setCriterionForm((p) => ({ ...p, label: e.target.value }))}
+              rows={3}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text)",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 140px" }}>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "4px" }}>
+                {t("cmsReview.criteriaManage.fieldSortOrder")}
+              </label>
+              <input
+                type="number"
+                value={criterionForm.sortOrder}
+                onChange={(e) =>
+                  setCriterionForm((p) => ({ ...p, sortOrder: Number.parseInt(e.target.value, 10) || 0 }))
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "22px",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={criterionForm.isEnabled}
+                onChange={(e) => setCriterionForm((p) => ({ ...p, isEnabled: e.target.checked }))}
+              />
+              {t("cmsReview.criteriaManage.fieldEnabled")}
+            </label>
+          </div>
+          {criterionFormError && (
+            <div style={{ color: "var(--danger)", fontSize: "13px" }}>{criterionFormError}</div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+            <button
+              type="button"
+              disabled={criterionSaving}
+              onClick={() => setCriterionFormModalOpen(false)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "transparent",
+                cursor: criterionSaving ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={criterionSaving}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: "none",
+                background: criterionSaving ? "var(--surface-2)" : "var(--primary)",
+                color: "white",
+                cursor: criterionSaving ? "not-allowed" : "pointer",
+              }}
+            >
+              {criterionSaving ? t("cmsReview.submitting") : t("save")}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       {/* Add keyframes for loading spinner */}

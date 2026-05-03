@@ -203,3 +203,34 @@ export type GamesFilter = GetMapsParams;
 export type GamesResponseDto = GamesListResult;
 export type GameDetail = MapDetail;
 export type GameTag = MapTag;
+
+/** GET /api/cms/games/review-criteria */
+export interface GameReviewCriterion {
+  id: string;
+  criterionKey: string;
+  sectionKey: string;
+  sectionTitle: string;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+}
+
+export type GameReviewCriteriaListResult = ApiResult<GameReviewCriterion[]>;
+export type GameReviewCriterionMutationResult = ApiResult<GameReviewCriterion>;
+
+export interface CreateGameReviewCriterionPayload {
+  criterionKey: string;
+  sectionKey: string;
+  sectionTitle: string;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+}
+
+export interface UpdateGameReviewCriterionPayload {
+  sectionKey: string;
+  sectionTitle: string;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+}

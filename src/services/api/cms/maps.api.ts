@@ -7,6 +7,10 @@ import type {
   ApproveMapParams,
   RejectMapParams,
   MapTagsResult,
+  GameReviewCriteriaListResult,
+  GameReviewCriterionMutationResult,
+  CreateGameReviewCriterionPayload,
+  UpdateGameReviewCriterionPayload,
 } from "@/types/api/cms/maps";
 import type { ApiResult } from "@/types/api/common";
 import type { DuplicateGameAsNewRequest, UploadGameFromJsonParams } from "@/types/api/learner/maps";
@@ -269,6 +273,26 @@ export const cmsMapsApi = {
         "Content-Type": "multipart/form-data",
       },
     });
+  },
+
+  /** GET /api/cms/games/review-criteria */
+  getGameReviewCriteria() {
+    return cmsAxios.get<GameReviewCriteriaListResult>("/api/cms/games/review-criteria");
+  },
+
+  /** POST /api/cms/games/review-criteria (Admin) */
+  createGameReviewCriterion(body: CreateGameReviewCriterionPayload) {
+    return cmsAxios.post<GameReviewCriterionMutationResult>("/api/cms/games/review-criteria", body);
+  },
+
+  /** PUT /api/cms/games/review-criteria/{id} (Admin) */
+  updateGameReviewCriterion(id: string, body: UpdateGameReviewCriterionPayload) {
+    return cmsAxios.put<GameReviewCriterionMutationResult>(`/api/cms/games/review-criteria/${id}`, body);
+  },
+
+  /** DELETE /api/cms/games/review-criteria/{id} (Admin) */
+  deleteGameReviewCriterion(id: string) {
+    return cmsAxios.delete<ApiResult>(`/api/cms/games/review-criteria/${id}`);
   },
 
   // Note: /api/cms/level-maps endpoints have been deprecated.
