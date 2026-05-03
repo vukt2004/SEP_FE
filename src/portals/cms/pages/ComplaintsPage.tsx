@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cmsComplaintsApi } from "@/services/api/cms/complaints.api";
 import { cmsUsersApi } from "@/services/api/cms/users.api";
-import { COMPLAINT_STATUSES, type ComplaintStatus } from "@/types/api/complaints";
+import { type ComplaintStatus } from "@/types/api/complaints";
+import type { CmsComplaintListQuery } from "@/types/api/cms/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
 import { Search, SlidersHorizontal, Ticket, Hourglass, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translations";
@@ -11,10 +12,6 @@ const pageSize = 10;
 const DEFAULT_AVATAR = "/brand/avatar-fallback.png";
 const SOLVED_FILTER_VALUE = "__solved";
 const PENDING_FILTER_VALUE = "__pending";
-const SOLVED_STATUSES: ComplaintStatus[] = ["Resolved", "ResolvedRefund", "ResolvedReject", "Closed"];
-const SOLVED_STATUS_SET = new Set<ComplaintStatus>(SOLVED_STATUSES);
-const PENDING_STATUSES = COMPLAINT_STATUSES.filter((status) => !SOLVED_STATUS_SET.has(status));
-const PENDING_STATUS_SET = new Set<ComplaintStatus>(PENDING_STATUSES);
 
 type UserPreview = {
   name: string;
@@ -60,8 +57,11 @@ export default function ComplaintsPage() {
   const [userNameFilter, setUserNameFilter] = useState(searchParams.get("userName") ?? "");
   const [sortBy, setSortBy] = useState<"id" | "userId" | "subject" | "createdAt" | "status">("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [serverTotalPages, setServerTotalPages] = useState(1);
+  const [stats, setStats] = useState({ total: 0, pending: 0, solved: 0 });
 
-  const pageNumber = Number(searchParams.get("pageNumber") || "1");
+  const rawPage = Number(searchParams.get("pageNumber") || "1");
+  const pageNumber = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
   const rawStatus = searchParams.get("status") ?? "";
   const status =
     rawStatus === SOLVED_FILTER_VALUE || rawStatus === PENDING_FILTER_VALUE
@@ -90,27 +90,25 @@ export default function ComplaintsPage() {
       try {
         setLoading(true);
         setError("");
-        const first = await cmsComplaintsApi.getComplaints({ pageNumber: 1, pageSize: 100 });
+        const params: CmsComplaintListQuery = {
+          pageNumber,
+          pageSize,
+          keyword: keyword || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        };
+        if (status === SOLVED_FILTER_VALUE) params.statusGroup = "solved";
+        else if (status === PENDING_FILTER_VALUE) params.statusGroup = "pending";
+
+        const res = await cmsComplaintsApi.getComplaints(params);
         if (!mounted) return;
-        if (!first.data.isSuccess || !first.data.data) {
-          setError(first.data.message || t("complaints.failedLoad"));
+        if (!res.data.isSuccess || !res.data.data) {
+          setError(res.data.message || t("complaints.failedLoad"));
           return;
         }
-
-        let all = [...first.data.data.items];
-        const pages = first.data.data.totalPages || 1;
-        if (pages > 1) {
-          const rest = await Promise.all(
-            Array.from({ length: pages - 1 }, (_, idx) =>
-              cmsComplaintsApi.getComplaints({ pageNumber: idx + 2, pageSize: 100 }),
-            ),
-          );
-          rest.forEach((res) => {
-            if (res.data.isSuccess && res.data.data) all = all.concat(res.data.data.items);
-          });
-        }
-        if (!mounted) return;
-        setItems(all);
+        const data = res.data.data;
+        setServerTotalPages(Math.max(1, data.totalPages || 1));
+        setItems(data.items);
       } catch {
         if (!mounted) return;
         setError(t("complaints.failedLoad"));
@@ -122,7 +120,64 @@ export default function ComplaintsPage() {
     return () => {
       mounted = false;
     };
-  }, [retryToken, t]);
+  }, [retryToken, pageNumber, keyword, dateFrom, dateTo, status, t]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadStats() {
+      const base: CmsComplaintListQuery = {
+        pageNumber: 1,
+        pageSize: 1,
+        keyword: keyword || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      };
+      try {
+        if (status === SOLVED_FILTER_VALUE) {
+          const r = await cmsComplaintsApi.getComplaints({ ...base, statusGroup: "solved" });
+          if (!mounted || !r.data.isSuccess || !r.data.data) return;
+          const n = r.data.data.totalItems;
+          setStats({ total: n, pending: 0, solved: n });
+          return;
+        }
+        if (status === PENDING_FILTER_VALUE) {
+          const r = await cmsComplaintsApi.getComplaints({ ...base, statusGroup: "pending" });
+          if (!mounted || !r.data.isSuccess || !r.data.data) return;
+          const n = r.data.data.totalItems;
+          setStats({ total: n, pending: n, solved: 0 });
+          return;
+        }
+        const [allRes, pendRes, solRes] = await Promise.all([
+          cmsComplaintsApi.getComplaints(base),
+          cmsComplaintsApi.getComplaints({ ...base, statusGroup: "pending" }),
+          cmsComplaintsApi.getComplaints({ ...base, statusGroup: "solved" }),
+        ]);
+        if (!mounted) return;
+        setStats({
+          total: allRes.data.data?.totalItems ?? 0,
+          pending: pendRes.data.data?.totalItems ?? 0,
+          solved: solRes.data.data?.totalItems ?? 0,
+        });
+      } catch {
+        if (mounted) setStats({ total: 0, pending: 0, solved: 0 });
+      }
+    }
+    loadStats();
+    return () => {
+      mounted = false;
+    };
+  }, [keyword, dateFrom, dateTo, status, retryToken]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (pageNumber > serverTotalPages && serverTotalPages >= 1) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set("pageNumber", String(serverTotalPages));
+        return next;
+      });
+    }
+  }, [loading, pageNumber, serverTotalPages, setSearchParams]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -171,43 +226,19 @@ export default function ComplaintsPage() {
     };
   }, [hoveredTicketId, ticketPreviewMap]);
 
+  /** Server applies keyword, dates, status chip; user name is filtered on the current page only (display names are not indexed server-side). */
   const filteredItems = useMemo(() => {
-    const keywordNorm = normalizeText(keyword);
     const userNameNorm = normalizeText(userName);
+    if (!userNameNorm) return items;
     return items.filter((item) => {
-      if (status === SOLVED_FILTER_VALUE && !SOLVED_STATUS_SET.has(item.complaintStatus)) return false;
-      if (status === PENDING_FILTER_VALUE && !PENDING_STATUS_SET.has(item.complaintStatus)) return false;
-      if (
-        status &&
-        status !== SOLVED_FILTER_VALUE &&
-        status !== PENDING_FILTER_VALUE &&
-        item.complaintStatus !== status
-      ) {
-        return false;
-      }
-      if (dateFrom && new Date(item.createdAt) < new Date(dateFrom)) return false;
-      if (dateTo && new Date(item.createdAt) > new Date(`${dateTo}T23:59:59`)) return false;
-      if (keywordNorm) {
-        const haystack = normalizeText([item.subject, item.category, item.description ?? ""].join(" "));
-        if (!haystack.includes(keywordNorm)) return false;
-      }
-      if (userNameNorm) {
-        const name = normalizeText(userMap[item.userId]?.name ?? "");
-        if (!name.includes(userNameNorm)) return false;
-      }
-      return true;
+      const name = normalizeText(userMap[item.userId]?.name ?? "");
+      return name.includes(userNameNorm);
     });
-  }, [dateFrom, dateTo, items, keyword, status, userMap, userName]);
-  const pendingCount = useMemo(
-    () => filteredItems.filter((x) => PENDING_STATUS_SET.has(x.complaintStatus)).length,
-    [filteredItems],
-  );
-  const solvedCount = useMemo(
-    () => filteredItems.filter((x) => SOLVED_STATUS_SET.has(x.complaintStatus)).length,
-    [filteredItems],
-  );
-  const totalItems = filteredItems.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  }, [items, userMap, userName]);
+  const pendingCount = stats.pending;
+  const solvedCount = stats.solved;
+  const totalItems = stats.total;
+  const totalPages = serverTotalPages;
   const sortedItems = useMemo(() => {
     const list = [...filteredItems];
     list.sort((a, b) => {
@@ -235,10 +266,7 @@ export default function ComplaintsPage() {
     });
     return list;
   }, [filteredItems, sortBy, sortDir]);
-  const pagedItems = useMemo(
-    () => sortedItems.slice((pageNumber - 1) * pageSize, pageNumber * pageSize),
-    [pageNumber, sortedItems],
-  );
+  const pagedItems = sortedItems;
   const empty = useMemo(() => !loading && !error && pagedItems.length === 0, [error, loading, pagedItems.length]);
   const hoveredTicket = useMemo(
     () => sortedItems.find((item) => item.id === hoveredTicketId) ?? null,

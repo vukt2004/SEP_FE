@@ -3,6 +3,8 @@ import type { ComplaintDetailResult, ComplaintListResult, ComplaintStatus } from
 
 export type CmsComplaintListQuery = {
   status?: ComplaintStatus;
+  /** CMS list chips: all non-terminal vs terminal outcomes (matches API). */
+  statusGroup?: "pending" | "solved";
   pageNumber?: number;
   pageSize?: number;
   userId?: string;
