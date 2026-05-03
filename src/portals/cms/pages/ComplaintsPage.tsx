@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { cmsComplaintsApi } from "@/services/api/cms/complaints.api";
-import { cmsUsersApi } from "@/services/api/cms/users.api";
 import { type ComplaintStatus } from "@/types/api/complaints";
 import type { CmsComplaintListQuery } from "@/types/api/cms/complaints";
 import { ComplaintStatusBadge } from "@/shared/components/complaints/ComplaintStatusBadge";
@@ -9,18 +8,8 @@ import { Search, SlidersHorizontal, Ticket, Hourglass, CheckCircle2, ChevronsUpD
 import { useTranslation } from "@/lib/i18n/translations";
 
 const pageSize = 10;
-const DEFAULT_AVATAR = "/brand/avatar-fallback.png";
 const SOLVED_FILTER_VALUE = "__solved";
 const PENDING_FILTER_VALUE = "__pending";
-
-type UserPreview = {
-  name: string;
-  avatarPath: string | null;
-};
-
-type TicketPreview = {
-  description: string;
-};
 
 function normalizeText(value: string) {
   return value
@@ -37,6 +26,7 @@ export default function ComplaintsPage() {
     Array<{
       id: string;
       userId: string;
+      buyerDisplayName?: string;
       subject: string;
       category: string;
       description?: string;
@@ -44,14 +34,10 @@ export default function ComplaintsPage() {
       createdAt: string;
     }>
   >([]);
-  const [userMap, setUserMap] = useState<Record<string, UserPreview>>({});
-  const [ticketPreviewMap, setTicketPreviewMap] = useState<Record<string, TicketPreview>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryToken, setRetryToken] = useState(0);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [hoveredTicketId, setHoveredTicketId] = useState("");
-  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0 });
   const [keywordInput, setKeywordInput] = useState(searchParams.get("keyword") ?? "");
   const [isKeywordComposing, setIsKeywordComposing] = useState(false);
   const [userNameFilter, setUserNameFilter] = useState(searchParams.get("userName") ?? "");
@@ -104,14 +90,28 @@ export default function ComplaintsPage() {
         if (!mounted) return;
         if (!res.data.isSuccess || !res.data.data) {
           setError(res.data.message || t("complaints.failedLoad"));
+          setStats({ total: 0, pending: 0, solved: 0 });
           return;
         }
         const data = res.data.data;
         setServerTotalPages(Math.max(1, data.totalPages || 1));
         setItems(data.items);
+        const scope = data.complaintScopeStats;
+        if (status === SOLVED_FILTER_VALUE) {
+          setStats({ total: data.totalItems, pending: 0, solved: data.totalItems });
+        } else if (status === PENDING_FILTER_VALUE) {
+          setStats({ total: data.totalItems, pending: data.totalItems, solved: 0 });
+        } else {
+          setStats({
+            total: data.totalItems,
+            pending: scope?.pendingInScope ?? 0,
+            solved: scope?.solvedInScope ?? 0,
+          });
+        }
       } catch {
         if (!mounted) return;
         setError(t("complaints.failedLoad"));
+        setStats({ total: 0, pending: 0, solved: 0 });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -121,52 +121,6 @@ export default function ComplaintsPage() {
       mounted = false;
     };
   }, [retryToken, pageNumber, keyword, dateFrom, dateTo, status, t]);
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadStats() {
-      const base: CmsComplaintListQuery = {
-        pageNumber: 1,
-        pageSize: 1,
-        keyword: keyword || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      };
-      try {
-        if (status === SOLVED_FILTER_VALUE) {
-          const r = await cmsComplaintsApi.getComplaints({ ...base, statusGroup: "solved" });
-          if (!mounted || !r.data.isSuccess || !r.data.data) return;
-          const n = r.data.data.totalItems;
-          setStats({ total: n, pending: 0, solved: n });
-          return;
-        }
-        if (status === PENDING_FILTER_VALUE) {
-          const r = await cmsComplaintsApi.getComplaints({ ...base, statusGroup: "pending" });
-          if (!mounted || !r.data.isSuccess || !r.data.data) return;
-          const n = r.data.data.totalItems;
-          setStats({ total: n, pending: n, solved: 0 });
-          return;
-        }
-        const [allRes, pendRes, solRes] = await Promise.all([
-          cmsComplaintsApi.getComplaints(base),
-          cmsComplaintsApi.getComplaints({ ...base, statusGroup: "pending" }),
-          cmsComplaintsApi.getComplaints({ ...base, statusGroup: "solved" }),
-        ]);
-        if (!mounted) return;
-        setStats({
-          total: allRes.data.data?.totalItems ?? 0,
-          pending: pendRes.data.data?.totalItems ?? 0,
-          solved: solRes.data.data?.totalItems ?? 0,
-        });
-      } catch {
-        if (mounted) setStats({ total: 0, pending: 0, solved: 0 });
-      }
-    }
-    loadStats();
-    return () => {
-      mounted = false;
-    };
-  }, [keyword, dateFrom, dateTo, status, retryToken]);
 
   useEffect(() => {
     if (loading) return;
@@ -179,62 +133,15 @@ export default function ComplaintsPage() {
     }
   }, [loading, pageNumber, serverTotalPages, setSearchParams]);
 
-  useEffect(() => {
-    if (items.length === 0) return;
-    let ignore = false;
-    async function hydrateUsers() {
-      const ids = Array.from(new Set(items.map((x) => x.userId).filter(Boolean)));
-      const next: Record<string, UserPreview> = {};
-      const results = await Promise.allSettled(ids.map((id) => cmsUsersApi.getUserById(id)));
-      results.forEach((result) => {
-        if (result.status !== "fulfilled") return;
-        const user = result.value.data.data;
-        if (!user?.id) return;
-        const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-        next[user.id] = {
-          name: fullName || user.email || user.id,
-          avatarPath: user.avatarPath ?? null,
-        };
-      });
-      if (!ignore) setUserMap(next);
-    }
-    hydrateUsers();
-    return () => {
-      ignore = true;
-    };
-  }, [items]);
-
-  useEffect(() => {
-    if (!hoveredTicketId || ticketPreviewMap[hoveredTicketId]) return;
-    let ignore = false;
-    async function hydrateTicketPreview() {
-      try {
-        const res = await cmsComplaintsApi.getComplaintById(hoveredTicketId);
-        const detail = res.data.data;
-        if (!res.data.isSuccess || !detail || ignore) return;
-        setTicketPreviewMap((prev) => ({
-          ...prev,
-          [hoveredTicketId]: { description: detail.description || "" },
-        }));
-      } catch {
-        // ignore preview errors
-      }
-    }
-    hydrateTicketPreview();
-    return () => {
-      ignore = true;
-    };
-  }, [hoveredTicketId, ticketPreviewMap]);
-
-  /** Server applies keyword, dates, status chip; user name is filtered on the current page only (display names are not indexed server-side). */
+  /** Server applies keyword, dates, status chip; user name filter matches buyer display name on the current page only. */
   const filteredItems = useMemo(() => {
     const userNameNorm = normalizeText(userName);
     if (!userNameNorm) return items;
     return items.filter((item) => {
-      const name = normalizeText(userMap[item.userId]?.name ?? "");
+      const name = normalizeText((item.buyerDisplayName ?? "").trim());
       return name.includes(userNameNorm);
     });
-  }, [items, userMap, userName]);
+  }, [items, userName]);
   const pendingCount = stats.pending;
   const solvedCount = stats.solved;
   const totalItems = stats.total;
@@ -268,10 +175,6 @@ export default function ComplaintsPage() {
   }, [filteredItems, sortBy, sortDir]);
   const pagedItems = sortedItems;
   const empty = useMemo(() => !loading && !error && pagedItems.length === 0, [error, loading, pagedItems.length]);
-  const hoveredTicket = useMemo(
-    () => sortedItems.find((item) => item.id === hoveredTicketId) ?? null,
-    [hoveredTicketId, sortedItems],
-  );
 
   useEffect(() => {
     const nextUserName = userNameFilter.trim();
@@ -500,11 +403,7 @@ export default function ComplaintsPage() {
                   style={{
                     borderBottom: "1px solid var(--border)",
                     cursor: "pointer",
-                    background: hoveredTicketId === c.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent",
                   }}
-                  onMouseEnter={() => setHoveredTicketId(c.id)}
-                  onMouseMove={(e) => setPreviewPos({ x: e.clientX + 16, y: e.clientY + 16 })}
-                  onMouseLeave={() => setHoveredTicketId((prev) => (prev === c.id ? "" : prev))}
                   onClick={() => navigate(`/cms/complaints/${c.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -517,7 +416,7 @@ export default function ComplaintsPage() {
                 >
                   <td style={{ padding: 12, fontWeight: 700 }}>#{c.id.slice(0, 8)}</td>
                   <td style={{ padding: 12, color: "var(--text-2)" }}>
-                    {userMap[c.userId]?.name ?? c.userId.slice(0, 8)}
+                    {c.buyerDisplayName?.trim() || c.userId.slice(0, 8)}
                   </td>
                   <td style={{ padding: 12 }}>{c.subject}</td>
                   <td style={{ padding: 12, color: "var(--text-2)" }}>{new Date(c.createdAt).toLocaleDateString()}</td>
@@ -604,46 +503,6 @@ export default function ComplaintsPage() {
           </div>
         ) : null}
       </div>
-      {hoveredTicket ? (
-        <div
-          style={{
-            position: "fixed",
-            left: previewPos.x,
-            top: previewPos.y,
-            zIndex: 80,
-            pointerEvents: "none",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: "10px 12px",
-            background: "var(--surface)",
-            boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
-            display: "grid",
-            gap: 4,
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "var(--text-2)" }}>{t("complaints.quickPreview")}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img
-              src={userMap[hoveredTicket.userId]?.avatarPath || DEFAULT_AVATAR}
-              alt={userMap[hoveredTicket.userId]?.name || hoveredTicket.userId}
-              style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1px solid var(--border)" }}
-            />
-            <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {userMap[hoveredTicket.userId]?.name ?? hoveredTicket.userId.slice(0, 8)}
-            </div>
-          </div>
-          <div style={{ fontWeight: 700 }}>
-            {hoveredTicket.category} • {hoveredTicket.userId.replace(/-/g, "").slice(0, 5)}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {ticketPreviewMap[hoveredTicket.id]?.description || t("complaints.loadingDescription")}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--text-2)" }}>
-            {new Date(hoveredTicket.createdAt).toLocaleString()}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -81,6 +81,8 @@ export type ComplaintContextResolved = {
 export type ComplaintItem = {
   id: string;
   userId: string;
+  /** Buyer display name from server (CMS list); avoids extra user API calls. */
+  buyerDisplayName?: string;
   buyerUserId?: string;
   sellerUserId?: string;
   subject: string;
@@ -130,6 +132,12 @@ export type PaginationData<T> = {
   hasPrevious?: boolean;
   hasNext?: boolean;
   items: T[];
+  /** Present on CMS GET /complaints — counts for current keyword/date scope (ignores status chip). */
+  complaintScopeStats?: {
+    totalInScope: number;
+    pendingInScope: number;
+    solvedInScope: number;
+  };
 };
 
 export type ComplaintDetail = ComplaintItem & {
