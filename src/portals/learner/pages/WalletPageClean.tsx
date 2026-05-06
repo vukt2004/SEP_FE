@@ -8,6 +8,7 @@ import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import {
   CoinTransactionTypeEnum,
   orbitCoinApi,
+  type EscrowPendingTransaction,
   type OrbitCoinTransaction,
   type TransactionHistoryParams,
   type WalletDashboardGameItem,
@@ -23,7 +24,7 @@ type WalletFilters = {
   search: string;
   statuses: string[];
 };
-type WalletTab = "overview" | "transactions" | "revenue";
+type WalletTab = "overview" | "transactions" | "pending" | "revenue";
 type DisplayCurrency = "VND" | "OC";
 
 const PAGE_SIZE = 20;
@@ -51,6 +52,7 @@ const dict = {
     allType: "All types",
     search: "Search transaction/game/counterparty",
     transactions: "Transactions",
+    pendingTransactions: "Pending transactions",
     creatorGames: "Creator revenue",
     loadMore: "Load more",
     exportCsv: "Export CSV",
@@ -132,6 +134,7 @@ const dict = {
     allType: "Tất cả loại",
     search: "Tìm theo mã giao dịch/game/đối tượng",
     transactions: "Giao dịch",
+    pendingTransactions: "Giao dịch đang chờ",
     creatorGames: "Doanh thu creator",
     loadMore: "Xem thêm",
     exportCsv: "Xuất CSV",
@@ -206,6 +209,7 @@ export default function WalletPageClean() {
   const { locale } = useLanguageStore();
   const t = dict[locale];
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const pendingSentinelRef = useRef<HTMLDivElement | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_WIDTH);
   const [filters, setFilters] = useState<WalletFilters>(defaultFilters());
   const [page, setPage] = useState(1);
@@ -214,11 +218,18 @@ export default function WalletPageClean() {
   const [trend, setTrend] = useState<WalletDashboardTrendItem[]>([]);
   const [games, setGames] = useState<WalletDashboardGameItem[]>([]);
   const [transactions, setTransactions] = useState<OrbitCoinTransaction[]>([]);
+  const [pendingTransactions, setPendingTransactions] = useState<EscrowPendingTransaction[]>([]);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [pendingHasNext, setPendingHasNext] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedTx, setSelectedTx] = useState<OrbitCoinTransaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingLoadingMore, setPendingLoadingMore] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<WalletTab>("overview");
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
@@ -239,6 +250,7 @@ export default function WalletPageClean() {
   }, [transactions, availableStatuses]);
 
   const hasMore = transactions.length < totalCount;
+  const pendingHasMore = pendingHasNext || (pendingTotal > 0 && pendingTransactions.length < pendingTotal);
   const canAccessCreator = (summary?.grossRevenue ?? 0) > 0 || games.length > 0;
   const filteredTransactions = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
@@ -272,6 +284,16 @@ export default function WalletPageClean() {
       search: filters.search.trim() || undefined,
     }),
     [filters, page],
+  );
+  const pendingQuery = useMemo(
+    () => ({
+      pageNumber: pendingPage,
+      pageSize: PAGE_SIZE,
+      from: filters.from,
+      to: filters.to,
+      search: filters.search.trim() || undefined,
+    }),
+    [filters.from, filters.search, filters.to, pendingPage],
   );
 
   useEffect(() => {
@@ -316,6 +338,7 @@ export default function WalletPageClean() {
 
   useEffect(() => {
     setPage(1);
+    setPendingPage(1);
   }, [filters]);
 
   useEffect(() => {
@@ -363,6 +386,38 @@ export default function WalletPageClean() {
   }, [query, dashboardRole, page]);
 
   useEffect(() => {
+    if (activeTab !== "pending") return undefined;
+    let alive = true;
+    (async () => {
+      setPendingError(null);
+      if (pendingPage === 1) setPendingLoading(true);
+      else setPendingLoadingMore(true);
+      try {
+        const res = await orbitCoinApi.getEscrowPending(pendingQuery);
+        if (!alive) return;
+        if (!res.isSuccess) throw new Error("load");
+        const data = res.data;
+        const items = data?.items ?? [];
+        setPendingTotal(data?.totalItems ?? items.length);
+        setPendingHasNext(Boolean(data?.hasNext));
+        setPendingTransactions((prev) => (pendingPage === 1 ? items : [...prev, ...items]));
+      } catch {
+        if (alive) {
+          setPendingError(locale === "vi" ? "Không thể tải giao dịch đang chờ." : "Failed to load pending transactions.");
+        }
+      } finally {
+        if (alive) {
+          setPendingLoading(false);
+          setPendingLoadingMore(false);
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [activeTab, locale, pendingPage, pendingQuery]);
+
+  useEffect(() => {
     if (!isCreator && activeTab === "revenue") {
       setActiveTab("overview");
     }
@@ -381,6 +436,20 @@ export default function WalletPageClean() {
     observer.observe(node);
     return () => observer.disconnect();
   }, [isMobile, hasMore, loadingMore, loading]);
+
+  useEffect(() => {
+    if (!isMobile || activeTab !== "pending" || !pendingHasMore || pendingLoadingMore || pendingLoading) return;
+    const node = pendingSentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first?.isIntersecting) {
+        setPendingPage((p) => p + 1);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isMobile, activeTab, pendingHasMore, pendingLoadingMore, pendingLoading]);
 
   const handleExportCsv = () => {
     if (!isValidExportWindow(filters.from, filters.to) || games.length > 10000) {
@@ -536,20 +605,24 @@ export default function WalletPageClean() {
       <section style={styles.filters}>
         <input style={styles.input} type="date" value={filters.from} onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} />
         <input style={styles.input} type="date" value={filters.to} onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} />
-        <select style={styles.input} value={filters.direction} onChange={(e) => setFilters((p) => ({ ...p, direction: e.target.value as WalletFilters["direction"] }))}>
-          <option value="">{t.allFlow}</option><option value="In">In</option><option value="Out">Out</option>
-        </select>
-        <select style={styles.input} value={filters.category} onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value as WalletFilters["category"] }))}>
-          <option value="">{t.allType}</option><option value="Topup">Topup</option><option value="BuyPackage">Buy package</option><option value="BuyGame">Buy game</option><option value="GameRevenue">Game revenue</option>
-        </select>
-        <select
-          style={styles.input}
-          value={filters.statuses[0] ?? ""}
-          onChange={(e) => setFilters((p) => ({ ...p, statuses: e.target.value ? [e.target.value] : [] }))}
-        >
-          <option value="">{t.allStatus}</option>
-          {statusOptions.map((status) => <option key={status} value={status}>{friendlyStatus(status, locale)}</option>)}
-        </select>
+        {activeTab !== "pending" ? (
+          <>
+            <select style={styles.input} value={filters.direction} onChange={(e) => setFilters((p) => ({ ...p, direction: e.target.value as WalletFilters["direction"] }))}>
+              <option value="">{t.allFlow}</option><option value="In">In</option><option value="Out">Out</option>
+            </select>
+            <select style={styles.input} value={filters.category} onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value as WalletFilters["category"] }))}>
+              <option value="">{t.allType}</option><option value="Topup">Topup</option><option value="BuyPackage">Buy package</option><option value="BuyGame">Buy game</option><option value="GameRevenue">Game revenue</option>
+            </select>
+            <select
+              style={styles.input}
+              value={filters.statuses[0] ?? ""}
+              onChange={(e) => setFilters((p) => ({ ...p, statuses: e.target.value ? [e.target.value] : [] }))}
+            >
+              <option value="">{t.allStatus}</option>
+              {statusOptions.map((status) => <option key={status} value={status}>{friendlyStatus(status, locale)}</option>)}
+            </select>
+          </>
+        ) : null}
         <input
           style={{ ...styles.input, minWidth: 260 }}
           placeholder={t.search}
@@ -562,6 +635,7 @@ export default function WalletPageClean() {
       <section style={styles.tabs}>
         <button style={tabBtn(activeTab === "overview")} onClick={() => setActiveTab("overview")}>{t.overviewTab}</button>
         <button style={tabBtn(activeTab === "transactions")} onClick={() => setActiveTab("transactions")}>{t.transactions}</button>
+        <button style={tabBtn(activeTab === "pending")} onClick={() => setActiveTab("pending")}>{t.pendingTransactions}</button>
         {isCreator ? (
           <button style={tabBtn(activeTab === "revenue")} onClick={() => setActiveTab("revenue")}>{t.creatorGames}</button>
         ) : null}
@@ -634,6 +708,61 @@ export default function WalletPageClean() {
             </button>
           ) : null}
           {isMobile ? <div ref={sentinelRef} style={{ height: 1 }} /> : null}
+        </section>
+      ) : null}
+
+      {activeTab === "pending" ? (
+        <section style={styles.panel}>
+          <h3 style={styles.panelTitle}>{t.pendingTransactions}</h3>
+          {pendingLoading ? <div style={styles.sub}>Loading...</div> : null}
+          {pendingError ? <div style={styles.err}>{pendingError}</div> : null}
+          {!pendingLoading && !pendingError && pendingTransactions.length === 0 ? (
+            <div style={styles.notice}>
+              <div style={styles.noticeTitle}>{locale === "vi" ? "Không có giao dịch đang chờ." : "No pending transactions."}</div>
+              <div style={styles.sub}>{locale === "vi" ? "Thử đổi bộ lọc hoặc kiểm tra lại sau." : "Adjust filters or check back later."}</div>
+            </div>
+          ) : null}
+          {pendingTransactions.length > 0 ? (
+            <div style={styles.tableWrap}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>{t.time}</th>
+                    <th style={styles.th}>{t.game}</th>
+                    <th style={styles.th}>{t.buyer}</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>{t.amount}</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>{t.fee}</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>{t.net}</th>
+                    <th style={styles.th}>{t.status}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingTransactions.map((tx) => (
+                    <tr key={tx.paymentRecordId} style={styles.tr}>
+                      <td style={styles.td}>{tx.paidAt ? new Date(tx.paidAt).toLocaleString() : t.statusUnavailable}</td>
+                      <td style={styles.td}>{tx.gameTitle || t.statusUnavailable}</td>
+                      <td style={styles.td}>
+                        <div style={{ display: "grid", gap: 2 }}>
+                          <div>{tx.buyerName || t.statusUnavailable}</div>
+                          <div style={styles.sub}>{tx.buyerEmail || t.statusUnavailable}</div>
+                        </div>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: "right" }}>{formatPendingAmount(tx.amount, exchangeRate, displayCurrency)}</td>
+                      <td style={{ ...styles.td, textAlign: "right" }}>{formatPendingAmount(tx.feeAmount, exchangeRate, displayCurrency)}</td>
+                      <td style={{ ...styles.td, textAlign: "right" }}>{formatPendingAmount(tx.sellerReceives, exchangeRate, displayCurrency)}</td>
+                      <td style={styles.td}>{tx.paymentStatus ? friendlyStatus(tx.paymentStatus, locale) : t.statusUnavailable}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          {!isMobile && pendingHasMore ? (
+            <button style={styles.btn} disabled={pendingLoadingMore} onClick={() => setPendingPage((p) => p + 1)}>
+              {pendingLoadingMore ? "Loading..." : t.loadMore}
+            </button>
+          ) : null}
+          {isMobile ? <div ref={pendingSentinelRef} style={{ height: 1 }} /> : null}
         </section>
       ) : null}
 
@@ -922,6 +1051,11 @@ function formatTxAmount(tx: OrbitCoinTransaction, exchangeRate: number, currency
       : null;
   if (amountVnd == null) return `${Math.round(tx.amount).toLocaleString("en-US")} OC`;
   return `${sign}${formatDisplayMoney(amountVnd, exchangeRate, currency)}`;
+}
+function formatPendingAmount(amountOc: number, exchangeRate: number, currency: DisplayCurrency) {
+  if (currency === "OC") return fmtOc(amountOc);
+  if (exchangeRate <= 0) return `${Math.round(amountOc).toLocaleString("en-US")} OC`;
+  return fmtVnd(amountOc * exchangeRate);
 }
 function resolveTxStatus(tx: OrbitCoinTransaction, locale: "en" | "vi", fallback: string) {
   if (tx.status) return friendlyStatus(tx.status, locale);

@@ -786,8 +786,10 @@ export const MapsPage: React.FC = () => {
           return;
         }
         
-        // Compact format: use criterion keys only to reduce payload size
-        const failedCriteriaKeys = failedCriteria.map((c) => c.criterionKey).join("; ");
+        // Compact format: use criterion keys but strip dashes for readability
+        const failedCriteriaKeys = failedCriteria
+          .map((c) => c.criterionKey.replace(/-/g, " "))
+          .join("; ");
         
         const rejectReason = [
           "Failed criteria: " + failedCriteriaKeys,

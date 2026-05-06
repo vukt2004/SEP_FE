@@ -122,6 +122,40 @@ export type WalletDashboardGames = {
   items: WalletDashboardGameItem[];
 };
 
+export type EscrowPendingTransaction = {
+  paymentRecordId: string;
+  gameId: string;
+  gameTitle: string;
+  buyerId: string;
+  buyerName: string;
+  buyerEmail: string;
+  amount: number;
+  feeAmount: number;
+  sellerReceives: number;
+  paidAt?: string | null;
+  paymentStatus: string;
+};
+
+export type EscrowPendingList = {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  items: EscrowPendingTransaction[];
+  isSuccess?: boolean;
+  message?: string | null;
+};
+
+export type EscrowPendingParams = {
+  pageNumber?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+};
+
 export type TransactionHistoryParams = {
   pageNumber?: number;
   pageSize?: number;
@@ -229,6 +263,22 @@ export const orbitCoinApi = {
     const { data } = await learnerAxios.get<ApiResult<ExchangeRate>>(
       "/api/learner/orbitcoin/exchange-rate",
       { params: { fromCurrency: params.fromCurrency ?? "OrbitCoin", toCurrency: params.toCurrency ?? "VND" } },
+    );
+    return data;
+  },
+
+  getEscrowPending: async (params: EscrowPendingParams = {}) => {
+    const { data } = await learnerAxios.get<ApiResult<EscrowPendingList>>(
+      "/api/learner/orbitcoin/escrow/pending",
+      {
+        params: {
+          pageNumber: params.pageNumber ?? 1,
+          pageSize: params.pageSize ?? 20,
+          from: params.from,
+          to: params.to,
+          search: params.search,
+        },
+      },
     );
     return data;
   },
