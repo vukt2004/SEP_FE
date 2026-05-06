@@ -6,12 +6,6 @@ import { useTranslation } from "@/lib/i18n/translations";
 import { Megaphone, ShieldAlert } from "lucide-react";
 import { BarChart, Bar, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const isDevLikeHost =
-  typeof window !== "undefined" &&
-  (window.location.hostname.includes("localhost") ||
-    window.location.hostname.includes("127.0.0.1") ||
-    window.location.hostname.includes(".local"));
-
 const formatVnd = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -22,8 +16,6 @@ const formatVnd = (value: number) =>
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [mockMode, setMockMode] = useState(false);
-  const [showDevTools, setShowDevTools] = useState(false);
   const [overview, setOverview] = useState<{ totalUsers: number; totalMaps: number; totalPublishedMaps: number } | null>(null);
   const [analytics, setAnalytics] = useState<{
     mapStatusCounts: Array<{ name: string; value: number }>;
@@ -78,26 +70,22 @@ export const DashboardPage: React.FC = () => {
 
     const mapStatusDist = (analytics?.mapStatusCounts ?? []).map((item, idx) => ({
       ...item,
-      value: mockMode ? Math.max(0, Math.round(item.value * (0.9 + (idx % 3) * 0.07))) : item.value,
       color: ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#6366f1"][idx % 5],
     }));
 
-    const complaintStatusDist = (analytics?.complaintStatusCounts ?? []).map((item, idx) => ({
+    const complaintStatusDist = (analytics?.complaintStatusCounts ?? []).map((item) => ({
       ...item,
-      value: mockMode ? Math.max(0, Math.round(item.value * (0.88 + (idx % 4) * 0.05))) : item.value,
     }));
 
-    const revenueTrend = (analytics?.revenueTrend ?? []).map((item, idx) => ({
+    const revenueTrend = (analytics?.revenueTrend ?? []).map((item) => ({
       ...item,
-      grossRevenueVnd: mockMode ? Math.max(0, Math.round(item.grossRevenueVnd * (0.92 + (idx % 4) * 0.04))) : item.grossRevenueVnd,
-      transactionCount: mockMode ? Math.max(0, Math.round(item.transactionCount * (0.9 + (idx % 5) * 0.03))) : item.transactionCount,
     }));
 
     const complaintTotal = complaintStatusDist.reduce((sum, item) => sum + item.value, 0);
     const mapStatusTotal = mapStatusDist.reduce((sum, item) => sum + item.value, 0);
 
     return { users, maps, published, unpublished, mapStatusDist, complaintStatusDist, revenueTrend, complaintTotal, mapStatusTotal };
-  }, [analytics, mockMode, overview]);
+  }, [analytics, overview]);
 
   return (
     <div className="p-6 space-y-6">
@@ -116,24 +104,7 @@ export const DashboardPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          {isDevLikeHost ? (
-            <button
-              type="button"
-              className="text-xs text-[var(--text-2)] opacity-40 hover:opacity-80"
-              onClick={() => setShowDevTools((prev) => !prev)}
-            >
-              dev
-            </button>
-          ) : null}
-          {isDevLikeHost && showDevTools ? (
-            <label className="mt-1 flex items-center gap-2 text-xs text-[var(--text-2)]">
-              <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} />
-              {t("cmsDashboard.mockData")}
-            </label>
-          ) : null}
-        </div>
+      <div className="flex items-center justify-end">
         <button
           className="rounded bg-blue-600 px-4 py-2 text-white"
           onClick={() => navigate(ROUTES.CMS_FINANCE_DASHBOARD)}

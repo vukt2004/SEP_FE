@@ -2,6 +2,7 @@ import { cmsAxios } from "@/services/http/axios.cms";
 import type {
   CmsOrbitCoinTransactionItem,
   CmsOrbitCoinInsightsData,
+  CmsEscrowPendingResult,
   CmsPagedResult,
   CmsRevenueOverviewResult,
   GetPaymentsReportParams,
@@ -54,6 +55,16 @@ export const cmsMarketplaceReportsApi = {
       "/api/cms/marketplace/reports/orbitcoin-insights",
       { params },
     );
+  },
+
+  getEscrowPending(params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    from?: string;
+    to?: string;
+    search?: string;
+  }) {
+    return cmsAxios.get<CmsEscrowPendingResult>("/api/cms/marketplace/transactions/escrow/pending", { params });
   },
 
   exportRevenue(params: { from?: string; to?: string; groupBy?: string; format: "csv" | "xlsx" | "pdf" }) {

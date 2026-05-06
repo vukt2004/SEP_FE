@@ -222,6 +222,7 @@ export default function WalletPageClean() {
   const [pendingPage, setPendingPage] = useState(1);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [pendingHasNext, setPendingHasNext] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedTx, setSelectedTx] = useState<OrbitCoinTransaction | null>(null);
   const [loading, setLoading] = useState(true);
@@ -252,6 +253,9 @@ export default function WalletPageClean() {
   const hasMore = transactions.length < totalCount;
   const pendingHasMore = pendingHasNext || (pendingTotal > 0 && pendingTransactions.length < pendingTotal);
   const canAccessCreator = (summary?.grossRevenue ?? 0) > 0 || games.length > 0;
+  const pendingAmountVnd = pendingAmount != null && exchangeRate > 0
+    ? pendingAmount * exchangeRate
+    : (summary?.pendingBalance ?? 0);
   const filteredTransactions = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
     return transactions.filter((tx) => {
@@ -276,8 +280,8 @@ export default function WalletPageClean() {
     () => ({
       pageNumber: page,
       pageSize: PAGE_SIZE,
-      from: filters.from,
-      to: filters.to,
+      from: toStartOfDay(filters.from),
+      to: toEndOfDay(filters.to),
       direction: filters.direction || undefined,
       categories: filters.category ? [categoryMap[filters.category]] : undefined,
       statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
@@ -289,8 +293,8 @@ export default function WalletPageClean() {
     () => ({
       pageNumber: pendingPage,
       pageSize: PAGE_SIZE,
-      from: filters.from,
-      to: filters.to,
+      from: toStartOfDay(filters.from),
+      to: toEndOfDay(filters.to),
       search: filters.search.trim() || undefined,
     }),
     [filters.from, filters.search, filters.to, pendingPage],
@@ -386,7 +390,7 @@ export default function WalletPageClean() {
   }, [query, dashboardRole, page]);
 
   useEffect(() => {
-    if (activeTab !== "pending") return undefined;
+    if (activeTab !== "pending" && pendingPage > 1) return undefined;
     let alive = true;
     (async () => {
       setPendingError(null);
@@ -397,9 +401,11 @@ export default function WalletPageClean() {
         if (!alive) return;
         if (!res.isSuccess) throw new Error("load");
         const data = res.data;
-        const items = data?.items ?? [];
-        setPendingTotal(data?.totalItems ?? items.length);
-        setPendingHasNext(Boolean(data?.hasNext));
+        const txData = data?.transactions;
+        const items = txData?.items ?? [];
+        setPendingAmount(data?.totalPendingAmount ?? null);
+        setPendingTotal(txData?.totalItems ?? items.length);
+        setPendingHasNext(Boolean(txData?.hasNext));
         setPendingTransactions((prev) => (pendingPage === 1 ? items : [...prev, ...items]));
       } catch {
         if (alive) {
@@ -592,7 +598,7 @@ export default function WalletPageClean() {
           )}
         />
         <Metric label={t.spent} value={formatDisplayMoney(summary?.totalOut ?? 0, exchangeRate, displayCurrency)} />
-        <Metric label={t.pendingAmount} value={formatDisplayMoney(summary?.pendingBalance ?? 0, exchangeRate, displayCurrency)} />
+        <Metric label={t.pendingAmount} value={formatDisplayMoney(pendingAmountVnd, exchangeRate, displayCurrency)} />
       </section>
       <section style={styles.tabs}>
         <button style={tabBtn(displayCurrency === "VND")} onClick={() => setDisplayCurrency("VND")}>{t.showVnd}</button>
@@ -1024,6 +1030,8 @@ function defaultFilters(): WalletFilters {
 }
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function fmtDate(d: Date) { return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function toStartOfDay(date: string) { return date ? `${date}T00:00:00` : undefined; }
+function toEndOfDay(date: string) { return date ? `${date}T23:59:59.999` : undefined; }
 function tabBtn(active: boolean): CSSProperties { return { ...styles.btn, borderColor: active ? "var(--primary)" : "var(--border)", color: active ? "var(--primary)" : "var(--text)", fontWeight: active ? 700 : 500 }; }
 function topUpChipBtn(active: boolean): CSSProperties {
   return {

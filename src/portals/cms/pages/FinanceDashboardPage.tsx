@@ -8,6 +8,7 @@ import type {
   CmsOrbitCoinInsightsData,
   CmsMarketplaceTransactionItem,
   CmsOrbitCoinTransactionItem,
+  CmsEscrowPendingTransaction,
   CmsPagedResponse,
   CmsRevenueOverviewData,
   PaymentsReportGroupBy,
@@ -15,12 +16,6 @@ import type {
 
 type TxTab = "marketplace" | "orbitcoin";
 type FinanceMainTab = "overview" | "transactions";
-
-const isDevLikeHost =
-  typeof window !== "undefined" &&
-  (window.location.hostname.includes("localhost") ||
-    window.location.hostname.includes("127.0.0.1") ||
-    window.location.hostname.includes(".local"));
 
 const formatVnd = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
@@ -36,11 +31,11 @@ function formatDateTime(value?: string): string {
 }
 
 function toStartOfDayIso(dateInput: string): string {
-  return new Date(`${dateInput}T00:00:00`).toISOString();
+  return `${dateInput}T00:00:00`;
 }
 
 function toEndOfDayIso(dateInput: string): string {
-  return new Date(`${dateInput}T23:59:59.999`).toISOString();
+  return `${dateInput}T23:59:59.999`;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -72,11 +67,18 @@ export const FinanceDashboardPage: React.FC = () => {
     return d.toISOString().slice(0, 10);
   });
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [mockMode, setMockMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [revenueOverview, setRevenueOverview] = useState<CmsRevenueOverviewData | null>(null);
   const [marketplaceRows, setMarketplaceRows] = useState<CmsMarketplaceTransactionItem[]>([]);
   const [orbitRows, setOrbitRows] = useState<CmsOrbitCoinTransactionItem[]>([]);
+  const [pendingRows, setPendingRows] = useState<CmsEscrowPendingTransaction[]>([]);
+  const [pendingMeta, setPendingMeta] = useState<CmsPagedResponse<CmsEscrowPendingTransaction> | null>(null);
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [pendingAmount, setPendingAmount] = useState(0);
   const [orbitInsightsData, setOrbitInsightsData] = useState<CmsOrbitCoinInsightsData | null>(null);
   const [marketMeta, setMarketMeta] = useState<CmsPagedResponse<CmsMarketplaceTransactionItem> | null>(null);
   const [orbitMeta, setOrbitMeta] = useState<CmsPagedResponse<CmsOrbitCoinTransactionItem> | null>(null);
@@ -94,7 +96,7 @@ export const FinanceDashboardPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [revenueRes, marketRes, orbitRes, orbitInsightsRes, rateRes] = await Promise.all([
+      const [revenueRes, marketRes, orbitRes, orbitInsightsRes, rateRes, pendingRes] = await Promise.all([
         cmsMarketplaceReportsApi.getRevenueOverview(queryParams),
         cmsMarketplaceReportsApi.getMarketplaceTransactions({
           pageNumber: marketPage,
@@ -114,6 +116,12 @@ export const FinanceDashboardPage: React.FC = () => {
         }),
         cmsMarketplaceReportsApi.getOrbitCoinInsights({ top: 5 }),
         cmsOrbitCoinApi.getExchangeRate(),
+        cmsMarketplaceReportsApi.getEscrowPending({
+          pageNumber: 1,
+          pageSize: 1,
+          from: queryParams.from,
+          to: queryParams.to,
+        }),
       ]);
       setRevenueOverview(revenueRes.data.data ?? null);
       setMarketMeta(marketRes.data.data ?? null);
@@ -121,6 +129,7 @@ export const FinanceDashboardPage: React.FC = () => {
       setMarketplaceRows(marketRes.data.data?.items ?? []);
       setOrbitRows(orbitRes.data.data?.items ?? []);
       setOrbitInsightsData(orbitInsightsRes.data?.data ?? null);
+      setPendingAmount(pendingRes.data?.data?.totalPendingAmount ?? 0);
       if (rateRes.data?.isSuccess && typeof rateRes.data.data?.rate === "number" && rateRes.data.data.rate > 0) {
         setExchangeRate(rateRes.data.data.rate);
       }
@@ -133,62 +142,6 @@ export const FinanceDashboardPage: React.FC = () => {
     void loadData();
   }, [loadData]);
 
-  const displayRevenue = useMemo(() => {
-    if (!mockMode || !revenueOverview) return revenueOverview;
-    const gross = Math.round((revenueOverview.grossRevenueVnd || 1) * 1.35);
-    const fee = Math.round((revenueOverview.platformFeeVnd || 1) * 1.28);
-    return {
-      ...revenueOverview,
-      grossRevenueVnd: gross,
-      platformFeeVnd: fee,
-      creatorPayoutVnd: Math.max(0, gross - fee),
-      netPlatformRevenueVnd: fee,
-      trend: revenueOverview.trend.map((x, i) => ({
-        ...x,
-        grossRevenueVnd: Math.round(x.grossRevenueVnd * (0.95 + (i % 4) * 0.07)),
-        platformFeeVnd: Math.round(x.platformFeeVnd * (0.9 + (i % 5) * 0.05)),
-        transactionCount: Math.max(1, Math.round(x.transactionCount * (0.85 + (i % 3) * 0.1))),
-        netPlatformRevenueVnd: Math.round(x.netPlatformRevenueVnd * (0.8 + ((i % 5) + 1) * 0.08)),
-      })),
-    };
-  }, [mockMode, revenueOverview]);
-
-  const mockMarketplaceRows = useMemo<CmsMarketplaceTransactionItem[]>(
-    () =>
-      Array.from({ length: 8 }, (_, i) => ({
-        id: `mock-market-${i + 1}`,
-        userId: `mock-user-${i + 1}`,
-        userName: `Mock User ${i + 1}`,
-        userEmail: `mock${i + 1}@quackorbit.dev`,
-        gameId: i % 2 === 0 ? `game-${i + 10}` : undefined,
-        packageId: i % 2 === 1 ? `package-${i + 10}` : undefined,
-        amount: 100 + i * 10,
-        amountVnd: 100000 + i * 15000,
-        paymentStatus: i % 3 === 0 ? "Pending" : "Completed",
-        externalId: `EXT-${1000 + i}`,
-        paidAt: new Date(Date.now() - i * 86400000).toISOString(),
-      })),
-    [],
-  );
-
-  const mockOrbitRows = useMemo<CmsOrbitCoinTransactionItem[]>(
-    () =>
-      Array.from({ length: 8 }, (_, i) => ({
-        id: `mock-orbit-${i + 1}`,
-        userId: `mock-user-${i + 1}`,
-        userName: `Mock User ${i + 1}`,
-        userEmail: `mock${i + 1}@quackorbit.dev`,
-        amount: 50 + i * 5,
-        feeAmount: 2 + i,
-        balanceAfter: 400 + i * 20,
-        transactionType: i % 2 === 0 ? "Credit" : "Debit",
-        relatedEntityType: i % 2 === 0 ? "Game" : "Package",
-        relatedEntityId: `rel-${i + 1}`,
-        note: `Mock note ${i + 1}`,
-        createdAt: new Date(Date.now() - i * 43200000).toISOString(),
-      })),
-    [],
-  );
 
   const exportRevenue = async (format: "csv" | "xlsx" | "pdf") => {
     const res = await cmsMarketplaceReportsApi.exportRevenue({ ...queryParams, format });
@@ -206,12 +159,7 @@ export const FinanceDashboardPage: React.FC = () => {
   };
 
   const txRows = activeTab === "marketplace" ? marketplaceRows : orbitRows;
-  const displayTxRows =
-    mockMode
-      ? activeTab === "marketplace"
-        ? (marketplaceRows.length > 0 ? marketplaceRows : mockMarketplaceRows)
-        : (orbitRows.length > 0 ? orbitRows : mockOrbitRows)
-      : txRows;
+  const displayTxRows = txRows;
   const statusOptions = useMemo(() => {
     if (activeTab === "marketplace") {
       return ["All", "Completed", "Pending", "Failed", "Cancelled", "Refunded"];
@@ -235,43 +183,26 @@ export const FinanceDashboardPage: React.FC = () => {
     return { total, completed, pending, totalVnd };
   }, [displayTxRows, exchangeRate]);
 
-  const orbitInsights = useMemo(() => {
-    if (mockMode) {
-      const issuedOc = mockOrbitRows
-        .filter((row) => row.transactionType === "Credit")
-        .reduce((sum, row) => sum + Math.max(0, row.amount), 0);
-      const consumedOc = mockOrbitRows
-        .filter((row) => row.transactionType === "Debit")
-        .reduce((sum, row) => sum + Math.max(0, row.amount), 0);
-      const topOcHolders = mockOrbitRows
-        .map((row) => ({ name: row.userName, email: row.userEmail, balanceOc: Math.max(0, row.balanceAfter ?? row.amount) }))
-        .sort((a, b) => b.balanceOc - a.balanceOc)
-        .slice(0, 5);
-      return {
-        issuedOc,
-        consumedOc,
-        circulatingEstimate: Math.max(0, issuedOc - consumedOc),
-        topOcHolders,
-      };
-    }
-
-    return {
-      issuedOc: orbitInsightsData?.issuedOc ?? 0,
-      consumedOc: orbitInsightsData?.consumedOc ?? 0,
-      circulatingEstimate: orbitInsightsData?.circulatingOc ?? 0,
-      topOcHolders: (orbitInsightsData?.topHolders ?? []).map((x) => ({
-        name: x.userName,
-        email: x.userEmail,
-        balanceOc: x.balanceOc,
-      })),
-    };
-  }, [mockMode, mockOrbitRows, orbitInsightsData]);
+  const orbitInsights = useMemo(() => ({
+    issuedOc: orbitInsightsData?.issuedOc ?? 0,
+    consumedOc: orbitInsightsData?.consumedOc ?? 0,
+    circulatingEstimate: orbitInsightsData?.circulatingOc ?? 0,
+    topOcHolders: (orbitInsightsData?.topHolders ?? []).map((x) => ({
+      name: x.userName,
+      email: x.userEmail,
+      balanceOc: x.balanceOc,
+    })),
+  }), [orbitInsightsData]);
 
   const currentSearch = activeTab === "marketplace" ? marketSearch : orbitSearch;
   const currentStatusFilter = activeTab === "marketplace" ? marketStatusFilter : orbitTypeFilter;
   const currentMeta = activeTab === "marketplace" ? marketMeta : orbitMeta;
   const totalPages = Math.max(1, currentMeta?.totalPages ?? 1);
   const currentPage = activeTab === "marketplace" ? marketPage : orbitPage;
+  const pendingTotalPages = Math.max(1, pendingMeta?.totalPages ?? 1);
+  const pendingAmountDisplay = exchangeRate > 0
+    ? formatVnd(Math.round(pendingAmount * exchangeRate))
+    : formatOc(pendingAmount);
 
   const onChangeSearch = (value: string) => {
     if (activeTab === "marketplace") {
@@ -302,6 +233,32 @@ export const FinanceDashboardPage: React.FC = () => {
     setOrbitPage(safePage);
   };
 
+  const loadPending = useCallback(async () => {
+    setPendingLoading(true);
+    setPendingError(null);
+    try {
+      const res = await cmsMarketplaceReportsApi.getEscrowPending({
+        pageNumber: pendingPage,
+        pageSize,
+        from: queryParams.from,
+        to: queryParams.to,
+        search: pendingSearch.trim() || undefined,
+      });
+      const payload = res.data?.data;
+      setPendingMeta(payload?.transactions ?? null);
+      setPendingRows(payload?.transactions?.items ?? []);
+    } catch {
+      setPendingError(t("cmsFinance.pending.error"));
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [pageSize, pendingPage, pendingSearch, queryParams.from, queryParams.to, t]);
+
+  useEffect(() => {
+    if (!pendingOpen) return;
+    void loadPending();
+  }, [pendingOpen, loadPending]);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -319,12 +276,6 @@ export const FinanceDashboardPage: React.FC = () => {
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border px-3 py-2" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border px-3 py-2" />
           <button onClick={() => void loadData()} className="rounded bg-blue-600 px-4 py-2 text-white">{t("cmsFinance.refresh")}</button>
-          {isDevLikeHost ? (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} />
-              {t("cmsFinance.mockData")}
-            </label>
-          ) : null}
         </div>
       </div>
 
@@ -342,16 +293,23 @@ export const FinanceDashboardPage: React.FC = () => {
           <div className="rounded border p-4 bg-[var(--surface)] text-sm text-[var(--text-2)]">{t("cmsFinance.guide.overview")}</div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card title={t("cmsFinance.kpi.gross")} value={formatVnd(displayRevenue?.grossRevenueVnd ?? 0)} />
-            <Card title={t("cmsFinance.kpi.platformFee")} value={formatVnd(displayRevenue?.platformFeeVnd ?? 0)} />
-            <Card title={t("cmsFinance.kpi.creatorPayout")} value={formatVnd(displayRevenue?.creatorPayoutVnd ?? 0)} />
-            <Card title={t("cmsFinance.kpi.netPlatform")} value={formatVnd(displayRevenue?.netPlatformRevenueVnd ?? 0)} />
+            <Card title={t("cmsFinance.kpi.gross")} value={formatVnd(revenueOverview?.grossRevenueVnd ?? 0)} />
+            <Card
+              title={t("cmsFinance.kpi.pendingEscrow")}
+              value={pendingAmountDisplay}
+              onClick={() => {
+                setPendingOpen(true);
+                setPendingPage(1);
+              }}
+            />
+            <Card title={t("cmsFinance.kpi.creatorPayout")} value={formatVnd(revenueOverview?.creatorPayoutVnd ?? 0)} />
+            <Card title={t("cmsFinance.kpi.netPlatform")} value={formatVnd(revenueOverview?.netPlatformRevenueVnd ?? 0)} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <ChartCard title={t("cmsFinance.charts.netTrend")}>
               <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={displayRevenue?.trend ?? []}>
+                <LineChart data={revenueOverview?.trend ?? []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="period" />
                   <YAxis />
@@ -362,7 +320,7 @@ export const FinanceDashboardPage: React.FC = () => {
             </ChartCard>
             <ChartCard title={t("cmsFinance.charts.transactionsByPeriod")}>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={displayRevenue?.trend ?? []}>
+                <BarChart data={revenueOverview?.trend ?? []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="period" />
                   <YAxis />
@@ -558,13 +516,156 @@ export const FinanceDashboardPage: React.FC = () => {
           ) : null}
         </div>
       )}
+
+      {pendingOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 overflow-y-auto" onClick={() => setPendingOpen(false)}>
+          <div className="w-full max-w-6xl rounded border bg-[var(--surface)] p-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">{t("cmsFinance.pending.title")}</h3>
+                <div className="text-sm text-[var(--text-2)]">
+                  {t("cmsFinance.pending.subtitle")} {pendingAmountDisplay}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded border px-3 py-2"
+                  onClick={() => {
+                    setPendingSearch("");
+                    setPendingPage(1);
+                    void loadPending();
+                  }}
+                >
+                  {t("cmsFinance.pending.clear")}
+                </button>
+                <button className="rounded bg-blue-600 px-4 py-2 text-white" onClick={() => setPendingOpen(false)}>
+                  {t("cmsFinance.pending.close")}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <input
+                type="text"
+                value={pendingSearch}
+                onChange={(e) => {
+                  setPendingSearch(e.target.value);
+                  setPendingPage(1);
+                }}
+                className="w-full md:w-96 rounded border px-3 py-2"
+                placeholder={t("cmsFinance.pending.searchPlaceholder")}
+              />
+              <div className="flex items-center gap-2">
+                <button className="rounded border px-3 py-2" onClick={() => void loadPending()}>
+                  {t("cmsFinance.refresh")}
+                </button>
+              </div>
+            </div>
+
+            {pendingLoading ? <div className="mt-4 text-sm text-[var(--text-2)]">{t("cmsFinance.pending.loading")}</div> : null}
+            {pendingError ? <div className="mt-4 text-sm text-red-600">{pendingError}</div> : null}
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b">
+                    <th className="py-2 pr-3">{t("cmsFinance.table.time")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.pending.columns.game")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.pending.columns.buyer")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.pending.columns.seller")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.table.amount")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.pending.columns.fee")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.pending.columns.net")}</th>
+                    <th className="py-2 pr-3">{t("cmsFinance.table.status")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRows.map((row) => (
+                    <tr key={row.paymentRecordId} className="border-b">
+                      <td className="py-2 pr-3">{formatDateTime(row.paidAt)}</td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{row.gameTitle || "-"}</div>
+                        <div className="text-xs text-[var(--text-2)]">{shortId(row.gameId)}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{row.buyerName}</div>
+                        <div className="text-xs text-[var(--text-2)]">{row.buyerEmail}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{row.sellerName}</div>
+                        <div className="text-xs text-[var(--text-2)]">{row.sellerEmail}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{formatOc(row.amount)}</div>
+                        <div className="text-xs text-[var(--text-2)]">{formatVnd(Math.round(row.amount * exchangeRate))}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{formatOc(row.feeAmount)}</div>
+                        <div className="text-xs text-[var(--text-2)]">{formatVnd(Math.round(row.feeAmount * exchangeRate))}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{formatOc(row.sellerReceives)}</div>
+                        <div className="text-xs text-[var(--text-2)]">{formatVnd(Math.round(row.sellerReceives * exchangeRate))}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <StatusBadge statusRaw={row.paymentStatus} label={row.paymentStatus} />
+                      </td>
+                    </tr>
+                  ))}
+                  {!pendingLoading && pendingRows.length === 0 ? (
+                    <tr>
+                      <td className="py-3 text-center text-[var(--text-2)]" colSpan={8}>{t("cmsFinance.pending.empty")}</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm text-[var(--text-2)]">
+                {`${t("cmsFinance.pagination.summaryPrefix")} ${pendingPage}/${pendingTotalPages} - ${pendingMeta?.totalItems ?? pendingRows.length} ${t("cmsFinance.pagination.summarySuffix")}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded border px-3 py-1 disabled:opacity-50"
+                  disabled={pendingPage <= 1}
+                  onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
+                >
+                  {t("cmsFinance.pagination.previous")}
+                </button>
+                <span className="text-sm">{pendingPage}/{pendingTotalPages}</span>
+                <button
+                  className="rounded border px-3 py-1 disabled:opacity-50"
+                  disabled={pendingPage >= pendingTotalPages}
+                  onClick={() => setPendingPage((p) => Math.min(pendingTotalPages, p + 1))}
+                >
+                  {t("cmsFinance.pagination.next")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
 
-function Card({ title, value }: { title: string; value: string | number }) {
+function Card({ title, value, onClick }: { title: string; value: string | number; onClick?: () => void }) {
+  const clickable = Boolean(onClick);
   return (
-    <div className="rounded border p-4 bg-[var(--surface)]">
+    <div
+      className={`rounded border p-4 bg-[var(--surface)] ${clickable ? "cursor-pointer hover:border-blue-500 hover:shadow-sm" : ""}`}
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!clickable) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+    >
       <div className="text-sm text-[var(--text-2)]">{title}</div>
       <div className="text-2xl font-semibold mt-2">{value}</div>
     </div>
