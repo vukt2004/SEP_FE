@@ -13,6 +13,8 @@ import {
   GraduationCap,
   LayoutGrid,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { learnerMapsApi } from "@/services/api/learner/maps.api";
 import { learnerRecommendationsApi } from "@/services/api/learner/recommendations.api";
@@ -36,6 +38,7 @@ import {
 
 /** Số game hiển thị ban đầu trong các khối (Tiếp tục chơi, Đề xuất, Dành cho người mới); bấm tiêu đề để mở rộng. */
 const MAPS_SECTION_PREVIEW = 3;
+const PAGE_SIZE = 12;
 
 type MapStatus = "locked" | "available" | "in_progress" | "completed";
 type MainTab = "all" | "recommended" | "progress";
@@ -172,6 +175,9 @@ function MapsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") ?? "");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(() => searchParams.get("q") ?? "");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [difficultyFilter, setDifficultyFilter] = useState<string>(() => searchParams.get("diff") ?? "all");
   const [selectedKnowledgeConcepts, setSelectedKnowledgeConcepts] = useState<string[]>(() => {
     const v = searchParams.get("kc");
@@ -235,6 +241,15 @@ function MapsContent() {
     setSearchParams,
     location.state,
   ]);
+
+  // Debounce search term: only update after user stops typing for 400ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     if (mainTab !== "all") {
@@ -394,10 +409,10 @@ function MapsContent() {
       setLoading(true);
       setError(null);
       const res = await learnerMapsApi.getMaps({
-        pageNumber: 1,
-        pageSize: 50,
+        pageNumber: currentPage,
+        pageSize: PAGE_SIZE,
         publishedOnly: true,
-        search: searchTerm.trim() || undefined,
+        search: debouncedSearchTerm.trim() || undefined,
         difficulty: difficultyFilter === "all" ? undefined : Number(difficultyFilter),
         minPrice: parsedPriceMin != null && !isNaN(parsedPriceMin) ? parsedPriceMin : undefined,
         maxPrice: parsedPriceMax != null && !isNaN(parsedPriceMax) ? parsedPriceMax : undefined,
@@ -406,6 +421,7 @@ function MapsContent() {
       });
       if (res.data.isSuccess && res.data.data) {
         setMaps(res.data.data.items as ApiMap[]);
+        setTotalPages(res.data.data.totalPages);
       } else {
         setError(res.data.message || t("failedLoadMapList"));
         setMostPlayedRankById(new Map());
@@ -432,7 +448,7 @@ function MapsContent() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, difficultyFilter, sortBy, parsedPriceMin, parsedPriceMax, t]);
+  }, [currentPage, debouncedSearchTerm, difficultyFilter, sortBy, parsedPriceMin, parsedPriceMax, t]);
 
   useEffect(() => {
     loadMaps();
@@ -586,6 +602,30 @@ function MapsContent() {
     setMechanismConceptPicker("all");
     setPriceMin("");
     setPriceMax("");
+    setCurrentPage(1);
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Build visible page numbers with ellipsis
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
   };
 
   const handleMapPrimaryAction = (mapId: string, mapTitle?: string) => {
@@ -662,7 +702,7 @@ function MapsContent() {
                 <select
                   className={styles.filterSelect}
                   value={difficultyFilter}
-                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  onChange={(e) => { setDifficultyFilter(e.target.value); setCurrentPage(1); }}
                   aria-label={t("difficulty")}
                 >
                   <option value="all">{t("filterAll")}</option>
@@ -1077,6 +1117,48 @@ function MapsContent() {
                       />
                     );
                   })}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && allMapsForGrid.length > 0 && (
+                <div className={styles.paginationWrap}>
+                  <button
+                    type="button"
+                    className={styles.paginationBtn}
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  {getPageNumbers().map((page, idx) =>
+                    page === "..." ? (
+                      <span key={`ellipsis-${idx}`} className={styles.paginationEllipsis}>
+                        ···
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        type="button"
+                        className={`${styles.paginationBtn} ${page === currentPage ? styles.paginationBtnActive : ""}`}
+                        onClick={() => goToPage(page)}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+
+                  <button
+                    type="button"
+                    className={styles.paginationBtn}
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
                 </div>
               )}
             </section>
