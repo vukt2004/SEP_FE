@@ -99,3 +99,27 @@ export interface CmsPagedResponse<T> {
 }
 
 export type CmsPagedResult<T> = ApiResult<CmsPagedResponse<T>>;
+
+export interface CmsEscrowPendingTransaction {
+  paymentRecordId: string;
+  gameId: string;
+  gameTitle: string;
+  buyerId: string;
+  buyerName: string;
+  buyerEmail: string;
+  sellerId: string;
+  sellerName: string;
+  sellerEmail: string;
+  amount: number;
+  feeAmount: number;
+  sellerReceives: number;
+  paidAt?: string;
+  paymentStatus: string;
+}
+
+export interface CmsEscrowPendingResponse {
+  totalPendingAmount: number;
+  transactions: CmsPagedResponse<CmsEscrowPendingTransaction>;
+}
+
+export type CmsEscrowPendingResult = ApiResult<CmsEscrowPendingResponse>;

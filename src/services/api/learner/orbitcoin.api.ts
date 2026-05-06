@@ -148,6 +148,11 @@ export type EscrowPendingList = {
   message?: string | null;
 };
 
+export type EscrowPendingResponse = {
+  totalPendingAmount: number;
+  transactions: EscrowPendingList;
+};
+
 export type EscrowPendingParams = {
   pageNumber?: number;
   pageSize?: number;
@@ -268,7 +273,7 @@ export const orbitCoinApi = {
   },
 
   getEscrowPending: async (params: EscrowPendingParams = {}) => {
-    const { data } = await learnerAxios.get<ApiResult<EscrowPendingList>>(
+    const { data } = await learnerAxios.get<ApiResult<EscrowPendingResponse>>(
       "/api/learner/orbitcoin/escrow/pending",
       {
         params: {
