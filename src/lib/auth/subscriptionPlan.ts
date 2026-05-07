@@ -430,5 +430,5 @@ export function canUsePrivateRoomFromCapabilities(capabilities: SubscriptionCapa
 }
 
 export function canUseCreatorAnalytics(plan: SubscriptionPlan): boolean {
-  return plan === "creator";
+  return plan === "creator" || plan === "pro";
 }

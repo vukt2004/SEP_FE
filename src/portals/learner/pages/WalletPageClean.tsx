@@ -3,7 +3,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { useNavigate } from "react-router-dom";
 import { useLanguageStore } from "@/stores/language.store";
 import { emitApiToast } from "@/shared/toast/apiToastBus";
-import { getCurrentUserPlan } from "@/lib/auth/subscriptionPlan";
+import { getCurrentUserCapabilities } from "@/lib/auth/subscriptionPlan";
 import { learnerProfileApi } from "@/services/api/learner/profile.api";
 import {
   CoinTransactionTypeEnum,
@@ -57,9 +57,8 @@ const dict = {
     loadMore: "Load more",
     exportCsv: "Export CSV",
     exportPdf: "Export PDF",
-    noCreator: "No creator data yet.",
-    noCreatorHint: "Register as creator to unlock creator dashboard.",
-    registerCreator: "Become creator",
+    noRevenueInPeriod: "No revenue in this period.",
+    noRevenueInPeriodHint: "Try widening the date range or publish maps so buyers can purchase.",
     drawerTitle: "Transaction details",
     clearFilters: "Clear filters",
     trend: "Cashflow trend",
@@ -139,9 +138,8 @@ const dict = {
     loadMore: "Xem thêm",
     exportCsv: "Xuất CSV",
     exportPdf: "Xuất PDF",
-    noCreator: "Chưa có dữ liệu creator.",
-    noCreatorHint: "Đăng ký creator để mở dashboard doanh thu.",
-    registerCreator: "Đăng ký Creator",
+    noRevenueInPeriod: "Chưa có doanh thu trong khoảng thời gian này.",
+    noRevenueInPeriodHint: "Thử mở rộng khoảng ngày hoặc xuất bản map để người chơi mua.",
     drawerTitle: "Chi tiết giao dịch",
     clearFilters: "Xóa lọc",
     trend: "Xu hướng thu chi",
@@ -236,6 +234,7 @@ export default function WalletPageClean() {
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
+  /** Pro/Creator (can_create_game from packages) — tab doanh thu, không chỉ dựa vào tên plan "creator". */
   const [isCreator, setIsCreator] = useState(false);
   const [isToppingUp, setIsToppingUp] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
@@ -252,7 +251,7 @@ export default function WalletPageClean() {
 
   const hasMore = transactions.length < totalCount;
   const pendingHasMore = pendingHasNext || (pendingTotal > 0 && pendingTransactions.length < pendingTotal);
-  const canAccessCreator = (summary?.grossRevenue ?? 0) > 0 || games.length > 0;
+  const hasCreatorSalesData = (summary?.grossRevenue ?? 0) > 0 || games.length > 0;
   const pendingAmountVnd = pendingAmount != null && exchangeRate > 0
     ? pendingAmount * exchangeRate
     : (summary?.pendingBalance ?? 0);
@@ -310,9 +309,9 @@ export default function WalletPageClean() {
     let alive = true;
     (async () => {
       try {
-        const plan = await getCurrentUserPlan(false, "learner");
+        const caps = await getCurrentUserCapabilities(false, "learner");
         if (!alive) return;
-        setIsCreator(plan === "creator" || plan === "pro");
+        setIsCreator(Boolean(caps.canCreateGame));
       } catch {
         if (!alive) return;
         setIsCreator(false);
@@ -781,11 +780,10 @@ export default function WalletPageClean() {
               <button style={styles.btn} onClick={handleExportPdf}>{t.exportPdf}</button>
             </div>
           </div>
-          {!canAccessCreator ? (
+          {!hasCreatorSalesData ? (
             <div style={styles.notice}>
-              <div style={styles.noticeTitle}>{t.noCreator}</div>
-              <div style={styles.sub}>{t.noCreatorHint}</div>
-              <button style={{ ...styles.btn, marginTop: 8 }}>{t.registerCreator}</button>
+              <div style={styles.noticeTitle}>{t.noRevenueInPeriod}</div>
+              <div style={styles.sub}>{t.noRevenueInPeriodHint}</div>
             </div>
           ) : (
             <div style={styles.tableWrap}>
